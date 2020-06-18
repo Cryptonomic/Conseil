@@ -82,7 +82,7 @@ object TezosGovernanceOperations extends LazyLogging {
       activeProposals <- nodeOperator.getActiveProposals(blocksInActiveVotingPeriod)
       proposalsMap = activeProposals.toMap
       //pair blocks and proposals
-      blocksAndProposals = blocks.map(block => block -> proposalsMap.get(block.data.hash).flatten).toMap
+      blocksAndProposals = blocks.map(block => block -> proposalsMap.getOrElse(block.data.hash, None)).toMap
       ballots <- nodeOperator.getVotes(blocksAndProposals.keys.toList)
       aggregates <- aggregateData(db)(
         blocksAndProposals,
@@ -103,20 +103,20 @@ object TezosGovernanceOperations extends LazyLogging {
     *              have a proper metadata value, different from the genesis one
     *
     * @param db needed to fetch previously stored voting data
-    * @param proposalsBlocks blocks we want to have governance data for, associated to the protocol of the proposal
-    * @param proposalsBallots votes cast on the blocks of interest,
-    *                         the keys should be a superset of the `proposalsBlocks` keys,
+    * @param activeProposalsBlocks blocks we want to have governance data for, associated to the protocol of the proposal
+    * @param activeProposalsBallots votes cast on the blocks of interest,
+    *                         the keys should be a superset of the `activeProposalsBlocks` keys,
     *                         so that the value is available for each of those blocks.
-    * @param levelsRolls listings of baker rolls involved, indexed per level, we expect all levels for the
+    * @param rollsByLevel listings of baker rolls involved, indexed per level, we expect all levels for the
     *                         `proposalsBlocks` to be available, plus the level immediately before this batch.
     *                          ideally this would be a `Level => List[Voting.BakerRolls]` (i.e. a total function)
     * @param ec needed to compose concurrent operations
     * @return aggregated data
     */
   def aggregateData(db: Database)(
-      proposalsBlocks: Map[Block, Option[ProtocolId]],
-      proposalsBallots: Map[Block, List[Voting.Ballot]],
-      levelsRolls: Map[Int, List[Voting.BakerRolls]]
+      activeProposalsBlocks: Map[Block, Option[ProtocolId]],
+      activeProposalsBallots: Map[Block, List[Voting.Ballot]],
+      rollsByLevel: Map[Int, List[Voting.BakerRolls]]
   )(
       implicit ec: ExecutionContext
   ): Future[List[GovernanceAggregate]] = {
@@ -137,7 +137,7 @@ object TezosGovernanceOperations extends LazyLogging {
     logger.info("Searching for governance data in voting period...")
 
     //find blocks for a specific proposal under scrutiny, relevant for counting ballots
-    val votingBlocks = proposalsBlocks.collect { case (block, Some(protocol)) => block }.toList
+    val votingBlocks = activeProposalsBlocks.collect { case (block, Some(protocol)) => block }.toList
 
     logger.info(
       "There are {} blocks related to testing vote and proposal vote periods.",
@@ -145,7 +145,7 @@ object TezosGovernanceOperations extends LazyLogging {
     )
 
     //main algorithm
-    val cycles = proposalsBlocks.keys
+    val cycles = activeProposalsBlocks.keys
       .filter(votingPeriodIn(ballotPeriods))
       .map(_.data.metadata)
       .collect {
@@ -164,14 +164,14 @@ object TezosGovernanceOperations extends LazyLogging {
     val levelBallotCountsResult =
       Future
         .traverse(
-          proposalsBlocks.keys.filter(votingPeriodIn(ballotPeriods))
+          activeProposalsBlocks.keys.filter(votingPeriodIn(ballotPeriods))
         ) { block =>
           db.run(countBallotsPerLevel(block)).map(block -> BallotsPerLevel(_))
         }
         .map(_.toMap)
 
     val proposalCountsResult = Future.traverse(
-      proposalsBlocks.keys.filter(votingPeriodIs(VotingPeriod.proposal))
+      activeProposalsBlocks.keys.filter(votingPeriodIs(VotingPeriod.proposal))
     ) { block =>
       db.run(proposalHashesPerCycle(block).map(block -> _))
     }
@@ -182,9 +182,9 @@ object TezosGovernanceOperations extends LazyLogging {
       proposalCounts <- proposalCountsResult
     } yield
       fillAggregates(
-        proposalsBlocks,
-        levelsRolls,
-        proposalsBallots,
+        activeProposalsBlocks,
+        rollsByLevel,
+        activeProposalsBallots,
         levelCountsMap,
         cycleCountsMap,
         proposalCounts.toMap
@@ -196,27 +196,27 @@ object TezosGovernanceOperations extends LazyLogging {
    */
   private def fillAggregates(
       proposalsBlocks: Map[Block, Option[ProtocolId]],
-      listingsPerLevel: Map[Int, List[Voting.BakerRolls]],
+      rollsByLevel: Map[Int, List[Voting.BakerRolls]],
       ballots: Map[Block, List[Voting.Ballot]],
       ballotCountsPerLevel: Map[Block, BallotsPerLevel],
       ballotCountsPerCycle: Map[Int, BallotsPerCycle],
-      proposalProtocolCounts: Map[Block, Map[ProtocolId, Int]] //comes from individual operations on the block
+      proposalCountsByBlock: Map[Block, Map[ProtocolId, Int]] //comes from individual operations on the block
   ): List[GovernanceAggregate] =
     proposalsBlocks.toList.flatMap {
       case (block, currentProposal) =>
-        val listing = listingsPerLevel.getOrElse(block.data.header.level, List.empty)
-        val prevListings = listingsPerLevel.getOrElse(block.data.header.level - 1, List.empty)
-        val listingByBlock = listing.diff(prevListings)
+        val rollsAtLevel = rollsByLevel.getOrElse(block.data.header.level, List.empty)
+        val rollsAtPreviousLevel = rollsByLevel.getOrElse(block.data.header.level - 1, List.empty)
+        val rollsForBlockLevel = rollsAtLevel.diff(rollsAtPreviousLevel)
         val ballot = ballots.getOrElse(block, List.empty)
         val ballotCountPerCycle = block.data.metadata match {
           case md: BlockHeaderMetadata => ballotCountsPerCycle.get(md.level.cycle).map(_.counts)
           case GenesisMetadata => None
         }
         val ballotCountPerLevel = ballotCountsPerLevel.get(block).map(_.counts)
-        val proposalCounts = proposalProtocolCounts.getOrElse(block, Map.empty).toList
+        val proposalCounts = proposalCountsByBlock.getOrElse(block, Map.empty).toList
 
-        val allRolls = countRolls(listing, ballot)
-        val levelRolls = countRolls(listingByBlock, ballot)
+        val allRolls = countRolls(rollsAtLevel, ballot)
+        val levelRolls = countRolls(rollsForBlockLevel, ballot)
 
         /* Here we collect a row for the block being considered
          * to get voting data for the periods with a specific proposal
