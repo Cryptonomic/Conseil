@@ -84,9 +84,9 @@ private[tezos] class TezosNodeOperator(
   type PaginatedDelegateResults = Paginated[DelegateFetchingResults]
 
   //introduced to simplify signatures
-  type BallotBlock = (Block, List[Voting.Ballot])
-  type BakerBlock = (Block, List[Voting.BakerRolls])
-  type BallotCountsBlock = (Block, Option[Voting.BallotCounts])
+  type BallotsByBlock = (Block, List[Voting.Ballot])
+  type BakerRollsByBlock = (Block, List[Voting.BakerRolls])
+  type BallotCountsByBlock = (Block, Option[Voting.BallotCounts])
 
   /**
     * Generic fetch for paginated data relative to a specific block.
@@ -338,12 +338,12 @@ private[tezos] class TezosNodeOperator(
       (fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
     }
 
-  /** Fetches proposals for given blocks
+  /** Fetches any active proposal id for the given blocks.
     * The returned value, when available for active voting periods, is the ID of
     * a proposal, though for the sake of naming consistency with tezos schema
     * we refer to that as a protocol ID.
     */
-  def getProposals(blocks: List[BlockData]): Future[List[(BlockHash, Option[ProtocolId])]] = {
+  def getActiveProposals(blocks: List[BlockData]): Future[List[(BlockHash, Option[ProtocolId])]] = {
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
@@ -370,7 +370,7 @@ private[tezos] class TezosNodeOperator(
     * @param blocks the blocks we want the rolls for
     * @return the lists of rolls, for each individual requested block
     */
-  def getBakerRollsForBlocks(blocks: List[Block]): Future[List[BakerBlock]] = {
+  def getBakerRollsForBlocks(blocks: List[Block]): Future[List[BakerRollsByBlock]] = {
 
     /* given a hash-keyed pair, restores the full block information, searching in the input */
     def adaptResults[A](hashKeyedValue: (BlockHash, A)) = {
@@ -395,7 +395,7 @@ private[tezos] class TezosNodeOperator(
   }
 
   /** Fetches detailed data for voting associated to the passed-in blocks */
-  def getVotes(blocks: List[Block]): Future[List[BallotBlock]] = {
+  def getVotes(blocks: List[Block]): Future[List[BallotsByBlock]] = {
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch

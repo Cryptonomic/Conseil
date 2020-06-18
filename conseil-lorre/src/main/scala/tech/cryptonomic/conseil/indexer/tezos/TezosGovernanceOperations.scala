@@ -5,7 +5,6 @@ import tech.cryptonomic.conseil.common.tezos.VotingOperations._
 import scala.concurrent.{ExecutionContext, Future}
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api.Database
-import cats.implicits._
 
 /** Process blocks and voting data to compute details for
   * the governance-related cycles
@@ -54,8 +53,7 @@ object TezosGovernanceOperations extends LazyLogging {
     * from having any actual rolls data in the associated map value.
     *
     * @param db the reference database
-    * @param node the operator to get information from the remore tezos node
-    * @param bakerRollsByBlock blocks of interest, with any rolls data available
+    * @param nodeOperator the operator to get information from the remore tezos node
     * @return the computed aggregate data
     */
   def extractGovernanceAggregations(
@@ -81,7 +79,7 @@ object TezosGovernanceOperations extends LazyLogging {
      * convert those into database rows to be stored.
      */
     for {
-      activeProposals <- nodeOperator.getProposals(blocksInActiveVotingPeriod)
+      activeProposals <- nodeOperator.getActiveProposals(blocksInActiveVotingPeriod)
       proposalsMap = activeProposals.collect { case (hash, Some(protocol)) => hash -> protocol }.toMap
       //collect only those blocks that have a current voting proposal
       activeProposalsBlocks = blocks.collect {

@@ -358,12 +358,12 @@ class TezosIndexer(
       for {
         _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
         _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
-        bakersData <- nodeOperator.getBakerRollsForBlocks(blocks)
-        rollsByHash = bakersData.map { case (block, rolls) => block.data.hash -> rolls }.toMap
-        bakersCheckpoints <- processAccountsForBlocks(accountUpdates, rollsByHash) // should this fail, we still recover data from the checkpoint
+        rollsData <- nodeOperator.getBakerRollsForBlocks(blocks)
+        rollsByBlockHash = rollsData.map { case (block, rolls) => block.data.hash -> rolls }.toMap
+        bakersCheckpoints <- processAccountsForBlocks(accountUpdates, rollsByBlockHash) // should this fail, we still recover data from the checkpoint
         _ <- processBakersForBlocks(bakersCheckpoints)
         _ <- updateBakersBalances(blocks)
-        _ <- processBlocksForGovernance(bakersData.toMap)
+        _ <- processBlocksForGovernance(rollsData.toMap)
       } yield results.size
 
     }

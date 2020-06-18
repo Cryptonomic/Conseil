@@ -523,7 +523,7 @@ object TezosDatabaseOperations extends LazyLogging {
   ): DBIO[Seq[Tables.EndorsingRightsRow]] =
     Tables.EndorsingRights.filter(_.level === blockLevel).result
 
-  /** Stores teh governance statistic aggregates in the database
+  /** Stores the governance statistic aggregates in the database
     *
     * @param governance aggregates
     * @return the number of rows added, if available from the driver
