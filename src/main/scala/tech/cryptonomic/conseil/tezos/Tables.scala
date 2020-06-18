@@ -1593,8 +1593,8 @@ trait Tables {
     /** Index over (level) (database name endorsing_rights_level_idx) */
     val index1 = index("endorsing_rights_level_idx", level)
 
-    /** Index over (delegate) (database name ix_delegate_slot) */
-    val index2 = index("ix_delegate_slot", delegate)
+    /** Index over (delegate) (database name ix_delegate) */
+    val index2 = index("ix_delegate", delegate)
   }
 
   /** Collection-like TableQuery object for table EndorsingRights */
