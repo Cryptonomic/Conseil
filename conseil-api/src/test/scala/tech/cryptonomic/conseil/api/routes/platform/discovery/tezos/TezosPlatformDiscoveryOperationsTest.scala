@@ -205,7 +205,7 @@ class TezosPlatformDiscoveryOperationsTest
               "Operation group hash",
               DataType.String,
               None,
-              KeyType.NonKey,
+              KeyType.UniqueKey,
               "operations"
             ),
             Attribute("kind", "Kind", DataType.String, None, KeyType.UniqueKey, "operations"),
@@ -240,7 +240,7 @@ class TezosPlatformDiscoveryOperationsTest
               KeyType.NonKey,
               "operations"
             ),
-            Attribute("manager_pubkey", "Manager pubkey", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("manager_pubkey", "Manager pubkey", DataType.String, None, KeyType.UniqueKey, "operations"),
             Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "operations"),
             Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "operations"),
             Attribute("delegatable", "Delegatable", DataType.Boolean, None, KeyType.NonKey, "operations"),
@@ -262,7 +262,7 @@ class TezosPlatformDiscoveryOperationsTest
               "Originated contracts",
               DataType.String,
               None,
-              KeyType.NonKey,
+              KeyType.UniqueKey,
               "operations"
             ),
             Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "operations"),
