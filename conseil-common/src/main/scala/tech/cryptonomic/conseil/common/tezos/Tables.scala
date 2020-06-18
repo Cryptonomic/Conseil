@@ -1126,6 +1126,9 @@ trait Tables {
 
     /** Index over (level) (database name baking_rights_level_idx) */
     val index2 = index("baking_rights_level_idx", level)
+
+    /** Index over (delegate,priority) (database name ix_delegate_priority) */
+    val index3 = index("ix_delegate_priority", (delegate, priority))
   }
 
   /** Collection-like TableQuery object for table BakingRights */
@@ -1754,6 +1757,9 @@ trait Tables {
 
     /** Index over (level) (database name endorsing_rights_level_idx) */
     val index2 = index("endorsing_rights_level_idx", level)
+
+    /** Index over (delegate) (database name ix_delegate_slot) */
+    val index3 = index("ix_delegate_slot", delegate)
   }
 
   /** Collection-like TableQuery object for table EndorsingRights */
