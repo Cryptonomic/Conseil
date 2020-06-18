@@ -17,27 +17,19 @@ class RpcClientTest extends WordSpec with Matchers {
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
-  case class Block(hash: String)
-  case class Params(height: Int)
-
   "Rpc Client" should {
-      "return case class for valid json" in {
-        val json = """[{
+      "return a case class for valid json" in {
+        val response = """[{
         |  "result": { "hash": "abc" },
         |  "id": "requestId"
         |}]""".stripMargin
         val request = Stream(RpcRequest("2.0", "getBlock", Params(1), "requestId"))
-        val response = Response[IO](
-          Status.Ok,
-          body = Stream(json).through(fs2.text.utf8Encode)
-        )
-        val client = new RpcClient[IO]("https://api-endpoint.com", 1, httpClient(response))
 
-        client.stream[Params, Block](batchSize = 1)(request).compile.toList.unsafeRunSync() shouldBe List(Block("abc"))
+        getBlocks(request, response, 1).unsafeRunSync() shouldBe List(Block("abc"))
       }
 
       "allow to batch requests" in {
-        val json = """[
+        val response = """[
         |  { "result": { "hash": "abc" }, "id": "1"},
         |  { "result": { "hash": "def" }, "id": "2"},
         |  { "result": { "hash": "ghj" }, "id": "3"}
@@ -47,68 +39,64 @@ class RpcClientTest extends WordSpec with Matchers {
           RpcRequest("2.0", "getBlock", Params(2), "2"),
           RpcRequest("2.0", "getBlock", Params(3), "3")
         )
-        val response = Response[IO](
-          Status.Ok,
-          body = Stream(json).through(fs2.text.utf8Encode)
-        )
-        val client = new RpcClient[IO]("https://api-endpoint.com", 1, httpClient(response))
 
-        client.stream[Params, Block](batchSize = 3)(request).compile.toList.unsafeRunSync() shouldBe List(
+        getBlocks(request, response, 3).unsafeRunSync() shouldBe List(
           Block("abc"),
           Block("def"),
           Block("ghj")
         )
       }
 
-      "throw exception for invalid json" in {
-        val json = """[{
+      "throw an exception for invalid json" in {
+        // the json is invalid because of the empty object, it should be a `Block`
+        val response = """[{
         |  "result": {},
         |  "id": "requestId"
         |}]""".stripMargin
         val request = Stream(RpcRequest("2.0", "getBlock", Params(1), "requestId"))
-        val response = Response[IO](
-          Status.Ok,
-          body = Stream(json).through(fs2.text.utf8Encode)
-        )
-        val client = new RpcClient[IO]("https://api-endpoint.com", 1, httpClient(response))
 
-        an[InvalidMessageBodyFailure] should be thrownBy {
-          client.stream[Params, Block](batchSize = 1)(request).compile.toList.unsafeRunSync()
-        }
+        val exception = the[InvalidMessageBodyFailure] thrownBy getBlocks(request, response, 1).unsafeRunSync()
+        exception.getMessage() should include("Invalid message body")
       }
 
-      "throw exception for unexpected json" in {
-        val json = """[{
+      "throw exception for unexpected json in the response" in {
+        val response = """[{
         |  "id": "requestId"
         |}]""".stripMargin
         val request = Stream(RpcRequest("2.0", "getBlock", Params(1), "requestId"))
-        val response = Response[IO](
-          Status.Ok,
-          body = Stream(json).through(fs2.text.utf8Encode)
-        )
-        val client = new RpcClient[IO]("https://api-endpoint.com", 1, httpClient(response))
-        an[UnsupportedOperationException] should be thrownBy {
-          client.stream[Params, Block](batchSize = 1)(request).compile.toList.unsafeRunSync()
-        }
+
+        val exception = the[UnsupportedOperationException] thrownBy getBlocks(request, response, 1).unsafeRunSync()
+        exception.getMessage() should include("Unexpected response from JSON-RPC server")
       }
 
-      "propagate error form json" in {
-        val json = """[{
+      "propagate the error form json in the response" in {
+        val response = """[{
         |  "error": {"code": -32601, "message": "Method not found"},
         |  "id": "requestId"
         |}]""".stripMargin
         val request = Stream(RpcRequest("2.0", "getBlock", Params(1), "requestId"))
-        val response = Response[IO](
-          Status.Ok,
-          body = Stream(json).through(fs2.text.utf8Encode)
-        )
-        val client = new RpcClient[IO]("https://api-endpoint.com", 1, httpClient(response))
 
-        an[RpcException] should be thrownBy {
-          client.stream[Params, Block](batchSize = 1)(request).compile.toList.unsafeRunSync()
-        }
+        val exception = the[RpcException] thrownBy getBlocks(request, response, 1).unsafeRunSync()
+        exception.getMessage() should include("Method not found")
       }
     }
+
+  case class Block(hash: String)
+  case class Params(height: Int)
+
+  private def getBlocks(
+      request: Stream[IO, RpcRequest[Params]],
+      responseJson: String,
+      batchSize: Int
+  ): IO[List[Block]] = {
+    val response = Response[IO](
+      Status.Ok,
+      body = Stream(responseJson).through(fs2.text.utf8Encode)
+    )
+    val client = new RpcClient[IO]("https://api-endpoint.com", 1, httpClient(response))
+
+    client.stream[Params, Block](batchSize)(request).compile.toList
+  }
 
   private def httpClient(response: Response[IO]): Client[IO] =
     Client.fromHttpApp(HttpApp.liftF(IO.pure(response)))

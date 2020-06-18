@@ -41,10 +41,10 @@ class RpcClient[F[_]: Concurrent](
           Stream.raiseError[F](error)
         case RpcResponse(_, Some(result), _, _) =>
           Stream(result)
-        case _ =>
+        case response =>
           Stream.raiseError[F](
             new UnsupportedOperationException(
-              s"Unexpected response from JSON-RPC server at $endpoint"
+              s"Unexpected response from JSON-RPC server at $endpoint $response"
             )
           )
       }
