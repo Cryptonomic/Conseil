@@ -29,18 +29,18 @@ trait Tables {
    *  @param merkleRoot Database column merkle_root SqlType(text)
    *  @param nonce Database column nonce SqlType(int8)
    *  @param bits Database column bits SqlType(text)
-   *  @param difficulty Database column difficulty SqlType(int8)
+   *  @param difficulty Database column difficulty SqlType(numeric)
    *  @param chainWork Database column chain_work SqlType(text)
    *  @param nTx Database column n_tx SqlType(int4)
    *  @param previousBlockHash Database column previous_block_hash SqlType(text), Default(None)
    *  @param nextBlockHash Database column next_block_hash SqlType(text), Default(None)
    *  @param medianTime Database column median_time SqlType(timestamp)
    *  @param time Database column time SqlType(timestamp) */
-  case class BlocksRow(hash: String, size: Int, strippedSize: Int, weight: Int, height: Int, version: Int, versionHex: String, merkleRoot: String, nonce: Long, bits: String, difficulty: Long, chainWork: String, nTx: Int, previousBlockHash: Option[String] = None, nextBlockHash: Option[String] = None, medianTime: java.sql.Timestamp, time: java.sql.Timestamp)
+  case class BlocksRow(hash: String, size: Int, strippedSize: Int, weight: Int, height: Int, version: Int, versionHex: String, merkleRoot: String, nonce: Long, bits: String, difficulty: scala.math.BigDecimal, chainWork: String, nTx: Int, previousBlockHash: Option[String] = None, nextBlockHash: Option[String] = None, medianTime: java.sql.Timestamp, time: java.sql.Timestamp)
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
-  implicit def GetResultBlocksRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Long], e3: GR[Option[String]], e4: GR[java.sql.Timestamp]): GR[BlocksRow] = GR{
+  implicit def GetResultBlocksRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Long], e3: GR[scala.math.BigDecimal], e4: GR[Option[String]], e5: GR[java.sql.Timestamp]): GR[BlocksRow] = GR{
     prs => import prs._
-    BlocksRow.tupled((<<[String], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[String], <<[String], <<[Long], <<[String], <<[Long], <<[String], <<[Int], <<?[String], <<?[String], <<[java.sql.Timestamp], <<[java.sql.Timestamp]))
+    BlocksRow.tupled((<<[String], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[String], <<[String], <<[Long], <<[String], <<[scala.math.BigDecimal], <<[String], <<[Int], <<?[String], <<?[String], <<[java.sql.Timestamp], <<[java.sql.Timestamp]))
   }
   /** Table description of table blocks. Objects of this class serve as prototypes for rows in queries. */
   class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, Some("bitcoin"), "blocks") {
@@ -68,8 +68,8 @@ trait Tables {
     val nonce: Rep[Long] = column[Long]("nonce")
     /** Database column bits SqlType(text) */
     val bits: Rep[String] = column[String]("bits")
-    /** Database column difficulty SqlType(int8) */
-    val difficulty: Rep[Long] = column[Long]("difficulty")
+    /** Database column difficulty SqlType(numeric) */
+    val difficulty: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("difficulty")
     /** Database column chain_work SqlType(text) */
     val chainWork: Rep[String] = column[String]("chain_work")
     /** Database column n_tx SqlType(int4) */

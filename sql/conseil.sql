@@ -796,7 +796,7 @@ CREATE TABLE bitcoin.blocks (
   merkle_root text NOT NULL,
   nonce bigint NOT NULL,
   bits text NOT NULL,
-  difficulty bigint NOT NULL,
+  difficulty numeric NOT NULL,
   chain_work text NOT NULL,
   n_tx integer NOT NULL,
   previous_block_hash text,
