@@ -6,7 +6,7 @@ import tech.cryptonomic.conseil.common.bitcoin.Tables
 import tech.cryptonomic.conseil.common.bitcoin.Tables.{BlocksRow, TransactionsRow}
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class BitcoinDataOperations extends ApiDataOperations {
   override lazy val dbReadHandle: Database = DatabaseUtil.conseilDb
@@ -16,7 +16,7 @@ class BitcoinDataOperations extends ApiDataOperations {
     *
     * @return Latest block.
     */
-  def fetchLatestBlock()(implicit ec: ExecutionContext): Future[Option[BlocksRow]] =
+  def fetchLatestBlock(): Future[Option[BlocksRow]] =
     runQuery(Tables.Blocks.sortBy(_.time).take(1).result.headOption)
 
   /**
@@ -26,7 +26,7 @@ class BitcoinDataOperations extends ApiDataOperations {
     * @return The transaction, if the hash matches anything
     */
   //TODO We should change this 'String' to 'BlockHash'
-  def fetchTransaction(hash: String)(implicit ec: ExecutionContext): Future[Option[TransactionsRow]] =
+  def fetchTransaction(hash: String): Future[Option[TransactionsRow]] =
     runQuery(Tables.Transactions.filter(_.hash === hash).result.headOption)
 
 }

@@ -88,7 +88,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
                             platformDiscovery.route
                           },
                           ApiCache
-                            .cachedDataEndpoints(metadataService)
+                            .cachedDataEndpoints
                             .map {
                               case (platform, routes) =>
                                 logRequest(s"$platform Data Route", Logging.DebugLevel) {
@@ -119,9 +119,10 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
     * will be initialized and eventually exposed.
     */
   private object ApiCache {
+    private implicit val dispatcher: ExecutionContext = system.dispatchers.lookup("akka.http.dispatcher")
     private lazy val cache: Map[BlockchainPlatform, Api] = forVisiblePlatforms {
-      case Platforms.Tezos => new TezosApi(config.metadata, config.server)
-      case Platforms.Bitcoin => new BitcoinApi(config.metadata, config.server)
+      case Platforms.Tezos => new TezosApi(metadataService, config.metadata, config.server)(dispatcher)
+      case Platforms.Bitcoin => new BitcoinApi(metadataService, config.metadata, config.server)(dispatcher)
     }
 
     private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
@@ -143,9 +144,9 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
       * Map, that contains list of available `ApiDataRoutes` accessed by platform name.
       * @see `tech.cryptonomic.conseil.common.config.Platforms` to get list of possible platforms.
       */
-    lazy val cachedDataEndpoints: MetadataService => Map[String, ApiDataRoutes] = service =>
+    lazy val cachedDataEndpoints: Map[String, ApiDataRoutes] =
       cache.map {
-        case (key, value) => key.name -> value.dataEndpoint(service)
+        case (key, value) => key.name -> value.routes
       }
 
     private val visiblePlatforms =
