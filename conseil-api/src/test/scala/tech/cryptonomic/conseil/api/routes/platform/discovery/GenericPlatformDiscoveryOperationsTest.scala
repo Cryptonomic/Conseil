@@ -446,7 +446,7 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("merkle_root", "Merkle root", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("time", "Time", DataType.DateTime, None, KeyType.NonKey, "blocks"),
             Attribute("median_time", "Median time", DataType.DateTime, None, KeyType.NonKey, "blocks"),
-            Attribute("nonce", "Nonce", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("nonce", "Nonce", DataType.LargeInt, None, KeyType.NonKey, "blocks"),
             Attribute("bits", "Bits", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("difficulty", "Difficulty", DataType.Decimal, None, KeyType.NonKey, "blocks"),
             Attribute("chain_work", "Chain work", DataType.String, None, KeyType.NonKey, "blocks"),
@@ -476,13 +476,13 @@ class GenericPlatformDiscoveryOperationsTest
       }
 
       "return list of attributes of inputs" in {
-        sut.getTableAttributes(EntityPath("inputs", networkPath)).futureValue.value.toSet should be(
+        sut.getTableAttributes(EntityPath("inputs", networkPath)).futureValue.value.toSet should matchTo(
           Set(
             Attribute("txid", "Txid", DataType.String, None, KeyType.NonKey, "inputs"),
             Attribute("v_out", "V out", DataType.Int, None, KeyType.NonKey, "inputs"),
             Attribute("script_sig_asm", "Script sig asm", DataType.String, None, KeyType.NonKey, "inputs"),
             Attribute("script_sig_hex", "Script sig hex", DataType.String, None, KeyType.NonKey, "inputs"),
-            Attribute("sequence", "Sequence", DataType.String, None, KeyType.NonKey, "inputs"),
+            Attribute("sequence", "Sequence", DataType.LargeInt, None, KeyType.NonKey, "inputs"),
             Attribute("coinbase", "Coinbase", DataType.String, None, KeyType.NonKey, "inputs"),
             Attribute("tx_in_witness", "Tx in witness", DataType.String, None, KeyType.NonKey, "inputs")
           )
