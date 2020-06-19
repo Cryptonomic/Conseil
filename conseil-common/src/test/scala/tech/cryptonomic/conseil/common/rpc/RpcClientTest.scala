@@ -18,7 +18,7 @@ class RpcClientTest extends WordSpec with Matchers {
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
   "Rpc Client" should {
-      "return a case class for valid json" in {
+      "return a case class for valid json" in new HttpClientFixtures {
         val response = """[{
         |  "result": { "hash": "abc" },
         |  "id": "requestId"
@@ -28,7 +28,7 @@ class RpcClientTest extends WordSpec with Matchers {
         getBlocks(request, response, 1).unsafeRunSync() shouldBe List(Block("abc"))
       }
 
-      "allow to batch requests" in {
+      "allow to batch requests" in new HttpClientFixtures {
         val response = """[
         |  { "result": { "hash": "abc" }, "id": "1"},
         |  { "result": { "hash": "def" }, "id": "2"},
@@ -41,13 +41,13 @@ class RpcClientTest extends WordSpec with Matchers {
         )
 
         getBlocks(request, response, 3).unsafeRunSync() shouldBe List(
-          Block("abc"),
-          Block("def"),
-          Block("ghj")
-        )
+              Block("abc"),
+              Block("def"),
+              Block("ghj")
+            )
       }
 
-      "throw an exception for invalid json" in {
+      "throw an exception for invalid json" in new HttpClientFixtures {
         // the json is invalid because of the empty object, it should be a `Block`
         val response = """[{
         |  "result": {},
@@ -59,7 +59,7 @@ class RpcClientTest extends WordSpec with Matchers {
         exception.getMessage() should include("Invalid message body")
       }
 
-      "throw exception for unexpected json in the response" in {
+      "throw exception for unexpected json in the response" in new HttpClientFixtures {
         val response = """[{
         |  "id": "requestId"
         |}]""".stripMargin
@@ -69,7 +69,7 @@ class RpcClientTest extends WordSpec with Matchers {
         exception.getMessage() should include("Unexpected response from JSON-RPC server")
       }
 
-      "propagate the error form json in the response" in {
+      "propagate the error form json in the response" in new HttpClientFixtures {
         val response = """[{
         |  "error": {"code": -32601, "message": "Method not found"},
         |  "id": "requestId"
@@ -84,21 +84,23 @@ class RpcClientTest extends WordSpec with Matchers {
   case class Block(hash: String)
   case class Params(height: Int)
 
-  private def getBlocks(
-      request: Stream[IO, RpcRequest[Params]],
-      responseJson: String,
-      batchSize: Int
-  ): IO[List[Block]] = {
-    val response = Response[IO](
-      Status.Ok,
-      body = Stream(responseJson).through(fs2.text.utf8Encode)
-    )
-    val client = new RpcClient[IO]("https://api-endpoint.com", 1, httpClient(response))
+  trait HttpClientFixtures {
+    def getBlocks(
+        request: Stream[IO, RpcRequest[Params]],
+        responseJson: String,
+        batchSize: Int
+    ): IO[List[Block]] = {
+      val response = Response[IO](
+        Status.Ok,
+        body = Stream(responseJson).through(fs2.text.utf8Encode)
+      )
+      val client = new RpcClient[IO]("https://api-endpoint.com", 1, httpClient(response))
 
-    client.stream[Params, Block](batchSize)(request).compile.toList
+      client.stream[Params, Block](batchSize)(request).compile.toList
+    }
+
+    def httpClient(response: Response[IO]): Client[IO] =
+      Client.fromHttpApp(HttpApp.liftF(IO.pure(response)))
   }
-
-  private def httpClient(response: Response[IO]): Client[IO] =
-    Client.fromHttpApp(HttpApp.liftF(IO.pure(response)))
 
 }
