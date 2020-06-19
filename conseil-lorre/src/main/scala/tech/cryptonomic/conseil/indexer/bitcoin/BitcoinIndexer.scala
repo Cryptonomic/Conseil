@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.indexer.bitcoin
 import java.util.concurrent.Executors
 import scala.concurrent.{ExecutionContext, Future}
 
-import cats.effect.{Blocker, ContextShift, ExitCode, IO, Resource}
+import cats.effect.{ContextShift, ExitCode, IO, Resource}
 import com.typesafe.scalalogging.LazyLogging
 import org.http4s.headers.Authorization
 import org.http4s.BasicCredentials
@@ -47,7 +47,7 @@ class BitcoinIndexer(
 
       bitcoinOperations <- BitcoinOperations.resource(rpcClient, tx)
 
-      _ <- bitcoinOperations.loadBlocksWithTransactions(99000 to 100000).compile.resource.drain
+      _ <- bitcoinOperations.loadBlocks(lorreConf.depth).compile.resource.drain
     } yield ()
 
   override def platform: Platforms.BlockchainPlatform = Platforms.Bitcoin
@@ -69,7 +69,7 @@ object BitcoinIndexer {
   /** * Creates the Indexer which is dedicated for Bitcoin BlockChain */
   def fromConfig(
       lorreConf: LorreConfiguration,
-      bitcoinConf: BitcoinConfiguration,
+      bitcoinConf: BitcoinConfiguration
   ): LorreIndexer =
     new BitcoinIndexer(lorreConf, bitcoinConf)
 }
