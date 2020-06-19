@@ -129,29 +129,29 @@ trait Tables {
 
   /** Entity class storing rows of table Outputs
    *  @param txid Database column txid SqlType(text)
-   *  @param value Database column value SqlType(numeric)
+   *  @param value Database column value SqlType(numeric), Default(None)
    *  @param n Database column n SqlType(int4)
    *  @param scriptPubKeyAsm Database column script_pub_key_asm SqlType(text)
    *  @param scriptPubKeyHex Database column script_pub_key_hex SqlType(text)
    *  @param scriptPubKeyReqSigs Database column script_pub_key_req_sigs SqlType(int4), Default(None)
    *  @param scriptPubKeyType Database column script_pub_key_type SqlType(text)
    *  @param scriptPubKeyAddresses Database column script_pub_key_addresses SqlType(text), Default(None) */
-  case class OutputsRow(txid: String, value: scala.math.BigDecimal, n: Int, scriptPubKeyAsm: String, scriptPubKeyHex: String, scriptPubKeyReqSigs: Option[Int] = None, scriptPubKeyType: String, scriptPubKeyAddresses: Option[String] = None)
+  case class OutputsRow(txid: String, value: Option[scala.math.BigDecimal] = None, n: Int, scriptPubKeyAsm: String, scriptPubKeyHex: String, scriptPubKeyReqSigs: Option[Int] = None, scriptPubKeyType: String, scriptPubKeyAddresses: Option[String] = None)
   /** GetResult implicit for fetching OutputsRow objects using plain SQL queries */
-  implicit def GetResultOutputsRow(implicit e0: GR[String], e1: GR[scala.math.BigDecimal], e2: GR[Int], e3: GR[Option[Int]], e4: GR[Option[String]]): GR[OutputsRow] = GR{
+  implicit def GetResultOutputsRow(implicit e0: GR[String], e1: GR[Option[scala.math.BigDecimal]], e2: GR[Int], e3: GR[Option[Int]], e4: GR[Option[String]]): GR[OutputsRow] = GR{
     prs => import prs._
-    OutputsRow.tupled((<<[String], <<[scala.math.BigDecimal], <<[Int], <<[String], <<[String], <<?[Int], <<[String], <<?[String]))
+    OutputsRow.tupled((<<[String], <<?[scala.math.BigDecimal], <<[Int], <<[String], <<[String], <<?[Int], <<[String], <<?[String]))
   }
   /** Table description of table outputs. Objects of this class serve as prototypes for rows in queries. */
   class Outputs(_tableTag: Tag) extends profile.api.Table[OutputsRow](_tableTag, Some("bitcoin"), "outputs") {
     def * = (txid, value, n, scriptPubKeyAsm, scriptPubKeyHex, scriptPubKeyReqSigs, scriptPubKeyType, scriptPubKeyAddresses) <> (OutputsRow.tupled, OutputsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = ((Rep.Some(txid), Rep.Some(value), Rep.Some(n), Rep.Some(scriptPubKeyAsm), Rep.Some(scriptPubKeyHex), scriptPubKeyReqSigs, Rep.Some(scriptPubKeyType), scriptPubKeyAddresses)).shaped.<>({r=>import r._; _1.map(_=> OutputsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = ((Rep.Some(txid), value, Rep.Some(n), Rep.Some(scriptPubKeyAsm), Rep.Some(scriptPubKeyHex), scriptPubKeyReqSigs, Rep.Some(scriptPubKeyType), scriptPubKeyAddresses)).shaped.<>({r=>import r._; _1.map(_=> OutputsRow.tupled((_1.get, _2, _3.get, _4.get, _5.get, _6, _7.get, _8)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column txid SqlType(text) */
     val txid: Rep[String] = column[String]("txid")
-    /** Database column value SqlType(numeric) */
-    val value: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("value")
+    /** Database column value SqlType(numeric), Default(None) */
+    val value: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("value", O.Default(None))
     /** Database column n SqlType(int4) */
     val n: Rep[Int] = column[Int]("n")
     /** Database column script_pub_key_asm SqlType(text) */

@@ -838,7 +838,7 @@ ALTER TABLE ONLY bitcoin.inputs
 
 CREATE TABLE bitcoin.outputs (
   txid text NOT NULL,
-  value numeric NOT NULL,
+  value numeric,
   n integer NOT NULL,
   script_pub_key_asm text NOT NULL,
   script_pub_key_hex text NOT NULL,
