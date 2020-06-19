@@ -62,7 +62,6 @@ class TezosDatabaseConversionsTest
           'proto (header.proto),
           'predecessor (header.predecessor.value),
           'timestamp (java.sql.Timestamp.from(header.timestamp.toInstant)),
-          'validationPass (header.validation_pass),
           'fitness (header.fitness.mkString(",")),
           'context (Some(header.context)),
           'signature (header.signature),
@@ -78,15 +77,13 @@ class TezosDatabaseConversionsTest
         forAll(
           converted.periodKind ::
               converted.baker ::
-              converted.nonceHash ::
               converted.consumedGas ::
               converted.metaLevel ::
               converted.metaLevelPosition ::
               converted.metaCycle ::
               converted.metaCyclePosition ::
               converted.metaVotingPeriod ::
-              converted.metaVotingPeriodPosition ::
-              converted.expectedCommitment :: Nil
+              converted.metaVotingPeriodPosition :: Nil
         ) {
           _ shouldBe 'empty
         }
@@ -105,7 +102,6 @@ class TezosDatabaseConversionsTest
           'proto (header.proto),
           'predecessor (header.predecessor.value),
           'timestamp (java.sql.Timestamp.from(header.timestamp.toInstant)),
-          'validationPass (header.validation_pass),
           'fitness (header.fitness.mkString(",")),
           'context (Some(header.context)),
           'signature (header.signature),
@@ -117,14 +113,12 @@ class TezosDatabaseConversionsTest
           'activeProposal (proposal.map(_.id)),
           'periodKind (metadata.map(_.voting_period_kind.toString)),
           'baker (metadata.map(_.baker.value)),
-          'nonceHash (metadata.flatMap(_.nonce_hash.map(_.value))),
           'metaLevel (metadata.map(_.level.level)),
           'metaLevelPosition (metadata.map(_.level.level_position)),
           'metaCycle (metadata.map(_.level.cycle)),
           'metaCyclePosition (metadata.map(_.level.cycle_position)),
           'metaVotingPeriod (metadata.map(_.level.voting_period)),
           'metaVotingPeriodPosition (metadata.map(_.level.voting_period_position)),
-          'expectedCommitment (metadata.map(_.level.expected_commitment)),
           'priority (block.data.header.priority)
         )
 

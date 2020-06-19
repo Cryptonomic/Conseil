@@ -1405,7 +1405,6 @@ trait Tables {
     *  @param proto Database column proto SqlType(int4)
     *  @param predecessor Database column predecessor SqlType(varchar)
     *  @param timestamp Database column timestamp SqlType(timestamp)
-    *  @param validationPass Database column validation_pass SqlType(int4)
     *  @param fitness Database column fitness SqlType(varchar)
     *  @param context Database column context SqlType(varchar), Default(None)
     *  @param signature Database column signature SqlType(varchar), Default(None)
@@ -1417,7 +1416,6 @@ trait Tables {
     *  @param currentExpectedQuorum Database column current_expected_quorum SqlType(int4), Default(None)
     *  @param activeProposal Database column active_proposal SqlType(varchar), Default(None)
     *  @param baker Database column baker SqlType(varchar), Default(None)
-    *  @param nonceHash Database column nonce_hash SqlType(varchar), Default(None)
     *  @param consumedGas Database column consumed_gas SqlType(numeric), Default(None)
     *  @param metaLevel Database column meta_level SqlType(int4), Default(None)
     *  @param metaLevelPosition Database column meta_level_position SqlType(int4), Default(None)
@@ -1425,7 +1423,6 @@ trait Tables {
     *  @param metaCyclePosition Database column meta_cycle_position SqlType(int4), Default(None)
     *  @param metaVotingPeriod Database column meta_voting_period SqlType(int4), Default(None)
     *  @param metaVotingPeriodPosition Database column meta_voting_period_position SqlType(int4), Default(None)
-    *  @param expectedCommitment Database column expected_commitment SqlType(bool), Default(None)
     *  @param priority Database column priority SqlType(int4), Default(None)
     *  @param utcYear Database column utc_year SqlType(int4)
     *  @param utcMonth Database column utc_month SqlType(int4)
@@ -1436,7 +1433,6 @@ trait Tables {
       proto: Int,
       predecessor: String,
       timestamp: java.sql.Timestamp,
-      validationPass: Int,
       fitness: String,
       context: Option[String] = None,
       signature: Option[String] = None,
@@ -1448,7 +1444,6 @@ trait Tables {
       currentExpectedQuorum: Option[Int] = None,
       activeProposal: Option[String] = None,
       baker: Option[String] = None,
-      nonceHash: Option[String] = None,
       consumedGas: Option[scala.math.BigDecimal] = None,
       metaLevel: Option[Int] = None,
       metaLevelPosition: Option[Int] = None,
@@ -1456,7 +1451,6 @@ trait Tables {
       metaCyclePosition: Option[Int] = None,
       metaVotingPeriod: Option[Int] = None,
       metaVotingPeriodPosition: Option[Int] = None,
-      expectedCommitment: Option[Boolean] = None,
       priority: Option[Int] = None,
       utcYear: Int,
       utcMonth: Int,
@@ -1471,8 +1465,7 @@ trait Tables {
       e2: GR[java.sql.Timestamp],
       e3: GR[Option[String]],
       e4: GR[Option[Int]],
-      e5: GR[Option[scala.math.BigDecimal]],
-      e6: GR[Option[Boolean]]
+      e5: GR[Option[scala.math.BigDecimal]]
   ): GR[BlocksRow] = GR { prs =>
     import prs._
     BlocksRow(
@@ -1480,7 +1473,6 @@ trait Tables {
       <<[Int],
       <<[String],
       <<[java.sql.Timestamp],
-      <<[Int],
       <<[String],
       <<?[String],
       <<?[String],
@@ -1490,7 +1482,6 @@ trait Tables {
       <<?[String],
       <<?[String],
       <<?[Int],
-      <<?[String],
       <<?[String],
       <<?[String],
       <<?[scala.math.BigDecimal],
@@ -1500,7 +1491,6 @@ trait Tables {
       <<?[Int],
       <<?[Int],
       <<?[Int],
-      <<?[Boolean],
       <<?[Int],
       <<[Int],
       <<[Int],
@@ -1512,13 +1502,13 @@ trait Tables {
   /** Table description of table blocks. Objects of this class serve as prototypes for rows in queries. */
   class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, Some("tezos"), "blocks") {
     def * =
-      (level :: proto :: predecessor :: timestamp :: validationPass :: fitness :: context :: signature :: protocol :: chainId :: hash :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: nonceHash :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: expectedCommitment :: priority :: utcYear :: utcMonth :: utcDay :: utcTime :: HNil)
+      (level :: proto :: predecessor :: timestamp :: fitness :: context :: signature :: protocol :: chainId :: hash :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: priority :: utcYear :: utcMonth :: utcDay :: utcTime :: HNil)
         .mapTo[BlocksRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (Rep.Some(level) :: Rep.Some(proto) :: Rep.Some(predecessor) :: Rep.Some(timestamp) :: Rep.Some(validationPass) :: Rep
-            .Some(fitness) :: context :: signature :: Rep.Some(protocol) :: chainId :: Rep.Some(hash) :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: nonceHash :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: expectedCommitment :: priority :: Rep
+      (Rep.Some(level) :: Rep.Some(proto) :: Rep.Some(predecessor) :: Rep.Some(timestamp) :: Rep.Some(fitness) :: context :: signature :: Rep
+            .Some(protocol) :: chainId :: Rep.Some(hash) :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: priority :: Rep
             .Some(utcYear) :: Rep.Some(utcMonth) :: Rep.Some(utcDay) :: Rep.Some(utcTime) :: HNil).shaped.<>(
         r =>
           BlocksRow(
@@ -1526,32 +1516,29 @@ trait Tables {
             r(1).asInstanceOf[Option[Int]].get,
             r(2).asInstanceOf[Option[String]].get,
             r(3).asInstanceOf[Option[java.sql.Timestamp]].get,
-            r(4).asInstanceOf[Option[Int]].get,
-            r(5).asInstanceOf[Option[String]].get,
+            r(4).asInstanceOf[Option[String]].get,
+            r(5).asInstanceOf[Option[String]],
             r(6).asInstanceOf[Option[String]],
-            r(7).asInstanceOf[Option[String]],
-            r(8).asInstanceOf[Option[String]].get,
-            r(9).asInstanceOf[Option[String]],
-            r(10).asInstanceOf[Option[String]].get,
+            r(7).asInstanceOf[Option[String]].get,
+            r(8).asInstanceOf[Option[String]],
+            r(9).asInstanceOf[Option[String]].get,
+            r(10).asInstanceOf[Option[String]],
             r(11).asInstanceOf[Option[String]],
-            r(12).asInstanceOf[Option[String]],
-            r(13).asInstanceOf[Option[Int]],
+            r(12).asInstanceOf[Option[Int]],
+            r(13).asInstanceOf[Option[String]],
             r(14).asInstanceOf[Option[String]],
-            r(15).asInstanceOf[Option[String]],
-            r(16).asInstanceOf[Option[String]],
-            r(17).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(15).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(16).asInstanceOf[Option[Int]],
+            r(17).asInstanceOf[Option[Int]],
             r(18).asInstanceOf[Option[Int]],
             r(19).asInstanceOf[Option[Int]],
             r(20).asInstanceOf[Option[Int]],
             r(21).asInstanceOf[Option[Int]],
             r(22).asInstanceOf[Option[Int]],
-            r(23).asInstanceOf[Option[Int]],
-            r(24).asInstanceOf[Option[Boolean]],
-            r(25).asInstanceOf[Option[Int]],
-            r(26).asInstanceOf[Option[Int]].get,
-            r(27).asInstanceOf[Option[Int]].get,
-            r(28).asInstanceOf[Option[Int]].get,
-            r(29).asInstanceOf[Option[String]].get
+            r(23).asInstanceOf[Option[Int]].get,
+            r(24).asInstanceOf[Option[Int]].get,
+            r(25).asInstanceOf[Option[Int]].get,
+            r(26).asInstanceOf[Option[String]].get
           ),
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1567,9 +1554,6 @@ trait Tables {
 
     /** Database column timestamp SqlType(timestamp) */
     val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
-
-    /** Database column validation_pass SqlType(int4) */
-    val validationPass: Rep[Int] = column[Int]("validation_pass")
 
     /** Database column fitness SqlType(varchar) */
     val fitness: Rep[String] = column[String]("fitness")
@@ -1604,9 +1588,6 @@ trait Tables {
     /** Database column baker SqlType(varchar), Default(None) */
     val baker: Rep[Option[String]] = column[Option[String]]("baker", O.Default(None))
 
-    /** Database column nonce_hash SqlType(varchar), Default(None) */
-    val nonceHash: Rep[Option[String]] = column[Option[String]]("nonce_hash", O.Default(None))
-
     /** Database column consumed_gas SqlType(numeric), Default(None) */
     val consumedGas: Rep[Option[scala.math.BigDecimal]] =
       column[Option[scala.math.BigDecimal]]("consumed_gas", O.Default(None))
@@ -1628,9 +1609,6 @@ trait Tables {
 
     /** Database column meta_voting_period_position SqlType(int4), Default(None) */
     val metaVotingPeriodPosition: Rep[Option[Int]] = column[Option[Int]]("meta_voting_period_position", O.Default(None))
-
-    /** Database column expected_commitment SqlType(bool), Default(None) */
-    val expectedCommitment: Rep[Option[Boolean]] = column[Option[Boolean]]("expected_commitment", O.Default(None))
 
     /** Database column priority SqlType(int4), Default(None) */
     val priority: Rep[Option[Int]] = column[Option[Int]]("priority", O.Default(None))

@@ -173,7 +173,6 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         proto = header.proto,
         predecessor = header.predecessor.value,
         timestamp = toSql(header.timestamp),
-        validationPass = header.validation_pass,
         fitness = header.fitness.mkString(","),
         context = Some(header.context), //put in later
         signature = header.signature,
@@ -185,7 +184,6 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         currentExpectedQuorum = expectedQuorum,
         activeProposal = proposal.map(_.id),
         baker = metadata.map(_.baker.value),
-        nonceHash = metadata.flatMap(_.nonce_hash.map(_.value)),
         consumedGas = metadata.flatMap(md => extractBigDecimal(md.consumed_gas)),
         metaLevel = metadata.map(_.level.level),
         metaLevelPosition = metadata.map(_.level.level_position),
@@ -193,7 +191,6 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         metaCyclePosition = metadata.map(_.level.cycle_position),
         metaVotingPeriod = metadata.map(_.level.voting_period),
         metaVotingPeriodPosition = metadata.map(_.level.voting_period_position),
-        expectedCommitment = metadata.map(_.level.expected_commitment),
         priority = header.priority,
         utcYear = year,
         utcMonth = month,
