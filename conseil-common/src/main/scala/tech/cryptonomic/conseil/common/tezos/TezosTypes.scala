@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.common.tezos
 
 import java.time.{Instant, ZonedDateTime}
 import scala.util.Try
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 
 /**
   * Classes used for deserializing Tezos node RPC results.
@@ -25,8 +26,6 @@ object TezosTypes {
   final case class PublicKeyHash(value: String) extends AnyVal
 
   final case class Signature(value: String) extends AnyVal
-
-  final case class BlockHash(value: String) extends AnyVal
 
   final case class OperationHash(value: String) extends AnyVal
 

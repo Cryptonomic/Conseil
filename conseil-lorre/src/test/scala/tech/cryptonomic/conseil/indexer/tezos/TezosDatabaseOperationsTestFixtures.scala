@@ -4,6 +4,7 @@ import java.sql.Timestamp
 import java.time.{Instant, ZonedDateTime}
 
 import monocle.Optional
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.testkit.util.{RandomGenerationKit, RandomSeed}
 import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BakersRow, BlocksRow, OperationGroupsRow}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees

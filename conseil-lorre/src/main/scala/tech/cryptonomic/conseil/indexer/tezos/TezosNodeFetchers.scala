@@ -8,9 +8,10 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher
 import tech.cryptonomic.conseil.common.util.JsonUtil
-import tech.cryptonomic.conseil.common.util.JsonUtil.{adaptManagerPubkeyField, JsonString}
+import tech.cryptonomic.conseil.common.util.JsonUtil.{JsonString, adaptManagerPubkeyField}
 import tech.cryptonomic.conseil.common.util.CollectionOps._
 import org.slf4j.LoggerFactory
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.BallotCounts
 

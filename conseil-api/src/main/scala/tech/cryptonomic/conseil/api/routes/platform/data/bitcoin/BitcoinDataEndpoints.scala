@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataEndpoints
-import tech.cryptonomic.conseil.common.bitcoin.Tables.BlocksRow
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 
 /** Trait containing endpoints definition */
@@ -16,10 +15,10 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with BitcoinDataJsonSchemas 
     )
 
   /** V2 Blocks head endpoint definition */
-  def blocksHeadEndpoint: Endpoint[(String, String, Option[String]), Option[BlocksRow]] =
+  def blocksHeadEndpoint: Endpoint[(String, String, Option[String]), Option[QueryResponse]] =
     endpoint(
       request = get(url = commonPath / "blocks" / "head", headers = optHeader("apiKey")),
-      response = compatibilityQuery[BlocksRow]("blocks head"),
+      response = compatibilityQuery[QueryResponse]("blocks head"),
       tags = List("Blocks")
     )
 

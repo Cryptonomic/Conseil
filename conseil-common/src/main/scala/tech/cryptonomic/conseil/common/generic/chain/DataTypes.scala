@@ -18,6 +18,9 @@ object DataTypes {
   import cats.implicits._
   import io.scalaland.chimney.dsl._
 
+  /** Case class representing hash to identify blocks across many block chains */
+  final case class BlockHash(value: String) extends AnyVal
+
   /** Type representing `Map[String, Option[Any]]` for query response */
   type QueryResponse = Map[String, Option[Any]]
 

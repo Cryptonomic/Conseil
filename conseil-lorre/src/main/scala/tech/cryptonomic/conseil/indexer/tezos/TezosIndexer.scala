@@ -8,6 +8,8 @@ import com.typesafe.scalalogging.LazyLogging
 import mouse.any._
 import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, TezosConfiguration}
 import tech.cryptonomic.conseil.common.config._
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{FetchRights, _}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.ContractId
@@ -16,15 +18,7 @@ import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNO
 import tech.cryptonomic.conseil.indexer.LorreIndexer
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperations => TezosDb}
-import tech.cryptonomic.conseil.indexer.config.{
-  BatchFetchConfiguration,
-  Custom,
-  Everything,
-  HttpStreamingConfiguration,
-  LorreConfiguration,
-  NetworkCallsConfiguration,
-  Newest
-}
+import tech.cryptonomic.conseil.indexer.config.{BatchFetchConfiguration, Custom, Everything, HttpStreamingConfiguration, LorreConfiguration, NetworkCallsConfiguration, Newest}
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors._
 import tech.cryptonomic.conseil.indexer.tezos.processing._

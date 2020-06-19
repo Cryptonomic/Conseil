@@ -6,10 +6,10 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.metadata.MetadataService
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{BlockHash, QueryResponseWithOutput}
 import tech.cryptonomic.conseil.common.metadata
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockHash}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.AccountId
 
 import scala.concurrent.{ExecutionContext, Future}
 

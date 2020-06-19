@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
 import com.github.ghik.silencer.silent
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.tezos.TezosTypes
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.JsonUtil.CirceCommonDecoders.decodeUntaggedEither
