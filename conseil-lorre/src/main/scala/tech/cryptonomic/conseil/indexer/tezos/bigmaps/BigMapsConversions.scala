@@ -3,21 +3,12 @@ package tech.cryptonomic.conseil.indexer.tezos.bigmaps
 import com.typesafe.scalalogging.LazyLogging
 import cats.implicits._
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
-  AccountId,
-  Block,
-  BlockHash,
-  Contract,
-  ContractId,
-  Decimal,
-  InvalidDecimal,
-  OperationHash,
-  ParametersCompatibility
-}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, Block, Contract, ContractId, Decimal, InvalidDecimal, OperationHash, ParametersCompatibility}
 import tech.cryptonomic.conseil.indexer.tezos.michelson
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.common.util.Conversion
 import com.typesafe.scalalogging.Logger
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 
 /** Collects specific [[Conversion]] instances to implicitly convert between
   * big-map related entries and things to be used when saving such data

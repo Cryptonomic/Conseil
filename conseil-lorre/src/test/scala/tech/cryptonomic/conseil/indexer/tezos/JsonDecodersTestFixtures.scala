@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Scripted.Contracts
 

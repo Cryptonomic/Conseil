@@ -6,6 +6,7 @@ import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
 import monocle.std.option._
 import monocle.{Lens, Optional, Traversal}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 
 import scala.util.Try
 
@@ -74,7 +75,7 @@ object TezosTypes {
           parametersExpression composeLens
           expression
 
-    val internalTransationsTraversal =
+    val internalTransationsTraversal: Traversal[Block, InternalOperationResults.Transaction] =
       transactionLens composeLens
           metadata composeOptional
           internals composeTraversal
@@ -107,8 +108,6 @@ object TezosTypes {
   final case class PublicKeyHash(value: String) extends AnyVal
 
   final case class Signature(value: String) extends AnyVal
-
-  final case class BlockHash(value: String) extends AnyVal
 
   final case class OperationHash(value: String) extends AnyVal
 

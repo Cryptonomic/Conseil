@@ -9,6 +9,7 @@ import cats.{Id, Show}
 import com.typesafe.scalalogging.LazyLogging
 import io.scalaland.chimney.dsl._
 import monocle.Getter
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract

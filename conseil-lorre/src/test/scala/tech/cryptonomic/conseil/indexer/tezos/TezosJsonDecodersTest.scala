@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import com.github.ghik.silencer.silent
 import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.JsonUtil.adaptManagerPubkeyField
 
@@ -106,6 +107,7 @@ class TezosJsonDecodersTest extends WordSpec with Matchers with EitherValues wit
         decoded shouldBe 'left
       }
 
+      //TODO This should be probably in different package
       "decode valid json base58check strings into a BlockHash" in {
         val decoded = decode[BlockHash](jsonStringOf(validB58Hash))
         decoded.right.value shouldBe BlockHash(validB58Hash)

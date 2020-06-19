@@ -4,6 +4,7 @@ import cats.instances.future._
 import cats.syntax.applicative._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.JsonToMichelson.toMichelsonScript

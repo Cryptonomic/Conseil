@@ -18,7 +18,7 @@ import tech.cryptonomic.conseil.common.tezos.Tables.{
   OperationsRow
 }
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockHash}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.AccountId
 
 import scala.concurrent.duration._
 

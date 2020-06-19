@@ -61,7 +61,10 @@ case class BitcoinDataRoutes(
   private val blocksHeadRoute: Route = blocksHeadEndpoint.implementedByAsync {
     case (platform, network, _) =>
       platformNetworkValidation(platform, network) {
-        operations.fetchLatestBlock()
+        val filter = BitcoinFilter(limit = Some(1), sortBy = Some("time")) //TODO Verify that it works. Maybe we need to write custom method
+        operations
+          .queryWithPredicates(platform, "blocks", filter.toQuery)
+          .map(_.headOption)
       }
   }
 
@@ -71,7 +74,7 @@ case class BitcoinDataRoutes(
       platformNetworkValidation(platform, network) {
         val filter = BitcoinFilter(blockIDs = Set(hash)) //TODO Verify that it works. Maybe we need to write custom method
         operations
-          .queryWithPredicates(platform, "blocks", filter.toQuery.withLimitCap(maxQueryResultSize))
+          .queryWithPredicates(platform, "blocks", filter.toQuery)
           .map(_.headOption)
       }
   }

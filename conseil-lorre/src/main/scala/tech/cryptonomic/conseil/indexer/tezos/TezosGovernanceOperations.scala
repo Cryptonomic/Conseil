@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.VotingOperations._
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
 import scala.util.Try
@@ -9,6 +10,7 @@ import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.DBIO
 import slick.jdbc.PostgresProfile.api.Database
 import cats.implicits._
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 
 /** Process blocks and voting data to compute details for
   * the governance-related cycles

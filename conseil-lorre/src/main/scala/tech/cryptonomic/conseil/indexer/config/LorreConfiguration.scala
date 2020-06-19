@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.indexer.config
 
 import tech.cryptonomic.conseil.common.config.ChainEvent
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockHash
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 
 import scala.concurrent.duration.FiniteDuration
 

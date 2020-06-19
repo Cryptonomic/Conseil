@@ -7,6 +7,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees

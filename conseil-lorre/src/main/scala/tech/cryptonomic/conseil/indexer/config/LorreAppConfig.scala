@@ -5,11 +5,11 @@ import com.typesafe.config.Config
 import pureconfig.error.{ConfigReaderFailures, ThrowableFailure}
 import pureconfig.generic.auto._
 import pureconfig.generic.{EnumCoproductHint, FieldCoproductHint, ProductHint}
-import pureconfig.{loadConfig, CamelCase, ConfigFieldMapping, ConfigReader}
+import pureconfig.{CamelCase, ConfigFieldMapping, ConfigReader, loadConfig}
 import scopt.{OptionParser, Read}
 import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.config.{PlatformConfiguration => _, _}
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockHash
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 
 import scala.util.Try
 

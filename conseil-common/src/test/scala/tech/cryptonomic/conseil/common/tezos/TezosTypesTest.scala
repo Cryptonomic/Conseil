@@ -3,45 +3,44 @@ package tech.cryptonomic.conseil.common.tezos
 import java.time.{Instant, ZonedDateTime}
 
 import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Scripted.Contracts
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 
 class TezosTypesTest extends WordSpec with Matchers with OptionValues with EitherValues {
 
-  val sut = TezosTypes
-
   "The Base58Check verifier" should {
       "accept an empty string" in {
-        sut.isBase58Check("") shouldBe true
+        TezosTypes.isBase58Check("") shouldBe true
       }
 
       "accept a correctly encoded string" in {
-        sut.isBase58Check(
+        TezosTypes.isBase58Check(
           "signiRfcqmbGc6UtW1WzuJNGzRRsWDLpafxZZPwwTMntFwup8rTxXEgcLD5UBWkYmMqZECVEr33Xw5sh9NVi45c4FVAXvQSf"
         ) shouldBe true
       }
 
       "reject a string with forbidden chars" in {
-        sut.isBase58Check(
+        TezosTypes.isBase58Check(
           "signiRfcqmbGc6UtW1WzulJNGzRRsWDLpafxZZPwwTMntFwup8rTxXEgcLD5UBWkYmMqZECVEr33Xw5sh9NVi45c4FVAXvQSf"
         ) shouldBe false
-        sut.isBase58Check(
+        TezosTypes.isBase58Check(
           "$signiRfcqmbGc6UtW1WzulJNGzRRsWDpafxZZPwwTMntFwup8rTxXEgcLD5UBWkYmMqZECVEr33Xw5sh9NVi45c4FVAXvQSf"
         ) shouldBe false
-        sut.isBase58Check(
+        TezosTypes.isBase58Check(
           "signiRfcqmbGc6UtW1WzulJNGzRRsWDpafxZZPwwTMntFwup8rTxXEgcLD5UBWkYmMqZECVEr33Xw5sh9NVi45c4FVAXvQSf*"
         ) shouldBe false
       }
 
       "reject a string with spaces" in {
-        sut.isBase58Check(
+        TezosTypes.isBase58Check(
           "signiRfcqmbGc6UtW1WzuJNGzRRs DLpafxZZPwwTMntFwup8rTxXEgcLD5UBWkYmMqZECVEr33Xw5sh9NVi45c4FVAXvQSf"
         ) shouldBe false
-        sut.isBase58Check(
+        TezosTypes.isBase58Check(
           " signiRfcqmbGc6UtW1WzuJNGzRRsDLpafxZZPwwTMntFwup8rTxXEgcLD5UBWkYmMqZECVEr33Xw5sh9NVi45c4FVAXvQSf"
         ) shouldBe false
-        sut.isBase58Check(
+        TezosTypes.isBase58Check(
           "signiRfcqmbGc6UtW1WzuJNGzRRsDLpafxZZPwwTMntFwup8rTxXEgcLD5UBWkYmMqZECVEr33Xw5sh9NVi45c4FVAXvQSf "
         ) shouldBe false
       }
@@ -101,7 +100,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues with Eithe
             voting_period_kind = defaultVotingPeriod,
             nonce_hash = None,
             consumed_gas = PositiveDecimal(0),
-            level = BlockHeaderMetadataLevel(0, 0, 0, 0, 0, 0, false)
+            level = BlockHeaderMetadataLevel(0, 0, 0, 0, 0, 0, expected_commitment = false)
           )
         )
       val blockVotes = CurrentVotes.empty
@@ -202,7 +201,6 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues with Eithe
   "The TezosOptics" should {
 
       "allow to read existing code within an account" in {
-        val sut = TezosOptics.Accounts
         val account = Account(
           balance = 0L,
           counter = Some(0),
@@ -214,11 +212,10 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues with Eithe
           isActivated = None
         )
 
-        sut.scriptLens.getOption(account).value shouldBe "Some code here"
+        TezosOptics.Accounts.scriptLens.getOption(account).value shouldBe "Some code here"
       }
 
       "read None if there's no script in an account" in {
-        val sut = TezosOptics.Accounts
         val account = Account(
           balance = 0L,
           counter = Some(0),
@@ -230,11 +227,10 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues with Eithe
           isActivated = None
         )
 
-        sut.scriptLens.getOption(account) shouldBe 'empty
+        TezosOptics.Accounts.scriptLens.getOption(account) shouldBe 'empty
       }
 
       "allow to update an existing script within an account" in {
-        val sut = TezosOptics.Accounts
         val account = Account(
           balance = 0L,
           counter = Some(0),
@@ -246,7 +242,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues with Eithe
           isActivated = None
         )
 
-        val updated = sut.scriptLens.modify(old => old + "; new code")(account)
+        val updated = TezosOptics.Accounts.scriptLens.modify(old => old + "; new code")(account)
         updated.script.value shouldBe Contracts(
           storage = Micheline("storage code"),
           code = Micheline("Some code here; new code")
