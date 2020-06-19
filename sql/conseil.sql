@@ -787,23 +787,22 @@ CREATE SCHEMA bitcoin;
 -- https://developer.bitcoin.org/reference/rpc/getblock.html
 CREATE TABLE bitcoin.blocks (
   hash text NOT NULL PRIMARY KEY,
-  confirmations integer NOT NULL,
   size integer NOT NULL,
-  -- stripped_size -- TODO: Do we need it?
+  stripped_size integer NOT NULL,
   weight integer NOT NULL,
   height integer NOT NULL,
   version integer NOT NULL,
-  -- version_hex -- TODO: Do we need it?
+  version_hex text NOT NULL,
   merkle_root text NOT NULL,
-  time timestamp without time zone NOT NULL,
-  -- median_time -- TODO: Do we need it?
   nonce bigint NOT NULL,
   bits text NOT NULL,
-  difficulty bigint NOT NULL,
-  -- chain_work -- TODO: Do we need it?
+  difficulty numeric NOT NULL,
+  chain_work text NOT NULL,
   n_tx integer NOT NULL,
   previous_block_hash text,
-  next_block_hash text
+  next_block_hash text,
+  median_time timestamp without time zone NOT NULL,
+  time timestamp without time zone NOT NULL
 );
 
 -- https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
@@ -811,14 +810,13 @@ CREATE TABLE bitcoin.transactions (
   txid text NOT NULL PRIMARY KEY,
   blockhash text NOT NULL,
   hash text NOT NULL,
-  -- hex -- TODO: Do we need it?
+  hex text NOT NULL,
   size integer NOT NULL,
-  -- vsize -- TODO: Do we need it?
+  vsize integer NOT NULL,
   weight integer NOT NULL,
   version integer NOT NULL,
-  -- lock_time -- TODO: Do we need it?
-  confirmations integer NOT NULL,
-  -- block_time -- TODO: Do we need it?
+  lock_time timestamp without time zone NOT NULL,
+  block_time timestamp without time zone NOT NULL,
   time timestamp without time zone NOT NULL
 );
 
@@ -832,7 +830,7 @@ CREATE TABLE bitcoin.inputs (
   script_sig_hex text,
   sequence bigint NOT NULL,
   coinbase text,
-  tx_in_witness text[]
+  tx_in_witness text
 );
 
 ALTER TABLE ONLY bitcoin.inputs
@@ -840,13 +838,13 @@ ALTER TABLE ONLY bitcoin.inputs
 
 CREATE TABLE bitcoin.outputs (
   txid text NOT NULL,
-  value numeric NOT NULL,
+  value numeric,
   n integer NOT NULL,
-  script_pub_key_asm  text NOT NULL,
-  script_pub_key_hex  text NOT NULL,
+  script_pub_key_asm text NOT NULL,
+  script_pub_key_hex text NOT NULL,
   script_pub_key_req_sigs integer,
   script_pub_key_type text NOT NULL,
-  script_pub_key_addresses text[]
+  script_pub_key_addresses text
 );
 
 ALTER TABLE ONLY bitcoin.outputs

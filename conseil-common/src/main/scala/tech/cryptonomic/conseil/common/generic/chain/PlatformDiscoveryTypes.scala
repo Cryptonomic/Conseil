@@ -80,6 +80,7 @@ object PlatformDiscoveryTypes {
       case "timestamp" => DataType.DateTime
       case "varchar" => DataType.String
       case "int4" | "int" | "serial" => DataType.Int
+      case "bigint" | "int8" => DataType.LargeInt
       case "numeric" => DataType.Decimal
       case "bool" => DataType.Boolean
       case "hash" => DataType.Hash

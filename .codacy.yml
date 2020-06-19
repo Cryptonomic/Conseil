@@ -1,0 +1,4 @@
+---
+exclude_paths:
+  - 'conseil-common/src/main/scala/tech/cryptonomic/conseil/common/bitcoin/Tables.scala'
+  - 'conseil-common/src/main/scala/tech/cryptonomic/conseil/common/tezos/Tables.scala'
