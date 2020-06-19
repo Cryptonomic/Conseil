@@ -532,7 +532,7 @@ object TezosTypes {
       period: Option[Int],
       content: T
   ) {
-    val asTuple = (blockHash, blockLevel, timestamp, cycle, content)
+    val asTuple = (blockHash, blockLevel, timestamp, cycle, period, content)
 
     /** Helper method for updating content of the class */
     def updateContent[A](newContent: A): BlockTagged[A] = this.copy(content = newContent)
@@ -667,6 +667,10 @@ object TezosTypes {
           period: Option[Int]
       ): BlockTagged[T] =
         BlockTagged(hash, level, timestamp, cycle, period, content)
+
+      /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference */
+      def taggedWithBlockData(data: BlockData): BlockTagged[T] =
+        BlockTagged.fromBlockData(data, content)
     }
 
   }

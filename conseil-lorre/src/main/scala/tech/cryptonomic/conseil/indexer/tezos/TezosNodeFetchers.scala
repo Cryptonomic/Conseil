@@ -502,15 +502,15 @@ private[tezos] trait TezosBlocksDataFetchers {
   }
 
   /** a fetcher of baker rolls for blocks */
-  implicit val bakersFetcherByHash = new FutureFetcher {
+  implicit val bakersRollsFetcher = new FutureFetcher {
     import TezosJsonDecoders.Circe.Votes._
     import cats.instances.future._
 
     type Encoded = String
-    type In = String
+    type In = BlockHash
     type Out = List[Voting.BakerRolls]
 
-    private val makeUrl = (blockHash: String) => s"blocks/$blockHash/votes/listings"
+    private val makeUrl = (blockHash: BlockHash) => s"blocks/${blockHash.value}/votes/listings"
 
     override val fetchData =
       Kleisli(
@@ -522,7 +522,7 @@ private[tezos] trait TezosBlocksDataFetchers {
                 .error(
                   "I encountered problems while fetching baker rolls from {}, for blocks {}. The error says {}",
                   network,
-                  blocks.mkString(", "),
+                  blocks.map(_.value).mkString(", "),
                   err.getMessage
                 )
                 .pure[Future]
@@ -543,37 +543,6 @@ private[tezos] trait TezosBlocksDataFetchers {
           case NonFatal(_) => List.empty
         }
     }
-  }
-
-  /** a fetcher of baker rolls for blocks */
-  implicit val bakersFetcher = new FutureFetcher {
-    import cats.instances.future._
-
-    type Encoded = String
-    type In = Block
-    type Out = List[Voting.BakerRolls]
-
-    private val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/listings"
-
-    override val fetchData =
-      Kleisli(
-        blocks => {
-          logger.info("Fetching bakers in levels {}", blocks.head.data.header.level to blocks.last.data.header.level)
-          node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
-            case err =>
-              logger
-                .error(
-                  "I encountered problems while fetching baker rolls from {}, for blocks {}. The error says {}",
-                  network,
-                  blocks.map(_.data.hash.value).mkString(", "),
-                  err.getMessage
-                )
-                .pure[Future]
-          }
-        }
-      )
-
-    override val decodeData = bakersFetcherByHash.decodeData
   }
 
   /** a fetcher of ballot votes for blocks */

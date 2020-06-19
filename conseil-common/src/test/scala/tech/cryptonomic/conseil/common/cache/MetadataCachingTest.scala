@@ -3,8 +3,8 @@ package tech.cryptonomic.conseil.common.cache
 import cats.effect._
 import com.rklaehn.radixtree.RadixTree
 import org.scalatest.{Matchers, OneInstancePerTest, OptionValues, WordSpec}
-import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.common.cache.MetadataCaching._
+import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 
 import scala.concurrent.ExecutionContext
 
@@ -26,90 +26,193 @@ class MetadataCachingTest extends WordSpec with Matchers with OneInstancePerTest
       }
 
       "init attributes cache" in {
-        val emptyAttributesCache: AttributesCache = Map(CacheKey("testNetwork") -> CacheEntry(0L, List()))
+        val emptyAttributesCache: AttributesCache =
+          Map(AttributesCacheKey("testPlatform", "testTable") -> CacheEntry(0L, List()))
         sut.fillAttributesCache(emptyAttributesCache).unsafeRunSync()
 
-        sut.getAttributes("not valid").unsafeRunSync() shouldBe None
-        sut.getAttributes("testNetwork").unsafeRunSync() shouldBe Some(CacheEntry(0, List()))
+        sut.getAttributes(AttributesCacheKey("not valid", "testTable")).unsafeRunSync() shouldBe None
+        sut.getAttributes(AttributesCacheKey("testPlatform", "not valid")).unsafeRunSync() shouldBe None
+        sut.getAttributes(AttributesCacheKey("testPlatform", "")).unsafeRunSync() shouldBe None
+        sut.getAttributes(AttributesCacheKey("", "")).unsafeRunSync() shouldBe None
+        sut.getAttributes(AttributesCacheKey("testPlatform", "testTable")).unsafeRunSync() shouldBe Some(
+          CacheEntry(0L, List())
+        )
       }
 
       "init entities cache" in {
-        val emptyEntitiesCache: EntitiesCache = Map(CacheKey("testNetwork") -> CacheEntry(0L, List()))
+        val emptyEntitiesCache: EntitiesCache =
+          Map(EntitiesCacheKey("testPlatform", "testNetwork") -> CacheEntry(0L, List()))
         sut.fillEntitiesCache(emptyEntitiesCache).unsafeRunSync()
 
-        sut.getEntities("not valid").unsafeRunSync() shouldBe None
-        sut.getEntities("testNetwork").unsafeRunSync() shouldBe Some(CacheEntry(0, List()))
+        sut.getEntities(EntitiesCacheKey("testPlatform", "not valid")).unsafeRunSync() shouldBe None
+        sut.getEntities(EntitiesCacheKey("testPlatform", "testNetwork")).unsafeRunSync() shouldBe Some(
+          CacheEntry(0, List())
+        )
       }
 
       "init attribute values cache" in {
         val attributeValuesCache: AttributeValuesCache =
-          Map(CacheKey("table.column") -> CacheEntry(0L, RadixTree[String, String]()))
+          Map(AttributeValuesCacheKey("platform", "table", "column") -> CacheEntry(0L, RadixTree[String, String]()))
         sut.fillAttributeValuesCache(attributeValuesCache).unsafeRunSync()
 
-        sut.getAttributeValues("not valid", "not valid either").unsafeRunSync() shouldBe None
-        val CacheEntry(_, result) = sut.getAttributeValues("table", "column").unsafeRunSync().value
+        sut
+          .getAttributeValues(
+            AttributeValuesCacheKey("not valid", "not valid", "not valid either")
+          )
+          .unsafeRunSync() shouldBe None
+
+        val CacheEntry(_, result) = sut
+          .getAttributeValues(
+            AttributeValuesCacheKey("platform", "table", "column")
+          )
+          .unsafeRunSync()
+          .value
         result.values.toList shouldBe List.empty
       }
 
       "insert/update values in entities cache" in {
-        val emptyEntitiesCache: EntitiesCache = Map(CacheKey("testNetwork") -> CacheEntry(0L, List()))
+        val emptyEntitiesCache: EntitiesCache =
+          Map(EntitiesCacheKey("testPlatform", "testNetwork") -> CacheEntry(0L, List()))
         val entitiesList = List(Entity("a", "b", 0))
         val updatedEntityList = List(Entity("x", "y", 0))
         sut.fillEntitiesCache(emptyEntitiesCache).unsafeRunSync()
 
         // insert
-        sut.putEntities("differentTestNetwork", entitiesList).unsafeRunSync()
-        val CacheEntry(_, insertResult) = sut.getEntities("differentTestNetwork").unsafeRunSync().value
+        sut.putEntities(EntitiesCacheKey("testPlatform", "differentTestNetwork"), entitiesList).unsafeRunSync()
+        val CacheEntry(_, insertResult) =
+          sut.getEntities(EntitiesCacheKey("testPlatform", "differentTestNetwork")).unsafeRunSync().value
         insertResult shouldBe entitiesList
 
         // update
-        sut.putEntities("differentTestNetwork", updatedEntityList).unsafeRunSync()
-        val CacheEntry(_, updateResult) = sut.getEntities("differentTestNetwork").unsafeRunSync().value
+        sut.putEntities(EntitiesCacheKey("testPlatform", "differentTestNetwork"), updatedEntityList).unsafeRunSync()
+        val CacheEntry(_, updateResult) =
+          sut.getEntities(EntitiesCacheKey("testPlatform", "differentTestNetwork")).unsafeRunSync().value
         updateResult shouldBe updatedEntityList
         sut.getAllEntities.unsafeRunSync().mapValues(_.value) shouldBe Map(
-          CacheKey("testNetwork") -> List(),
-          CacheKey("differentTestNetwork") -> List(Entity("x", "y", 0, None))
+          EntitiesCacheKey("testPlatform", "testNetwork") -> List(),
+          EntitiesCacheKey("testPlatform", "differentTestNetwork") -> List(Entity("x", "y", 0, None))
         )
       }
 
       "insert/update values in attributes cache" in {
-        val emptyAttributesCache: AttributesCache = Map(CacheKey("testEntity") -> CacheEntry(0L, List()))
+        val emptyAttributesCache: AttributesCache =
+          Map(AttributesCacheKey("testPlatform", "testEntity") -> CacheEntry(0L, List()))
         val attributesList = List(Attribute("a", "b", DataType.String, None, KeyType.NonKey, "c"))
         val updatedAttributesList = List(Attribute("x", "y", DataType.String, None, KeyType.NonKey, "z"))
         sut.fillAttributesCache(emptyAttributesCache).unsafeRunSync()
 
         // insert
-        sut.putAttributes("differentTestEntity", attributesList).unsafeRunSync()
-        val CacheEntry(_, insertResult) = sut.getAttributes("differentTestEntity").unsafeRunSync().value
+        sut.putAttributes(AttributesCacheKey("testPlatform", "differentTestEntity"), attributesList).unsafeRunSync()
+        val CacheEntry(_, insertResult) =
+          sut.getAttributes(AttributesCacheKey("testPlatform", "differentTestEntity")).unsafeRunSync().value
         insertResult shouldBe attributesList
 
         // update
-        sut.putAttributes("differentTestEntity", updatedAttributesList).unsafeRunSync()
-        val CacheEntry(_, updateResult) = sut.getAttributes("differentTestEntity").unsafeRunSync().get
-        updateResult shouldBe updatedAttributesList
+        sut
+          .putAttributes(AttributesCacheKey("testPlatform", "differentTestEntity"), updatedAttributesList)
+          .unsafeRunSync()
+
+        sut.getAttributes(AttributesCacheKey("testPlatform", "differentTestEntity")).unsafeRunSync() match {
+          case Some(CacheEntry(_, updateResult)) => updateResult shouldBe updatedAttributesList
+          case None => fail("Expected some `CacheEntity`, but got None")
+        }
+
         sut.getAllAttributes.unsafeRunSync().mapValues(_.value) shouldBe
           Map(
-            CacheKey("testEntity") -> List(),
-            CacheKey("differentTestEntity") -> List(Attribute("x", "y", DataType.String, None, KeyType.NonKey, "z"))
+            AttributesCacheKey("testPlatform", "testEntity") -> List(),
+            AttributesCacheKey("testPlatform", "differentTestEntity") -> List(
+                  Attribute("x", "y", DataType.String, None, KeyType.NonKey, "z")
+                )
           )
       }
 
       "insert/update values in attribute values cache" in {
         val emptyAttributeValuesCache: AttributeValuesCache =
-          Map(CacheKey("table.column") -> CacheEntry(0L, RadixTree[String, String]()))
+          Map(AttributeValuesCacheKey("platform", "table", "column") -> CacheEntry(0L, RadixTree[String, String]()))
         val attributeValuesTree = RadixTree[String, String]("a" -> "a")
         val updatedAttributeValuesTree = RadixTree[String, String]("b" -> "b")
         sut.fillAttributeValuesCache(emptyAttributeValuesCache).unsafeRunSync()
 
         // insert
-        sut.putAttributeValues("table2", "column2", attributeValuesTree).unsafeRunSync()
-        val CacheEntry(_, insertResult) = sut.getAttributeValues("table2", "column2").unsafeRunSync().get
-        insertResult.values.toList shouldBe List("a")
+        sut
+          .putAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2"), attributeValuesTree)
+          .unsafeRunSync()
+
+        sut.getAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2")).unsafeRunSync() match {
+          case Some(CacheEntry(_, insertResult)) => insertResult.values.toList shouldBe List("a")
+          case None => fail("Expected some `CacheEntity`, but got None")
+        }
 
         // update
-        sut.putAttributeValues("table2", "column2", updatedAttributeValuesTree).unsafeRunSync()
-        val CacheEntry(_, updateResult) = sut.getAttributeValues("table2", "column2").unsafeRunSync().get
-        updateResult.values.toList shouldBe List("b")
+        sut
+          .putAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2"), updatedAttributeValuesTree)
+          .unsafeRunSync()
+
+        sut.getAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2")).unsafeRunSync() match {
+          case Some(CacheEntry(_, updateResult)) => updateResult.values.toList shouldBe List("b")
+          case None => fail("Expected some `CacheEntity`, but got None")
+        }
+      }
+
+      "handle entities for multiple platforms" in {
+        val entitiesKey1 = EntitiesCacheKey("platform", "network")
+        val entities1 = List(Entity("a", "a", 0))
+
+        val entitiesKey2 = EntitiesCacheKey("platform-new", "network-new")
+        val entities2 = List(Entity("b", "b", 0))
+
+        val entities3 = List(Entity("c", "c", 0))
+
+        val entitiesCache: EntitiesCache = Map(
+          entitiesKey1 -> CacheEntry(0L, entities1),
+          entitiesKey2 -> CacheEntry(0L, entities2)
+        )
+
+        // insert
+        sut.fillEntitiesCache(entitiesCache).unsafeRunSync() shouldBe true
+
+        // update
+        sut.putEntities(entitiesKey1, entities3).unsafeRunSync()
+
+        // get
+        sut.getEntities(entitiesKey1).unsafeRunSync().value.value should contain theSameElementsAs entities3
+        sut.getEntities(entitiesKey2).unsafeRunSync().value.value should contain theSameElementsAs entities2
+      }
+
+      "handle attributes for multiple platforms" in {
+        val attributesKey1 = AttributesCacheKey("platform", "table")
+        val attributes1 = List(Attribute("a", "b", DataType.String, None, KeyType.NonKey, "c"))
+
+        val attributesKey2 = AttributesCacheKey("platform-new", "table-new")
+        val attributes2 = List(Attribute("d", "e", DataType.String, None, KeyType.NonKey, "f"))
+
+        val attributesCache: AttributesCache = Map(
+          attributesKey1 -> CacheEntry(0L, attributes1),
+          attributesKey2 -> CacheEntry(0L, attributes2)
+        )
+
+        sut.fillAttributesCache(attributesCache).unsafeRunSync() shouldBe true
+
+        sut.getAttributes(attributesKey1).unsafeRunSync().value.value should contain theSameElementsAs attributes1
+        sut.getAttributes(attributesKey2).unsafeRunSync().value.value should contain theSameElementsAs attributes2
+      }
+
+      "handle attribute values for multiple platforms" in {
+        val attributesValueKey1 = AttributeValuesCacheKey("platform", "table", "column")
+        val attributesValue1 = RadixTree[String, String]("a" -> "a")
+
+        val attributesValueKey2 = AttributeValuesCacheKey("platform-new", "table-new", "column-new")
+        val attributesValue2 = RadixTree[String, String]("b" -> "b")
+
+        val attributesValueCache: AttributeValuesCache = Map(
+          attributesValueKey1 -> CacheEntry(0L, attributesValue1),
+          attributesValueKey2 -> CacheEntry(0L, attributesValue2)
+        )
+
+        sut.fillAttributeValuesCache(attributesValueCache).unsafeRunSync() shouldBe true
+
+        sut.getAttributeValues(attributesValueKey1).unsafeRunSync().value.value shouldBe attributesValue1
+        sut.getAttributeValues(attributesValueKey2).unsafeRunSync().value.value shouldBe attributesValue2
       }
     }
 

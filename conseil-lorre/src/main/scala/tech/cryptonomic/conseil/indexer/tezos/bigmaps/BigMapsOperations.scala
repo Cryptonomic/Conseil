@@ -8,14 +8,7 @@ import scala.collection.immutable.TreeMap
 import cats.implicits._
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
-  Block,
-  Contract,
-  ContractId,
-  Decimal,
-  OperationHash,
-  ParametersCompatibility
-}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, Contract, ContractId, Decimal, ParametersCompatibility}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Contract.BigMapUpdate
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
@@ -147,12 +140,12 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
 
     val diffsPerBlock = blocks.flatMap(
       b =>
-        extractAppliedOriginationsResults(b)
-          .flatMap(_.big_map_diff.toList.flatMap(keepLatestDiffsFormat))
-          .map(
-            diff =>
-              BigMapsConversions.BlockBigMapDiff(b.data.hash, b.data.header.operations_hash.map(OperationHash), diff)
-          )
+        extractAppliedOriginationsResults(b).flatMap {
+          case (groupHash, op) => op.big_map_diff.toList.flatMap(keepLatestDiffsFormat).map(groupHash -> _)
+        }.map {
+          case (groupHash, diff) =>
+            BigMapsConversions.BlockBigMapDiff(b.data.hash, Some(groupHash), diff)
+        }
     )
 
     val maps = if (logger.underlying.isDebugEnabled()) {
@@ -189,12 +182,12 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
 
     val diffsPerBlock = blocks.flatMap(
       b =>
-        extractAppliedTransactionsResults(b)
-          .flatMap(_.big_map_diff.toList.flatMap(keepLatestDiffsFormat))
-          .map(
-            diff =>
-              BigMapsConversions.BlockBigMapDiff(b.data.hash, b.data.header.operations_hash.map(OperationHash), diff)
-          )
+        extractAppliedTransactionsResults(b).flatMap {
+          case (groupHash, op) => op.big_map_diff.toList.flatMap(keepLatestDiffsFormat).map(groupHash -> _)
+        }.map {
+          case (groupHash, diff) =>
+            BigMapsConversions.BlockBigMapDiff(b.data.hash, Some(groupHash), diff)
+        }
     )
 
     val rowsPerBlock = diffsPerBlock
@@ -246,11 +239,12 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
 
     val diffsPerBlock = blocks.flatMap(
       b =>
-        extractAppliedOriginationsResults(b).flatMap { results =>
-          for {
-            contractIds <- results.originated_contracts.toList
-            diff <- results.big_map_diff.toList.flatMap(keepLatestDiffsFormat)
-          } yield BigMapsConversions.BlockContractIdsBigMapDiff((b.data.hash, contractIds, diff))
+        extractAppliedOriginationsResults(b).flatMap {
+          case (_, results) =>
+            for {
+              contractIds <- results.originated_contracts.toList
+              diff <- results.big_map_diff.toList.flatMap(keepLatestDiffsFormat)
+            } yield BigMapsConversions.BlockContractIdsBigMapDiff((b.data.hash, contractIds, diff))
         }
     )
 
@@ -271,7 +265,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
           )
       }
 
-      rowsPerBlock.map(_._2).flatten.toList
+      rowsPerBlock.flatMap(_._2).toList
     } else diffsPerBlock.flatMap(_.convertToA[List, OriginatedAccountMapsRow])
 
     logger.info("{} big map accounts references will be made.", if (refs.nonEmpty) s"A total of ${refs.size}" else "No")
