@@ -4,13 +4,14 @@ import java.sql.Timestamp
 import java.time.Instant
 
 import cats.effect.Async
+import cats.implicits._
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
 import slick.jdbc.PostgresProfile.api._
 import slick.lifted.{AbstractTable, TableQuery}
 import tech.cryptonomic.conseil.common.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
-import tech.cryptonomic.conseil.common.sql.{CustomProfileExtension, DefaultDatabaseOperations}
+import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.tezos.Tables.{GovernanceRow, OriginatedAccountMapsRow}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.BakerRolls
@@ -19,18 +20,20 @@ import tech.cryptonomic.conseil.indexer.tezos.bigmaps.BigMapsOperations
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.util.ConfigUtil
+import tech.cryptonomic.conseil.common.util.CollectionOps._
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.util.MathUtil.{mean, stdev}
-
+import tech.cryptonomic.conseil.indexer.sql.DefaultDatabaseOperations._
 import scala.collection.immutable.Queue
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.{ceil, max}
 import scala.util.{Failure, Success}
+import tech.cryptonomic.conseil.indexer.tezos.TezosGovernanceOperations.GovernanceAggregate
 
 /**
   * Functions for writing Tezos data to a database.
   */
-object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with LazyLogging {
+object TezosDatabaseOperations extends LazyLogging {
   import TezosDatabaseConversions._
 
   private val bigMapOps = BigMapsOperations(CustomProfileExtension)
@@ -520,9 +523,22 @@ object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with L
   ): DBIO[Seq[Tables.EndorsingRightsRow]] =
     Tables.EndorsingRights.filter(_.level === blockLevel).result
 
-  def insertGovernance(governance: List[GovernanceRow]): DBIO[Option[Int]] = {
+  /**
+    * Fetches all governance entries for a given block level
+    * @param level to identify the relevant block
+    * @return the governance data
+    */
+  def getGovernanceForLevel(level: Int): DBIO[Seq[GovernanceRow]] =
+    Tables.Governance.filter(_.level === level).result
+
+  /**
+    * Stores the governance statistic aggregates in the database
+    * @param governance aggregates
+    * @return the number of rows added, if available from the driver
+    */
+  def insertGovernance(governance: List[GovernanceAggregate]): DBIO[Option[Int]] = {
     logger.info("Writing {} governance rows into database...", governance.size)
-    Tables.Governance ++= governance
+    Tables.Governance ++= governance.map(_.convertTo[Tables.GovernanceRow])
   }
 
   def upsertTezosNames(names: List[TNSContract.NameRecord]): DBIO[Option[Int]] = {
@@ -592,7 +608,10 @@ object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with L
     }
   }
 
-  /** Gets ballot operations for given cycle */
+  /** Gets ballot operations for given cycle
+    * then sums together all distinct votes (yay, nay, pass) in
+    * a single result object.
+    */
   def getBallotOperationsForCycle(cycle: Int)(implicit ec: ExecutionContext): DBIO[Voting.BallotCounts] =
     Tables.Operations
       .filter(op => op.kind === "ballot" && op.cycle === cycle)
@@ -611,7 +630,10 @@ object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with L
         Voting.BallotCounts(yaysCount, naysCount, passesCount)
       }
 
-  /** Gets ballot operations for given level */
+  /** Gets all ballot operations for given level
+    * then sums together all distinct votes (yay, nay, pass) in
+    * a single result object.
+    */
   def getBallotOperationsForLevel(level: Int)(implicit ec: ExecutionContext): DBIO[Voting.BallotCounts] =
     Tables.Operations
       .filter(op => op.kind === "ballot" && op.level === level)
@@ -631,23 +653,18 @@ object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with L
       }
 
   /** Gets proposal hashes from operations table for given cycle */
-  def getProposalOperationHashesByCycle(cycle: Int)(implicit ec: ExecutionContext): DBIO[Map[String, Int]] =
+  def getProposalOperationHashesByCycle(cycle: Int)(implicit ec: ExecutionContext): DBIO[Map[ProtocolId, Int]] =
     Tables.Operations
-      .filter(op => op.kind === "proposals" && op.cycle === cycle)
-      .map(_.proposal)
+      .filter(op => op.kind === "proposals" && op.cycle === cycle && op.proposal.nonEmpty)
+      .map(_.proposal.getOrElse("[]"))
       .result
       .map {
-        _.toList
-          .flatMap(_.toList.flatMap(expandStringArray))
-          .groupBy(hash => hash)
-          .map {
-            case (hash, list) => hash -> list.length
-          }
+        _.map(expandStringArray).flatten.countValues
       }
 
   /** Helper method for expanding array storred as a string to list */
-  private def expandStringArray(arr: String): List[String] =
-    arr.trim.stripPrefix("[").stripSuffix("]").split(',').toList
+  private def expandStringArray(arr: String): List[ProtocolId] =
+    arr.trim.stripPrefix("[").stripSuffix("]").split(',').map(ProtocolId).toList
 
   /** Fetch the latest block level available for each account id stored */
   def getLevelsForAccounts(ids: Set[AccountId]): DBIO[Seq[(String, BigDecimal)]] =

@@ -27,6 +27,16 @@ object CollectionOps {
     def byKey(): Map[K, Seq[V]] = groupByKey(seq)
   }
 
+  /** allows counting the occurrences of values in
+    * a generic sequence that might contain duplicates
+    *
+    * @param seq the original sequence
+    */
+  implicit class SeqCounter[T](seq: Seq[T]) {
+    def countValues(): Map[T, Int] =
+      seq.groupBy(identity).mapValues(_.size)
+  }
+
   /**
     * allows to apply a function on collection boundaries, if they're available
     */

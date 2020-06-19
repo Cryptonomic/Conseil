@@ -15,7 +15,7 @@ class MetadataService(
     config: PlatformsConfiguration,
     transformation: UnitTransformation,
     cacheConfiguration: AttributeValuesCacheConfiguration,
-    platformDiscoveryOperations: Map[String, PlatformDiscoveryOperations]
+    platformDiscoveryOperations: PlatformDiscoveryOperations
 )(implicit apiExecutionContext: ExecutionContext) {
 
   private val platforms = transformation.overridePlatforms(config.getPlatforms)
@@ -25,16 +25,13 @@ class MetadataService(
   }.toMap
 
   private val entities = {
-    val futureEntities = Future.traverse(platforms) { platform =>
-      platformDiscoveryOperations(platform.name).getEntities.map(v => platform.name -> v)
-    }
-    val allEntities = Await.result(futureEntities, 5 second).toMap
+    def futureEntities(path: NetworkPath): List[Entity] =
+      Await.result(platformDiscoveryOperations.getEntities(path), 5 second)
 
     networks.values.flatten
       .map(_.path)
       .map(
-        networkPath =>
-          networkPath -> transformation.overrideEntities(networkPath, allEntities(toPlatformName(networkPath)))
+        networkPath => networkPath -> transformation.overrideEntities(networkPath, futureEntities(networkPath))
       )
       .toMap
   }
@@ -46,7 +43,7 @@ class MetadataService(
     }.toSet
 
     val result = Future.traverse(entityPaths) { path =>
-      platformDiscoveryOperations(toPlatformName(path))
+      platformDiscoveryOperations
         .getTableAttributes(path)
         .map(attributes => path -> transformation.overrideAttributes(path, attributes.getOrElse(List.empty)))
     }
@@ -66,7 +63,7 @@ class MetadataService(
   // gets current entities
   def getCurrentEntities(path: NetworkPath): Future[Option[List[Entity]]] =
     if (exists(path)) {
-      platformDiscoveryOperations(toPlatformName(path)).getEntities.map { allEntities =>
+      platformDiscoveryOperations.getEntities(path).map { allEntities =>
         Some(transformation.overrideEntities(path, allEntities, shouldLog = false))
       }
     } else successful(None)
@@ -77,7 +74,7 @@ class MetadataService(
   // fetches current attributes
   def getCurrentTableAttributes(path: EntityPath): Future[Option[List[Attribute]]] =
     if (exists(path)) {
-      platformDiscoveryOperations(toPlatformName(path)).getTableAttributes(path).map { maybeAttributes =>
+      platformDiscoveryOperations.getTableAttributes(path).map { maybeAttributes =>
         maybeAttributes.map { attributes =>
           transformation.overrideAttributes(path, attributes, shouldLog = false)
         }
@@ -86,7 +83,7 @@ class MetadataService(
 
   // fetches table attributes without updating cache
   def getTableAttributesWithoutUpdatingCache(path: EntityPath): Future[Option[List[Attribute]]] =
-    getAttributesHelper(path)(platformDiscoveryOperations(toPlatformName(path)).getTableAttributesWithoutUpdatingCache)
+    getAttributesHelper(path)(platformDiscoveryOperations.getTableAttributesWithoutUpdatingCache)
 
   // fetches attribute values
   def getAttributeValues(
@@ -100,7 +97,7 @@ class MetadataService(
     val path = NetworkPath(network, PlatformPath(platform))
     if (exists(path)) {
       val attributePath = EntityPath(entity, path).addLevel(attribute)
-      platformDiscoveryOperations(toPlatformName(path))
+      platformDiscoveryOperations
         .listAttributeValues(
           attributePath,
           filter,
@@ -134,8 +131,5 @@ class MetadataService(
       )
     else
       Future.successful(None)
-
-  private def toPlatformName(path: NetworkPath): String = path.up.platform
-  private def toPlatformName(path: EntityPath): String = toPlatformName(path.up)
 
 }

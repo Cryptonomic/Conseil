@@ -13,7 +13,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.Vote
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
-import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics, TezosTypes}
+import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics}
 import tech.cryptonomic.conseil.common.util.Conversion
 
 import scala.util.Try
@@ -844,60 +844,36 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
   implicit val governanceConv =
     new Conversion[
       Id,
-      (
-          BlockHash,
-          BlockHeaderMetadata,
-          Option[ProtocolId],
-          List[Voting.BakerRolls],
-          List[Voting.BakerRolls],
-          List[Voting.Ballot],
-          Option[Voting.BallotCounts],
-          Option[Voting.BallotCounts]
-      ),
+      TezosGovernanceOperations.GovernanceAggregate,
       Tables.GovernanceRow
     ] {
+      import TezosGovernanceOperations.{GovernanceAggregate, VoteRollsCounts}
 
       override def convert(
-          from: (
-              BlockHash,
-              BlockHeaderMetadata,
-              Option[ProtocolId],
-              List[Voting.BakerRolls],
-              List[Voting.BakerRolls],
-              List[Voting.Ballot],
-              Option[Voting.BallotCounts],
-              Option[Voting.BallotCounts]
-          )
+          from: GovernanceAggregate
       ): Tables.GovernanceRow = {
-        val (
-          blockHash,
-          blockHeaderMetadata,
-          proposal,
-          listings,
-          listingsPerLevel,
-          ballots,
-          ballotCountsPerCycle,
-          ballotCountsPerLevel
-        ) = from
-        val (yayRolls, nayRolls, passRolls) = countRolls(listings, ballots)
-        val (yayRollsPerLevel, nayRollsPerLevel, passRollsPerLevel) = countRolls(listingsPerLevel, ballots)
+
+        val metadata = from.metadata
+        val VoteRollsCounts(yayRolls, nayRolls, passRolls) = from.allRolls
+        val VoteRollsCounts(yayRollsPerLevel, nayRollsPerLevel, passRollsPerLevel) = from.rollsPerLevel
+
         Tables.GovernanceRow(
-          votingPeriod = blockHeaderMetadata.level.voting_period,
-          votingPeriodKind = blockHeaderMetadata.voting_period_kind.toString,
-          cycle = Some(blockHeaderMetadata.level.cycle),
-          level = Some(blockHeaderMetadata.level.level),
-          blockHash = blockHash.value,
-          proposalHash = proposal.map(_.id).getOrElse(""),
-          yayCount = ballotCountsPerCycle.map(_.yay),
-          nayCount = ballotCountsPerCycle.map(_.nay),
-          passCount = ballotCountsPerCycle.map(_.pass),
+          votingPeriod = metadata.level.voting_period,
+          votingPeriodKind = metadata.voting_period_kind.toString,
+          cycle = Some(metadata.level.cycle),
+          level = Some(metadata.level.level),
+          blockHash = from.hash.value,
+          proposalHash = from.proposalId.map(_.id).getOrElse(""),
+          yayCount = from.ballotsPerCycle.map(_.yay),
+          nayCount = from.ballotsPerCycle.map(_.nay),
+          passCount = from.ballotsPerCycle.map(_.pass),
           yayRolls = Some(yayRolls),
           nayRolls = Some(nayRolls),
           passRolls = Some(passRolls),
           totalRolls = Some(yayRolls + nayRolls + passRolls),
-          blockYayCount = ballotCountsPerLevel.map(_.yay),
-          blockNayCount = ballotCountsPerLevel.map(_.nay),
-          blockPassCount = ballotCountsPerLevel.map(_.pass),
+          blockYayCount = from.ballotsPerLevel.map(_.yay),
+          blockNayCount = from.ballotsPerLevel.map(_.nay),
+          blockPassCount = from.ballotsPerLevel.map(_.pass),
           blockYayRolls = Some(yayRollsPerLevel),
           blockNayRolls = Some(nayRollsPerLevel),
           blockPassRolls = Some(passRollsPerLevel)
@@ -905,19 +881,6 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
 
       }
 
-      def countRolls(listings: List[Voting.BakerRolls], ballots: List[Voting.Ballot]): (Int, Int, Int) =
-        ballots.foldLeft((0, 0, 0)) {
-          case ((yays, nays, passes), votingBallot) =>
-            val rolls = listings.find(_.pkh == votingBallot.pkh).map(_.rolls).getOrElse(0)
-            votingBallot.ballot match {
-              case Vote("yay") => (yays + rolls, nays, passes)
-              case Vote("nay") => (yays, nays + rolls, passes)
-              case Vote("pass") => (yays, nays, passes + rolls)
-              case Vote(notSupported) =>
-                logger.error("Not supported vote type {}", notSupported)
-                (yays, nays, passes)
-            }
-        }
     }
 
   implicit val tnsNameRecordToRow =

@@ -4,8 +4,8 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, TestSuite}
 import org.testcontainers.containers.PostgreSQLContainer
 
-import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 /**
   * Provides access to a test in-memory database initialized with conseil schema
@@ -45,13 +45,13 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach with In
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     dbInstance.start()
-    Await.ready(dbHandler.run(initScript.create), 2.second)
-    Await.ready(dbHandler.run(DBIO.sequence(fixtures.map(_.create))), 2.second)
+    await(dbHandler.run(DBIO.sequence(initScripts.map(_.create))), 2.second)
+    await(dbHandler.run(DBIO.sequence(fixtures.map(_.create))), 2.second)
     ()
   }
 
   override protected def afterAll(): Unit = {
-    Await.ready(dbHandler.run(DBIO.sequence(fixtures.reverse.map(_.delete))), 2.second)
+    await(dbHandler.run(DBIO.sequence(fixtures.reverse.map(_.delete))), 2.second)
     dbHandler.close()
     dbInstance.stop()
     super.afterAll()
@@ -59,8 +59,12 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach with In
 
   override protected def beforeEach(): Unit = {
     super.beforeEach()
-    Await.ready(dbHandler.run(DBIO.sequence(fixtures.reverse.map(_.delete))), 2.second)
+    await(dbHandler.run(DBIO.sequence(fixtures.reverse.map(_.delete))), 2.second)
     ()
   }
+
+  /** Awaits until specific operation has been completed and prints stacktrace on failure to avoid 'silence' bugs */
+  private def await[A](f: Future[A], atMost: Duration): Unit =
+    Await.ready(f, atMost).failed.foreach(_.printStackTrace())(ExecutionContext.global)
 
 }

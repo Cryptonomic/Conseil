@@ -27,8 +27,7 @@ lazy val common = (project in file("conseil-common"))
     coverageExcludedPackages := Seq(
           "<empty>",
           "tech.cryptonomic.conseil.common.io.*",
-          "tech.cryptonomic.conseil.common.tezos.Tables",
-          "tech.cryptonomic.conseil.common.tezos.TezosDataGeneration"
+          "tech.cryptonomic.conseil.common.tezos.Tables"
         ).mkString(";")
   )
   .settings(
@@ -55,8 +54,8 @@ lazy val api = (project in file("conseil-api"))
           "tech.cryptonomic.conseil.api.Conseil",
           "tech.cryptonomic.conseil.api.ConseilApi",
           "tech.cryptonomic.conseil.api.ConseilMainOutput",
+          "tech.cryptonomic.conseil.api.config.ConseilAppConfig",
           "tech.cryptonomic.conseil.api.security.Security",
-          "tech.cryptonomic.conseil.api.TezosDataGeneration",
           "tech.cryptonomic.conseil.api.routes.platform.TezosApi"
         ).mkString(";")
   )
@@ -75,9 +74,10 @@ lazy val lorre = (project in file("conseil-lorre"))
     coverageExcludedPackages := Seq(
           "<empty>",
           "tech.cryptonomic.conseil.indexer.Lorre",
+          "tech.cryptonomic.conseil.indexer.config.LorreAppConfig",
           "tech.cryptonomic.conseil.indexer.logging.LorreInfoLogging",
-          "tech.cryptonomic.conseil.indexer.tezos.TezosIndexer",
-          "tech.cryptonomic.conseil.indexer.tezos.TezosDataGeneration"
+          "tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging",
+          "tech.cryptonomic.conseil.indexer.tezos.TezosIndexer"
         ).mkString(";")
   )
   .addRunCommand(
