@@ -42,26 +42,12 @@ class BitcoinIndexer(
         Authorization(BasicCredentials(bitcoinConf.nodeConfig.username, bitcoinConf.nodeConfig.password))
       )
 
-      // xa <- for {
-      //   ce <- ExecutionContexts.fixedThreadPool[IO](32) // our connect EC
-      // } yield Transactor.fromDriverManager[IO](
-      //   "org.postgresql.Driver",
-      //   "jdbc:postgresql:conseil-local",
-      //   "conseiluser",
-      //   "p@ssw0rd",
-      //   Blocker.liftExecutionContext(ce)
-      // )
-
       tx <- Transactor
         .fromDatabase[IO](IO.delay(DatabaseUtil.lorreDb))
 
       bitcoinOperations <- BitcoinOperations.resource(rpcClient, tx)
 
-      from = 90000
-      batch = 100
-
-      // _ <- bitcoinOperations.blockStream(99000 to 100000).compile.resource.drain
-      _ <- bitcoinOperations.loadBlocksWithTransactions(from to (from + batch)).compile.resource.drain
+      _ <- bitcoinOperations.loadBlocksWithTransactions(99000 to 100000).compile.resource.drain
     } yield ()
 
   override def platform: Platforms.BlockchainPlatform = Platforms.Bitcoin

@@ -6,10 +6,9 @@ import fs2.Stream
 import slickeffect.Transactor
 
 import tech.cryptonomic.conseil.common.rpc.RpcClient
-import tech.cryptonomic.conseil.indexer.bitcoin.rpc.BitcoinClient
-import tech.cryptonomic.conseil.indexer.bitcoin.persistence.BitcoinPersistence
-import tech.cryptonomic.conseil.indexer.bitcoin.rpc.json.TransactionComponent
-
+import tech.cryptonomic.conseil.common.bitcoin.BitcoinPersistence
+import tech.cryptonomic.conseil.common.bitcoin.rpc.BitcoinClient
+import tech.cryptonomic.conseil.common.bitcoin.rpc.json.TransactionComponent
 
 class BitcoinOperations[F[_]: Concurrent](
     bitcoinClient: BitcoinClient[F],
