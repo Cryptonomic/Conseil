@@ -416,8 +416,11 @@ trait Tables {
     /** Database column is_active_baker SqlType(bool), Default(None) */
     val isActiveBaker: Rep[Option[Boolean]] = column[Option[Boolean]]("is_active_baker", O.Default(None))
 
+    /** Index over (accountId) (database name ix_account_id) */
+    val index1 = index("ix_account_id", accountId)
+
     /** Index over (blockId) (database name ix_accounts_history_block_id) */
-    val index1 = index("ix_accounts_history_block_id", blockId)
+    val index2 = index("ix_accounts_history_block_id", blockId)
   }
 
   /** Collection-like TableQuery object for table AccountsHistory */
@@ -1123,6 +1126,9 @@ trait Tables {
 
     /** Index over (level) (database name baking_rights_level_idx) */
     val index2 = index("baking_rights_level_idx", level)
+
+    /** Index over (delegate,priority) (database name ix_delegate_priority) */
+    val index3 = index("ix_delegate_priority", (delegate, priority))
   }
 
   /** Collection-like TableQuery object for table BakingRights */
@@ -1751,6 +1757,9 @@ trait Tables {
 
     /** Index over (level) (database name endorsing_rights_level_idx) */
     val index2 = index("endorsing_rights_level_idx", level)
+
+    /** Index over (delegate) (database name ix_delegate_slot) */
+    val index3 = index("ix_delegate_slot", delegate)
   }
 
   /** Collection-like TableQuery object for table EndorsingRights */
@@ -2547,26 +2556,35 @@ trait Tables {
       onDelete = ForeignKeyAction.NoAction
     )
 
+    /** Index over (managerPubkey) (database name ix_manager_pubkey) */
+    val index1 = index("ix_manager_pubkey", managerPubkey :: HNil)
+
+    /** Index over (operationGroupHash) (database name ix_operation_group_hash) */
+    val index2 = index("ix_operation_group_hash", operationGroupHash :: HNil)
+
     /** Index over (blockLevel) (database name ix_operations_block_level) */
-    val index1 = index("ix_operations_block_level", blockLevel :: HNil)
+    val index3 = index("ix_operations_block_level", blockLevel :: HNil)
 
     /** Index over (cycle) (database name ix_operations_cycle) */
-    val index2 = index("ix_operations_cycle", cycle :: HNil)
+    val index4 = index("ix_operations_cycle", cycle :: HNil)
 
     /** Index over (delegate) (database name ix_operations_delegate) */
-    val index3 = index("ix_operations_delegate", delegate :: HNil)
+    val index5 = index("ix_operations_delegate", delegate :: HNil)
 
     /** Index over (destination) (database name ix_operations_destination) */
-    val index4 = index("ix_operations_destination", destination :: HNil)
+    val index6 = index("ix_operations_destination", destination :: HNil)
 
     /** Index over (kind) (database name ix_operations_kind) */
-    val index5 = index("ix_operations_kind", kind :: HNil)
+    val index7 = index("ix_operations_kind", kind :: HNil)
 
     /** Index over (source) (database name ix_operations_source) */
-    val index6 = index("ix_operations_source", source :: HNil)
+    val index8 = index("ix_operations_source", source :: HNil)
 
     /** Index over (timestamp) (database name ix_operations_timestamp) */
-    val index7 = index("ix_operations_timestamp", timestamp :: HNil)
+    val index9 = index("ix_operations_timestamp", timestamp :: HNil)
+
+    /** Index over (originatedContracts) (database name ix_originated_contracts) */
+    val index10 = index("ix_originated_contracts", originatedContracts :: HNil)
   }
 
   /** Collection-like TableQuery object for table Operations */
