@@ -159,10 +159,9 @@ class GenericPlatformDiscoveryOperationsTest
         sut.getEntities(NetworkPath("mainnet", PlatformPath("bitcoin"))).futureValue.toSet should matchTo(
           Set(
             Entity("transactions", "Transactions", 0),
-            Entity("blocks", "Blocks", 0)
-            //TODO Uncomment below once issue with array support in PSQL will be solved
-//            Entity("inputs", "Inputs", 0),
-//            Entity("outputs", "Outputs", 0)
+            Entity("blocks", "Blocks", 0),
+            Entity("inputs", "Inputs", 0),
+            Entity("outputs", "Outputs", 0)
           )
         )
       }
@@ -449,7 +448,7 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("median_time", "Median time", DataType.DateTime, None, KeyType.NonKey, "blocks"),
             Attribute("nonce", "Nonce", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("bits", "Bits", DataType.String, None, KeyType.NonKey, "blocks"),
-            Attribute("difficulty", "Difficulty", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("difficulty", "Difficulty", DataType.Decimal, None, KeyType.NonKey, "blocks"),
             Attribute("chain_work", "Chain work", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("n_tx", "N tx", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("previous_block_hash", "Previous block hash", DataType.String, None, KeyType.NonKey, "blocks"),
@@ -476,35 +475,48 @@ class GenericPlatformDiscoveryOperationsTest
         )
       }
 
-      //TODO Uncomment below tests once issue with supporting arrays in postgres will be solved
-//    "return list of attributes of inputs" in {
-//      sut.getTableAttributes(EntityPath("inputs", networkPath)).futureValue.value.toSet should matchTo(
-//        Set(
-//          Attribute("txid", "Txid", DataType.String, None, KeyType.UniqueKey, "inputs"),
-//          Attribute("v_out", "V out", DataType.Int, None, KeyType.NonKey, "inputs"),
-//          Attribute("script_sig_asm", "Script sig asm", DataType.Int, None, KeyType.NonKey, "inputs"),
-//          Attribute("script_sig_hex", "Script sig hex", DataType.String, None, KeyType.NonKey, "inputs"),
-//          Attribute("sequence", "Sequance", DataType.Int, None, KeyType.NonKey, "inputs"),
-//          Attribute("coinbase", "Coinbase", DataType.String, None, KeyType.NonKey, "inputs"),
-//          Attribute("tx_in_witness", "Tx in witness", DataType.String, None, KeyType.NonKey, "inputs")
-//        )
-//      )
-//    }
-//
-//    "return list of attributes of outputs" in {
-//      sut.getTableAttributes(EntityPath("outputs", networkPath)).futureValue.value.toSet should matchTo(
-//        Set(
-//          Attribute("txid", "Txid", DataType.String, None, KeyType.UniqueKey, "outputs"),
-//          Attribute("value", "Value", DataType.Int, None, KeyType.NonKey, "outputs"),
-//          Attribute("n", "N", DataType.Int, None, KeyType.NonKey, "outputs"),
-//          Attribute("script_pub_key_asm", "Script pub key asm", DataType.String, None, KeyType.NonKey, "outputs"),
-//          Attribute("script_pub_key_hex", "Script pub key hex", DataType.String, None, KeyType.NonKey, "outputs"),
-//          Attribute("script_pub_key_req_sigs", "Script pub key req sigs", DataType.Int, None, KeyType.NonKey, "outputs"),
-//          Attribute("script_pub_key_type", "Script pub key type", DataType.String, None, KeyType.NonKey, "outputs"),
-//          Attribute("script_pub_key_addresses", "Script pub key addresses", DataType.String, None, KeyType.NonKey, "outputs")
-//        )
-//      )
-//    }
+      "return list of attributes of inputs" in {
+        sut.getTableAttributes(EntityPath("inputs", networkPath)).futureValue.value.toSet should be(
+          Set(
+            Attribute("txid", "Txid", DataType.String, None, KeyType.NonKey, "inputs"),
+            Attribute("v_out", "V out", DataType.Int, None, KeyType.NonKey, "inputs"),
+            Attribute("script_sig_asm", "Script sig asm", DataType.String, None, KeyType.NonKey, "inputs"),
+            Attribute("script_sig_hex", "Script sig hex", DataType.String, None, KeyType.NonKey, "inputs"),
+            Attribute("sequence", "Sequence", DataType.String, None, KeyType.NonKey, "inputs"),
+            Attribute("coinbase", "Coinbase", DataType.String, None, KeyType.NonKey, "inputs"),
+            Attribute("tx_in_witness", "Tx in witness", DataType.String, None, KeyType.NonKey, "inputs")
+          )
+        )
+      }
+
+      "return list of attributes of outputs" in {
+        sut.getTableAttributes(EntityPath("outputs", networkPath)).futureValue.value.toSet should matchTo(
+          Set(
+            Attribute("txid", "Txid", DataType.String, None, KeyType.NonKey, "outputs"),
+            Attribute("value", "Value", DataType.Decimal, None, KeyType.NonKey, "outputs"),
+            Attribute("n", "N", DataType.Int, None, KeyType.NonKey, "outputs"),
+            Attribute("script_pub_key_asm", "Script pub key asm", DataType.String, None, KeyType.NonKey, "outputs"),
+            Attribute("script_pub_key_hex", "Script pub key hex", DataType.String, None, KeyType.NonKey, "outputs"),
+            Attribute(
+              "script_pub_key_req_sigs",
+              "Script pub key req sigs",
+              DataType.Int,
+              None,
+              KeyType.NonKey,
+              "outputs"
+            ),
+            Attribute("script_pub_key_type", "Script pub key type", DataType.String, None, KeyType.NonKey, "outputs"),
+            Attribute(
+              "script_pub_key_addresses",
+              "Script pub key addresses",
+              DataType.String,
+              None,
+              KeyType.NonKey,
+              "outputs"
+            )
+          )
+        )
+      }
     }
 
   "listAttributeValues (tezos)" should {
