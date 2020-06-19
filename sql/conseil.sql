@@ -590,7 +590,7 @@ CREATE INDEX endorsing_rights_level_idx ON tezos.endorsing_rights USING btree (l
 
 CREATE INDEX endorsing_rights_delegate_idx ON tezos.endorsing_rights USING btree (delegate);
 
-CREATE INDEX ix_delegate ON tezos.endorsing_rights USING btree (delegate);
+CREATE INDEX ix_delegate_slot ON tezos.endorsing_rights USING btree (delegate, slot);
 --
 -- Name: fki_block; Type: INDEX; Schema: tezos; Owner: -
 --
