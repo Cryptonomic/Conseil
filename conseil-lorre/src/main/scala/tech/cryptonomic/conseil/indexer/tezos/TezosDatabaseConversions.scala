@@ -10,7 +10,6 @@ import com.typesafe.scalalogging.LazyLogging
 import io.scalaland.chimney.dsl._
 import monocle.Getter
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.Vote
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
 import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics}
