@@ -17,6 +17,12 @@ class BitcoinRpcClientTest extends WordSpec with Matchers with BitcoinFixtures {
 
   "Bitcoin JSON-RPC client" should {
 
+      "return a blockchain info" in new BitcoinClientFixtures {
+        bitcoinClient(JsonFixtures.getBlockchainInfo).getBlockChainInfo.compile.toList.unsafeRunSync() shouldBe List(
+              RpcFixtures.blockchainInfo
+            )
+      }
+
       "return a block hash for the given height" in new BitcoinClientFixtures {
         Stream(102000)
           .through(bitcoinClient(JsonFixtures.getBlockHash).getBlockHash(batchSize = 1))
@@ -35,18 +41,19 @@ class BitcoinRpcClientTest extends WordSpec with Matchers with BitcoinFixtures {
 
       "return a transactions (with imputs and outputs) for the given block" in new BitcoinClientFixtures {
         Stream(RpcFixtures.block)
-          .through(bitcoinClient(JsonFixtures.getRawTransaction).getTransactionsFromBlock(batchSize = 1))
-          .compile
-          .toList
-          .unsafeRunSync() shouldBe List(RpcFixtures.transaction)
-
-        Stream(RpcFixtures.transaction)
-          .through(bitcoinClient(JsonFixtures.getRawTransaction).getTransactionComponents)
+          .through(bitcoinClient(JsonFixtures.getRawTransaction).getBlockWithTransactions(batchSize = 1))
           .compile
           .toList
           .unsafeRunSync() shouldBe List(
-              RpcFixtures.inputWithTxid,
-              RpcFixtures.outputWithTxid
+              (
+                RpcFixtures.block,
+                List(
+                  RpcFixtures.transaction.copy(
+                    vin = List(RpcFixtures.inputWithTxid),
+                    vout = List(RpcFixtures.outputWithTxid)
+                  )
+                )
+              )
             )
       }
 
