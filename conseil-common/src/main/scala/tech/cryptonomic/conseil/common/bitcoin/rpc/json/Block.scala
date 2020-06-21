@@ -1,6 +1,9 @@
 package tech.cryptonomic.conseil.common.bitcoin.rpc.json
 
-// Response for `getblock` Bitcoin JSON-RPC api call https://developer.bitcoin.org/reference/rpc/getblock.html (with verbosity = 1)
+/**
+  * Response from `getblock` Bitcoin JSON-RPC api call (with verbosity = 1).
+  * More info at: https://developer.bitcoin.org/reference/rpc/getblock.html
+  */
 case class Block(
     hash: String,
     size: Int,

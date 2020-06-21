@@ -1,10 +1,16 @@
 package tech.cryptonomic.conseil.common.bitcoin.rpc.json
 
+/**
+  * Trait for transaction inputs and outputs.
+  */
 trait TransactionComponent {
   def txid: Option[String]
 }
 
-// Response for `getrawtransaction` Bitcoin JSON-RPC api call https://developer.bitcoin.org/reference/rpc/getblock.html (with verbose = true)
+/**
+  * Response from `getrawtransaction` Bitcoin JSON-RPC api call (with verbose = true).
+  * More info at: https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
+  */
 case class Transaction(
     txid: String,
     blockhash: String,
