@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
@@ -161,9 +160,7 @@ class TezosDataRoutesTest
       platformDiscoveryOperations
     )
 
-  val postRoute: Route = TezosDataRoutes(metadataService, metadataConf, conseilOps, 1000).postRoute
-
-  val getRoute: Route = TezosDataRoutes(metadataService, metadataConf, conseilOps, 1000).getRoute
+  private val routes: TezosDataRoutes = TezosDataRoutes(metadataService, metadataConf, conseilOps, 1000)
 
   "Query protocol" should {
 
@@ -175,7 +172,7 @@ class TezosDataRoutesTest
           entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
         )
 
-        postRequest ~> addHeader("apiKey", "hooman") ~> postRoute ~> check {
+        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
           val resp = entityAs[String]
           resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
           status shouldBe StatusCodes.OK
@@ -189,7 +186,7 @@ class TezosDataRoutesTest
           uri = "/v2/data/notSupportedPlatform/alphanet/accounts",
           entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
         )
-        postRequest ~> addHeader("apiKey", "hooman") ~> postRoute ~> check {
+        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
           status shouldBe StatusCodes.NotFound
         }
       }
@@ -201,7 +198,7 @@ class TezosDataRoutesTest
           uri = "/v2/data/tezos/notSupportedNetwork/accounts",
           entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
         )
-        postRequest ~> addHeader("apiKey", "hooman") ~> postRoute ~> check {
+        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
           status shouldBe StatusCodes.NotFound
         }
       }
@@ -212,7 +209,7 @@ class TezosDataRoutesTest
           uri = "/v2/data/tezos/alphanet/accounts"
         )
 
-        getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
+        getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
           val resp = entityAs[String]
           resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
           status shouldBe StatusCodes.OK
@@ -224,7 +221,7 @@ class TezosDataRoutesTest
           HttpMethods.GET,
           uri = "/v2/data/notSupportedPlatform/alphanet/accounts"
         )
-        getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
+        getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
           status shouldBe StatusCodes.NotFound
         }
       }
@@ -234,7 +231,7 @@ class TezosDataRoutesTest
           HttpMethods.GET,
           uri = "/v2/data/tezos/notSupportedNetwork/accounts"
         )
-        getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
+        getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
           status shouldBe StatusCodes.NotFound
         }
       }
