@@ -6,11 +6,13 @@ import akka.http.scaladsl.server.Route
 import akka.util.ByteString
 import endpoints.algebra.Documentation
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataHelpers
+import tech.cryptonomic.conseil.common.bitcoin.Tables
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 
 trait BitcoinDataHelpers extends BitcoinDataEndpoints with ApiDataHelpers {
 
   import io.circe._
+  import io.circe.syntax._
   import tech.cryptonomic.conseil.api.routes.platform.data.CsvConversions._
   import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 
@@ -32,6 +34,8 @@ trait BitcoinDataHelpers extends BitcoinDataEndpoints with ApiDataHelpers {
   implicit override val fieldSchema: JsonSchema[Field] = fieldJsonSchema(formattedFieldSchema)
 
   /** Represents the function, that is going to encode the blockchain specific data types */
-  override protected def customAnyEncoder: PartialFunction[Any, Json] = ??? //TODO Implement that later
+  override protected def customAnyEncoder: PartialFunction[Any, Json] = {
+    case x: Tables.BlocksRow => x.asJson(blocksRowSchema.encoder)
+  }
 
 }

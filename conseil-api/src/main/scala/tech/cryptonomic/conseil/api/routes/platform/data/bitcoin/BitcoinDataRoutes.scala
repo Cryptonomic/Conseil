@@ -4,7 +4,7 @@ import akka.http.scaladsl.server.Directives.concat
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.metadata.MetadataService
-import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
+import tech.cryptonomic.conseil.api.routes.platform.data.{ApiDataOperations, ApiDataRoutes}
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.common.metadata
@@ -15,13 +15,15 @@ import scala.concurrent.{ExecutionContext, Future}
 case class BitcoinDataRoutes(
     metadataService: MetadataService,
     metadataConfiguration: MetadataConfiguration,
-    operations: BitcoinDataOperations,
+    operations: ApiDataOperations,
     maxQueryResultSize: Int
 )(
     implicit apiExecutionContext: ExecutionContext
 ) extends ApiDataRoutes
     with LazyLogging
     with BitcoinDataHelpers {
+
+  private val dataQueries = new BitcoinDataQueries(operations)
 
   import cats.instances.either._
   import cats.instances.future._
@@ -51,9 +53,7 @@ case class BitcoinDataRoutes(
   private val blocksRoute: Route = blocksEndpoint.implementedByAsync {
     case ((platform, network, filter), _) =>
       platformNetworkValidation(platform, network) {
-        operations
-          .queryWithPredicates(platform, "blocks", filter.toQuery.withLimitCap(maxQueryResultSize))
-          .map(Option(_))
+        dataQueries.fetchBlocks(filter.toQuery.withLimitCap(maxQueryResultSize))
       }
   }
 
@@ -61,10 +61,7 @@ case class BitcoinDataRoutes(
   private val blocksHeadRoute: Route = blocksHeadEndpoint.implementedByAsync {
     case (platform, network, _) =>
       platformNetworkValidation(platform, network) {
-        val filter = BitcoinFilter(limit = Some(1), sortBy = Some("time")) //TODO Verify that it works. Maybe we need to write custom method
-        operations
-          .queryWithPredicates(platform, "blocks", filter.toQuery)
-          .map(_.headOption)
+        dataQueries.fetchBlocksHead()
       }
   }
 
@@ -72,10 +69,7 @@ case class BitcoinDataRoutes(
   private val blockByHashRoute: Route = blockByHashEndpoint.implementedByAsync {
     case ((platform, network, hash), _) =>
       platformNetworkValidation(platform, network) {
-        val filter = BitcoinFilter(blockIDs = Set(hash)) //TODO Verify that it works. Maybe we need to write custom method
-        operations
-          .queryWithPredicates(platform, "blocks", filter.toQuery)
-          .map(_.headOption)
+        dataQueries.fetchBlockByHead(hash)
       }
   }
 
@@ -83,9 +77,7 @@ case class BitcoinDataRoutes(
   private val transactionsRoute: Route = transactionsEndpoint.implementedByAsync {
     case ((platform, network, filter), _) =>
       platformNetworkValidation(platform, network) {
-        operations
-          .queryWithPredicates(platform, "transactions", filter.toQuery.withLimitCap(maxQueryResultSize))
-          .map(Some(_))
+        dataQueries.fetchTransactions(filter.toQuery.withLimitCap(maxQueryResultSize))
       }
   }
 
@@ -93,9 +85,7 @@ case class BitcoinDataRoutes(
   private val inputsRoute: Route = inputsEndpoint.implementedByAsync {
     case ((platform, network, filter), _) =>
       platformNetworkValidation(platform, network) {
-        operations
-          .queryWithPredicates(platform, "inputs", filter.toQuery.withLimitCap(maxQueryResultSize))
-          .map(Some(_))
+        dataQueries.fetchInputs(filter.toQuery.withLimitCap(maxQueryResultSize))
       }
   }
 
@@ -103,9 +93,7 @@ case class BitcoinDataRoutes(
   private val outputsRoute: Route = inputsEndpoint.implementedByAsync {
     case ((platform, network, filter), _) =>
       platformNetworkValidation(platform, network) {
-        operations
-          .queryWithPredicates(platform, "outputs", filter.toQuery.withLimitCap(maxQueryResultSize))
-          .map(Some(_))
+        dataQueries.fetchOutputs(filter.toQuery.withLimitCap(maxQueryResultSize))
       }
   }
 
