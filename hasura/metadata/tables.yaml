@@ -1,0 +1,60 @@
+- table:
+    schema: tezos
+    name: accounts
+- table:
+    schema: tezos
+    name: accounts_history
+- table:
+    schema: tezos
+    name: baker_registry
+- table:
+    schema: tezos
+    name: bakers
+- table:
+    schema: tezos
+    name: bakers_history
+- table:
+    schema: tezos
+    name: baking_rights
+- table:
+    schema: tezos
+    name: balance_updates
+- table:
+    schema: tezos
+    name: big_map_contents
+- table:
+    schema: tezos
+    name: big_maps
+- table:
+    schema: tezos
+    name: blocks
+- table:
+    schema: tezos
+    name: endorsing_rights
+- table:
+    schema: tezos
+    name: fees
+- table:
+    schema: tezos
+    name: governance
+- table:
+    schema: tezos
+    name: known_addresses
+- table:
+    schema: tezos
+    name: operation_groups
+- table:
+    schema: tezos
+    name: operations
+- table:
+    schema: tezos
+    name: originated_account_maps
+- table:
+    schema: tezos
+    name: registered_tokens
+- table:
+    schema: tezos
+    name: tezos_names
+- table:
+    schema: tezos
+    name: token_balances
