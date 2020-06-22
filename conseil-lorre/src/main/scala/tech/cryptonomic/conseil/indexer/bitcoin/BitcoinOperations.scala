@@ -7,14 +7,9 @@ import slick.jdbc.PostgresProfile.api._
 import slickeffect.Transactor
 
 import tech.cryptonomic.conseil.common.rpc.RpcClient
-import tech.cryptonomic.conseil.common.bitcoin.BitcoinPersistence
+import tech.cryptonomic.conseil.common.bitcoin.{BitcoinPersistence, Tables}
 import tech.cryptonomic.conseil.common.bitcoin.rpc.BitcoinClient
-import tech.cryptonomic.conseil.common.bitcoin.rpc.json.TransactionComponent
-import tech.cryptonomic.conseil.indexer.config.Depth
-import tech.cryptonomic.conseil.indexer.config.Newest
-import tech.cryptonomic.conseil.indexer.config.Everything
-import tech.cryptonomic.conseil.indexer.config.Custom
-import tech.cryptonomic.conseil.common.bitcoin.Tables
+import tech.cryptonomic.conseil.indexer.config.{Depth, Newest, Everything, Custom}
 
 /**
   * Bitcoin operations for Lorre.
@@ -35,34 +30,53 @@ class BitcoinOperations[F[_]: Concurrent](
     *
     * @param depth Can be: Newest, Everything or Custom
     */
-  def loadBlocks(depth: Depth): Stream[F, TransactionComponent] =
+  def loadBlocks(depth: Depth): Stream[F, Unit] =
     Stream
       .eval(tx.transact(Tables.Blocks.sortBy(_.height).take(1).result)) // get last block height
       .zip(bitcoinClient.getBlockChainInfo)
-      .flatMap { case (block, info) =>
-        depth match {
-          case Newest => loadBlocksWithTransactions(block.head.height to info.blocks)
-          case Everything => loadBlocksWithTransactions(1 to info.blocks)
-          case Custom(depth) => loadBlocksWithTransactions(depth to info.blocks)
-        }
+      .evalTap(_ => Concurrent[F].delay(logger.info(s"Start Lorre for Bitcoin")))
+      .flatMap {
+        case (block, info) =>
+          depth match {
+            case Newest if block.size > 0 => loadBlocksWithTransactions(block.head.height to info.blocks)
+            case Newest | Everything => loadBlocksWithTransactions(1 to info.blocks)
+            case Custom(depth) => loadBlocksWithTransactions(depth to info.blocks)
+          }
       }
 
   /**
     * Get Blocks from Bitcoin node through Bitcoin client and save them into the database using Slick.
+    * In the beginning, the current list of blocks is obtained from the database and removed from the computation.
     *
     * @param range Inclusive range of the block's height
     */
-  def loadBlocksWithTransactions(range: Range.Inclusive): Stream[F, TransactionComponent] =
+  def loadBlocksWithTransactions(range: Range.Inclusive): Stream[F, Unit] =
     Stream
-      .range(range.start, range.end)
-      .through(stream => stream)
-      .through(bitcoinClient.getBlockHash(2000))
-      .through(bitcoinClient.getBlockByHash(500))
-      .through(persistence.saveBlocks(2000))
-      .through(bitcoinClient.getTransactionsFromBlock(200))
-      .through(persistence.saveTransactions(4000))
-      .through(bitcoinClient.getTransactionComponents)
-      .through(persistence.saveTransactionComponents(10000))
+      .eval(getExistingBlocks(range))
+      .flatMap(
+        existingBlocks =>
+          Stream
+            .range(range.start, range.end)
+            .filter(height => !existingBlocks.contains(height))
+            .through(bitcoinClient.getBlockHash(2000))
+            .through(bitcoinClient.getBlockByHash(500))
+            .through(bitcoinClient.getBlockWithTransactions(200))
+            .evalTap(block => Concurrent[F].delay(logger.info(s"Save block with height: ${block._1.height}")))
+            .map(result => persistence.createBlock(result._1, result._2))
+            .evalMap(tx.transact)
+            .drain
+      )
+
+  /**
+    * Get sequence of existing blocks from the database.
+    *
+    * @param range nclusive range of the block's height
+    * @return
+    */
+  def getExistingBlocks(range: Range.Inclusive): F[Seq[Int]] =
+    tx.transact(
+      Tables.Blocks.filter(block => block.height >= range.start && block.height <= range.end).map(_.height).result
+    )
 }
 
 object BitcoinOperations {
@@ -79,7 +93,7 @@ object BitcoinOperations {
   ): Resource[F, BitcoinOperations[F]] =
     for {
       bitcoinClient <- BitcoinClient.resource(rpcClient)
-      persistence <- BitcoinPersistence.resource(tx)
+      persistence <- BitcoinPersistence.resource
       client <- Resource.pure(
         new BitcoinOperations[F](bitcoinClient, persistence, tx)
       )

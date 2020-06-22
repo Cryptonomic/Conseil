@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.indexer.bitcoin
 
 import java.util.concurrent.Executors
+
 import scala.concurrent.{ExecutionContext, Future}
 
 import cats.effect.{ContextShift, ExitCode, IO, Resource}
@@ -8,7 +9,9 @@ import com.typesafe.scalalogging.LazyLogging
 import org.http4s.headers.Authorization
 import org.http4s.BasicCredentials
 import org.http4s.client.blaze.BlazeClientBuilder
+import slick.jdbc.PostgresProfile.api._
 import slickeffect.Transactor
+import slickeffect.transactor.config
 
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.indexer.config.LorreConfiguration
@@ -33,11 +36,10 @@ class BitcoinIndexer(
 
   private val executor = Executors.newFixedThreadPool(16)
   implicit private val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.fromExecutor(executor))
-  // implicit val timer = IO.timer(ExecutionContext.global)
+  implicit val timer = IO.timer(ExecutionContext.global)
   implicit private val httpEC: ExecutionContext = ExecutionContext.fromExecutor(executor) // Implicit is used to provide ExecutionContext for `stop`
 
   /**
-    *
     * Lorre for Bitcoin entry point. This method creates all the dependencies and wraps it into [[cats.Resource]].
     */
   def resource: Resource[IO, Unit] =
@@ -53,10 +55,11 @@ class BitcoinIndexer(
 
       tx <- Transactor
         .fromDatabase[IO](IO.delay(DatabaseUtil.lorreDb))
+        .map(_.configure(config.transactionally)) // run operations in transaction
 
       bitcoinOperations <- BitcoinOperations.resource(rpcClient, tx)
 
-      _ <- bitcoinOperations.loadBlocks(lorreConf.depth).compile.resource.drain
+      _ <- bitcoinOperations.loadBlocks(lorreConf.depth).delayBy(lorreConf.sleepInterval).repeat.compile.resource.drain
     } yield ()
 
   override def platform: Platforms.BlockchainPlatform = Platforms.Bitcoin
