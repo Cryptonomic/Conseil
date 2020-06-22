@@ -4,7 +4,6 @@ import scala.concurrent.ExecutionContext
 
 import cats.effect._
 import cats.arrow.FunctionK
-import fs2.Stream
 import org.scalatest.{Matchers, WordSpec}
 import slickeffect.Transactor
 import slick.jdbc.PostgresProfile.api._
@@ -24,46 +23,40 @@ class BitcoinPersistenceTest
   "Bitcoin persistence" should {
 
       "write blocks" in new BitcoinPersistanceFixtgures {
-        Stream(RpcFixtures.block)
-          .through(persistance.saveBlocks(batchSize = 1))
-          .compile
-          .drain
-          .flatMap(_ => tx.transact(Tables.Blocks.result))
-          .unsafeRunSync() shouldBe Vector(DbFixtures.block)
-      }
-
-      "write transactions" in new BitcoinPersistanceFixtgures {
         (for {
-          // we can't save transaction without corresponding block
-          _ <- Stream(RpcFixtures.block).through(persistance.saveBlocks(batchSize = 1)).compile.drain
-          _ <- Stream(RpcFixtures.transaction).through(persistance.saveTransactions(batchSize = 1)).compile.drain
-          result <- tx.transact(Tables.Transactions.result)
-        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.transaction)
-      }
-
-      "write transaction components" in new BitcoinPersistanceFixtgures {
-        (for {
-          // we can't save transaction components without corresponding block and transaction
-          _ <- Stream(RpcFixtures.block).through(persistance.saveBlocks(batchSize = 1)).compile.drain
-          _ <- Stream(RpcFixtures.transaction).through(persistance.saveTransactions(batchSize = 1)).compile.drain
-          _ <- Stream(
-            RpcFixtures.inputWithTxid,
-            RpcFixtures.outputWithTxid
-          ).through(persistance.saveTransactionComponents(batchSize = 1)).compile.drain
+          // run
+          _ <- tx.transact(
+            persistance
+              .createBlock(
+                RpcFixtures.block,
+                List(
+                  RpcFixtures.transaction
+                    .copy(vin = List(RpcFixtures.inputWithTxid), vout = List(RpcFixtures.outputWithTxid))
+                )
+              )
+          )
+          // test results
+          block <- tx.transact(Tables.Blocks.result)
+          transactions <- tx.transact(Tables.Transactions.result)
           inputs <- tx.transact(Tables.Inputs.result)
           outputs <- tx.transact(Tables.Outputs.result)
-        } yield inputs ++ outputs).unsafeRunSync() shouldBe Vector(DbFixtures.input, DbFixtures.output)
+        } yield block ++ transactions ++ inputs ++ outputs).unsafeRunSync() shouldBe Vector(
+          DbFixtures.block,
+          DbFixtures.transaction,
+          DbFixtures.input,
+          DbFixtures.output
+        )
       }
-
     }
 
   trait BitcoinPersistanceFixtgures {
 
+    // prevent transactor from shutdown handler after each operation
     val tx = Transactor.liftK(new FunctionK[DBIO, IO] {
       def apply[A](dbio: DBIO[A]): IO[A] = Async.fromFuture(IO.delay(dbHandler.run(dbio)))
     })
 
-    val persistance = new BitcoinPersistence(tx)
+    val persistance = new BitcoinPersistence[IO]
   }
 
 }

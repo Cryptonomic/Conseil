@@ -4,64 +4,52 @@ import java.sql.Timestamp
 
 import cats.Id
 import cats.effect.{Concurrent, Resource}
-import cats.syntax.all._
 import com.typesafe.scalalogging.LazyLogging
-import fs2.{Pipe, Stream}
-import slickeffect.Transactor
-
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 
-import tech.cryptonomic.conseil.common.bitcoin.rpc.json.{
-  Block,
-  Transaction,
-  TransactionComponent,
-  TransactionInput,
-  TransactionOutput
-}
-import tech.cryptonomic.conseil.common.bitcoin.BitcoinPersistence._
 import tech.cryptonomic.conseil.common.util.Conversion
+import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
+import tech.cryptonomic.conseil.common.bitcoin.rpc.json.{Block, Transaction, TransactionInput, TransactionOutput}
+import tech.cryptonomic.conseil.common.bitcoin.BitcoinPersistence._
 
-class BitcoinPersistence[F[_]: Concurrent](
-    tx: Transactor[F]
-) extends LazyLogging {
+/**
+  * Bitcoin persistence into the database using Slick.
+  */
+class BitcoinPersistence[F[_]: Concurrent] extends LazyLogging {
 
-  def saveBlocks(batchSize: Int): Pipe[F, Block, Block] =
-    _.chunkN(batchSize).evalTap { blocks =>
-      Concurrent[F].delay(logger.info(s"Save Blocks in batch of: ${blocks.size}")) *>
-        tx.transact(DBIO.seq(Tables.Blocks ++= blocks.toList.map(_.convertTo[Tables.BlocksRow])))
-    }.flatMap(Stream.chunk)
-
-  def saveTransactions(batchSize: Int): Pipe[F, Transaction, Transaction] =
-    _.chunkN(batchSize).evalTap { transactions =>
-      Concurrent[F].delay(logger.info(s"Save Transactions in batch of: ${transactions.size}")) *>
-        tx.transact(
-          DBIO.seq(Tables.Transactions ++= transactions.toList.map(_.convertTo[Tables.TransactionsRow]))
-        )
-    }.flatMap(Stream.chunk)
-
-  def saveTransactionComponents(batchSize: Int): Pipe[F, TransactionComponent, TransactionComponent] =
-    _.chunkN(batchSize).evalTap { components =>
-      Concurrent[F].delay(logger.info(s"Save TransactionComponents in batch of: ${components.size}")) *>
-        tx.transact(DBIO.seq(Tables.Inputs ++= components.collect {
-              case vin: TransactionInput => vin.convertTo[Tables.InputsRow]
-            }.toList)) *>
-        tx.transact(DBIO.seq(Tables.Outputs ++= components.collect {
-              case vout: TransactionOutput => vout.convertTo[Tables.OutputsRow]
-            }.toList))
-    }.flatMap(Stream.chunk)
+  /**
+    * Create [[DBIO]] seq with block (with transactions, inputs and outputs) that can be wrap into one transaction.
+    *
+    * @param block JSON_RPC block
+    * @param transactions JSON_RPC block's transactions
+    */
+  def createBlock(
+      block: Block,
+      transactions: List[Transaction]
+  ): DBIOAction[Unit, NoStream, Effect.Write] =
+    DBIO.seq(
+      Tables.Blocks += block.convertTo[Tables.BlocksRow],
+      Tables.Transactions ++= transactions.map(_.convertTo[Tables.TransactionsRow]),
+      Tables.Inputs ++= transactions.map(_.vin).flatten.map(_.convertTo[Tables.InputsRow]),
+      Tables.Outputs ++= transactions.map(_.vout).flatten.map(_.convertTo[Tables.OutputsRow])
+    )
 }
 
 object BitcoinPersistence {
-  def resource[F[_]: Concurrent](
-      tx: Transactor[F]
-  ): Resource[F, BitcoinPersistence[F]] =
+
+  /**
+    * Create [[cats.Resource]] with [[BitcoinPersistence]].
+    */
+  def resource[F[_]: Concurrent]: Resource[F, BitcoinPersistence[F]] =
     for {
       client <- Resource.liftF(
-        Concurrent[F].delay(new BitcoinPersistence[F](tx))
+        Concurrent[F].delay(new BitcoinPersistence[F])
       )
     } yield client
 
+  /**
+    * Convert form [[Block]] to [[Tables.BlocksRow]]
+    */
   implicit val blockToBlocksRow: Conversion[Id, Block, Tables.BlocksRow] = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) =
       Tables.BlocksRow(
@@ -81,10 +69,13 @@ object BitcoinPersistence {
         previousBlockHash = from.previousblockhash,
         nextBlockHash = from.nextblockhash,
         medianTime = new Timestamp(from.mediantime),
-        time = new Timestamp(from.time),
+        time = new Timestamp(from.time)
       )
   }
 
+  /**
+    * Convert form [[Transaction]] to [[Tables.TransactionsRow]]
+    */
   implicit val transactionToTransactionsRow: Conversion[Id, Transaction, Tables.TransactionsRow] =
     new Conversion[Id, Transaction, Tables.TransactionsRow] {
       override def convert(from: Transaction) =
@@ -103,6 +94,9 @@ object BitcoinPersistence {
         )
     }
 
+  /**
+    * Convert form [[TransactionInput]] to [[Tables.InputsRow]]
+    */
   implicit val inputToInputsRow: Conversion[Id, TransactionInput, Tables.InputsRow] =
     new Conversion[Id, TransactionInput, Tables.InputsRow] {
       override def convert(from: TransactionInput) =
@@ -117,6 +111,9 @@ object BitcoinPersistence {
         )
     }
 
+  /**
+    * Convert form [[TransactionOutput]] to [[OutputsRow.BlocksRow]]
+    */
   implicit val outputToOutputRow: Conversion[Id, TransactionOutput, Tables.OutputsRow] =
     new Conversion[Id, TransactionOutput, Tables.OutputsRow] {
       override def convert(from: TransactionOutput) =
