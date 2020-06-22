@@ -21,9 +21,9 @@ import tech.cryptonomic.conseil.common.rpc.RpcClient._
   *   import io.circe.generic.auto._
   *   import org.http4s.circe.CirceEntityDecoder._
   *   import org.http4s.circe.CirceEntityEncoder._
-  * 
+  *
   *   implicit val contextShift = IO.contextShift(ExecutionContext.global)
-  *   
+  *
   *   // Define case class for JSON-RPC method and response
   *   case class ApiMethodParams(id: Int)
   *   case class ApiMethodResponse(name: String)
@@ -67,7 +67,7 @@ class RpcClient[F[_]: Concurrent](
     * @param batchSize The size of the batched request in single HTTP call
     * @param request [[fs2.Stream]]] of the [[RpcRequest]]
     *
-    * Returns a [[fs2.Stream]]] that contains result from JSON-RPC server call.
+    * @return [[fs2.Stream]]] that contains result from JSON-RPC server call.
     */
   def stream[P, R](batchSize: Int)(request: Stream[F, RpcRequest[P]])(
       implicit decode: EntityDecoder[F, Seq[RpcResponse[R]]],
@@ -75,9 +75,10 @@ class RpcClient[F[_]: Concurrent](
   ): Stream[F, R] =
     request
       .chunkN(batchSize)
-      .evalTap { requests =>
-        Concurrent[F].delay(logger.debug(s"Call RPC in a batch of: ${requests.size}"))
-      }
+      .evalTap(requests => debug(s"Call RPC in a batch of: ${requests.size}"))
+      // From JSON-RPC documentation: The Server MAY process a batch rpc call as a set of concurrent tasks, 
+      //                              processing them in any order and with any width of parallelism.
+      // So we also can process the responses in unordered meaner.
       .mapAsyncUnordered(maxConcurrent) { chunks =>
         httpClient
           .expect[Seq[RpcResponse[R]]](
@@ -98,6 +99,14 @@ class RpcClient[F[_]: Concurrent](
           )
       }
 
+  /**
+    * Helper method to log debug information.
+    * It wraps scalalogging call into [[Concurrent]] to prevent side effects.
+    * It should be moved to separate logging util in the future.
+    *
+    * @param message Debug message
+    */
+  private def debug(message: String): F[Unit] = Concurrent[F].delay(logger.debug(message))
 }
 
 object RpcClient {
@@ -129,7 +138,7 @@ object RpcClient {
 
   /**
     * Exception with JSON-RPC error message
-    * 
+    *
     * Defined Error Codes:
     * -32700 ---> parse error. not well formed
     * -32701 ---> parse error. unsupported encoding
@@ -141,8 +150,8 @@ object RpcClient {
     * -32500 ---> application error
     * -32400 ---> system error
     * -32300 ---> transport error
-    * 
-    * In addition, the range -32099 .. -32000, inclusive is reserved for implementation defined server errors. 
+    *
+    * In addition, the range -32099 .. -32000, inclusive is reserved for implementation defined server errors.
     */
   case class RpcException(
       code: Int,
