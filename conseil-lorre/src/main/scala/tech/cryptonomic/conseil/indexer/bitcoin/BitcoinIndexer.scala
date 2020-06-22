@@ -18,7 +18,12 @@ import tech.cryptonomic.conseil.indexer.LorreIndexer
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 
-/** * Class responsible for indexing data for Bitcoin BlockChain */
+/**
+  * Class responsible for indexing data for Bitcoin Blockchain
+  *
+  * @param lorreConf Lorre configuration
+  * @param bitcoinConf Bitcoin configuration
+  */
 class BitcoinIndexer(
     lorreConf: LorreConfiguration,
     bitcoinConf: BitcoinConfiguration
@@ -29,8 +34,12 @@ class BitcoinIndexer(
   private val executor = Executors.newFixedThreadPool(16)
   implicit private val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.fromExecutor(executor))
   // implicit val timer = IO.timer(ExecutionContext.global)
-  implicit private val httpEC: ExecutionContext = ExecutionContext.fromExecutor(executor)
+  implicit private val httpEC: ExecutionContext = ExecutionContext.fromExecutor(executor) // Implicit is used to provide ExecutionContext for `stop`
 
+  /**
+    *
+    * Lorre for Bitcoin entry point. This method creates all the dependencies and wraps it into [[cats.Resource]].
+    */
   def resource: Resource[IO, Unit] =
     for {
       httpClient <- BlazeClientBuilder[IO](httpEC).resource
@@ -66,7 +75,12 @@ class BitcoinIndexer(
 
 object BitcoinIndexer {
 
-  /** * Creates the Indexer which is dedicated for Bitcoin BlockChain */
+  /**
+    * Creates the Indexer which is dedicated for Bitcoin Blockchain
+    *
+    * @param lorreConf Lorre configuration
+    * @param bitcoinConf Bitcoin configuration
+    */
   def fromConfig(
       lorreConf: LorreConfiguration,
       bitcoinConf: BitcoinConfiguration
