@@ -22,9 +22,9 @@ object Dependencies {
     val postgres = "42.1.4"
 
     val endpoints = "0.9.0"
-    val cats = "1.6.0"
+    val cats = "2.1.1"
     val mouse = "0.20"
-    val monocle = "1.5.1-cats"
+    val monocle = "2.0.0"
     val circe = "0.11.1"
     val http4s = "0.20.10"
 

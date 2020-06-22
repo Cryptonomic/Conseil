@@ -4,7 +4,6 @@ import cats.instances.future._
 import cats.syntax.applicative._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.JsonToMichelson.toMichelsonScript
 import tech.cryptonomic.conseil.indexer.tezos.michelson.dto.{MichelsonInstruction, MichelsonSchema}
@@ -215,7 +214,7 @@ private[tezos] class TezosNodeOperator(
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
-    import tech.cryptonomic.conseil.common.tezos.TezosOptics.Accounts.{scriptLens, storageLens}
+    import tech.cryptonomic.conseil.common.tezos.TezosOptics.Accounts.{whenAccountCode, whenAccountStorage}
 
     implicit val fetcherInstance = accountFetcher(blockHash)
 
@@ -224,8 +223,8 @@ private[tezos] class TezosNodeOperator(
 
     def parseMichelsonScripts: Account => Account = {
       implicit lazy val _ = logger
-      val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
-      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+      val scriptAlter = whenAccountCode.modify(toMichelsonScript[MichelsonSchema])
+      val storageAlter = whenAccountStorage.modify(toMichelsonScript[MichelsonInstruction])
 
       scriptAlter compose storageAlter
     }
@@ -644,6 +643,14 @@ private[tezos] class TezosNodeOperator(
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.{fetch, fetchMerge}
+    import tech.cryptonomic.conseil.common.tezos.TezosOptics.Blocks.{
+      acrossInternalParameters,
+      acrossInternalTransactions,
+      acrossScriptsCode,
+      acrossScriptsStorage,
+      acrossTransactionParameters,
+      acrossTransactions
+    }
 
     logger.info("Fetching block data in range: " + levelRange)
 
@@ -663,18 +670,18 @@ private[tezos] class TezosNodeOperator(
       val copyInternalParametersToMicheline = (t: InternalOperationResults.Transaction) =>
         t.copy(parameters_micheline = t.parameters)
 
-      val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
-      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+      val codeAlter = acrossScriptsCode.modify(toMichelsonScript[MichelsonInstruction])
+      val storageAlter = acrossScriptsStorage.modify(toMichelsonScript[MichelsonInstruction])
 
-      val setUnparsedMicheline = transactionLens.modify(copyParametersToMicheline)
+      val setUnparsedMicheline = acrossTransactions.modify(copyParametersToMicheline)
       //TODO focus the lens on the optional field and empty it if the conversion fails
       //we have a copy anyway in the parameters_micheline
-      val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
+      val parametersAlter = acrossTransactionParameters.modify(toMichelsonScript[MichelsonInstruction])
 
-      val setUnparsedMichelineToInternals = internalTransationsTraversal.modify(copyInternalParametersToMicheline)
+      val setUnparsedMichelineToInternals = acrossInternalTransactions.modify(copyInternalParametersToMicheline)
       //TODO focus the lens on the optional field and empty it if the conversion fails
       //we have a copy anyway in the parameters_micheline
-      val parametersAlterToInternals = internalParametersLens.modify(toMichelsonScript[MichelsonInstruction])
+      val parametersAlterToInternals = acrossInternalParameters.modify(toMichelsonScript[MichelsonInstruction])
 
       //each operation will convert a block to an updated version of block, therefore compose each transformation with the next
       codeAlter andThen

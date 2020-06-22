@@ -1,94 +1,12 @@
 package tech.cryptonomic.conseil.common.tezos
 
 import java.time.{Instant, ZonedDateTime}
-
-import monocle.function.all._
-import monocle.macros.{GenLens, GenPrism}
-import monocle.std.option._
-import monocle.{Lens, Optional, Traversal}
-
 import scala.util.Try
 
 /**
   * Classes used for deserializing Tezos node RPC results.
   */
 object TezosTypes {
-
-  /*Reminder: we might want to move this to TezosOptics object*/
-  object Lenses {
-    private val operationGroups = GenLens[Block](_.operationGroups)
-    private val operations = GenLens[OperationsGroup](_.contents)
-
-    private val origination = GenPrism[Operation, Origination]
-    private val transaction = GenPrism[Operation, Transaction]
-    private val metadata = GenLens[Transaction](_.metadata)
-    private val internalTransaction =
-      GenPrism[InternalOperationResults.InternalOperationResult, InternalOperationResults.Transaction]
-
-    private val script = GenLens[Origination](_.script)
-    private val parameters = GenLens[Transaction](_.parameters)
-    private val internalParameters = GenLens[InternalOperationResults.Transaction](_.parameters)
-
-    private val parametersExpression = Lens[ParametersCompatibility, Micheline] {
-      case Left(value) => value.value
-      case Right(value) => value
-    } { micheline =>
-      {
-        case Left(value) => Left(value.copy(value = micheline))
-        case Right(_) => Right(micheline)
-      }
-    }
-
-    private val storage = GenLens[Scripted.Contracts](_.storage)
-    private val code = GenLens[Scripted.Contracts](_.code)
-
-    private val expression = GenLens[Micheline](_.expression)
-
-    private val scriptLens: Traversal[Block, Scripted.Contracts] =
-      operationGroups composeTraversal each composeLens
-          operations composeTraversal each composePrism
-          origination composeLens
-          script composePrism some
-
-    private def internals[OP]: Optional[ResultMetadata[OP], List[InternalOperationResults.InternalOperationResult]] =
-      Optional((_: ResultMetadata[OP]).internal_operation_results)(
-        internalResults =>
-          metadata =>
-            metadata.copy(internal_operation_results = metadata.internal_operation_results.map(_ => internalResults))
-      )
-
-    val storageLens: Traversal[Block, String] = scriptLens composeLens storage composeLens expression
-    val codeLens: Traversal[Block, String] = scriptLens composeLens code composeLens expression
-
-    val transactionLens: Traversal[Block, Transaction] =
-      operationGroups composeTraversal
-          each composeLens
-          operations composeTraversal
-          each composePrism
-          transaction
-
-    val parametersLens: Traversal[Block, String] =
-      transactionLens composeLens
-          parameters composePrism
-          some composeLens
-          parametersExpression composeLens
-          expression
-
-    val internalTransationsTraversal =
-      transactionLens composeLens
-          metadata composeOptional
-          internals composeTraversal
-          each composePrism
-          internalTransaction
-
-    val internalParametersLens: Traversal[Block, String] =
-      internalTransationsTraversal composeLens
-          internalParameters composePrism
-          some composeLens
-          parametersExpression composeLens
-          expression
-
-  }
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding
   lazy val isBase58Check: String => Boolean = (s: String) => {
