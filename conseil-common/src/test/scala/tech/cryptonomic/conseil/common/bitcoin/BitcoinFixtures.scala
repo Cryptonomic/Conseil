@@ -26,6 +26,8 @@ trait BitcoinFixtures {
     * }}}
     */
   object JsonFixtures {
+
+    // Jsom result for the: https://developer.bitcoin.org/reference/rpc/getblockchaininfo.html
     val getBlockchainInfoResponse =
       """[{
       |  "result": {
@@ -72,12 +74,14 @@ trait BitcoinFixtures {
       |  "id": "requestId"
       |}]""".stripMargin
 
+    // Jsom result for the: https://developer.bitcoin.org/reference/rpc/getblockhash.html
     val getBlockHashResponse =
       """[{
       |  "result": "00000000000335c47dd6ae953912d172a4d9839355f2083165043bb6f43c2f58",
       |  "id": "requestId"
       |}]""".stripMargin
 
+    // Jsom result for the: https://developer.bitcoin.org/reference/rpc/getblock.html
     val getBlockResponse =
       """[{
       |  "result": {
@@ -106,6 +110,7 @@ trait BitcoinFixtures {
       |  "id": "requestId"
       |}]""".stripMargin
 
+    // Jsom result for the: https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
     val getRawTransactionResponse =
       """[{
       |  "result": {
