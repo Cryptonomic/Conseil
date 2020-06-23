@@ -19,9 +19,9 @@ case class BitcoinDataRoutes(
     maxQueryResultSize: Int
 )(
     implicit apiExecutionContext: ExecutionContext
-) extends ApiDataRoutes
-    with LazyLogging
-    with BitcoinDataHelpers {
+) extends BitcoinDataHelpers
+    with ApiDataRoutes
+    with LazyLogging {
 
   private val dataQueries = new BitcoinDataQueries(operations)
 

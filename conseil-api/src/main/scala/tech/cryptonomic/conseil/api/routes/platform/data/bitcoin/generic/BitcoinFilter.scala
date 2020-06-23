@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
+package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.generic
 
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiFilter._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes
@@ -8,8 +8,8 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
   * Represents a query filter submitted to the Conseil API.
   *
   * @param limit                  How many records to return
-  * @param blockIds Block IDs
-  * @param transactionIDs Transaction IDs
+  * @param blockIds               Block IDs
+  * @param transactionIDs         Transaction IDs
   * @param sortBy                 Database column name to sort by
   * @param order                  Sort items ascending or descending
   */
@@ -41,17 +41,4 @@ final case class BitcoinFilter(
       orderBy = toQueryOrdering(sortBy, order).toList,
       snapshot = None
     )
-}
-
-object BitcoinFilter {
-
-  /** builds a filter from incoming string-based parameters */
-  def readParams(
-      limit: Option[Int],
-      blockIDs: Iterable[String],
-      transactionIDs: Iterable[String],
-      sortBy: Option[String],
-      order: Option[String]
-  ): BitcoinFilter =
-    BitcoinFilter(limit, blockIDs.toSet, transactionIDs.toSet, sortBy, order.flatMap(Sorting.fromString))
 }

@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.tezos
+package tech.cryptonomic.conseil.api.routes.platform.data.tezos.generic
 
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiFilter._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes
@@ -116,49 +116,4 @@ final case class TezosFilter(
       orderBy = toQueryOrdering(sortBy, order).toList,
       snapshot = None
     )
-}
-
-object TezosFilter {
-
-  /** builds a filter from incoming string-based parameters */
-  def readParams(
-      limit: Option[Int],
-      blockIDs: Iterable[String],
-      levels: Iterable[Int],
-      chainIDs: Iterable[String],
-      protocols: Iterable[String],
-      operationGroupIDs: Iterable[String],
-      operationSources: Iterable[String],
-      operationDestinations: Iterable[String],
-      operationParticipants: Iterable[String],
-      operationKinds: Iterable[String],
-      accountIDs: Iterable[String],
-      accountManagers: Iterable[String],
-      accountDelegates: Iterable[String],
-      sortBy: Option[String],
-      order: Option[String]
-  ): TezosFilter =
-    TezosFilter(
-      limit,
-      blockIDs.toSet,
-      levels.toSet,
-      chainIDs.toSet,
-      protocols.toSet,
-      operationGroupIDs.toSet,
-      operationSources.toSet,
-      operationDestinations.toSet,
-      operationParticipants.toSet,
-      operationKinds.toSet,
-      accountIDs.toSet,
-      accountManagers.toSet,
-      accountDelegates.toSet,
-      sortBy,
-      order.flatMap(Sorting.fromString)
-    )
-
-  // Common values
-
-  // default limit on output results, if not available as call input
-  val defaultLimit = 10
-
 }

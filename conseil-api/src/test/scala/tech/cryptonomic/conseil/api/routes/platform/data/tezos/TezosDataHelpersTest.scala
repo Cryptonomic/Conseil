@@ -3,10 +3,10 @@ package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 import java.sql.Timestamp
 
 import io.circe.Json
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.{Matchers, WordSpecLike}
 import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 
-class TezosDataHelpersTest extends WordSpec with Matchers with TezosDataHelpers {
+class TezosDataHelpersTest extends TezosDataHelpers with WordSpecLike with Matchers {
 
   "TezosDataHelpers" should {
       val encodeAny = anySchema.encoder

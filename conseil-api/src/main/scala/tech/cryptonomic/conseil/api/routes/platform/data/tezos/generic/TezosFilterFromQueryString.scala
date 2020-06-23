@@ -1,11 +1,12 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.tezos
+package tech.cryptonomic.conseil.api.routes.platform.data.tezos.generic
 
 import cats.Functor
 import cats.syntax.functor._
 import endpoints.algebra
+import tech.cryptonomic.conseil.api.routes.platform.data.ApiFilter.Sorting
 
 /** Trait containing helper functions which are necessary for parsing query parameter strings as Filter  */
-private[tezos] trait TezosApiFilterFromQueryString { self: algebra.JsonEntities =>
+private[tezos] trait TezosFilterFromQueryString { self: algebra.JsonEntities =>
   import tech.cryptonomic.conseil.common.util.TupleFlattenUtil._
   import FlattenHigh._
 
@@ -54,8 +55,41 @@ private[tezos] trait TezosApiFilterFromQueryString { self: algebra.JsonEntities 
 
   /** Function for mapping query string to Filter */
   val qsFilter: QueryString[TezosFilter] =
-    filterQs.map(
-      (TezosFilter.readParams _).tupled
-    )
+    filterQs.map {
+      case (
+          limit,
+          blockIDs,
+          levels,
+          chainIDs,
+          protocols,
+          operationGroupIDs,
+          operationSources,
+          operationDestinations,
+          operationParticipants,
+          operationKinds,
+          accountIDs,
+          accountManagers,
+          accountDelegates,
+          sortBy,
+          order
+          ) =>
+        TezosFilter(
+          limit,
+          blockIDs.toSet,
+          levels.toSet,
+          chainIDs.toSet,
+          protocols.toSet,
+          operationGroupIDs.toSet,
+          operationSources.toSet,
+          operationDestinations.toSet,
+          operationParticipants.toSet,
+          operationKinds.toSet,
+          accountIDs.toSet,
+          accountManagers.toSet,
+          accountDelegates.toSet,
+          sortBy,
+          order.flatMap(Sorting.fromString)
+        )
+    }
 
 }
