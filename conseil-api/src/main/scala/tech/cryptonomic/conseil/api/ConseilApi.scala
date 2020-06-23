@@ -16,8 +16,9 @@ import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration,
 import tech.cryptonomic.conseil.api.routes.Docs
 import tech.cryptonomic.conseil.api.routes.info.AppInfo
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
+import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.{BitcoinDataOperations, BitcoinDataRoutes}
+import tech.cryptonomic.conseil.api.routes.platform.data.tezos.{TezosDataOperations, TezosDataRoutes}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.{GenericPlatformDiscoveryOperations, PlatformDiscovery}
-import tech.cryptonomic.conseil.api.routes.platform.{Api, BitcoinApi, TezosApi}
 import tech.cryptonomic.conseil.api.security.Security
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.config.Platforms
@@ -87,15 +88,12 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
                           logRequest("Metadata Route", Logging.DebugLevel) {
                             platformDiscovery.route
                           },
-                          ApiCache
-                            .cachedDataEndpoints
-                            .map {
-                              case (platform, routes) =>
-                                logRequest(s"$platform Data Route", Logging.DebugLevel) {
-                                  routes.getRoute ~ routes.postRoute
-                                }
-                            }
-                            .reduce(_ ~ _)
+                          ApiCache.cachedDataEndpoints.map {
+                            case (platform, routes) =>
+                              logRequest(s"$platform Data Route", Logging.DebugLevel) {
+                                routes.getRoute ~ routes.postRoute
+                              }
+                          }.reduce(_ ~ _)
                         )
                       },
                       options {
@@ -119,10 +117,14 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
     * will be initialized and eventually exposed.
     */
   private object ApiCache {
-    private implicit val dispatcher: ExecutionContext = system.dispatchers.lookup("akka.http.dispatcher")
-    private lazy val cache: Map[BlockchainPlatform, Api] = forVisiblePlatforms {
-      case Platforms.Tezos => new TezosApi(metadataService, config.metadata, config.server)(dispatcher)
-      case Platforms.Bitcoin => new BitcoinApi(metadataService, config.metadata, config.server)(dispatcher)
+    implicit private val dispatcher: ExecutionContext = system.dispatchers.lookup("akka.http.dispatcher")
+    private lazy val cache: Map[BlockchainPlatform, ApiDataRoutes] = forVisiblePlatforms {
+      case Platforms.Tezos =>
+        val operations = new TezosDataOperations()
+        TezosDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
+      case Platforms.Bitcoin =>
+        val operations = new BitcoinDataOperations()
+        BitcoinDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
     }
 
     private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
@@ -146,7 +148,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
       */
     lazy val cachedDataEndpoints: Map[String, ApiDataRoutes] =
       cache.map {
-        case (key, value) => key.name -> value.routes
+        case (key, value) => key.name -> value
       }
 
     private val visiblePlatforms =
