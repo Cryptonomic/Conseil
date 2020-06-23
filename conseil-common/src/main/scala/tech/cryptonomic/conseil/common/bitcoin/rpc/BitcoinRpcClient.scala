@@ -15,6 +15,19 @@ import tech.cryptonomic.conseil.common.bitcoin.rpc.json.{Block, BlockchainInfo, 
   * Bitcoin JSON-RPC client according to the specification at https://developer.bitcoin.org/reference/rpc/
   *
   * @param client [[RpcClient]] to use with the Bitcoin JSON-RPC api.
+  *
+  * * Usage example:
+  *
+  * {{{
+  *   import cats.effect.IO
+  *
+  *   val bitcoinClient = new BitcoinClient[IO](rpcClient)
+  *
+  *   // To call [[fs2.Pipe]] methods use:
+  *   Stream(1, 2).through(bitcoinClient.getBlockHash(batchSize = 10)).compile.toList
+  *   // The result will be:
+  *   val res0: List[String] = List(hash1, hash2)
+  * }}}
   */
 class BitcoinClient[F[_]: Concurrent](
     client: RpcClient[F]
