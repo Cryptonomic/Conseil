@@ -95,9 +95,5 @@ object BitcoinClient {
     * @param client [[RpcClient]] to use with the Bitcoin JSON-RPC api.
     */
   def resource[F[_]: Concurrent](client: RpcClient[F]): Resource[F, BitcoinClient[F]] =
-    for {
-      client <- Resource.pure(
-        new BitcoinClient[F](client)
-      )
-    } yield client
+    Resource.pure(new BitcoinClient[F](client))
 }

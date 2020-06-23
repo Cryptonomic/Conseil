@@ -60,7 +60,18 @@ class BitcoinRpcClientTest extends WordSpec with Matchers with BitcoinFixtures {
 
     }
 
-  trait BitcoinClientFixtures {
+  /**
+    * Stubs that can help to provide tests for the [[BitcoinClient]].
+    * 
+    * Usage example:
+    * 
+    * {{{
+    *   "test name" in new BitcoinClientStubs {
+    *     // bitcoinClientStub is available in the current scope
+    *   }
+    * }}}
+    */
+  trait BitcoinClientStubs {
 
     def bitcoinClientStub(jsonResponse: String): BitcoinClient[IO] = {
       val response = Response[IO](
