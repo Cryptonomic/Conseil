@@ -95,7 +95,7 @@ object BitcoinPersistence {
     */
   implicit val inputToInputsRow: Conversion[Id, TransactionInput, Tables.InputsRow] =
     new Conversion[Id, TransactionInput, Tables.InputsRow] {
-      override def convert(from: TransactionInput) = 
+      override def convert(from: TransactionInput) =
         Tables.InputsRow(
           txid = from.txid.get, // TODO: get rid of `get`
           vOut = from.vout,
