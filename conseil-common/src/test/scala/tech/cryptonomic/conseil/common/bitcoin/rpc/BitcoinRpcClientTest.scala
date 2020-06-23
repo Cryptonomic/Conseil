@@ -18,7 +18,7 @@ class BitcoinRpcClientTest extends WordSpec with Matchers with BitcoinFixtures {
   "Bitcoin JSON-RPC client" should {
 
       "return a blockchain info" in new BitcoinClientFixtures {
-        bitcoinClient(JsonFixtures.getBlockchainInfoResponse).getBlockChainInfo.compile.toList
+        bitcoinClientStub(JsonFixtures.getBlockchainInfoResponse).getBlockChainInfo.compile.toList
           .unsafeRunSync() shouldBe List(
               RpcFixtures.blockchainInfoResult
             )
@@ -26,7 +26,7 @@ class BitcoinRpcClientTest extends WordSpec with Matchers with BitcoinFixtures {
 
       "return a block hash for the given height" in new BitcoinClientFixtures {
         Stream(102000)
-          .through(bitcoinClient(JsonFixtures.getBlockHashResponse).getBlockHash(batchSize = 1))
+          .through(bitcoinClientStub(JsonFixtures.getBlockHashResponse).getBlockHash(batchSize = 1))
           .compile
           .toList
           .unsafeRunSync() shouldBe List("00000000000335c47dd6ae953912d172a4d9839355f2083165043bb6f43c2f58")
@@ -34,7 +34,7 @@ class BitcoinRpcClientTest extends WordSpec with Matchers with BitcoinFixtures {
 
       "return a block for the given hash" in new BitcoinClientFixtures {
         Stream("00000000000335c47dd6ae953912d172a4d9839355f2083165043bb6f43c2f58")
-          .through(bitcoinClient(JsonFixtures.getBlockResponse).getBlockByHash(batchSize = 1))
+          .through(bitcoinClientStub(JsonFixtures.getBlockResponse).getBlockByHash(batchSize = 1))
           .compile
           .toList
           .unsafeRunSync() shouldBe List(RpcFixtures.blockResult)
@@ -42,7 +42,7 @@ class BitcoinRpcClientTest extends WordSpec with Matchers with BitcoinFixtures {
 
       "return a transactions (with imputs and outputs) for the given block" in new BitcoinClientFixtures {
         Stream(RpcFixtures.blockResult)
-          .through(bitcoinClient(JsonFixtures.getRawTransactionResponse).getBlockWithTransactions(batchSize = 1))
+          .through(bitcoinClientStub(JsonFixtures.getRawTransactionResponse).getBlockWithTransactions(batchSize = 1))
           .compile
           .toList
           .unsafeRunSync() shouldBe List(
@@ -62,7 +62,7 @@ class BitcoinRpcClientTest extends WordSpec with Matchers with BitcoinFixtures {
 
   trait BitcoinClientFixtures {
 
-    def bitcoinClient(jsonResponse: String): BitcoinClient[IO] = {
+    def bitcoinClientStub(jsonResponse: String): BitcoinClient[IO] = {
       val response = Response[IO](
         Status.Ok,
         body = Stream(jsonResponse).through(fs2.text.utf8Encode)

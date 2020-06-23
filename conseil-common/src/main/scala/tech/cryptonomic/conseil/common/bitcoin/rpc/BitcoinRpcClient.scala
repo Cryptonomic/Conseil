@@ -63,16 +63,16 @@ class BitcoinClient[F[_]: Concurrent](
     *
     * @param batchSize The size of the batched request in single HTTP call
     */
-  def getBlockWithTransactions(batchSize: Int): Pipe[F, Block, (Block, List[Transaction])] = { stream =>
-    for {
-      block <- stream // get each Block from the stream
-      transactions <- Stream
-        .emits(block.tx)
-        .map(GetRawTransaction.request)
-        .through(client.stream[GetRawTransaction.Params, Transaction](batchSize))
-        .chunkN(block.nTx)
-    } yield (block, transactions.toList.map(addTxidToTransactionComponents))
-  }
+  def getBlockWithTransactions(batchSize: Int): Pipe[F, Block, (Block, List[Transaction])] =
+    stream =>
+      for {
+        block <- stream // get each Block from the stream
+        transactions <- Stream
+          .emits(block.tx)
+          .map(GetRawTransaction.request)
+          .through(client.stream[GetRawTransaction.Params, Transaction](batchSize))
+          .chunkN(block.nTx)
+      } yield (block, transactions.toList.map(addTxidToTransactionComponents))
 
   /**
     * Enrich transaction components with the `txid`, because they are separated tables in the database.
