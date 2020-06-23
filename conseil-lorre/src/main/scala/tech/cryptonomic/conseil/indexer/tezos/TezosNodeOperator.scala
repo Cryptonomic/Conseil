@@ -62,7 +62,7 @@ private[tezos] class TezosNodeOperator(
     val node: TezosRPCInterface,
     val network: String,
     batchConf: BatchFetchConfiguration,
-    lorreOperations: TezosNodeOperations
+    indexedDataOperations: TezosIndexedDataOperations
 )(
     implicit val fetchFutureContext: ExecutionContext
 ) extends LazyLogging
@@ -598,7 +598,7 @@ private[tezos] class TezosNodeOperator(
     */
   def getBlocksNotInDatabase(): Future[PaginatedBlocksResults] =
     for {
-      maxLevel <- lorreOperations.fetchMaxLevel
+      maxLevel <- indexedDataOperations.fetchMaxLevel
       blockHead <- getBlockHead()
       headLevel = blockHead.data.header.level
       headHash = blockHead.data.hash
@@ -766,9 +766,9 @@ class TezosNodeSenderOperator(
     network: String,
     batchConf: BatchFetchConfiguration,
     sodiumConf: SodiumConfiguration,
-    lorreOperations: TezosNodeOperations
+    indexedDataOperations: TezosIndexedDataOperations
 )(implicit executionContext: ExecutionContext)
-    extends TezosNodeOperator(node, network, batchConf, lorreOperations)
+    extends TezosNodeOperator(node, network, batchConf, indexedDataOperations)
     with LazyLogging {
   import TezosNodeOperator._
   import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}

@@ -10,7 +10,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * Functionality for fetching data from the Conseil database specific only for conseil-lorre module.
   */
-private[tezos] class TezosNodeOperations extends DatabaseMetadataOperations {
+private[tezos] class TezosIndexedDataOperations extends DatabaseMetadataOperations {
   override lazy val dbReadHandle: Database = DatabaseUtil.lorreDb
 
   /**
