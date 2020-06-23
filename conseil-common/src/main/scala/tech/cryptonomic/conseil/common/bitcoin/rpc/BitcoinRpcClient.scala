@@ -22,8 +22,6 @@ class BitcoinClient[F[_]: Concurrent](
 
   /**
     * Get blockchain info.
-    *
-    * Returns [[fs2.Stream]] with [[BlockchainInfo]]
     */
   def getBlockChainInfo: Stream[F, BlockchainInfo] =
     Stream(GetBlockChainInfo.request)
@@ -33,8 +31,6 @@ class BitcoinClient[F[_]: Concurrent](
     * Get Block's hash.
     *
     * @param batchSize The size of the batched request in single HTTP call
-    *
-    * Returns [[fs2.Stream]] with block's hash
     */
   def getBlockHash(batchSize: Int): Pipe[F, Int, String] =
     _.map(GetBlockHash.request)
@@ -44,8 +40,6 @@ class BitcoinClient[F[_]: Concurrent](
     * Get Block by hash.
     *
     * @param batchSize The size of the batched request in single HTTP call
-    *
-    * Returns [[fs2.Stream]] with [[Block]]
     */
   def getBlockByHash(batchSize: Int): Pipe[F, String, Block] =
     _.map(GetBlock.request)
@@ -55,8 +49,6 @@ class BitcoinClient[F[_]: Concurrent](
     * Get blocks with transactions. Call JSON-RPC for each transaction from the given block.
     *
     * @param batchSize The size of the batched request in single HTTP call
-    *
-    * Returns [[fs2.Stream]] with [[Block]] alongside with list of the [[Transaction]]
     */
   def getBlockWithTransactions(batchSize: Int): Pipe[F, Block, (Block, List[Transaction])] = { stream =>
     for {

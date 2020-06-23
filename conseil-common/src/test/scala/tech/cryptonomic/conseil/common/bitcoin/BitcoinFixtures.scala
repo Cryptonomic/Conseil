@@ -9,6 +9,9 @@ import tech.cryptonomic.conseil.common.bitcoin.rpc.json._
   */
 trait BitcoinFixtures {
 
+  /**
+    * Fixtures containing raw json responses from the JSON-RPC server.
+    */
   object JsonFixtures {
     val getBlockchainInfo = """[{
                               |  "result": {
@@ -124,6 +127,9 @@ trait BitcoinFixtures {
         |}]""".stripMargin
   }
 
+  /**
+    * Fixtures containing decoded json responses form the the JSON-RPC server.
+    */
   object RpcFixtures {
     val blockchainInfo = BlockchainInfo(
       chain = "main",
@@ -216,6 +222,9 @@ trait BitcoinFixtures {
     )
   }
 
+  /**
+    * Fixtures containing Slick rows.
+    */
   object DbFixtures {
     val block = Tables.BlocksRow(
       hash = "00000000000335c47dd6ae953912d172a4d9839355f2083165043bb6f43c2f58",
