@@ -44,7 +44,7 @@ class BitcoinDataRoutesTest
 
   private val metadataService =
     new MetadataService(
-      PlatformsConfiguration(Map(Platforms.Bitcoin -> List(BitcoinConfiguration("Mainnet")))),
+      PlatformsConfiguration(Map(Platforms.Bitcoin -> List(BitcoinConfiguration("mainnet")))),
       TransparentUnitTransformation,
       stub[AttributeValuesCacheConfiguration],
       platformDiscoveryOperations
@@ -53,6 +53,45 @@ class BitcoinDataRoutesTest
     BitcoinDataRoutes(metadataService, MetadataConfiguration(Map.empty), conseilOps, 1000)
 
   "Query protocol" should {
+      "return a correct response with OK status code with POST" in {
+
+        val postRequest = HttpRequest(
+          HttpMethods.POST,
+          uri = "/v2/data/bitcoin/mainnet/blocks",
+          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+        )
+
+        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
+          val resp = entityAs[String]
+          resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
+          status shouldBe StatusCodes.OK
+        }
+      }
+
+      "return 404 NotFound status code for request for the not supported platform with POST" in {
+
+        val postRequest = HttpRequest(
+          HttpMethods.POST,
+          uri = "/v2/data/notSupportedPlatform/mainnet/blocks",
+          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+        )
+        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
+          status shouldBe StatusCodes.NotFound
+        }
+      }
+
+      "return 404 NotFound status code for request for the not supported network with POST" in {
+
+        val postRequest = HttpRequest(
+          HttpMethods.POST,
+          uri = "/v2/data/bitcoin/notSupportedNetwork/blocks",
+          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+        )
+        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
+          status shouldBe StatusCodes.NotFound
+        }
+      }
+
       "return a correct response with OK status code with GET" in {
         val getRequest = HttpRequest(HttpMethods.GET, uri = "/v2/data/bitcoin/mainnet/blocks")
 
@@ -63,6 +102,26 @@ class BitcoinDataRoutesTest
         }
       }
     }
+
+  "return 404 NotFound status code for request for the not supported platform with GET" in {
+      val getRequest = HttpRequest(
+        HttpMethods.GET,
+        uri = "/v2/data/notSupportedPlatform/mainnet/blocks"
+      )
+      getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
+        status shouldBe StatusCodes.NotFound
+      }
+    }
+
+  "return 404 NotFound status code for request for the not supported network with GET" in {
+      val getRequest = HttpRequest(
+        HttpMethods.GET,
+        uri = "/v2/data/bitcoin/notSupportedNetwork/blocks"
+      )
+      getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
+        status shouldBe StatusCodes.NotFound
+      }
+    }
 }
 
 object BitcoinDataRoutesTest {
@@ -70,12 +129,12 @@ object BitcoinDataRoutesTest {
     val jsonStringRequest: String =
       """
         |{
-        |  "fields": ["account_id", "spendable", "counter"],
+        |  "fields": ["hash", "size", "version"],
         |  "predicates": [
         |    {
-        |      "field": "account_id",
+        |      "field": "hash",
         |      "operation": "in",
-        |      "set": ["tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1", "KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np"],
+        |      "set": ["f88ad67178fadfc38d57f7e662effc1ddea54f13120dbeefd894cb90ac3c5895"],
         |      "inverse": false
         |    }
         |  ]
@@ -86,26 +145,17 @@ object BitcoinDataRoutesTest {
     val jsonStringResponse: String =
       """
         |[{
-        |  "account_id" : "tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1",
-        |  "spendable" : true,
-        |  "counter" : 1137
-        |}, {
-        |  "account_id" : "KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np",
-        |  "spendable" : true,
-        |  "counter" : 2
+        |  "hash" : "f88ad67178fadfc38d57f7e662effc1ddea54f13120dbeefd894cb90ac3c5895",
+        |  "size" : 130481,
+        |  "version" : 1
         |}]
     """.stripMargin
 
     val responseAsMap: List[QueryResponse] = List(
       Map(
-        "account_id" -> Some("tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1"),
-        "spendable" -> Some(true),
-        "counter" -> Some(1137)
-      ),
-      Map(
-        "account_id" -> Some("KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np"),
-        "spendable" -> Some(true),
-        "counter" -> Some(2)
+        "hash" -> Some("f88ad67178fadfc38d57f7e662effc1ddea54f13120dbeefd894cb90ac3c5895"),
+        "size" -> Some(130481),
+        "version" -> Some(1)
       )
     )
 

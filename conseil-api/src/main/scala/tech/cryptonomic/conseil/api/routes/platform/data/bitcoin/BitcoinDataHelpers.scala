@@ -34,8 +34,6 @@ trait BitcoinDataHelpers extends BitcoinDataEndpoints with ApiDataHelpers {
   implicit override val fieldSchema: JsonSchema[Field] = fieldJsonSchema(formattedFieldSchema)
 
   /** Represents the function, that is going to encode the blockchain specific data types */
-  override protected def customAnyEncoder: PartialFunction[Any, Json] = {
-    case x: Tables.BlocksRow => x.asJson(blocksRowSchema.encoder)
-  }
+  override protected def customAnyEncoder: PartialFunction[Any, Json] = PartialFunction.empty
 
 }

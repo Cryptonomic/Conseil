@@ -69,7 +69,7 @@ case class BitcoinDataRoutes(
   private val blockByHashRoute: Route = blockByHashEndpoint.implementedByAsync {
     case ((platform, network, hash), _) =>
       platformNetworkValidation(platform, network) {
-        dataQueries.fetchBlockByHead(hash)
+        dataQueries.fetchBlockByHash(hash)
       }
   }
 
@@ -78,6 +78,14 @@ case class BitcoinDataRoutes(
     case ((platform, network, filter), _) =>
       platformNetworkValidation(platform, network) {
         dataQueries.fetchTransactions(filter.toQuery.withLimitCap(maxQueryResultSize))
+      }
+  }
+
+  /** V2 Route implementation for transaction by id endpoint */
+  private val transactionByIdRoute: Route = transactionByIdEndpoint.implementedByAsync {
+    case ((platform, network, id), _) =>
+      platformNetworkValidation(platform, network) {
+        dataQueries.fetchTransactionById(id)
       }
   }
 
@@ -104,6 +112,7 @@ case class BitcoinDataRoutes(
       blockByHashRoute,
       blocksRoute,
       transactionsRoute,
+      transactionByIdRoute,
       inputsRoute,
       outputsRoute
     )

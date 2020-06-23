@@ -8,14 +8,14 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
   * Represents a query filter submitted to the Conseil API.
   *
   * @param limit                  How many records to return
-  * @param blockIDs Block IDs
+  * @param blockIds Block IDs
   * @param transactionIDs Transaction IDs
   * @param sortBy                 Database column name to sort by
   * @param order                  Sort items ascending or descending
   */
 final case class BitcoinFilter(
     limit: Option[Int] = Some(defaultLimit),
-    blockIDs: Set[String] = Set.empty,
+    blockIds: Set[String] = Set.empty,
     transactionIDs: Set[String] = Set.empty,
     sortBy: Option[String] = None,
     order: Option[Sorting] = Some(DescendingSort)
@@ -29,12 +29,12 @@ final case class BitcoinFilter(
         Predicate(
           field = "hash",
           operation = OperationType.in,
-          set = blockIDs.toList
+          set = blockIds.toList
         ),
         Predicate(
           field = "txid",
           operation = OperationType.in,
-          set = blockIDs.toList
+          set = transactionIDs.toList
         )
       ).filter(_.set.nonEmpty),
       limit = limit.getOrElse(DataTypes.defaultLimitValue),

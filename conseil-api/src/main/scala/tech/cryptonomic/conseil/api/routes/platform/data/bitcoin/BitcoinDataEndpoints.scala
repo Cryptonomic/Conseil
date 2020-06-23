@@ -1,10 +1,10 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
-import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataEndpoints
+import tech.cryptonomic.conseil.api.routes.platform.data.{ApiDataEndpoints, ApiDataJsonSchemas}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 
 /** Trait containing endpoints definition */
-trait BitcoinDataEndpoints extends ApiDataEndpoints with BitcoinDataJsonSchemas with BitcoinApiFilterFromQueryString {
+trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with BitcoinApiFilterFromQueryString {
 
   /** V2 Blocks endpoint definition */
   def blocksEndpoint: Endpoint[((String, String, BitcoinFilter), Option[String]), Option[List[QueryResponse]]] =
@@ -35,6 +35,14 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with BitcoinDataJsonSchemas 
     endpoint(
       request = get(url = commonPath / "transactions" /? qsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("transactions"),
+      tags = List("Transactions")
+    )
+
+  /** V2 Transaction by id endpoint definition */
+  def transactionByIdEndpoint: Endpoint[((String, String, String), Option[String]), Option[QueryResponse]] =
+    endpoint(
+      request = get(url = commonPath / "transactions" / segment[String](name = "id"), headers = optHeader("apiKey")),
+      response = compatibilityQuery[QueryResponse]("transaction by id"),
       tags = List("Transactions")
     )
 
