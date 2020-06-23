@@ -1,10 +1,12 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
+package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.generic
 
 import cats.Functor
 import cats.syntax.functor._
-import endpoints.algebra
+import endpoints.algebra.JsonEntities
+import tech.cryptonomic.conseil.api.routes.platform.data.ApiFilter.Sorting
 
-trait BitcoinApiFilterFromQueryString { self: algebra.JsonEntities =>
+/** Trait containing helper functions which are necessary for parsing query parameter strings as Filter */
+private[bitcoin] trait BitcoinFilterFromQueryString { self: JsonEntities =>
   import tech.cryptonomic.conseil.common.util.TupleFlattenUtil._
   import FlattenHigh._
 
@@ -33,8 +35,9 @@ trait BitcoinApiFilterFromQueryString { self: algebra.JsonEntities =>
 
   /** Function for mapping query string to Filter */
   val qsFilter: QueryString[BitcoinFilter] =
-    filterQs.map(
-      (BitcoinFilter.readParams _).tupled
-    )
+    filterQs.map {
+      case (limit, blockIds, transactionIds, sortBy, order) =>
+        BitcoinFilter(limit, blockIds.toSet, transactionIds.toSet, sortBy, order.flatMap(Sorting.fromString))
+    }
 
 }

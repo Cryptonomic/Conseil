@@ -1,10 +1,10 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
+package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.generic
 
 import tech.cryptonomic.conseil.api.routes.platform.data.{ApiDataEndpoints, ApiDataJsonSchemas}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 
 /** Trait containing endpoints definition */
-trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with BitcoinApiFilterFromQueryString {
+trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with BitcoinFilterFromQueryString {
 
   /** V2 Blocks endpoint definition */
   def blocksEndpoint: Endpoint[((String, String, BitcoinFilter), Option[String]), Option[List[QueryResponse]]] =

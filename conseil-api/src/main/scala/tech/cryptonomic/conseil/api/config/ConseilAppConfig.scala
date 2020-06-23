@@ -125,6 +125,11 @@ object ConseilAppConfig extends LazyLogging {
         }
       }
 
+    implicit private val bitcoinConfigurationReader: ConfigReader[List[BitcoinConfiguration]] =
+      ConfigReader[ConfigObject].map { obj =>
+        obj.keySet.asScala.toSet.map(BitcoinConfiguration).toList
+      }
+
     /** pureconfig reader for undefined Platform configurations */
     implicit private val unknownPlatformReader: ConfigReader[List[UnknownPlatformConfiguration]] =
       ConfigReader[ConfigObject].map(_.keySet.asScala.toList.map(key => UnknownPlatformConfiguration(key)))
@@ -143,6 +148,7 @@ object ConseilAppConfig extends LazyLogging {
         val parsed: Set[Either[FailureReason, (BlockchainPlatform, List[PlatformConfiguration])]] =
           availablePlatforms.map {
             case Tezos => extractConfigList(Tezos)
+            case Bitcoin => extractConfigList(Bitcoin)
             case p @ UnknownPlatform(_) => extractConfigList(p)
           }
 

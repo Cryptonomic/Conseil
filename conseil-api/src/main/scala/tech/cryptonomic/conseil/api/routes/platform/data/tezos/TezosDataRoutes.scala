@@ -24,9 +24,9 @@ case class TezosDataRoutes(
     maxQueryResultSize: Int
 )(
     implicit apiExecutionContext: ExecutionContext
-) extends ApiDataRoutes
-    with LazyLogging
-    with TezosDataHelpers {
+) extends TezosDataHelpers
+    with ApiDataRoutes
+    with LazyLogging {
 
   import cats.instances.either._
   import cats.instances.future._

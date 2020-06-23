@@ -1,13 +1,13 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.tezos
+package tech.cryptonomic.conseil.api.routes.platform.data.tezos.generic
 
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataEndpoints
 import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosDataOperations._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
-import tech.cryptonomic.conseil.common.tezos.Tables.BlocksRow
 import tech.cryptonomic.conseil.common.tezos.Tables
+import tech.cryptonomic.conseil.common.tezos.Tables.BlocksRow
 
 /** Trait containing endpoints definition */
-trait TezosDataEndpoints extends ApiDataEndpoints with TezosDataJsonSchemas with TezosApiFilterFromQueryString {
+trait TezosDataEndpoints extends ApiDataEndpoints with TezosDataJsonSchemas with TezosFilterFromQueryString {
 
   /** V2 Blocks endpoint definition */
   def blocksEndpoint: Endpoint[((String, String, TezosFilter), Option[String]), Option[List[QueryResponse]]] =
