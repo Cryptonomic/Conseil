@@ -144,7 +144,7 @@ trait BitcoinFixtures {
   }
 
   /**
-    * Fixtures containing decoded json responses form the the JSON-RPC server.
+    * Fixtures containing decoded json responses form the JSON-RPC server.
     *
     * They can be used to check the desired result in [[BitcoinClient]]. Like this:
     *
