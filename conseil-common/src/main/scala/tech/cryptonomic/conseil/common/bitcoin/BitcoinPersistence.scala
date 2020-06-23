@@ -30,8 +30,8 @@ class BitcoinPersistence[F[_]: Concurrent] extends LazyLogging {
     DBIO.seq(
       Tables.Blocks += block.convertTo[Tables.BlocksRow],
       Tables.Transactions ++= transactions.map(_.convertTo[Tables.TransactionsRow]),
-      Tables.Inputs ++= transactions.map(_.vin).flatten.map(_.convertTo[Tables.InputsRow]),
-      Tables.Outputs ++= transactions.map(_.vout).flatten.map(_.convertTo[Tables.OutputsRow])
+      Tables.Inputs ++= transactions.flatMap(_.vin).map(_.convertTo[Tables.InputsRow]),
+      Tables.Outputs ++= transactions.flatMap(_.vout).map(_.convertTo[Tables.OutputsRow])
     )
 }
 
@@ -41,11 +41,7 @@ object BitcoinPersistence {
     * Create [[cats.Resource]] with [[BitcoinPersistence]].
     */
   def resource[F[_]: Concurrent]: Resource[F, BitcoinPersistence[F]] =
-    for {
-      client <- Resource.liftF(
-        Concurrent[F].delay(new BitcoinPersistence[F])
-      )
-    } yield client
+    Resource.pure(new BitcoinPersistence[F])
 
   /**
     * Convert form [[Block]] to [[Tables.BlocksRow]]
@@ -99,7 +95,7 @@ object BitcoinPersistence {
     */
   implicit val inputToInputsRow: Conversion[Id, TransactionInput, Tables.InputsRow] =
     new Conversion[Id, TransactionInput, Tables.InputsRow] {
-      override def convert(from: TransactionInput) =
+      override def convert(from: TransactionInput) = 
         Tables.InputsRow(
           txid = from.txid.get, // TODO: get rid of `get`
           vOut = from.vout,
