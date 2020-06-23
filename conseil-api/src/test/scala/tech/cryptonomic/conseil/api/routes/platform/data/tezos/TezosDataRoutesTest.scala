@@ -25,95 +25,8 @@ class TezosDataRoutesTest
     with ScalatestRouteTest
     with ScalaFutures
     with MockFactory
-    with BeforeAndAfterEach {
-
-  val jsonStringRequest: String =
-    """
-      |{
-      |  "fields": ["account_id", "spendable", "counter"],
-      |  "predicates": [
-      |    {
-      |      "field": "account_id",
-      |      "operation": "in",
-      |      "set": ["tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1", "KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np"],
-      |      "inverse": false
-      |    }
-      |  ]
-      |}
-      |
-    """.stripMargin
-
-  val malformedJsonStringRequest: String =
-    """
-      |{
-      |  "fields": ["account_id", "spendable", "counter"],
-      |  "predicates": [
-      |    {
-      |      "operation": "in",
-      |      "set": ["tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1", "KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np"]
-      |    }
-      |  ]
-      |}
-      |
-    """.stripMargin
-
-  val jsonStringResponse: String =
-    """
-      |[{
-      |  "account_id" : "tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1",
-      |  "spendable" : true,
-      |  "counter" : 1137
-      |}, {
-      |  "account_id" : "KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np",
-      |  "spendable" : true,
-      |  "counter" : 2
-      |}]
-    """.stripMargin
-
-  val responseAsMap: List[QueryResponse] = List(
-    Map(
-      "account_id" -> Some("tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1"),
-      "spendable" -> Some(true),
-      "counter" -> Some(1137)
-    ),
-    Map(
-      "account_id" -> Some("KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np"),
-      "spendable" -> Some(true),
-      "counter" -> Some(2)
-    )
-  )
-
-  val fieldQuery = Query(
-    fields = List(SimpleField("account_id"), SimpleField("spendable"), SimpleField("counter")),
-    predicates = List.empty
-  )
-
-  val accountAttributes = List(
-    Attribute(
-      name = "account_id",
-      displayName = "Account Id",
-      dataType = DataType.String,
-      cardinality = None,
-      keyType = KeyType.UniqueKey,
-      entity = "accounts"
-    ),
-    Attribute(
-      name = "spendable",
-      displayName = "Spendable",
-      dataType = DataType.Boolean,
-      cardinality = None,
-      keyType = KeyType.NonKey,
-      entity = "accounts"
-    ),
-    Attribute(
-      name = "counter",
-      displayName = "Counter",
-      dataType = DataType.Int,
-      cardinality = None,
-      keyType = KeyType.NonKey,
-      entity = "accounts"
-    )
-  )
+    with BeforeAndAfterEach
+    with TezosDataRoutesTest.Fixtures {
 
   private val conseilOps: TezosDataOperations = new TezosDataOperations {
     override def queryWithPredicates(prefix: String, tableName: String, query: Query)(
@@ -236,4 +149,96 @@ class TezosDataRoutesTest
         }
       }
     }
+}
+
+object TezosDataRoutesTest {
+  trait Fixtures {
+    val jsonStringRequest: String =
+      """
+        |{
+        |  "fields": ["account_id", "spendable", "counter"],
+        |  "predicates": [
+        |    {
+        |      "field": "account_id",
+        |      "operation": "in",
+        |      "set": ["tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1", "KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np"],
+        |      "inverse": false
+        |    }
+        |  ]
+        |}
+        |
+    """.stripMargin
+
+    val malformedJsonStringRequest: String =
+      """
+        |{
+        |  "fields": ["account_id", "spendable", "counter"],
+        |  "predicates": [
+        |    {
+        |      "operation": "in",
+        |      "set": ["tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1", "KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np"]
+        |    }
+        |  ]
+        |}
+        |
+    """.stripMargin
+
+    val jsonStringResponse: String =
+      """
+        |[{
+        |  "account_id" : "tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1",
+        |  "spendable" : true,
+        |  "counter" : 1137
+        |}, {
+        |  "account_id" : "KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np",
+        |  "spendable" : true,
+        |  "counter" : 2
+        |}]
+    """.stripMargin
+
+    val responseAsMap: List[QueryResponse] = List(
+      Map(
+        "account_id" -> Some("tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1"),
+        "spendable" -> Some(true),
+        "counter" -> Some(1137)
+      ),
+      Map(
+        "account_id" -> Some("KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np"),
+        "spendable" -> Some(true),
+        "counter" -> Some(2)
+      )
+    )
+
+    val fieldQuery = Query(
+      fields = List(SimpleField("account_id"), SimpleField("spendable"), SimpleField("counter")),
+      predicates = List.empty
+    )
+
+    val accountAttributes = List(
+      Attribute(
+        name = "account_id",
+        displayName = "Account Id",
+        dataType = DataType.String,
+        cardinality = None,
+        keyType = KeyType.UniqueKey,
+        entity = "accounts"
+      ),
+      Attribute(
+        name = "spendable",
+        displayName = "Spendable",
+        dataType = DataType.Boolean,
+        cardinality = None,
+        keyType = KeyType.NonKey,
+        entity = "accounts"
+      ),
+      Attribute(
+        name = "counter",
+        displayName = "Counter",
+        dataType = DataType.Int,
+        cardinality = None,
+        keyType = KeyType.NonKey,
+        entity = "accounts"
+      )
+    )
+  }
 }
