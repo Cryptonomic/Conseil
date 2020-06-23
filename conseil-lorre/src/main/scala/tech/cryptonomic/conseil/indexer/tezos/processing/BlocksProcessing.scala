@@ -22,14 +22,12 @@ class BlocksProcessing(
     tnsOperations: TezosNamesOperations,
     accountsProcessing: AccountsProcessing,
     bakersProcessing: BakersProcessing
-) extends LazyLogging {
+)(implicit tokens: TokenContracts, tns: TNSContract)
+    extends LazyLogging {
 
   /* will store a single page of block results */
   private[tezos] def processBlocksPage(results: nodeOperator.BlockFetchingResults)(
-      implicit
-      ec: ExecutionContext,
-      tokens: TokenContracts,
-      tns: TNSContract
+      implicit ec: ExecutionContext
   ): Future[Int] = {
     def logBlockOutcome[A]: PartialFunction[Try[Option[A]], Unit] = {
       case Success(accountsCount) =>

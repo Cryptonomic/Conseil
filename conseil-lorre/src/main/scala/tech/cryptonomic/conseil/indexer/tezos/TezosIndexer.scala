@@ -9,7 +9,7 @@ import mouse.any._
 import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, TezosConfiguration}
 import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
-import tech.cryptonomic.conseil.common.tezos.{Tables, TezosTypes}
+import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.ContractId
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
@@ -39,108 +39,24 @@ import tech.cryptonomic.conseil.indexer.tezos.processing.AccountsProcessing
 import tech.cryptonomic.conseil.indexer.tezos.processing.BlocksProcessing
 
 /** * Class responsible for indexing data for Tezos BlockChain */
-class TezosIndexer(
+class TezosIndexer private (
+    ignoreProcessFailures: Boolean,
     lorreConf: LorreConfiguration,
-    tezosConf: TezosConfiguration,
-    callsConf: NetworkCallsConfiguration,
-    streamingClientConf: HttpStreamingConfiguration,
-    batchingConf: BatchFetchConfiguration
+    nodeOperator: TezosNodeOperator,
+    blocksProcessing: BlocksProcessing,
+    accountsProcessing: AccountsProcessing,
+    bakersProcessing: BakersProcessing,
+    rightsProcessing: BakingAndEndorsingRightsProcessing,
+    accountsEventsProcessing: AccountsEventsProcessing,
+    terminationSequence: () => Future[ShutdownComplete]
+)(
+    implicit
+    system: ActorSystem,
+    materializer: ActorMaterializer,
+    dispatcher: ExecutionContext
 ) extends LazyLogging
     with LorreIndexer
     with LorreProgressLogging {
-
-  implicit private val system: ActorSystem = ActorSystem("lorre-tezos-indexer")
-  implicit private val materializer: ActorMaterializer = ActorMaterializer()
-  implicit private val dispatcher: ExecutionContext = system.dispatcher
-
-  private val ignoreProcessFailuresOrigin: Option[String] = sys.env.get(LORRE_FAILURE_IGNORE_VAR)
-  private val ignoreProcessFailures: Boolean =
-    ignoreProcessFailuresOrigin.exists(ignore => ignore == "true" || ignore == "yes")
-
-  /* Here we collect all internal service operations and resources, needed to run the indexer */
-  private val db = DatabaseUtil.lorreDb
-  private val indexedData = new TezosIndexedDataOperations
-
-  /* collects data from the remote tezos node */
-  private val nodeOperator = new TezosNodeOperator(
-    new TezosNodeInterface(tezosConf, callsConf, streamingClientConf),
-    tezosConf.network,
-    batchingConf,
-    indexedData
-  )
-
-  /* provides operations to handle rights to bake and endorse blocks */
-  private val rightsProcessing = new BakingAndEndorsingRightsProcessing(
-    db,
-    lorreConf.blockRightsFetching,
-    nodeOperator,
-    indexedData
-  )
-
-  /* handles occasional global accounts refreshes due to very specific events */
-  private val accountsSpecialEvents = new AccountsEventsProcessing(db, indexedData)
-
-  /* handles standard accounts data */
-  private val accountsProcessing = new AccountsProcessing(nodeOperator, db, batchingConf, lorreConf.blockRightsFetching)
-
-  /* handles bakers data */
-  private val bakersProcessing = new BakersProcessing(nodeOperator, db, batchingConf, lorreConf.blockRightsFetching)
-
-  /* read known token smart contracts from configuration, which represents crypto-currencies internal to the chain */
-  implicit private val tokens: TokenContracts = initAnyCsvConfig()
-
-  /* Reads csv resources to initialize db tables and smart contracts objects */
-  private def initAnyCsvConfig(): TokenContracts = {
-    import kantan.csv.generic._
-    import tech.cryptonomic.conseil.common.util.ConfigUtil.Csv._
-    val tokenContracts: TokenContracts = {
-
-      val tokenContractsFuture =
-        TezosDb.initTableFromCsv(db, Tables.RegisteredTokens, tezosConf.network).map {
-          case (tokenRows, _) =>
-            TokenContracts.fromConfig(
-              tokenRows.map {
-                case Tables.RegisteredTokensRow(_, tokenName, standard, accountId, _) =>
-                  ContractId(accountId) -> standard
-              }
-            )
-
-        }
-
-      Await.result(tokenContractsFuture, 5.seconds)
-    }
-
-    /** Inits tables with values from CSV files */
-    TezosDb.initTableFromCsv(db, Tables.KnownAddresses, tezosConf.network)
-    TezosDb.initTableFromCsv(db, Tables.BakerRegistry, tezosConf.network)
-
-    //return the contracts definitions
-    tokenContracts
-  }
-
-  /* This is a smart contract acting as a Naming Service for accounts hashes to registered memorable names
-   * It's read from configuration and includes the possibility that none is actually defined
-   */
-  implicit private val tns: TNSContract =
-    tezosConf.tns match {
-      case None =>
-        logger.warn("No configuration found to initialize TNS for {}.", tezosConf.network)
-        TNSContract.noContract
-      case Some(conf) =>
-        TNSContract.fromConfig(conf)
-    }
-
-  //build operations on tns based on the implicit contracts defined before
-  private val tnsOperations = new TezosNamesOperations(tns, nodeOperator)
-
-  /* this is the principal data processor, handling paginated blocks, and the correlated data within */
-  private val blockProcessing = new BlocksProcessing(
-    nodeOperator,
-    db,
-    tnsOperations,
-    accountsProcessing,
-    bakersProcessing
-  )
 
   /** Schedules method for fetching baking rights */
   system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
@@ -169,7 +85,7 @@ class TezosIndexer(
   ): Unit = {
     val noOp = Future.successful(())
     val processing = for {
-      nextRefreshes <- accountsSpecialEvents.processAccountRefreshes(accountsRefreshLevels)
+      nextRefreshes <- accountsEventsProcessing.processAccountRefreshes(accountsRefreshLevels)
       _ <- processTezosBlocks()
       _ <- if (iteration % lorreConf.feeUpdateInterval == 0)
         TezosFeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
@@ -232,7 +148,7 @@ class TezosIndexer(
           .fromIterator(() => pages)
           .mapAsync[nodeOperator.BlockFetchingResults](1)(identity)
           .mapAsync(1) { fetchingResults =>
-            blockProcessing
+            blocksProcessing
               .processBlocksPage(fetchingResults)
               .flatTap(
                 _ =>
@@ -264,18 +180,14 @@ class TezosIndexer(
     checkTezosConnection()
     val accountRefreshesToRun =
       Await.result(
-        accountsSpecialEvents.unprocessedLevelsForRefreshingAccounts(lorreConf.chainEvents),
+        accountsEventsProcessing.unprocessedLevelsForRefreshingAccounts(lorreConf.chainEvents),
         atMost = 5.seconds
       )
     mainLoop(0, accountRefreshesToRun)
   }
 
-  override def stop(): Future[ShutdownComplete] =
-    for {
-      _ <- Future.successful(db.close())
-      _: ShutdownComplete <- nodeOperator.node.shutdown()
-      _: Terminated <- system.terminate()
-    } yield ShutdownComplete
+  override def stop(): Future[ShutdownComplete] = terminationSequence()
+
 }
 
 object TezosIndexer extends LazyLogging {
@@ -287,7 +199,126 @@ object TezosIndexer extends LazyLogging {
       callsConf: NetworkCallsConfiguration,
       streamingClientConf: HttpStreamingConfiguration,
       batchingConf: BatchFetchConfiguration
-  ): LorreIndexer =
-    new TezosIndexer(lorreConf, conf, callsConf, streamingClientConf, batchingConf)
+  ): LorreIndexer = {
+    val selectedNetwork = conf.network
 
+    implicit val system: ActorSystem = ActorSystem("lorre-tezos-indexer")
+    implicit val materializer: ActorMaterializer = ActorMaterializer()
+    implicit val dispatcher: ExecutionContext = system.dispatcher
+
+    val ignoreProcessFailuresOrigin: Option[String] = sys.env.get(LORRE_FAILURE_IGNORE_VAR)
+    val ignoreProcessFailures: Boolean =
+      ignoreProcessFailuresOrigin.exists(ignore => ignore == "true" || ignore == "yes")
+
+    /* Here we collect all internal service operations and resources, needed to run the indexer */
+    val db = DatabaseUtil.lorreDb
+    val indexedData = new TezosIndexedDataOperations
+
+    /* collects data from the remote tezos node */
+    val nodeOperator = new TezosNodeOperator(
+      new TezosNodeInterface(conf, callsConf, streamingClientConf),
+      selectedNetwork,
+      batchingConf,
+      indexedData
+    )
+
+    /* provides operations to handle rights to bake and endorse blocks */
+    val rightsProcessing = new BakingAndEndorsingRightsProcessing(
+      db,
+      lorreConf.blockRightsFetching,
+      nodeOperator,
+      indexedData
+    )
+
+    /* handles standard accounts data */
+    val accountsProcessing = new AccountsProcessing(nodeOperator, db, batchingConf, lorreConf.blockRightsFetching)
+
+    /* handles occasional global accounts refreshes due to very specific events */
+    val accountsEventsProcessing = new AccountsEventsProcessing(db, indexedData)
+
+    /* handles bakers data */
+    val bakersProcessing = new BakersProcessing(nodeOperator, db, batchingConf, lorreConf.blockRightsFetching)
+
+    /* Reads csv resources to initialize db tables and smart contracts objects */
+    def initAnyCsvConfig(): TokenContracts = {
+      import kantan.csv.generic._
+      import tech.cryptonomic.conseil.common.util.ConfigUtil.Csv._
+
+      /* Inits tables with values from CSV files */
+      TezosDb.initTableFromCsv(db, Tables.KnownAddresses, selectedNetwork)
+      TezosDb.initTableFromCsv(db, Tables.BakerRegistry, selectedNetwork)
+
+      /* Here we want to initialize the registered tokens and additionally get the token data back
+       * since it's needed to process calls to the same token smart contracts as the chain evolves
+       */
+      val tokenContracts: TokenContracts = {
+
+        val tokenContractsFuture =
+          TezosDb.initTableFromCsv(db, Tables.RegisteredTokens, selectedNetwork).map {
+            case (tokenRows, _) =>
+              TokenContracts.fromConfig(
+                tokenRows.map {
+                  case Tables.RegisteredTokensRow(_, tokenName, standard, accountId, _) =>
+                    ContractId(accountId) -> standard
+                }
+              )
+
+          }
+
+        Await.result(tokenContractsFuture, 5.seconds)
+      }
+
+      //return the contracts definitions
+      tokenContracts
+    }
+
+    /* read known token smart contracts from configuration, which represents crypto-currencies internal to the chain
+     * along with other static definitions to save in registry tables
+     */
+    implicit val tokens: TokenContracts = initAnyCsvConfig()
+
+    /* This is a smart contract acting as a Naming Service which associates accounts hashes to registered memorable names.
+     * It's read from configuration and includes the possibility that none is actually defined
+     */
+    implicit val tns: TNSContract =
+      conf.tns match {
+        case None =>
+          logger.warn("No configuration found to initialize TNS for {}.", selectedNetwork)
+          TNSContract.noContract
+        case Some(conf) =>
+          TNSContract.fromConfig(conf)
+      }
+
+    //build operations on tns based on the implicit contracts defined before
+    val tnsOperations = new TezosNamesOperations(tns, nodeOperator)
+
+    /* this is the principal data processor, handling paginated blocks, and the correlated data within */
+    val blocksProcessing = new BlocksProcessing(
+      nodeOperator,
+      db,
+      tnsOperations,
+      accountsProcessing,
+      bakersProcessing
+    )
+
+    /* the shutdown sequence to free resources */
+    val gracefulTermination = () =>
+      for {
+        _ <- Future.successful(db.close())
+        _: ShutdownComplete <- nodeOperator.node.shutdown()
+        _: Terminated <- system.terminate()
+      } yield ShutdownComplete
+
+    new TezosIndexer(
+      ignoreProcessFailures,
+      lorreConf,
+      nodeOperator,
+      blocksProcessing,
+      accountsProcessing,
+      bakersProcessing,
+      rightsProcessing,
+      accountsEventsProcessing,
+      gracefulTermination
+    )
+  }
 }
