@@ -686,11 +686,11 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return inactive baker accounts
     * */
   def getInactiveBakersFromAccounts(
-      activeBakers: List[String]
+      activeBakers: List[AccountId]
   )(implicit ec: ExecutionContext): DBIO[List[Tables.AccountsRow]] =
     Tables.Accounts
       .filter(_.isBaker === true)
-      .filterNot(_.accountId inSet activeBakers)
+      .filterNot(_.accountId inSet activeBakers.map(_.id))
       .result
       .map(_.toList)
 
