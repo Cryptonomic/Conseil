@@ -11,7 +11,7 @@ import org.http4s.BasicCredentials
 import org.http4s.client.blaze.BlazeClientBuilder
 import slick.jdbc.PostgresProfile.api._
 import slickeffect.Transactor
-import slickeffect.transactor.config
+import slickeffect.transactor.{config => transactorConfig}
 
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.indexer.config.LorreConfiguration
@@ -55,7 +55,7 @@ class BitcoinIndexer(
 
       tx <- Transactor
         .fromDatabase[IO](IO.delay(DatabaseUtil.lorreDb))
-        .map(_.configure(config.transactionally)) // run operations in transaction
+        .map(_.configure(transactorConfig.transactionally)) // run operations in transaction
 
       bitcoinOperations <- BitcoinOperations.resource(rpcClient, tx)
 

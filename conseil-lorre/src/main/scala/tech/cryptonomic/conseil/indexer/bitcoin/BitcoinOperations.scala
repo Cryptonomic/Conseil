@@ -9,7 +9,7 @@ import slickeffect.Transactor
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.bitcoin.{BitcoinPersistence, Tables}
 import tech.cryptonomic.conseil.common.bitcoin.rpc.BitcoinClient
-import tech.cryptonomic.conseil.indexer.config.{Depth, Newest, Everything, Custom}
+import tech.cryptonomic.conseil.indexer.config.{Custom, Depth, Everything, Newest}
 
 /**
   * Bitcoin operations for Lorre.
@@ -61,8 +61,8 @@ class BitcoinOperations[F[_]: Concurrent](
             .through(bitcoinClient.getBlockHash(2000))
             .through(bitcoinClient.getBlockByHash(500))
             .through(bitcoinClient.getBlockWithTransactions(200))
-            .evalTap(block => Concurrent[F].delay(logger.info(s"Save block with height: ${block._1.height}")))
-            .map(result => persistence.createBlock(result._1, result._2))
+            .evalTap { case (block, _) => Concurrent[F].delay(logger.info(s"Save block with height: ${block.height}")) }
+            .map((persistence.createBlock _).tupled)
             .evalMap(tx.transact)
             .drain
       )
@@ -70,7 +70,7 @@ class BitcoinOperations[F[_]: Concurrent](
   /**
     * Get sequence of existing blocks from the database.
     *
-    * @param range nclusive range of the block's height
+    * @param range Inclusive range of the block's height
     * @return
     */
   def getExistingBlocks(range: Range.Inclusive): F[Seq[Int]] =
