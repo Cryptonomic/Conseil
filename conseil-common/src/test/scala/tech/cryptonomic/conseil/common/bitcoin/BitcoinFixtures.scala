@@ -190,7 +190,6 @@ trait BitcoinFixtures {
     )
 
     val inputResult = TransactionInput(
-      txid = None,
       vout = None,
       scriptSig = None,
       sequence = 4294967295L,
@@ -199,31 +198,6 @@ trait BitcoinFixtures {
     )
 
     val outputResult = TransactionOutput(
-      txid = None,
-      value = Some(50.0),
-      n = 0,
-      scriptPubKey = ScriptPubKey(
-        asm =
-          "0476b42b3f2ff4ca18f71d6bd30de5e52cc055cc9f798c39d32e391ec227548fd1bd5104d07a7e1a443f01afb9781d64126fd3571f9c0d93747b30eeddd71a5332 OP_CHECKSIG",
-        hex =
-          "410476b42b3f2ff4ca18f71d6bd30de5e52cc055cc9f798c39d32e391ec227548fd1bd5104d07a7e1a443f01afb9781d64126fd3571f9c0d93747b30eeddd71a5332ac",
-        reqSigs = None,
-        `type` = "pubkey",
-        addresses = None
-      )
-    )
-
-    val inputWithTxidResult = TransactionInput(
-      txid = Some("d6118e27502a9b239c4519351c765667c86b1a4f8ff7592c367e88e4dac63e01"),
-      vout = None,
-      scriptSig = None,
-      sequence = 4294967295L,
-      coinbase = Some("04cb04041b0166"),
-      txinwitness = None
-    )
-
-    val outputWithTxidResult = TransactionOutput(
-      txid = Some("d6118e27502a9b239c4519351c765667c86b1a4f8ff7592c367e88e4dac63e01"),
       value = Some(50.0),
       n = 0,
       scriptPubKey = ScriptPubKey(
