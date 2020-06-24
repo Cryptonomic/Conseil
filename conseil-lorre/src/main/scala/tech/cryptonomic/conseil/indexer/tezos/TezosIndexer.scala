@@ -18,7 +18,7 @@ import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNO
 import tech.cryptonomic.conseil.indexer.LorreIndexer
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperations => TezosDb}
-import tech.cryptonomic.conseil.indexer.config.{BatchFetchConfiguration, Custom, Everything, HttpStreamingConfiguration, LorreConfiguration, NetworkCallsConfiguration, Newest}
+import tech.cryptonomic.conseil.indexer.config._
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors._
 import tech.cryptonomic.conseil.indexer.tezos.processing._

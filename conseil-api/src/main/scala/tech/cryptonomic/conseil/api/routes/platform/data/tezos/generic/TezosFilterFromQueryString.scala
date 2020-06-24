@@ -4,11 +4,11 @@ import cats.Functor
 import cats.syntax.functor._
 import endpoints.algebra
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiFilter.Sorting
+import tech.cryptonomic.conseil.common.util.TupleFlattenUtil._
+import FlattenHigh._
 
 /** Trait containing helper functions which are necessary for parsing query parameter strings as Filter  */
 private[tezos] trait TezosFilterFromQueryString { self: algebra.JsonEntities =>
-  import tech.cryptonomic.conseil.common.util.TupleFlattenUtil._
-  import FlattenHigh._
 
   /** Query string functor adding map operation */
   implicit def qsFunctor: Functor[QueryString]

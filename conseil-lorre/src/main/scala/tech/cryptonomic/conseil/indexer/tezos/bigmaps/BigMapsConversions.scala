@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.indexer.tezos.bigmaps
 import com.typesafe.scalalogging.LazyLogging
 import cats.implicits._
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, Block, Contract, ContractId, Decimal, InvalidDecimal, OperationHash, ParametersCompatibility}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.common.util.Conversion

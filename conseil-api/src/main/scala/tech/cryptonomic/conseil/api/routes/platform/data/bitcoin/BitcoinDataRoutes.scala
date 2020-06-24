@@ -11,6 +11,9 @@ import tech.cryptonomic.conseil.common.metadata
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
 
 import scala.concurrent.{ExecutionContext, Future}
+import cats.instances.either._
+import cats.instances.future._
+import cats.syntax.bitraverse._
 
 case class BitcoinDataRoutes(
     metadataService: MetadataService,
@@ -24,10 +27,6 @@ case class BitcoinDataRoutes(
     with LazyLogging {
 
   private val dataQueries = new BitcoinDataQueries(operations)
-
-  import cats.instances.either._
-  import cats.instances.future._
-  import cats.syntax.bitraverse._
 
   /** V2 Route implementation for query endpoint */
   override val postRoute: Route = queryEndpoint.implementedByAsync {

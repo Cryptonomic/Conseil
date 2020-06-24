@@ -90,7 +90,8 @@ trait ApiDataHelpers extends AkkaEndpoints with AkkaJsonSchemaEntities with ApiD
       override def encoder: Encoder[QueryResponseWithOutput] =
         (a: QueryResponseWithOutput) => a.queryResponse.asJson(Encoder.encodeList(queryResponseSchema.encoder))
 
-      override def decoder: Decoder[QueryResponseWithOutput] = ???
+      override def decoder: Decoder[QueryResponseWithOutput] =
+        throw new UnsupportedOperationException("Decoder for 'QueryResponseWithOutput' should never be needed.")
     }
 
   implicit def qsFunctor: Functor[QueryString] = new Functor[QueryString] {
