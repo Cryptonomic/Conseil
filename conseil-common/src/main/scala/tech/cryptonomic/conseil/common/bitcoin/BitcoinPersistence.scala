@@ -45,6 +45,7 @@ object BitcoinPersistence {
 
   /**
     * Convert form [[Block]] to [[Tables.BlocksRow]]
+    * TODO: This conversion should be done with the Chimney, but it's blocked due to the https://github.com/scala/bug/issues/11157
     */
   implicit val blockToBlocksRow: Conversion[Id, Block, Tables.BlocksRow] = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) =
@@ -71,6 +72,7 @@ object BitcoinPersistence {
 
   /**
     * Convert form [[Transaction]] to [[Tables.TransactionsRow]]
+    * TODO: This conversion should be done with the Chimney, but it's blocked due to the https://github.com/scala/bug/issues/11157
     */
   implicit val transactionToTransactionsRow: Conversion[Id, Transaction, Tables.TransactionsRow] =
     new Conversion[Id, Transaction, Tables.TransactionsRow] {
@@ -92,6 +94,7 @@ object BitcoinPersistence {
 
   /**
     * Convert form [[TransactionInput]] to [[Tables.InputsRow]]
+    * TODO: This conversion should be done with the Chimney, but it's blocked due to the https://github.com/scala/bug/issues/11157
     */
   implicit val inputToInputsRow: Conversion[Id, TransactionInput, Tables.InputsRow] =
     new Conversion[Id, TransactionInput, Tables.InputsRow] {
@@ -109,6 +112,7 @@ object BitcoinPersistence {
 
   /**
     * Convert form [[TransactionOutput]] to [[OutputsRow.BlocksRow]]
+    * TODO: This conversion should be done with the Chimney, but it's blocked due to the https://github.com/scala/bug/issues/11157
     */
   implicit val outputToOutputRow: Conversion[Id, TransactionOutput, Tables.OutputsRow] =
     new Conversion[Id, TransactionOutput, Tables.OutputsRow] {

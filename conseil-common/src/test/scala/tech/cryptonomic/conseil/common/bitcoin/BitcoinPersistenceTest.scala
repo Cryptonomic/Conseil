@@ -100,6 +100,10 @@ class BitcoinPersistenceTest
   trait BitcoinPersistanceStubs {
 
     /**
+      * This transactor object will actually execute any slick database action (DBIO) and convert 
+      * the result into a lazy IO value. When the IO effect is run to obtain the value, the transactor 
+      * automatically guarantees to properly release the underlying database resources. 
+      * 
       * The default implementation of [[slickeffect.Transactor]] wraps Slick db into the resource,
       * to handle proper shutdown at the end of the execution. I the test mode we want to encapsulate
       * every single test, so we have to prevent `Transactor` from shutdown with providing own method
