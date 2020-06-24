@@ -104,7 +104,7 @@ object BitcoinPersistence {
       override def convert(from: (Transaction, TransactionInput)) = from match {
         case (transaction, input) =>
           Tables.InputsRow(
-            txid = transaction.txid, // TODO: get rid of `get`
+            txid = transaction.txid,
             vOut = input.vout,
             scriptSigAsm = input.scriptSig.map(_.asm),
             scriptSigHex = input.scriptSig.map(_.asm),
