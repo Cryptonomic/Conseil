@@ -72,18 +72,7 @@ class BitcoinClient[F[_]: Concurrent](
           .map(GetRawTransaction.request)
           .through(client.stream[GetRawTransaction.Params, Transaction](batchSize))
           .chunkN(block.nTx)
-      } yield (block, transactions.toList.map(addTxidToTransactionComponents))
-
-  /**
-    * Enrich transaction components with the `txid`, because they are separated tables in the database.
-    *
-    * @param transaction JSON-RPC transaction response
-    */
-  private def addTxidToTransactionComponents(transaction: Transaction): Transaction =
-    transaction.copy(
-      vin = transaction.vin.map(_.copy(txid = Some(transaction.txid))),
-      vout = transaction.vout.map(_.copy(txid = Some(transaction.txid)))
-    )
+      } yield (block, transactions.toList)
 
 }
 

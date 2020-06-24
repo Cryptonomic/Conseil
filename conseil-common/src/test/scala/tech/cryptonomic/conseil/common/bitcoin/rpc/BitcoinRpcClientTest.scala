@@ -45,26 +45,16 @@ class BitcoinRpcClientTest extends WordSpec with Matchers with BitcoinFixtures {
           .through(bitcoinClientStub(JsonFixtures.getRawTransactionResponse).getBlockWithTransactions(batchSize = 1))
           .compile
           .toList
-          .unsafeRunSync() shouldBe List(
-              (
-                RpcFixtures.blockResult,
-                List(
-                  RpcFixtures.transactionResult.copy(
-                    vin = List(RpcFixtures.inputWithTxidResult),
-                    vout = List(RpcFixtures.outputWithTxidResult)
-                  )
-                )
-              )
-            )
+          .unsafeRunSync() shouldBe List((RpcFixtures.blockResult, List(RpcFixtures.transactionResult)))
       }
 
     }
 
   /**
     * Stubs that can help to provide tests for the [[BitcoinClient]].
-    * 
+    *
     * Usage example:
-    * 
+    *
     * {{{
     *   "test name" in new BitcoinClientStubs {
     *     // bitcoinClientStub is available in the current scope

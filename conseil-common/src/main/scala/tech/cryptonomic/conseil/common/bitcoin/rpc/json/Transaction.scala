@@ -3,9 +3,7 @@ package tech.cryptonomic.conseil.common.bitcoin.rpc.json
 /**
   * Trait for transaction inputs and outputs.
   */
-trait TransactionComponent {
-  def txid: Option[String]
-}
+trait TransactionComponent
 
 /**
   * Response from `getrawtransaction` Bitcoin JSON-RPC api call (with verbose = true).
@@ -40,7 +38,6 @@ case class ScriptSig(
   * More info at: https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
   */
 case class TransactionInput(
-    txid: Option[String],
     vout: Option[Int],
     scriptSig: Option[ScriptSig],
     sequence: Long,
@@ -64,7 +61,6 @@ case class ScriptPubKey(
   * More info at: https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
   */
 case class TransactionOutput(
-    txid: Option[String],
     value: Option[BigDecimal],
     n: Int,
     scriptPubKey: ScriptPubKey
