@@ -27,27 +27,23 @@ import tech.cryptonomic.conseil.indexer.config.{
 }
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors._
+import tech.cryptonomic.conseil.indexer.tezos.processing._
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-import tech.cryptonomic.conseil.indexer.tezos.processing.BakingAndEndorsingRightsProcessing
-import tech.cryptonomic.conseil.indexer.tezos.processing.AccountsEventsProcessing
-import tech.cryptonomic.conseil.indexer.tezos.processing.BakersProcessing
-import tech.cryptonomic.conseil.indexer.tezos.processing.AccountsProcessing
-import tech.cryptonomic.conseil.indexer.tezos.processing.BlocksProcessing
 
-/** * Class responsible for indexing data for Tezos BlockChain */
+/** Class responsible for indexing data for Tezos BlockChain */
 class TezosIndexer private (
     ignoreProcessFailures: Boolean,
     lorreConf: LorreConfiguration,
     nodeOperator: TezosNodeOperator,
-    blocksProcessing: BlocksProcessing,
-    accountsProcessing: AccountsProcessing,
-    bakersProcessing: BakersProcessing,
-    rightsProcessing: BakingAndEndorsingRightsProcessing,
-    accountsEventsProcessing: AccountsEventsProcessing,
+    blocksProcessor: BlocksProcessor,
+    accountsProcessor: AccountsProcessor,
+    bakersProcessor: BakersProcessor,
+    rightsProcessor: BakingAndEndorsingRightsProcessor,
+    accountsEventsProcessor: AccountsEventsProcessor,
     terminationSequence: () => Future[ShutdownComplete]
 )(
     implicit
@@ -60,7 +56,7 @@ class TezosIndexer private (
 
   /** Schedules method for fetching baking rights */
   system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
-    rightsProcessing.writeFutureRights()
+    rightsProcessor.writeFutureRights()
   )
 
   /** Tries to fetch blocks head to verify if connection with Tezos node was successfully established */
@@ -81,17 +77,17 @@ class TezosIndexer private (
   @tailrec
   private def mainLoop(
       iteration: Int,
-      accountsRefreshLevels: AccountsEventsProcessing.AccountUpdatesEvents
+      accountsRefreshLevels: AccountsEventsProcessor.AccountUpdatesEvents
   ): Unit = {
     val noOp = Future.successful(())
     val processing = for {
-      nextRefreshes <- accountsEventsProcessing.processAccountRefreshes(accountsRefreshLevels)
+      nextRefreshes <- accountsEventsProcessor.processAccountRefreshes(accountsRefreshLevels)
       _ <- processTezosBlocks()
       _ <- if (iteration % lorreConf.feeUpdateInterval == 0)
         TezosFeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
       else
         noOp
-      _ <- rightsProcessing.updateRightsTimestamps()
+      _ <- rightsProcessor.updateRightsTimestamps()
     } yield Some(nextRefreshes)
 
     /* Won't stop Lorre on failure from processing the chain, unless overridden by the environment to halt.
@@ -148,13 +144,13 @@ class TezosIndexer private (
           .fromIterator(() => pages)
           .mapAsync[nodeOperator.BlockFetchingResults](1)(identity)
           .mapAsync(1) { fetchingResults =>
-            blocksProcessing
+            blocksProcessor
               .processBlocksPage(fetchingResults)
               .flatTap(
                 _ =>
-                  accountsProcessing.processTezosAccountsCheckpoint() >>
-                      bakersProcessing.processTezosBakersCheckpoint() >>
-                      rightsProcessing.processBakingAndEndorsingRights(fetchingResults)
+                  accountsProcessor.processTezosAccountsCheckpoint() >>
+                      bakersProcessor.processTezosBakersCheckpoint() >>
+                      rightsProcessor.processBakingAndEndorsingRights(fetchingResults)
               )
           }
           .runFold(0) { (processed, justDone) =>
@@ -180,7 +176,7 @@ class TezosIndexer private (
     checkTezosConnection()
     val accountRefreshesToRun =
       Await.result(
-        accountsEventsProcessing.unprocessedLevelsForRefreshingAccounts(lorreConf.chainEvents),
+        accountsEventsProcessor.unprocessedLevelsForRefreshingAccounts(lorreConf.chainEvents),
         atMost = 5.seconds
       )
     mainLoop(0, accountRefreshesToRun)
@@ -223,7 +219,7 @@ object TezosIndexer extends LazyLogging {
     )
 
     /* provides operations to handle rights to bake and endorse blocks */
-    val rightsProcessing = new BakingAndEndorsingRightsProcessing(
+    val rightsProcessor = new BakingAndEndorsingRightsProcessor(
       db,
       lorreConf.blockRightsFetching,
       nodeOperator,
@@ -231,13 +227,13 @@ object TezosIndexer extends LazyLogging {
     )
 
     /* handles standard accounts data */
-    val accountsProcessing = new AccountsProcessing(nodeOperator, db, batchingConf, lorreConf.blockRightsFetching)
+    val accountsProcessor = new AccountsProcessor(nodeOperator, db, batchingConf, lorreConf.blockRightsFetching)
 
     /* handles occasional global accounts refreshes due to very specific events */
-    val accountsEventsProcessing = new AccountsEventsProcessing(db, indexedData)
+    val accountsEventsProcessor = new AccountsEventsProcessor(db, indexedData)
 
     /* handles bakers data */
-    val bakersProcessing = new BakersProcessing(nodeOperator, db, batchingConf, lorreConf.blockRightsFetching)
+    val bakersProcessor = new BakersProcessor(nodeOperator, db, batchingConf, lorreConf.blockRightsFetching)
 
     /* Reads csv resources to initialize db tables and smart contracts objects */
     def initAnyCsvConfig(): TokenContracts = {
@@ -293,12 +289,12 @@ object TezosIndexer extends LazyLogging {
     val tnsOperations = new TezosNamesOperations(tns, nodeOperator)
 
     /* this is the principal data processor, handling paginated blocks, and the correlated data within */
-    val blocksProcessing = new BlocksProcessing(
+    val blocksProcessor = new BlocksProcessor(
       nodeOperator,
       db,
       tnsOperations,
-      accountsProcessing,
-      bakersProcessing
+      accountsProcessor,
+      bakersProcessor
     )
 
     /* the shutdown sequence to free resources */
@@ -313,11 +309,11 @@ object TezosIndexer extends LazyLogging {
       ignoreProcessFailures,
       lorreConf,
       nodeOperator,
-      blocksProcessing,
-      accountsProcessing,
-      bakersProcessing,
-      rightsProcessing,
-      accountsEventsProcessing,
+      blocksProcessor,
+      accountsProcessor,
+      bakersProcessor,
+      rightsProcessor,
+      accountsEventsProcessor,
       gracefulTermination
     )
   }

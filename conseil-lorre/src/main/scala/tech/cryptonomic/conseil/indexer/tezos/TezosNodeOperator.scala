@@ -15,6 +15,7 @@ import tech.cryptonomic.conseil.indexer.config.{BatchFetchConfiguration, SodiumC
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
 import scala.util.{Failure, Success, Try}
+import scala.util.control.NonFatal
 
 private[tezos] object TezosNodeOperator {
   type LazyPages[T] = Iterator[Future[T]]
@@ -417,22 +418,21 @@ private[tezos] class TezosNodeOperator(
   }
 
   /** Fetches active delegates from node
-    * We get the situation for all blocks identified by the input hashes
-    *
-    * Assumptions: the input pairs must match hash and level of the same block
-    * @param blockHashesPerLevel the hashes of blocks, along with block level
+    * We get the situation for a block identified by the input hash.
+    * Any failure in fetching will result in a empty result.
     */
-  def fetchActiveBakers(blockHashesPerLevel: List[(Int, BlockHash)]): Future[List[(BlockHash, List[AccountId])]] = {
+  def fetchActiveBakers(blockHash: BlockHash): Future[Option[(BlockHash, List[AccountId])]] = {
     /* implicitly uses: AccountsDataFetchers.activeDelegateFetcher */
     import cats.instances.future._
     import cats.instances.list._
-    import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
+    import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetchOne
 
-    val blockHashesWithoutGenesis = blockHashesPerLevel.collect {
-      case (blockLevel, blockHash) if blockLevel > 0 => blockHash
-    }
-
-    fetch[BlockHash, List[AccountId], Future, List, Throwable].run(blockHashesWithoutGenesis)
+    //we consider it might fail for, i.e., the genesis block, so we simply fallback to an empty result
+    fetchOne[BlockHash, List[AccountId], Future, List, Throwable]
+      .run(blockHash)
+      .recover {
+        case NonFatal(error) => None
+      }
   }
 
   //move it to the node operator

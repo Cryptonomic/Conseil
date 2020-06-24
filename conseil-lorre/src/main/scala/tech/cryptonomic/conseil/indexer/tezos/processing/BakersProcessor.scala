@@ -30,7 +30,7 @@ import akka.stream.ActorMaterializer
   * @param db
   * @param batchingConf
   */
-class BakersProcessing(
+class BakersProcessor(
     nodeOperator: TezosNodeOperator,
     db: Database,
     batchingConf: BatchFetchConfiguration,
@@ -81,7 +81,7 @@ class BakersProcessing(
         .andThen(logWriteFailure)
     }
 
-    def cleanup[T] = (_: T) => {
+    def cleanup = {
       //can fail with no real downsides
       val processed = Some(ids.keySet)
       logger.info("Cleaning {} processed bakers from the checkpoint...", ids.size)
@@ -136,7 +136,7 @@ class BakersProcessing(
 
     val fetchAndStore = for {
       (bakerPages, _) <- prunedUpdates().map(nodeOperator.getBakersForBlocks)
-      _ <- saveBakers(bakerPages) flatTap cleanup
+      _ <- saveBakers(bakerPages) flatTap (_ => cleanup)
     } yield Done
 
     fetchAndStore.transform(

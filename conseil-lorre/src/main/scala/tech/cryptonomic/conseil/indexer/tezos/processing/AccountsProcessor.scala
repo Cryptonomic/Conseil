@@ -5,6 +5,8 @@ import scala.util.{Failure, Success, Try}
 import akka.Done
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
+import cats._
+import cats.implicits._
 import tech.cryptonomic.conseil.indexer.config.{BakingAndEndorsingRights, BatchFetchConfiguration}
 import tech.cryptonomic.conseil.indexer.tezos.{TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator.LazyPages
@@ -25,7 +27,16 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 
-class AccountsProcessing(
+/** Handles operations related to handling accounts from
+  * the tezos node.
+  *
+  * @param nodeOperator connects to tezos
+  * @param db raw access to the slick database
+  * @param batchingConf used to access configuration on batch fetching
+  * @param rightsConf used to access configuration for baking/endorsing rights processing
+  * @param mat implicitly required materializer of akka streams, used by internal streaming processing
+  */
+class AccountsProcessor(
     nodeOperator: TezosNodeOperator,
     db: Database,
     batchingConf: BatchFetchConfiguration,
@@ -34,11 +45,15 @@ class AccountsProcessing(
     implicit mat: ActorMaterializer
 ) extends LazyLogging {
 
-  type AccountsIndex = Map[AccountId, Account]
-  type DelegateKeys = List[PublicKeyHash]
+  /** accounts, indexed by id */
+  private type AccountsIndex = Map[AccountId, Account]
+  /* an alias to denote pkhs that identify delegates */
+  private type DelegateKeys = List[PublicKeyHash]
 
   /* Fetches the data from the chain node and stores accounts into the data store.
+   *
    * @param ids a pre-filtered map of account ids with latest block referring to them
+   * @param votingData rolls associated to each block, we assume data is available for all block associated in the `ids`
    * @param onlyProcessLatest verify that no recent update was made to the account before processing each id
    *        (default = false)
    */
@@ -49,15 +64,6 @@ class AccountsProcessing(
   )(
       implicit ec: ExecutionContext
   ): Future[List[BlockTagged[DelegateKeys]]] = {
-    import cats.Monoid
-    import cats.instances.future._
-    import cats.instances.int._
-    import cats.instances.list._
-    import cats.instances.option._
-    import cats.instances.tuple._
-    import cats.syntax.flatMap._
-    import cats.syntax.functorFilter._
-    import cats.syntax.monoid._
 
     def logWriteFailure: PartialFunction[Try[_], Unit] = {
       case Failure(e) =>
@@ -73,6 +79,11 @@ class AccountsProcessing(
         )
     }
 
+    /* Traverse the accounts and extract any available key for a delegate,
+     * producing the latter alongside information on the block of reference
+     * The return value is a pair of the input accounts and the baker keys,
+     * both "tagged" with block-identifying data
+     */
     def extractBakersInfo(
         taggedAccounts: Seq[BlockTagged[AccountsIndex]]
     ): (List[BlockTagged[AccountsIndex]], List[BlockTagged[DelegateKeys]]) = {
@@ -94,8 +105,18 @@ class AccountsProcessing(
       (taggedList, taggedBakersKeys)
     }
 
+    /** Starting from accounts grouped by block, and the correspoding delegates,
+      * we compute extra information and store everything in the database.
+      * All of this is done on a "page" of those values, which represents a chunk
+      * of block levels in the chain, being processed together.
+      *
+      * @param taggedAccounts for a batch of blocks, the corresponding accounts, indexed by id
+      * @param taggedBakerKeys for the same batch of blocks, all delegates pkh extracted from the accounts' data
+      * @param ec used for concurrent operations
+      * @return the number of accounts written, checkpoint rows for delegate keys, the delegate/baker keys to be processed
+      */
     def processAccountsPage(
-        taggedAccounts: List[BlockTagged[Map[AccountId, Account]]],
+        taggedAccounts: List[BlockTagged[AccountsIndex]],
         taggedBakerKeys: List[BlockTagged[DelegateKeys]]
     )(
         implicit ec: ExecutionContext
@@ -108,8 +129,8 @@ class AccountsProcessing(
         activatedAccounts <- db.run(TezosDb.findActivatedAccountIds)
         updatedTaggedAccounts = updateTaggedAccountsWithIsActivated(
           taggedAccounts,
-          activatedOperations,
-          activatedAccounts.toList
+          activatedOperations.mapValues(_.toSet),
+          activatedAccounts.map(PublicKeyHash(_)).toSet
         )
         inactiveBakerAccounts <- getInactiveBakersWithTaggedAccounts(updatedTaggedAccounts)
       } yield inactiveBakerAccounts
@@ -124,53 +145,71 @@ class AccountsProcessing(
       }
     }
 
+    /** Pairs every block accounts map in the input with active bakers for that same block level */
     def getInactiveBakersWithTaggedAccounts(
-        taggedAccounts: List[BlockTagged[Map[AccountId, Account]]]
-    ): Future[List[(BlockTagged[Map[AccountId, Account]], List[Tables.AccountsRow])]] =
-      Future.traverse(taggedAccounts) { blockTaggedAccounts =>
-        if (blockTaggedAccounts.blockLevel % rightsConf.cycleSize == 1) {
-          nodeOperator.fetchActiveBakers(taggedAccounts.map(x => (x.blockLevel, x.blockHash))).flatMap { activeBakers =>
-            val activeBakersIds = activeBakers.toMap.apply(blockTaggedAccounts.blockHash)
+        taggedAccounts: List[BlockTagged[AccountsIndex]]
+    ): Future[List[(BlockTagged[AccountsIndex], List[Tables.AccountsRow])]] =
+      Future.traverse(taggedAccounts) { accountsPerLevel =>
+        if (accountsPerLevel.blockLevel % rightsConf.cycleSize == 1) {
+          nodeOperator.fetchActiveBakers(accountsPerLevel.blockHash).flatMap { activeBakers =>
+            //the returned ids also reference the input hash, but we can discard it
+            //we only want the active ids to fetch the inactive by difference from the database
+            val activeIds = activeBakers.map(_._2.toSet).getOrElse(Set.empty)
             db.run {
               TezosDb
-                .getInactiveBakersFromAccounts(activeBakersIds)
-                .map(blockTaggedAccounts -> _)
+                .getFilteredBakerAccounts(exclude = activeIds)
+                .map(accountsPerLevel -> _)
             }
           }
         } else {
-          Future.successful(blockTaggedAccounts -> List.empty)
+          Future.successful(accountsPerLevel -> List.empty)
         }
       }
 
+    /** Marks all the input accounts as "activated",
+      * based on the data from the other inputs.
+      * Assumptions: the activated operations and ids will
+      * contain the information necessary to check all the input accounts.
+      *
+      * @param taggedAccounts the accounts to mark, with additional block references
+      * @param activatedViaOperationsPerLevel defines the pkh of accounts activated in operations for a given level
+      * @param activatedViaAccountIds defines known activated account ids
+      * @return
+      */
     def updateTaggedAccountsWithIsActivated(
         taggedAccounts: List[BlockTagged[AccountsIndex]],
-        activatedOperations: Map[Int, Seq[Option[String]]],
-        activatedAccountIds: List[String]
-    ): List[BlockTagged[Map[AccountId, Account]]] =
+        activatedViaOperationsPerLevel: Map[Int, Set[PublicKeyHash]],
+        activatedViaAccountIds: Set[PublicKeyHash]
+    ): List[BlockTagged[AccountsIndex]] =
       taggedAccounts.map { taggedAccount =>
-        val activatedAccountsHashes = activatedOperations.get(taggedAccount.blockLevel).toList.flatten
+        val activatedViaOperations = activatedViaOperationsPerLevel.getOrElse(taggedAccount.blockLevel, Set.empty)
         taggedAccount.copy(
           content = taggedAccount.content.mapValues { account =>
-            val hash = account.manager.map(_.value)
-            if ((activatedAccountsHashes ::: activatedAccountIds.map(Some(_))).contains(hash)) {
+            if (account.manager.exists(activatedViaAccountIds | activatedViaOperations)) {
               account.copy(isActivated = Some(true))
             } else account
           }
         )
       }
 
-    def fetchActivationOperationsByLevel(levels: List[Int]): Future[Map[Int, Seq[Option[String]]]] = {
+    /** Get all pkh for each level in input, belonging to any activate-account operation */
+    def fetchActivationOperationsByLevel(levels: List[Int]): Future[Map[Int, List[PublicKeyHash]]] = {
       import slick.jdbc.PostgresProfile.api._
       db.run {
         DBIO.sequence {
           levels.map { level =>
-            TezosDb.fetchRecentOperationsHashByKind(Set("activate_account"), level).map(x => level -> x)
+            TezosDb
+              .fetchRecentOperationsHashByKind(Set("activate_account"), level)
+              .map(
+                optionalOperationHashes => level -> optionalOperationHashes.toList.flattenOption.map(PublicKeyHash(_))
+              )
           }
         }.map(_.toMap)
       }
     }
 
-    def cleanup[T] = (_: T) => {
+    /** remove from the checkpoints any processed id */
+    def cleanup = {
       //can fail with no real downsides
       val processed = Some(ids.keySet)
       logger.info("Cleaning {} processed accounts from the checkpoint...", ids.size)
@@ -233,7 +272,7 @@ class AccountsProcessing(
     val fetchAndStore = for {
       (accountPages, _) <- prunedUpdates().map(nodeOperator.getAccountsForBlocks)
       updatedPages = updateAccountPages(accountPages)
-      (stored, checkpoints, delegateKeys) <- saveAccounts(updatedPages) flatTap cleanup
+      (stored, checkpoints, delegateKeys) <- saveAccounts(updatedPages) flatTap (_ => cleanup)
     } yield delegateKeys
 
     fetchAndStore.transform(

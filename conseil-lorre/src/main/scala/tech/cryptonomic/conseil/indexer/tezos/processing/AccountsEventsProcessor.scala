@@ -9,7 +9,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockHash
 import tech.cryptonomic.conseil.indexer.tezos.{TezosIndexedDataOperations, TezosDatabaseOperations => TezosDb}
 import slick.jdbc.PostgresProfile.api._
 
-object AccountsEventsProcessing {
+object AccountsEventsProcessor {
 
   /** Events on which to trigger accounts updates, as ordered pairs of
     * level and a pattern to decide which accounts needs to be reloaded.
@@ -28,11 +28,11 @@ object AccountsEventsProcessing {
   * @param db raw access to the underlying slick database
   * @param indexedData access to the operations on locally indexed data
   */
-class AccountsEventsProcessing(
+class AccountsEventsProcessor(
     db: Database,
     indexedData: TezosIndexedDataOperations
 ) extends LazyLogging {
-  import AccountsEventsProcessing._
+  import AccountsEventsProcessor._
 
   /** Finds unprocessed levels for account refreshes (i.e. when there is a need to reload all accounts data from the chain) */
   private[tezos] def unprocessedLevelsForRefreshingAccounts(

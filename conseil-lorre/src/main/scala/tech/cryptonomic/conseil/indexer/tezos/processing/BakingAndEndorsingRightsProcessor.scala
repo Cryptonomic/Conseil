@@ -23,7 +23,7 @@ import akka.stream.ActorMaterializer
 import slick.jdbc.PostgresProfile.api._
 import scala.concurrent.Future
 
-class BakingAndEndorsingRightsProcessing(
+class BakingAndEndorsingRightsProcessor(
     db: Database,
     configuration: config.BakingAndEndorsingRights,
     nodeOperator: TezosNodeOperator,

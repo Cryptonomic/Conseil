@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.common.generic.chain
 
 import cats._
 import cats.data.Kleisli
+import cats.syntax.applicative._
 import cats.syntax.applicativeError._
 import cats.syntax.semigroupal._
 
@@ -93,6 +94,18 @@ object DataFetcher {
             .second[In] //only decodes the second element of the tuple (the encoded value) and pass the first on (the input)
             .traverse(encoded) //operates on a whole traverable Coll and wraps the resulting collection in a single Effect wrapper
       )
+
+  /** Essentially fetch and decodes data as [[fetch]] does, but for a single input element.
+    * It takes advantage of having a fetcher for a collection which permits to build a singleton,
+    * guaranteed by the [[Applicative]] instance, so that we can wrap one element and return
+    * the first element of the output.
+    * E.g. a [[List]] can always be created by providing a single element.
+    */
+  def fetchOne[In, Out, Eff[_], Coll[_]: Traverse: Applicative, Err](
+      implicit app: MonadError[Eff, Err],
+      fetcher: DataFetcher.Aux[Eff, Coll, Err, In, Out, _]
+  ): Kleisli[Eff, In, Option[(In, Out)]] =
+    Kleisli((in: In) => fetch[In, Out, Eff, Coll, Err].run(in.pure[Coll])).map(_.get(0))
 
   /* An alias used to define function constraints on the internal dependent types (i.e. `I`, `O`, `E`)
    * which would be otherwise opaque in any function signature

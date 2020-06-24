@@ -4,6 +4,7 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.{ExecutionContext, Future}
 import slick.jdbc.PostgresProfile.api._
+import cats.implicits._
 
 import tech.cryptonomic.conseil.indexer.tezos.{
   TezosNamesOperations,
@@ -16,12 +17,12 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
 
-class BlocksProcessing(
+class BlocksProcessor(
     nodeOperator: TezosNodeOperator,
     db: Database,
     tnsOperations: TezosNamesOperations,
-    accountsProcessing: AccountsProcessing,
-    bakersProcessing: BakersProcessing
+    accountsProcessor: AccountsProcessor,
+    bakersProcessor: BakersProcessor
 )(implicit tokens: TokenContracts, tns: TNSContract)
     extends LazyLogging {
 
@@ -53,9 +54,9 @@ class BlocksProcessing(
       _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
       rollsData <- nodeOperator.getBakerRollsForBlocks(blocks)
       rollsByBlockHash = rollsData.map { case (block, rolls) => block.data.hash -> rolls }.toMap
-      bakersCheckpoints <- accountsProcessing.processAccountsForBlocks(accountUpdates, rollsByBlockHash) // should this fail, we still recover data from the checkpoint
-      _ <- bakersProcessing.processBakersForBlocks(bakersCheckpoints)
-      _ <- bakersProcessing.updateBakersBalances(blocks)
+      bakersCheckpoints <- accountsProcessor.processAccountsForBlocks(accountUpdates, rollsByBlockHash) // should this fail, we still recover data from the checkpoint
+      _ <- bakersProcessor.processBakersForBlocks(bakersCheckpoints)
+      _ <- bakersProcessor.updateBakersBalances(blocks)
       _ <- processBlocksForGovernance(rollsData.toMap)
     } yield results.size
 
@@ -70,11 +71,9 @@ class BlocksProcessing(
   private def processBlocksForGovernance(bakerRollsByBlock: Map[Block, List[Voting.BakerRolls]])(
       implicit ec: ExecutionContext
   ): Future[Unit] =
-    for {
-      aggregates <- TezosGovernanceOperations.extractGovernanceAggregations(db, nodeOperator)(
-        bakerRollsByBlock
-      )
-      _ <- db.run(TezosDb.insertGovernance(aggregates))
-    } yield ()
+    TezosGovernanceOperations
+      .extractGovernanceAggregations(db, nodeOperator)(bakerRollsByBlock)
+      .flatMap(aggregates => db.run(TezosDb.insertGovernance(aggregates)))
+      .void
 
 }

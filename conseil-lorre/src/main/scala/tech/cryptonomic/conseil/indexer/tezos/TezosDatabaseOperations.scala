@@ -680,17 +680,16 @@ object TezosDatabaseOperations extends LazyLogging {
       .filter(_._1 inSet ids.map(_.value))
       .result
 
-  /**
-    * Gets inactive bakers from accounts
-    * @param activeBakers accountIds needed to filter out them from all of the bakers
-    * @return inactive baker accounts
-    * */
-  def getInactiveBakersFromAccounts(
-      activeBakers: List[AccountId]
+  /** Gets only bakers from the accounts, excluding those for the input ids.
+    *
+    * @param exclude defines which bakers should be filtered out
+    */
+  def getFilteredBakerAccounts(
+      exclude: Set[AccountId]
   )(implicit ec: ExecutionContext): DBIO[List[Tables.AccountsRow]] =
     Tables.Accounts
       .filter(_.isBaker === true)
-      .filterNot(_.accountId inSet activeBakers.map(_.id))
+      .filterNot(_.accountId inSet exclude.map(_.id))
       .result
       .map(_.toList)
 
