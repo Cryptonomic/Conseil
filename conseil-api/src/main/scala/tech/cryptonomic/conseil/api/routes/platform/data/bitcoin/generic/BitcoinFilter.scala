@@ -21,26 +21,22 @@ final case class BitcoinFilter(
     order: Option[Sorting] = Some(DescendingSort)
 ) {
 
-  /** Collects predicates for specific fields in Filter */
-  private def predicates =
-    List(
-      Predicate(
-        field = "hash",
-        operation = OperationType.in,
-        set = blockIds.toList
-      ),
-      Predicate(
-        field = "txid",
-        operation = OperationType.in,
-        set = transactionIDs.toList
-      )
-    ).filter(_.set.nonEmpty)
-
   /** Transforms Filter into a Query with a set of predicates */
   def toQuery: DataTypes.Query =
     Query(
       fields = List.empty,
-      predicates = predicates,
+      predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.in,
+          set = blockIds.toList
+        ),
+        Predicate(
+          field = "txid",
+          operation = OperationType.in,
+          set = transactionIDs.toList
+        )
+      ).filter(_.set.nonEmpty),
       limit = limit.getOrElse(DataTypes.defaultLimitValue),
       orderBy = toQueryOrdering(sortBy, order).toList,
       snapshot = None
