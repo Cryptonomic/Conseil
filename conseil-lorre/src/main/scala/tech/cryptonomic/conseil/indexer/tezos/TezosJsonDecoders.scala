@@ -36,7 +36,7 @@ private[tezos] object TezosJsonDecoders {
       import cats.syntax.either._
       import io.circe.parser.decode
 
-      decode[A](json).leftWiden[Throwable].raiseOrPure[Eff]
+      decode[A](json).leftWiden[Throwable].liftTo[Eff]
     }
 
     /* use this to decode starting from string, adding format validation on the string to build another object based on valid results */
