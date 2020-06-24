@@ -30,8 +30,8 @@ class BitcoinPersistence[F[_]: Concurrent] extends LazyLogging {
     DBIO.seq(
       Tables.Blocks += block.convertTo[Tables.BlocksRow],
       Tables.Transactions ++= transactions.map(_.convertTo[Tables.TransactionsRow]),
-      Tables.Inputs ++= transactions.flatMap(_.vin).map(_.convertTo[Tables.InputsRow]),
-      Tables.Outputs ++= transactions.flatMap(_.vout).map(_.convertTo[Tables.OutputsRow])
+      Tables.Inputs ++= transactions.flatMap(t => t.vin.map(c => (t, c))).map(_.convertTo[Tables.InputsRow]),
+      Tables.Outputs ++= transactions.flatMap(t => t.vout.map(c => (t, c))).map(_.convertTo[Tables.OutputsRow])
     )
 }
 
@@ -45,7 +45,8 @@ object BitcoinPersistence {
 
   /**
     * Convert form [[Block]] to [[Tables.BlocksRow]]
-    * TODO: This conversion should be done with the Chimney, but it's blocked due to the https://github.com/scala/bug/issues/11157
+    * TODO: This conversion should be done with the Chimney,
+    *       but it's blocked due to the https://github.com/scala/bug/issues/11157
     */
   implicit val blockToBlocksRow: Conversion[Id, Block, Tables.BlocksRow] = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) =
@@ -72,7 +73,8 @@ object BitcoinPersistence {
 
   /**
     * Convert form [[Transaction]] to [[Tables.TransactionsRow]]
-    * TODO: This conversion should be done with the Chimney, but it's blocked due to the https://github.com/scala/bug/issues/11157
+    * TODO: This conversion should be done with the Chimney,
+    *       but it's blocked due to the https://github.com/scala/bug/issues/11157
     */
   implicit val transactionToTransactionsRow: Conversion[Id, Transaction, Tables.TransactionsRow] =
     new Conversion[Id, Transaction, Tables.TransactionsRow] {
@@ -94,38 +96,45 @@ object BitcoinPersistence {
 
   /**
     * Convert form [[TransactionInput]] to [[Tables.InputsRow]]
-    * TODO: This conversion should be done with the Chimney, but it's blocked due to the https://github.com/scala/bug/issues/11157
+    * TODO: This conversion should be done with the Chimney,
+    *       but it's blocked due to the https://github.com/scala/bug/issues/11157
     */
-  implicit val inputToInputsRow: Conversion[Id, TransactionInput, Tables.InputsRow] =
-    new Conversion[Id, TransactionInput, Tables.InputsRow] {
-      override def convert(from: TransactionInput) =
-        Tables.InputsRow(
-          txid = from.txid.get, // TODO: get rid of `get`
-          vOut = from.vout,
-          scriptSigAsm = from.scriptSig.map(_.asm),
-          scriptSigHex = from.scriptSig.map(_.asm),
-          sequence = from.sequence,
-          coinbase = from.coinbase,
-          txInWitness = from.txinwitness.map(_.mkString(","))
-        )
+  implicit val inputToInputsRow: Conversion[Id, (Transaction, TransactionInput), Tables.InputsRow] =
+    new Conversion[Id, (Transaction, TransactionInput), Tables.InputsRow] {
+      override def convert(from: (Transaction, TransactionInput)) = from match {
+        case (transaction, input) =>
+          Tables.InputsRow(
+            txid = transaction.txid, // TODO: get rid of `get`
+            vOut = input.vout,
+            scriptSigAsm = input.scriptSig.map(_.asm),
+            scriptSigHex = input.scriptSig.map(_.asm),
+            sequence = input.sequence,
+            coinbase = input.coinbase,
+            txInWitness = input.txinwitness.map(_.mkString(","))
+          )
+      }
     }
 
   /**
     * Convert form [[TransactionOutput]] to [[OutputsRow.BlocksRow]]
-    * TODO: This conversion should be done with the Chimney, but it's blocked due to the https://github.com/scala/bug/issues/11157
+    * TODO: This conversion should be done with the Chimney,
+    *       but it's blocked due to the https://github.com/scala/bug/issues/11157
     */
-  implicit val outputToOutputRow: Conversion[Id, TransactionOutput, Tables.OutputsRow] =
-    new Conversion[Id, TransactionOutput, Tables.OutputsRow] {
-      override def convert(from: TransactionOutput) =
-        Tables.OutputsRow(
-          txid = from.txid.get, // TODO: get rid of `get`
-          value = from.value,
-          n = from.n,
-          scriptPubKeyAsm = from.scriptPubKey.asm,
-          scriptPubKeyHex = from.scriptPubKey.hex,
-          scriptPubKeyReqSigs = from.scriptPubKey.reqSigs,
-          scriptPubKeyType = from.scriptPubKey.`type`,
-          scriptPubKeyAddresses = from.scriptPubKey.addresses.map(_.mkString(","))
-        )
+  implicit val outputToOutputRow: Conversion[Id, (Transaction, TransactionOutput), Tables.OutputsRow] =
+    new Conversion[Id, (Transaction, TransactionOutput), Tables.OutputsRow] {
+      override def convert(from: (Transaction, TransactionOutput)) = from match {
+        case (transaction, output) =>
+          Tables.OutputsRow(
+            txid = transaction.txid,
+            value = output.value,
+            n = output.n,
+            scriptPubKeyAsm = output.scriptPubKey.asm,
+            scriptPubKeyHex = output.scriptPubKey.hex,
+            scriptPubKeyReqSigs = output.scriptPubKey.reqSigs,
+            scriptPubKeyType = output.scriptPubKey.`type`,
+            scriptPubKeyAddresses = output.scriptPubKey.addresses.map(_.mkString(","))
+          )
+      }
+
     }
 }

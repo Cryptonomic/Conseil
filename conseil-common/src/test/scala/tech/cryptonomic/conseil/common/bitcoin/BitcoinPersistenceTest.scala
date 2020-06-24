@@ -44,7 +44,9 @@ class BitcoinPersistenceTest
           // we have to have block and transaction row to save the input (due to the foreign key)
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
           _ <- tx.transact(Tables.Transactions += RpcFixtures.transactionResult.convertTo[Tables.TransactionsRow])
-          _ <- tx.transact(Tables.Inputs += RpcFixtures.inputWithTxidResult.convertTo[Tables.InputsRow])
+          _ <- tx.transact(
+            Tables.Inputs += (RpcFixtures.transactionResult, RpcFixtures.inputResult).convertTo[Tables.InputsRow]
+          )
           result <- tx.transact(Tables.Inputs.result)
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.inputRow)
       }
@@ -54,7 +56,9 @@ class BitcoinPersistenceTest
           // we have to have block and transaction row to save the input (due to the foreign key)
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
           _ <- tx.transact(Tables.Transactions += RpcFixtures.transactionResult.convertTo[Tables.TransactionsRow])
-          _ <- tx.transact(Tables.Outputs += RpcFixtures.outputWithTxidResult.convertTo[Tables.OutputsRow])
+          _ <- tx.transact(
+            Tables.Outputs += (RpcFixtures.transactionResult, RpcFixtures.outputResult).convertTo[Tables.OutputsRow]
+          )
           result <- tx.transact(Tables.Outputs.result)
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.outputRow)
       }
@@ -64,13 +68,7 @@ class BitcoinPersistenceTest
           // run
           _ <- tx.transact(
             bitcoinPersistanceStub
-              .createBlock(
-                RpcFixtures.blockResult,
-                List(
-                  RpcFixtures.transactionResult
-                    .copy(vin = List(RpcFixtures.inputWithTxidResult), vout = List(RpcFixtures.outputWithTxidResult))
-                )
-              )
+              .createBlock(RpcFixtures.blockResult, List(RpcFixtures.transactionResult))
           )
           // test results
           block <- tx.transact(Tables.Blocks.result)
@@ -78,19 +76,19 @@ class BitcoinPersistenceTest
           inputs <- tx.transact(Tables.Inputs.result)
           outputs <- tx.transact(Tables.Outputs.result)
         } yield block ++ transactions ++ inputs ++ outputs).unsafeRunSync() shouldBe Vector(
-          DbFixtures.blockRow,
-          DbFixtures.transactionRow,
-          DbFixtures.inputRow,
-          DbFixtures.outputRow
-        )
+              DbFixtures.blockRow,
+              DbFixtures.transactionRow,
+              DbFixtures.inputRow,
+              DbFixtures.outputRow
+            )
       }
     }
 
   /**
     * Stubs that can help to provide tests for the [[BitcoinPersistence]].
-    * 
+    *
     * Usage example:
-    * 
+    *
     * {{{
     *   "test name" in new BitcoinPersistanceStubs {
     *     // bitcoinPersistanceStub is available in the current scope
@@ -100,10 +98,10 @@ class BitcoinPersistenceTest
   trait BitcoinPersistanceStubs {
 
     /**
-      * This transactor object will actually execute any slick database action (DBIO) and convert 
-      * the result into a lazy IO value. When the IO effect is run to obtain the value, the transactor 
-      * automatically guarantees to properly release the underlying database resources. 
-      * 
+      * This transactor object will actually execute any slick database action (DBIO) and convert
+      * the result into a lazy IO value. When the IO effect is run to obtain the value, the transactor
+      * automatically guarantees to properly release the underlying database resources.
+      *
       * The default implementation of [[slickeffect.Transactor]] wraps Slick db into the resource,
       * to handle proper shutdown at the end of the execution. I the test mode we want to encapsulate
       * every single test, so we have to prevent `Transactor` from shutdown with providing own method
