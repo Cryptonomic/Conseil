@@ -128,6 +128,13 @@ class GenericPlatformDiscoveryOperationsTest
                 protocol = "https",
                 username = "username",
                 password = "password"
+              ),
+              BitcoinBatchFetchConfiguration(
+                indexerThreadsCount = 1,
+                httpFetchThreadsCount = 1,
+                hashBatchSize = 1,
+                blocksBatchSize = 1,
+                transactionsBatchSize = 1
               )
             )
           )

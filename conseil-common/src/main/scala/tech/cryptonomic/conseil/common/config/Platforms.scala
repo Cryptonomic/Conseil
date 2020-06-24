@@ -106,9 +106,22 @@ object Platforms {
     val url = s"$protocol://$hostname:$port"
   }
 
+  /** configurations to describe a bitcoin batch fetch */
+  final case class BitcoinBatchFetchConfiguration(
+      indexerThreadsCount: Int,
+      httpFetchThreadsCount: Int,
+      hashBatchSize: Int,
+      blocksBatchSize: Int,
+      transactionsBatchSize: Int
+  )
+
   /** collects all config related to a bitcoin network */
-  final case class BitcoinConfiguration(network: String, enabled: Boolean, node: BitcoinNodeConfiguration)
-      extends PlatformConfiguration {
+  final case class BitcoinConfiguration(
+      network: String,
+      enabled: Boolean,
+      node: BitcoinNodeConfiguration,
+      batching: BitcoinBatchFetchConfiguration
+  ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Bitcoin
   }
 

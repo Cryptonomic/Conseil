@@ -4,7 +4,7 @@ import java.util.concurrent.Executors
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import cats.effect.{ContextShift, ExitCode, IO, Resource}
+import cats.effect.{IO, Resource}
 import com.typesafe.scalalogging.LazyLogging
 import org.http4s.headers.Authorization
 import org.http4s.BasicCredentials
@@ -22,7 +22,7 @@ import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 
 /**
-  * Class responsible for indexing data for Bitcoin Blockchain
+  * Class responsible for indexing data for Bitcoin Blockchain.
   *
   * @param lorreConf Lorre configuration
   * @param bitcoinConf Bitcoin configuration
@@ -34,21 +34,47 @@ class BitcoinIndexer(
     with LorreIndexer
     with LorreProgressLogging {
 
-  private val executor = Executors.newFixedThreadPool(16)
-  implicit private val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.fromExecutor(executor))
-  implicit val timer = IO.timer(ExecutionContext.global)
-  implicit private val httpEC: ExecutionContext = ExecutionContext.fromExecutor(executor) // Implicit is used to provide ExecutionContext for `stop`
+  /**
+    * Executor for the rpc client, timer and to handle stop method.
+    */
+  private val indexerExecutor = Executors.newFixedThreadPool(bitcoinConf.batchingConf.indexerThreadsCount)
 
   /**
-    * Lorre for Bitcoin entry point. This method creates all the dependencies and wraps it into [[cats.Resource]].
+    * Dedicated executor for the http4s.
     */
-  def resource: Resource[IO, Unit] =
+  private val httpExecutor = Executors.newFixedThreadPool(bitcoinConf.batchingConf.httpFetchThreadsCount)
+
+  /**
+    * [[cats.ContextShift]] is the equivalent to [[ExecutionContext]], 
+    * it's used by the Cats Effect related methods.
+    */
+  implicit val contextShift = IO.contextShift(ExecutionContext.fromExecutor(indexerExecutor))
+  
+  /**
+    * [[ExecutionContext]] to handle stop method.
+    */
+  implicit val indexerEC = ExecutionContext.fromExecutor(indexerExecutor)
+
+  /**
+    * The timer to schedule continuous indexer runs.
+    */
+  implicit val timer = IO.timer(indexerEC)
+
+  /**
+    * Dedicated [[ExecutionContext]] for the http4s.
+    */
+  val httpEC = ExecutionContext.fromExecutor(httpExecutor)
+
+  /**
+    * Lorre indexer or the Bitcoin. This method creates all the dependencies and wraps it into the [[cats.Resource]].
+    */
+  def indexer: Resource[IO, BitcoinOperations[IO]] =
     for {
       httpClient <- BlazeClientBuilder[IO](httpEC).resource
 
       rpcClient <- RpcClient.resource(
         bitcoinConf.nodeConfig.url,
-        maxConcurrent = 8, // TODO: move to the configuration
+        maxConcurrent = bitcoinConf.batchingConf.indexerThreadsCount,
         httpClient, // TODO: wrap it into retry and logger middleware
         Authorization(BasicCredentials(bitcoinConf.nodeConfig.username, bitcoinConf.nodeConfig.password))
       )
@@ -57,21 +83,31 @@ class BitcoinIndexer(
         .fromDatabase[IO](IO.delay(DatabaseUtil.lorreDb))
         .map(_.configure(transactorConfig.transactionally)) // run operations in transaction
 
-      bitcoinOperations <- BitcoinOperations.resource(rpcClient, tx)
+      bitcoinOperations <- BitcoinOperations.resource(rpcClient, tx, bitcoinConf.batchingConf)
+    } yield bitcoinOperations
 
-      _ <- bitcoinOperations.loadBlocks(lorreConf.depth).delayBy(lorreConf.sleepInterval).repeat.compile.resource.drain
+  /**
+    * The method with all the computations for the Bitcoin. 
+    * Currently, it only contains the blocks. But it can be extended to 
+    * handle multiple computations.
+    */
+  def mainLoop(bitcoinOperations: BitcoinOperations[IO]): IO[Unit] =
+    for {
+      _ <- bitcoinOperations.loadBlocks(lorreConf.depth).compile.drain
+      _ <- IO.sleep(lorreConf.sleepInterval)
+      _ <- mainLoop(bitcoinOperations)
     } yield ()
 
   override def platform: Platforms.BlockchainPlatform = Platforms.Bitcoin
 
-  override def start(): Unit = {
-    resource.use(_ => IO.delay(ExitCode.Success)).unsafeRunSync()
-    ()
-  }
+  // TODO: Handle the cancelation in the right way, now it's imposible to use `ctrl-C`
+  //       to stop the mainLoop.
+  override def start(): Unit = indexer.use(mainLoop).unsafeRunSync()
 
   override def stop(): Future[LorreIndexer.ShutdownComplete] =
     Future {
-      executor.shutdownNow()
+      indexerExecutor.shutdown()
+      httpExecutor.shutdown()
       LorreIndexer.ShutdownComplete
     }
 }

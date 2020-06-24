@@ -6,6 +6,7 @@ import fs2.Stream
 import slick.jdbc.PostgresProfile.api._
 import slickeffect.Transactor
 
+import tech.cryptonomic.conseil.common.config.Platforms.BitcoinBatchFetchConfiguration
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.bitcoin.{BitcoinPersistence, Tables}
 import tech.cryptonomic.conseil.common.bitcoin.rpc.BitcoinClient
@@ -21,8 +22,8 @@ import tech.cryptonomic.conseil.indexer.config.{Custom, Depth, Everything, Newes
 class BitcoinOperations[F[_]: Concurrent](
     bitcoinClient: BitcoinClient[F],
     persistence: BitcoinPersistence[F],
-    tx: Transactor[F]
-    // batchConf: BatchFetchConfiguration
+    tx: Transactor[F],
+    batchConf: BitcoinBatchFetchConfiguration
 ) extends LazyLogging {
 
   /**
@@ -58,9 +59,9 @@ class BitcoinOperations[F[_]: Concurrent](
           Stream
             .range(range.start, range.end)
             .filter(height => !existingBlocks.contains(height))
-            .through(bitcoinClient.getBlockHash(2000))
-            .through(bitcoinClient.getBlockByHash(500))
-            .through(bitcoinClient.getBlockWithTransactions(200))
+            .through(bitcoinClient.getBlockHash(batchConf.hashBatchSize))
+            .through(bitcoinClient.getBlockByHash(batchConf.blocksBatchSize))
+            .through(bitcoinClient.getBlockWithTransactions(batchConf.transactionsBatchSize))
             .evalTap { case (block, _) => Concurrent[F].delay(logger.info(s"Save block with height: ${block.height}")) }
             .map((persistence.createBlock _).tupled)
             .evalMap(tx.transact)
@@ -89,13 +90,14 @@ object BitcoinOperations {
     */
   def resource[F[_]: Concurrent](
       rpcClient: RpcClient[F],
-      tx: Transactor[F]
+      tx: Transactor[F],
+      batchConf: BitcoinBatchFetchConfiguration
   ): Resource[F, BitcoinOperations[F]] =
     for {
       bitcoinClient <- BitcoinClient.resource(rpcClient)
       persistence <- BitcoinPersistence.resource
       client <- Resource.pure(
-        new BitcoinOperations[F](bitcoinClient, persistence, tx)
+        new BitcoinOperations[F](bitcoinClient, persistence, tx, batchConf)
       )
     } yield client
 }
