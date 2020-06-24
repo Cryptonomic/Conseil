@@ -5,7 +5,7 @@ import com.typesafe.config.Config
 import pureconfig.error.{ConfigReaderFailures, ThrowableFailure}
 import pureconfig.generic.auto._
 import pureconfig.generic.{EnumCoproductHint, FieldCoproductHint, ProductHint}
-import pureconfig.{CamelCase, ConfigFieldMapping, ConfigReader, loadConfig}
+import pureconfig.{loadConfig, CamelCase, ConfigFieldMapping, ConfigReader}
 import scopt.{OptionParser, Read}
 import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.config.{PlatformConfiguration => _, _}
