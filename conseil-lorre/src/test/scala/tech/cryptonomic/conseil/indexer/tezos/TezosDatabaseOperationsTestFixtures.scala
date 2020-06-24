@@ -693,7 +693,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
       //applies to the alloc diffs nested within originations
       updateOperationsToBigMapDiff[Contract.BigMapAlloc](
         diffGenerate,
-        whenOrigination composeLens onOriginationResult composeOptional onOriginationBigMapDiffs
+        selectOrigination composeLens onOriginationResult composeOptional whenOriginationBigMapDiffs
       )
     }
 
@@ -711,7 +711,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
       //applies to the update diffs nested within transactions
       updateOperationsToBigMapDiff[Contract.BigMapUpdate](
         diffGenerate,
-        whenTransaction composeLens onTransactionResult composeOptional onTransactionBigMapDiffs
+        selectTransaction composeLens onTransactionResult composeOptional whenTransactionBigMapDiffs
       )
     }
 
@@ -729,7 +729,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
       //applies to the update diffs nested within transactions
       updateOperationsToBigMapDiff[Contract.BigMapCopy](
         diffGenerate,
-        whenTransaction composeLens onTransactionResult composeOptional onTransactionBigMapDiffs
+        selectTransaction composeLens onTransactionResult composeOptional whenTransactionBigMapDiffs
       )
     }
 
@@ -747,7 +747,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
       //applies to the update diffs nested within transactions
       updateOperationsToBigMapDiff[Contract.BigMapRemove](
         diffGenerate,
-        whenTransaction composeLens onTransactionResult composeOptional onTransactionBigMapDiffs
+        selectTransaction composeLens onTransactionResult composeOptional whenTransactionBigMapDiffs
       )
     }
 

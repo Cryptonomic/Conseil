@@ -5,7 +5,6 @@ import cats.syntax.applicative._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.JsonToMichelson.toMichelsonScript
 import tech.cryptonomic.conseil.indexer.tezos.michelson.dto.{MichelsonInstruction, MichelsonSchema}
@@ -131,6 +130,7 @@ private[tezos] class TezosNodeOperator(
   def getBatchBakingRights(
       blockHashesWithCycleAndGovernancePeriod: List[FetchRights]
   ): Future[Map[FetchRights, List[BakingRights]]] = {
+    /* implicitly uses: TezosBlocksDataFetchers.bakingRightsFetcher  */
     import cats.instances.future._
     import cats.instances.list._
     fetch[FetchRights, List[BakingRights], Future, List, Throwable]
@@ -144,6 +144,7 @@ private[tezos] class TezosNodeOperator(
     * @return             Baking rights
     */
   def getBatchBakingRightsByLevels(blockLevels: List[Int]): Future[Map[Int, List[BakingRights]]] = {
+    /* implicitly uses: TezosBlocksDataFetchers.futureBakingRightsFetcher */
     import cats.instances.future._
     import cats.instances.list._
     fetch[Int, List[BakingRights], Future, List, Throwable].run(blockLevels).map(_.toMap)
@@ -155,6 +156,7 @@ private[tezos] class TezosNodeOperator(
     * @return             Endorsing rights
     */
   def getBatchEndorsingRightsByLevel(blockLevels: List[Int]): Future[Map[Int, List[EndorsingRights]]] = {
+    /* implicitly uses: TezosBlocksDataFetchers.futureEndorsingRightsFetcher */
     import cats.instances.future._
     import cats.instances.list._
     fetch[Int, List[EndorsingRights], Future, List, Throwable].run(blockLevels).map(_.toMap)
@@ -167,6 +169,7 @@ private[tezos] class TezosNodeOperator(
   def getBatchEndorsingRights(
       blockHashesWithCycleAndGovernancePeriod: List[FetchRights]
   ): Future[Map[FetchRights, List[EndorsingRights]]] = {
+    /* implicitly uses: TezosBlocksDataFetchers.endorsingRightsFetcher */
     import cats.instances.future._
     import cats.instances.list._
     fetch[FetchRights, List[EndorsingRights], Future, List, Throwable]
@@ -216,17 +219,18 @@ private[tezos] class TezosNodeOperator(
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
-    import tech.cryptonomic.conseil.common.tezos.TezosOptics.Accounts.{scriptLens, storageLens}
+    import tech.cryptonomic.conseil.common.tezos.TezosOptics.Accounts.{whenAccountCode, whenAccountStorage}
 
     implicit val fetcherInstance = accountFetcher(blockHash)
 
+    /* implicitly uses: AccountsDataFetchers.accountFetcher*/
     val fetchedAccounts: Future[List[(AccountId, Option[Account])]] =
       fetch[AccountId, Option[Account], Future, List, Throwable].run(accountIds)
 
     def parseMichelsonScripts: Account => Account = {
       implicit lazy val _ = logger
-      val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
-      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+      val scriptAlter = whenAccountCode.modify(toMichelsonScript[MichelsonSchema])
+      val storageAlter = whenAccountStorage.modify(toMichelsonScript[MichelsonInstruction])
 
       scriptAlter compose storageAlter
     }
@@ -345,6 +349,7 @@ private[tezos] class TezosNodeOperator(
     * we refer to that as a protocol ID.
     */
   def getActiveProposals(blocks: List[BlockData]): Future[List[(BlockHash, Option[ProtocolId])]] = {
+    /* implicitly uses: TezosBlocksDataFetchers.currentProposalFetcher */
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
@@ -359,6 +364,7 @@ private[tezos] class TezosNodeOperator(
     * @return the lists of rolls, for each individual requested hash
     */
   def getBakerRollsForBlockHashes(blockHashes: List[BlockHash]): Future[List[(BlockHash, List[Voting.BakerRolls])]] = {
+    /* implicitly uses: TezosBlocksDataFetchers.bakersRollsFetcher */
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
@@ -397,6 +403,7 @@ private[tezos] class TezosNodeOperator(
 
   /** Fetches detailed data for voting associated to the passed-in blocks */
   def getVotes(blocks: List[Block]): Future[List[BallotsByBlock]] = {
+    /* implicitly uses: TezosBlocksDataFetchers.ballotsFetcher */
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
@@ -410,17 +417,23 @@ private[tezos] class TezosNodeOperator(
 
   }
 
-  /** Fetches active delegates from node */
-  def fetchActiveBakers(blockHashes: List[(Int, BlockHash)]): Future[List[(BlockHash, List[String])]] = {
+  /** Fetches active delegates from node
+    * We get the situation for all blocks identified by the input hashes
+    *
+    * Assumptions: the input pairs must match hash and level of the same block
+    * @param blockHashesPerLevel the hashes of blocks, along with block level
+    */
+  def fetchActiveBakers(blockHashesPerLevel: List[(Int, BlockHash)]): Future[List[(BlockHash, List[AccountId])]] = {
+    /* implicitly uses: AccountsDataFetchers.activeDelegateFetcher */
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 
-    val blockHashesWithoutGenesis = blockHashes.collect {
-      case (level, hash) if level > 0 => hash
+    val blockHashesWithoutGenesis = blockHashesPerLevel.collect {
+      case (blockLevel, blockHash) if blockLevel > 0 => blockHash
     }
 
-    fetch[BlockHash, List[String], Future, List, Throwable].run(blockHashesWithoutGenesis)
+    fetch[BlockHash, List[AccountId], Future, List, Throwable].run(blockHashesWithoutGenesis)
   }
 
   //move it to the node operator
@@ -490,6 +503,7 @@ private[tezos] class TezosNodeOperator(
       pkhs: List[PublicKeyHash],
       blockHash: BlockHash = blockHeadHash
   ): Future[Map[PublicKeyHash, Delegate]] = {
+    /* implicitly uses: AccountsDataFetchers.delegateFetcher */
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
@@ -645,6 +659,14 @@ private[tezos] class TezosNodeOperator(
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.{fetch, fetchMerge}
+    import tech.cryptonomic.conseil.common.tezos.TezosOptics.Blocks.{
+      acrossInternalParameters,
+      acrossInternalTransactions,
+      acrossScriptsCode,
+      acrossScriptsStorage,
+      acrossTransactionParameters,
+      acrossTransactions
+    }
 
     logger.info("Fetching block data in range: " + levelRange)
 
@@ -664,18 +686,18 @@ private[tezos] class TezosNodeOperator(
       val copyInternalParametersToMicheline = (t: InternalOperationResults.Transaction) =>
         t.copy(parameters_micheline = t.parameters)
 
-      val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
-      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+      val codeAlter = acrossScriptsCode.modify(toMichelsonScript[MichelsonInstruction])
+      val storageAlter = acrossScriptsStorage.modify(toMichelsonScript[MichelsonInstruction])
 
-      val setUnparsedMicheline = transactionLens.modify(copyParametersToMicheline)
+      val setUnparsedMicheline = acrossTransactions.modify(copyParametersToMicheline)
       //TODO focus the lens on the optional field and empty it if the conversion fails
       //we have a copy anyway in the parameters_micheline
-      val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
+      val parametersAlter = acrossTransactionParameters.modify(toMichelsonScript[MichelsonInstruction])
 
-      val setUnparsedMichelineToInternals = internalTransationsTraversal.modify(copyInternalParametersToMicheline)
+      val setUnparsedMichelineToInternals = acrossInternalTransactions.modify(copyInternalParametersToMicheline)
       //TODO focus the lens on the optional field and empty it if the conversion fails
       //we have a copy anyway in the parameters_micheline
-      val parametersAlterToInternals = internalParametersLens.modify(toMichelsonScript[MichelsonInstruction])
+      val parametersAlterToInternals = acrossInternalParameters.modify(toMichelsonScript[MichelsonInstruction])
 
       //each operation will convert a block to an updated version of block, therefore compose each transformation with the next
       codeAlter andThen
@@ -695,6 +717,10 @@ private[tezos] class TezosNodeOperator(
 
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
+    /* implicitly uses:
+     * - blocksFetcher
+     * - operationsWithAccountsFetcher
+     */
     for {
       fetchedBlocksData <- fetch[Offset, BlockData, Future, List, Throwable].run(offsets)
       blockHashes = fetchedBlocksData.collect { case (offset, block) if !isGenesis(block) => block.hash }

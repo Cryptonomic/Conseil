@@ -33,7 +33,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @return the count of records added
     */
   def copyContent(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
-    val diffsPerBlock = blocks.map(b => b.data -> TezosOptics.Blocks.readBigMapDiffCopy.getAll(b))
+    val diffsPerBlock = blocks.map(b => b.data -> TezosOptics.Blocks.acrossBigMapDiffCopy.getAll(b))
     if (logger.underlying.isDebugEnabled()) {
       diffsPerBlock.foreach {
         case (blockData, diffs) if diffs.nonEmpty =>
@@ -101,7 +101,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
   def removeMaps(blocks: List[Block]): DBIO[Unit] = {
 
     val removalDiffs = if (logger.underlying.isDebugEnabled()) {
-      val diffsPerBlock = blocks.map(b => b.data.hash.value -> TezosOptics.Blocks.readBigMapDiffRemove.getAll(b))
+      val diffsPerBlock = blocks.map(b => b.data.hash.value -> TezosOptics.Blocks.acrossBigMapDiffRemove.getAll(b))
       diffsPerBlock.foreach {
         case (hash, diffs) if diffs.nonEmpty =>
           logger.debug(
@@ -112,7 +112,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         case _ =>
       }
       diffsPerBlock.map(_._2).flatten
-    } else blocks.flatMap(TezosOptics.Blocks.readBigMapDiffRemove.getAll)
+    } else blocks.flatMap(TezosOptics.Blocks.acrossBigMapDiffRemove.getAll)
 
     val idsToRemove = removalDiffs.collect {
       case Contract.BigMapRemove(_, Decimal(bigMapId)) =>

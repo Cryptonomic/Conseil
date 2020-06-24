@@ -753,9 +753,11 @@ trait AccountsDataFetchers {
   }
 
   implicit val activeDelegateFetcher = new FutureFetcher {
+    import TezosJsonDecoders.Circe._
+
     type Encoded = String
     type In = BlockHash
-    type Out = List[String]
+    type Out = List[AccountId]
 
     private val makeUrl = (blockHash: BlockHash) => s"blocks/${blockHash.value}/context/delegates?active"
 
