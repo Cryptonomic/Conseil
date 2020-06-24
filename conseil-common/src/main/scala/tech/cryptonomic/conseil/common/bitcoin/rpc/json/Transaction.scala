@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.common.bitcoin.rpc.json
 /**
   * Trait for transaction inputs and outputs.
   */
-trait TransactionComponent
+sealed trait TransactionComponent
 
 /**
   * Response from `getrawtransaction` Bitcoin JSON-RPC api call (with verbose = true).
