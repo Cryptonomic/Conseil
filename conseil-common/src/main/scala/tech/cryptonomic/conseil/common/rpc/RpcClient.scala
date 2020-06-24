@@ -76,7 +76,7 @@ class RpcClient[F[_]: Concurrent](
     request
       .chunkN(batchSize)
       .evalTap(requests => debug(s"Call RPC in a batch of: ${requests.size}"))
-      // From JSON-RPC documentation: The Server MAY process a batch rpc call as a set of concurrent tasks, 
+      // From JSON-RPC documentation: The Server MAY process a batch rpc call as a set of concurrent tasks,
       //                              processing them in any order and with any width of parallelism.
       // So we also can process the responses in unordered order.
       .mapAsyncUnordered(maxConcurrent) { chunks =>
@@ -125,16 +125,14 @@ object RpcClient {
       httpClient: Client[F],
       headers: Header*
   ): Resource[F, RpcClient[F]] =
-    for {
-      client <- Resource.pure(
-        new RpcClient[F](
-          endpoint,
-          maxConcurrent,
-          httpClient,
-          headers: _*
-        )
+    Resource.pure(
+      new RpcClient[F](
+        endpoint,
+        maxConcurrent,
+        httpClient,
+        headers: _*
       )
-    } yield client
+    )
 
   /**
     * Exception with JSON-RPC error message
