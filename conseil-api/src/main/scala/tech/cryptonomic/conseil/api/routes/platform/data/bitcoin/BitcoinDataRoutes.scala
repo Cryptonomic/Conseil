@@ -2,6 +2,9 @@ package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
 import akka.http.scaladsl.server.Directives.concat
 import akka.http.scaladsl.server.Route
+import cats.instances.either._
+import cats.instances.future._
+import cats.syntax.bitraverse._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.metadata.MetadataService
 import tech.cryptonomic.conseil.api.routes.platform.data.{ApiDataOperations, ApiDataRoutes}
@@ -11,9 +14,6 @@ import tech.cryptonomic.conseil.common.metadata
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
 
 import scala.concurrent.{ExecutionContext, Future}
-import cats.instances.either._
-import cats.instances.future._
-import cats.syntax.bitraverse._
 
 case class BitcoinDataRoutes(
     metadataService: MetadataService,
@@ -26,6 +26,7 @@ case class BitcoinDataRoutes(
     with ApiDataRoutes
     with LazyLogging {
 
+  private val platformPath = PlatformPath("bitcoin")
   private val dataQueries = new BitcoinDataQueries(operations)
 
   /** V2 Route implementation for query endpoint */
@@ -49,57 +50,57 @@ case class BitcoinDataRoutes(
   }
 
   /** V2 Route implementation for blocks endpoint */
-  private val blocksRoute: Route = blocksEndpoint.implementedByAsync {
-    case ((platform, network, filter), _) =>
-      platformNetworkValidation(platform, network) {
+  private val blocksRoute: Route = bitcoinBlocksEndpoint.implementedByAsync {
+    case ((network, filter), _) =>
+      platformNetworkValidation(network) {
         dataQueries.fetchBlocks(filter.toQuery.withLimitCap(maxQueryResultSize))
       }
   }
 
   /** V2 Route implementation for blocks head endpoint */
-  private val blocksHeadRoute: Route = blocksHeadEndpoint.implementedByAsync {
-    case (platform, network, _) =>
-      platformNetworkValidation(platform, network) {
+  private val blocksHeadRoute: Route = bitcoinBlocksHeadEndpoint.implementedByAsync {
+    case (network, _) =>
+      platformNetworkValidation(network) {
         dataQueries.fetchBlocksHead()
       }
   }
 
   /** V2 Route implementation for blocks by hash endpoint */
-  private val blockByHashRoute: Route = blockByHashEndpoint.implementedByAsync {
-    case ((platform, network, hash), _) =>
-      platformNetworkValidation(platform, network) {
+  private val blockByHashRoute: Route = bitcoinBlockByHashEndpoint.implementedByAsync {
+    case ((network, hash), _) =>
+      platformNetworkValidation(network) {
         dataQueries.fetchBlockByHash(hash)
       }
   }
 
   /** V2 Route implementation for transactions endpoint */
-  private val transactionsRoute: Route = transactionsEndpoint.implementedByAsync {
-    case ((platform, network, filter), _) =>
-      platformNetworkValidation(platform, network) {
+  private val transactionsRoute: Route = bitcoinTransactionsEndpoint.implementedByAsync {
+    case ((network, filter), _) =>
+      platformNetworkValidation(network) {
         dataQueries.fetchTransactions(filter.toQuery.withLimitCap(maxQueryResultSize))
       }
   }
 
   /** V2 Route implementation for transaction by id endpoint */
-  private val transactionByIdRoute: Route = transactionByIdEndpoint.implementedByAsync {
-    case ((platform, network, id), _) =>
-      platformNetworkValidation(platform, network) {
+  private val transactionByIdRoute: Route = bitcoinTransactionByIdEndpoint.implementedByAsync {
+    case ((network, id), _) =>
+      platformNetworkValidation(network) {
         dataQueries.fetchTransactionById(id)
       }
   }
 
   /** V2 Route implementation for inputs endpoint */
-  private val inputsRoute: Route = inputsEndpoint.implementedByAsync {
-    case ((platform, network, filter), _) =>
-      platformNetworkValidation(platform, network) {
+  private val inputsRoute: Route = bitcoinInputsEndpoint.implementedByAsync {
+    case ((network, filter), _) =>
+      platformNetworkValidation(network) {
         dataQueries.fetchInputs(filter.toQuery.withLimitCap(maxQueryResultSize))
       }
   }
 
   /** V2 Route implementation for outputs endpoint */
-  private val outputsRoute: Route = inputsEndpoint.implementedByAsync {
-    case ((platform, network, filter), _) =>
-      platformNetworkValidation(platform, network) {
+  private val outputsRoute: Route = bitcoinOutputsEndpoint.implementedByAsync {
+    case ((network, filter), _) =>
+      platformNetworkValidation(network) {
         dataQueries.fetchOutputs(filter.toQuery.withLimitCap(maxQueryResultSize))
       }
   }
@@ -117,12 +118,12 @@ case class BitcoinDataRoutes(
     )
 
   /** Function for validation of the platform and network with flatten */
-  protected def platformNetworkValidation[A](platform: String, network: String)(
+  private def platformNetworkValidation[A](network: String)(
       operation: => Future[Option[A]]
   ): Future[Option[A]] =
-    pathValidation(NetworkPath(network, PlatformPath(platform)))(operation)
+    pathValidation(NetworkPath(network, platformPath))(operation)
 
-  protected def pathValidation[A](path: metadata.Path)(
+  private def pathValidation[A](path: metadata.Path)(
       operation: => Future[Option[A]]
   ): Future[Option[A]] =
     if (metadataService.exists(path))

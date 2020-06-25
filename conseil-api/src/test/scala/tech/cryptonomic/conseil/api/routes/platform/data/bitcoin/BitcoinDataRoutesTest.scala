@@ -5,11 +5,7 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
-import tech.cryptonomic.conseil.api.metadata.{
-  AttributeValuesCacheConfiguration,
-  MetadataService,
-  TransparentUnitTransformation
-}
+import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, TransparentUnitTransformation}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.common.config.Platforms.{BitcoinConfiguration, PlatformsConfiguration}
 import tech.cryptonomic.conseil.common.config.{MetadataConfiguration, Platforms}
@@ -103,13 +99,15 @@ class BitcoinDataRoutesTest
       }
     }
 
-  "return 404 NotFound status code for request for the not supported platform with GET" in {
+  "not handle request for the not supported platform with GET" in {
+    // Due to the fact that platforms are hardcoded in path (not dynamic),
+    // request won't be handled for unsupported platforms and pushed down to the default rejection handler.
       val getRequest = HttpRequest(
         HttpMethods.GET,
         uri = "/v2/data/notSupportedPlatform/mainnet/blocks"
       )
       getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
-        status shouldBe StatusCodes.NotFound
+        handled shouldBe false
       }
     }
 

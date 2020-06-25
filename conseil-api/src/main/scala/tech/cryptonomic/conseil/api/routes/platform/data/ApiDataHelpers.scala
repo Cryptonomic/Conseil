@@ -18,7 +18,7 @@ import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 trait ApiDataHelpers extends AkkaEndpoints with AkkaJsonSchemaEntities with ApiDataJsonSchemas {
 
   /** Function validating request for the query endpoint */
-  def validated[A](
+  def defaultValidated[A](
       response: A => Route,
       invalidDocs: Documentation
   ): Either[List[QueryValidationError], A] => Route = {
@@ -94,7 +94,7 @@ trait ApiDataHelpers extends AkkaEndpoints with AkkaJsonSchemaEntities with ApiD
         throw new UnsupportedOperationException("Decoder for 'QueryResponseWithOutput' should never be needed.")
     }
 
-  implicit def qsFunctor: Functor[QueryString] = new Functor[QueryString] {
+  def defaultQsFunctor: Functor[QueryString] = new Functor[QueryString] {
     override def map[From, To](f: QueryString[From])(map: From => To): QueryString[To] = new QueryString[To](
       f.directive.map(map)
     )

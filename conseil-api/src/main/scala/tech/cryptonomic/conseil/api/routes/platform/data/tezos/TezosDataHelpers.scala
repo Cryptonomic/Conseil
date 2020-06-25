@@ -1,13 +1,27 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
+import akka.http.scaladsl.server.Route
+import cats.Functor
+import endpoints.algebra.Documentation
 import io.circe._
 import io.circe.syntax._
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataHelpers
 import tech.cryptonomic.conseil.api.routes.platform.data.tezos.generic.TezosDataEndpoints
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryValidationError
 import tech.cryptonomic.conseil.common.tezos.Tables
 
 /** Trait with helpers needed for data routes */
 private[tezos] class TezosDataHelpers extends TezosDataEndpoints with ApiDataHelpers {
+
+  /** Method for validating query request */
+  override def validated[A](
+      response: A => Route,
+      invalidDocs: Documentation
+  ): Either[List[QueryValidationError], A] => Route =
+    defaultValidated(response, invalidDocs)
+
+  /** Query string functor adding map operation */
+  implicit override def tezosQsFunctor: Functor[QueryString] = defaultQsFunctor
 
   /** Represents the function, that is going to encode the blockchain specific data types */
   override def customAnyEncoder: PartialFunction[Any, Json] = {

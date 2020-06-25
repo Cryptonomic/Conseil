@@ -88,12 +88,12 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
                           logRequest("Metadata Route", Logging.DebugLevel) {
                             platformDiscovery.route
                           },
-                          ApiCache.cachedDataEndpoints.map {
+                          concat(ApiCache.cachedDataEndpoints.map {
                             case (platform, routes) =>
                               logRequest(s"$platform Data Route", Logging.DebugLevel) {
                                 routes.getRoute ~ routes.postRoute
                               }
-                          }.reduce(_ ~ _)
+                          }.toSeq: _*)
                         )
                       },
                       options {

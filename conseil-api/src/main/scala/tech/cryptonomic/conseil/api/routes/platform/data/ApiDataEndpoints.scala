@@ -9,7 +9,7 @@ trait ApiDataEndpoints extends algebra.JsonSchemaEntities with Validation {
   self: ApiDataJsonSchemas =>
 
   /** Common path among endpoints */
-  val commonPath = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network")
+  private val commonPath = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network")
 
   /** V2 Query endpoint definition */
   def queryEndpoint: Endpoint[((String, String, String), ApiQuery, Option[String]), Option[
