@@ -96,8 +96,5 @@ object BitcoinOperations {
     for {
       bitcoinClient <- BitcoinClient.resource(rpcClient)
       persistence <- BitcoinPersistence.resource
-      client <- Resource.pure(
-        new BitcoinOperations[F](bitcoinClient, persistence, tx, batchConf)
-      )
-    } yield client
+    } yield new BitcoinOperations[F](bitcoinClient, persistence, tx, batchConf)
 }
