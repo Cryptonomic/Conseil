@@ -23,11 +23,20 @@ import akka.stream.ActorMaterializer
 import slick.jdbc.PostgresProfile.api._
 import scala.concurrent.Future
 
+/** Takes care of fetching and processing rights to bake/endorse blocks,
+  * both past and future.
+  *
+  * @param nodeOperator access to the remote node to read data
+  * @param indexedData access to locally indexed data
+  * @param db raw access to the slick database
+  * @param configuration defines values for how to fetch and process rights
+  * @param mat needed to execute akka streams
+  */
 class BakingAndEndorsingRightsProcessor(
-    db: Database,
-    configuration: config.BakingAndEndorsingRights,
     nodeOperator: TezosNodeOperator,
-    indexedData: TezosIndexedDataOperations
+    indexedData: TezosIndexedDataOperations,
+    db: Database,
+    configuration: config.BakingAndEndorsingRights
 )(implicit mat: ActorMaterializer) {
 
   private[tezos] def processBakingAndEndorsingRights(

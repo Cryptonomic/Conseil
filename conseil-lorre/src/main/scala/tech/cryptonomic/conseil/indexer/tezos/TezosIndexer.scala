@@ -34,7 +34,17 @@ import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-/** Class responsible for indexing data for Tezos BlockChain */
+/** Class responsible for indexing data for Tezos BlockChain
+  * @param ignoreProcessFailures `true` if non-critical errors while fetchign data should simply resume the indexer logic and retry
+  * @param lorreConf keeps necessary configuration values
+  * @param nodeOperator access to the remote node to read data
+  * @param blocksProcessor module providing entity-specific operations
+  * @param accountsProcessor module providing entity-related operations
+  * @param bakersProcessor module providing entity-related operations
+  * @param rightsProcessor module providing entity-related operations
+  * @param accountsEventsProcessor module handling global events that could trigger global accounts reprocessing
+  * @param terminationSequence a function to clean up any pending resource upon shutdown of the indexer
+  */
 class TezosIndexer private (
     ignoreProcessFailures: Boolean,
     lorreConf: LorreConfiguration,
@@ -220,10 +230,10 @@ object TezosIndexer extends LazyLogging {
 
     /* provides operations to handle rights to bake and endorse blocks */
     val rightsProcessor = new BakingAndEndorsingRightsProcessor(
-      db,
-      lorreConf.blockRightsFetching,
       nodeOperator,
-      indexedData
+      indexedData,
+      db,
+      lorreConf.blockRightsFetching
     )
 
     /* handles standard accounts data */
@@ -236,8 +246,27 @@ object TezosIndexer extends LazyLogging {
     val bakersProcessor = new BakersProcessor(nodeOperator, db, batchingConf, lorreConf.blockRightsFetching)
 
     /* Reads csv resources to initialize db tables and smart contracts objects */
-    def initAnyCsvConfig(): TokenContracts = {
+    def parseCSVConfigurations(): TokenContracts = {
+      /* This will derive automatically all needed implicit arguments to convert csv rows into a proper table row
+       * Using generic representations for case classes, provided by the `shapeless` library, it will create the
+       * appropriate `kantan.csv.Decoder` for
+       *  - headers, as extracted by the case class definition which, should match name and order of the csv header row
+       *  - table row types, which can be converted to shapeless HLists, which so happens to be of any case class.
+       *
+       * What shapeless does, is provide an automatic conversion, from a case class to a typed generic list of values,
+       * where each element has a type corresponding to a field in the case class, and a "label" that is
+       * a sort of string extracted at compile-time via macros, to figure out the field names.
+       * Such special list, is a `shapeless.HList`, or heterogeneous list, sort of a dynamic tuple,
+       * to be built by adding/removing individual elements in the list, recursively.
+       * This allows generic libraries like kantan to define codecs for generic HLists and,
+       * using shapeless, to adapt any case class to his specific HList, at compile-time.
+       *
+       * For additional information, refer to the project wiki, and
+       * - http://nrinaudo.github.io/kantan.csv/
+       * - http://www.shapeless.io/
+       */
       import kantan.csv.generic._
+      //we add any missing implicit decoder for column types, not provided by default from the library
       import tech.cryptonomic.conseil.common.util.ConfigUtil.Csv._
 
       /* Inits tables with values from CSV files */
@@ -268,10 +297,10 @@ object TezosIndexer extends LazyLogging {
       tokenContracts
     }
 
-    /* read known token smart contracts from configuration, which represents crypto-currencies internal to the chain
+    /* read known token smart contracts from configuration, which represents crypto-assets internal to the chain
      * along with other static definitions to save in registry tables
      */
-    implicit val tokens: TokenContracts = initAnyCsvConfig()
+    implicit val tokens: TokenContracts = parseCSVConfigurations()
 
     /* This is a smart contract acting as a Naming Service which associates accounts hashes to registered memorable names.
      * It's read from configuration and includes the possibility that none is actually defined

@@ -26,9 +26,10 @@ import akka.stream.ActorMaterializer
 
 /** Takes care of fetching and processing any bakers' related data.
   *
-  * @param nodeOperator
-  * @param db
-  * @param batchingConf
+  * @param nodeOperator access to the remote node to read data
+  * @param db raw access to the slick database
+  * @param batchingConf defines values for batching of data processing
+  * @param mat needed to execute akka streams
   */
 class BakersProcessor(
     nodeOperator: TezosNodeOperator,

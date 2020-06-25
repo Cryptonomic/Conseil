@@ -27,7 +27,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 
-/** Handles operations related to handling accounts from
+/** Collects operations related to handling accounts from
   * the tezos node.
   *
   * @param nodeOperator connects to tezos

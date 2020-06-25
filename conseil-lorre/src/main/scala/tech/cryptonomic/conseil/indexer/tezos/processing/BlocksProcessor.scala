@@ -17,6 +17,17 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
 
+/** Collects operations related to handling blocks from
+  * the tezos node.
+  *
+  * @param nodeOperator connects to tezos
+  * @param db raw access to the slick database
+  * @param tnsOperations module providing tns processing operations
+  * @param accountsProcessor module providing entity-related operations
+  * @param bakersProcessor module providing entity-related operations
+  * @param tokens configured definitions of token contracts for the network
+  * @param tns configured definitions of tns contract for the network
+  */
 class BlocksProcessor(
     nodeOperator: TezosNodeOperator,
     db: Database,
