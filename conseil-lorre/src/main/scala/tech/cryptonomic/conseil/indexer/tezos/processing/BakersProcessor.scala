@@ -29,6 +29,7 @@ import akka.stream.ActorMaterializer
   * @param nodeOperator access to the remote node to read data
   * @param db raw access to the slick database
   * @param batchingConf defines values for batching of data processing
+  * @param rightsConf used to access configuration for baking/endorsing rights processing
   * @param mat needed to execute akka streams
   */
 class BakersProcessor(
