@@ -11,10 +11,10 @@ import FlattenHigh._
 private[tezos] trait TezosFilterFromQueryString { self: algebra.JsonEntities =>
 
   /** Query string functor adding map operation */
-  implicit def qsFunctor: Functor[QueryString]
+  implicit def tezosQsFunctor: Functor[QueryString]
 
   /** Query params type alias */
-  type QueryParams = (
+  type TezosQueryParams = (
       Option[Int],
       List[String],
       List[Int],
@@ -33,7 +33,7 @@ private[tezos] trait TezosFilterFromQueryString { self: algebra.JsonEntities =>
   )
 
   /** Function for extracting query string with query params */
-  private def filterQs: QueryString[QueryParams] = {
+  private def filterQs: QueryString[TezosQueryParams] = {
     val raw =
       qs[Option[Int]]("limit") &
           qs[List[String]]("block_id") &
@@ -54,7 +54,7 @@ private[tezos] trait TezosFilterFromQueryString { self: algebra.JsonEntities =>
   }
 
   /** Function for mapping query string to Filter */
-  val qsFilter: QueryString[TezosFilter] =
+  val tezosQsFilter: QueryString[TezosFilter] =
     filterQs.map {
       case (
           limit,

@@ -11,10 +11,10 @@ import tech.cryptonomic.conseil.common.util.TupleFlattenUtil._
 private[bitcoin] trait BitcoinFilterFromQueryString { self: JsonEntities =>
 
   /** Query string functor adding map operation */
-  implicit def qsFunctor: Functor[QueryString]
+  implicit def bitcoinQsFunctor: Functor[QueryString]
 
   /** Query params type alias */
-  type QueryParams = (
+  type BitcoinQueryParams = (
       Option[Int],
       List[String],
       List[String],
@@ -23,7 +23,7 @@ private[bitcoin] trait BitcoinFilterFromQueryString { self: JsonEntities =>
   )
 
   /** Function for extracting query string with query params */
-  private def filterQs: QueryString[QueryParams] = {
+  private def filterQs: QueryString[BitcoinQueryParams] = {
     val raw =
       qs[Option[Int]]("limit") &
           qs[List[String]]("block_id") &
@@ -34,7 +34,7 @@ private[bitcoin] trait BitcoinFilterFromQueryString { self: JsonEntities =>
   }
 
   /** Function for mapping query string to Filter */
-  val qsFilter: QueryString[BitcoinFilter] =
+  val bitcoinQsFilter: QueryString[BitcoinFilter] =
     filterQs.map {
       case (limit, blockIds, transactionIds, sortBy, order) =>
         BitcoinFilter(limit, blockIds.toSet, transactionIds.toSet, sortBy, order.flatMap(Sorting.fromString))

@@ -129,13 +129,15 @@ class TezosDataRoutesTest
         }
       }
 
-      "return 404 NotFound status code for request for the not supported platform with GET" in {
+      "not handle request for the not supported platform with GET" in {
+        // Due to the fact that platforms are hardcoded in path (not dynamic),
+        // request won't be handled for unsupported platforms and pushed down to the default rejection handler.
         val getRequest = HttpRequest(
           HttpMethods.GET,
           uri = "/v2/data/notSupportedPlatform/alphanet/accounts"
         )
         getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
-          status shouldBe StatusCodes.NotFound
+          handled shouldBe false
         }
       }
 
