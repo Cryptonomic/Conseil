@@ -23,14 +23,14 @@ class BitcoinPersistenceTest
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
   "Bitcoin persistence" should {
-      "save block from the JSON-RPC response" in new BitcoinPersistanceStubs {
+      "save block from the JSON-RPC response" in new BitcoinPersistenceStubs {
         (for {
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
           result <- tx.transact(Tables.Blocks.result)
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.blockRow)
       }
 
-      "save transaction from the JSON-RPC response" in new BitcoinPersistanceStubs {
+      "save transaction from the JSON-RPC response" in new BitcoinPersistenceStubs {
         (for {
           // we have to have block row to save the transaction (due to the foreign key)
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
@@ -39,7 +39,7 @@ class BitcoinPersistenceTest
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.transactionRow)
       }
 
-      "save transaction input from the JSON-RPC response" in new BitcoinPersistanceStubs {
+      "save transaction input from the JSON-RPC response" in new BitcoinPersistenceStubs {
         (for {
           // we have to have block and transaction row to save the input (due to the foreign key)
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
@@ -51,7 +51,7 @@ class BitcoinPersistenceTest
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.inputRow)
       }
 
-      "save transaction output from the JSON-RPC response" in new BitcoinPersistanceStubs {
+      "save transaction output from the JSON-RPC response" in new BitcoinPersistenceStubs {
         (for {
           // we have to have block and transaction row to save the input (due to the foreign key)
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
@@ -63,7 +63,7 @@ class BitcoinPersistenceTest
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.outputRow)
       }
 
-      "save block with transactions using persistance (integration test)" in new BitcoinPersistanceStubs {
+      "save block with transactions using persistance (integration test)" in new BitcoinPersistenceStubs {
         (for {
           // run
           _ <- tx.transact(
@@ -95,7 +95,7 @@ class BitcoinPersistenceTest
     *   }
     * }}}
     */
-  trait BitcoinPersistanceStubs {
+  trait BitcoinPersistenceStubs {
 
     /**
       * This transactor object will actually execute any slick database action (DBIO) and convert
@@ -103,7 +103,7 @@ class BitcoinPersistenceTest
       * automatically guarantees to properly release the underlying database resources.
       *
       * The default implementation of [[slickeffect.Transactor]] wraps Slick db into the resource,
-      * to handle proper shutdown at the end of the execution. I the test mode we want to encapsulate
+      * to handle proper shutdown at the end of the execution. In the test mode we want to encapsulate
       * every single test, so we have to prevent `Transactor` from shutdown with providing own method
       * to run the Slick query. The [[slickeffect.Transactor]] uses `FunctionK` to do the execution, so we
       * need to `liftK` own effectful function with the `dbHandler.run`.
