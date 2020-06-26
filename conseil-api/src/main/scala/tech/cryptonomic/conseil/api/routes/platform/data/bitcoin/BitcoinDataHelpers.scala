@@ -18,7 +18,7 @@ private[bitcoin] class BitcoinDataHelpers extends BitcoinDataEndpoints with ApiD
   ): Either[List[QueryValidationError], A] => Route = defaultValidated(response, invalidDocs)
 
   /** Query string functor adding map operation */
-  implicit override def bitcoinQsFunctor: Functor[QueryString] = defaultQsFunctor
+  implicit override def qsFunctor: Functor[QueryString] = defaultQsFunctor
 
   /** Represents the function, that is going to encode the blockchain specific data types */
   override protected def customAnyEncoder: PartialFunction[Any, Json] = PartialFunction.empty

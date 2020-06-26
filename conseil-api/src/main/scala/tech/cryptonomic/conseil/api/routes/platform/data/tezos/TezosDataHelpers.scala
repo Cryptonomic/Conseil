@@ -21,7 +21,7 @@ private[tezos] class TezosDataHelpers extends TezosDataEndpoints with ApiDataHel
     defaultValidated(response, invalidDocs)
 
   /** Query string functor adding map operation */
-  implicit override def tezosQsFunctor: Functor[QueryString] = defaultQsFunctor
+  implicit override def qsFunctor: Functor[QueryString] = defaultQsFunctor
 
   /** Represents the function, that is going to encode the blockchain specific data types */
   override def customAnyEncoder: PartialFunction[Any, Json] = {
