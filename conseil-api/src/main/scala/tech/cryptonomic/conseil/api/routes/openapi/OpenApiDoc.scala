@@ -77,14 +77,8 @@ object OpenApiDoc
   implicit override def queryResponseSchema: DocumentedJsonSchema =
     DocumentedJsonSchema.Primitive("Any - not yet supported")
 
-  /** Query string functor adding map operation */
-  implicit override def bitcoinQsFunctor: Functor[QueryString] = qsFunctor
-
-  /** Query string functor adding map operation */
-  implicit override def tezosQsFunctor: Functor[QueryString] = qsFunctor
-
   /** Documented query string for functor */
-  private def qsFunctor: Functor[QueryString] = new Functor[QueryString] {
+  implicit override def qsFunctor: Functor[QueryString] = new Functor[QueryString] {
     override def map[From, To](f: DocumentedQueryString)(map: From => To): DocumentedQueryString = f
   }
 

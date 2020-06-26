@@ -11,7 +11,7 @@ import FlattenHigh._
 private[tezos] trait TezosFilterFromQueryString { self: algebra.JsonEntities =>
 
   /** Query string functor adding map operation */
-  implicit def tezosQsFunctor: Functor[QueryString]
+  implicit def qsFunctor: Functor[QueryString]
 
   /** Query params type alias */
   type TezosQueryParams = (

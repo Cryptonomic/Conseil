@@ -11,7 +11,7 @@ import tech.cryptonomic.conseil.common.util.TupleFlattenUtil._
 private[bitcoin] trait BitcoinFilterFromQueryString { self: JsonEntities =>
 
   /** Query string functor adding map operation */
-  implicit def bitcoinQsFunctor: Functor[QueryString]
+  implicit def qsFunctor: Functor[QueryString]
 
   /** Query params type alias */
   type BitcoinQueryParams = (
