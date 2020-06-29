@@ -43,7 +43,7 @@ import scala.util.{Failure, Success, Try}
   * @param accountsProcessor module providing entity-related operations
   * @param bakersProcessor module providing entity-related operations
   * @param rightsProcessor module providing entity-related operations
-  * @param accountsEventsProcessor module handling global events that could trigger global accounts reprocessing
+  * @param accountsResetHandler module handling global events that could trigger global accounts reprocessing
   * @param terminationSequence a function to clean up any pending resource upon shutdown of the indexer
   */
 class TezosIndexer private (
