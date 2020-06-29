@@ -28,6 +28,7 @@ import tech.cryptonomic.conseil.indexer.config.{
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors._
 import tech.cryptonomic.conseil.indexer.tezos.processing._
+import tech.cryptonomic.conseil.indexer.tezos.processing.AccountsResetHandler.{AccountResetEvents, UnhandledResetEvents}
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.{Duration, _}
@@ -53,7 +54,7 @@ class TezosIndexer private (
     accountsProcessor: AccountsProcessor,
     bakersProcessor: BakersProcessor,
     rightsProcessor: BakingAndEndorsingRightsProcessor,
-    accountsEventsProcessor: AccountsEventsProcessor,
+    accountsResetHandler: AccountsResetHandler,
     terminationSequence: () => Future[ShutdownComplete]
 )(
     implicit
@@ -87,18 +88,18 @@ class TezosIndexer private (
   @tailrec
   private def mainLoop(
       iteration: Int,
-      accountsRefreshLevels: AccountsEventsProcessor.AccountUpdatesEvents
+      accountResetEvents: AccountResetEvents
   ): Unit = {
     val noOp = Future.successful(())
     val processing = for {
-      nextRefreshes <- accountsEventsProcessor.processAccountRefreshes(accountsRefreshLevels)
+      unhandled <- accountsResetHandler.applyUnhandledAccountsResets(accountResetEvents)
       _ <- processTezosBlocks()
       _ <- if (iteration % lorreConf.feeUpdateInterval == 0)
         TezosFeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
       else
         noOp
       _ <- rightsProcessor.updateRightsTimestamps()
-    } yield Some(nextRefreshes)
+    } yield Some(unhandled)
 
     /* Won't stop Lorre on failure from processing the chain, unless overridden by the environment to halt.
      * Can be used to investigate issues on consistently failing block or account processing.
@@ -110,17 +111,22 @@ class TezosIndexer private (
           //swallow the error and proceed with the default behaviour
           case f @ (AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _) | BakersProcessingFailed(_, _)) =>
             logger.error("Failed processing but will keep on going next cycle", f)
-            None //we have no meaningful response to provide
+            None //we have no meaningful data as results, so we return nothing
         } else processing
 
     //if something went wrong and wasn't recovered, this will actually blow the app
-    val updatedLevels = Await.result(attemptedProcessing, atMost = Duration.Inf)
+    val unhandledResetEvents = Await.result(attemptedProcessing, atMost = Duration.Inf) match {
+      case None => //retry processing the same reset events for accounts
+        accountResetEvents
+      case Some(UnhandledResetEvents(events)) =>
+        events
+    }
 
     lorreConf.depth match {
       case Newest =>
         logger.info("Taking a nap")
         Thread.sleep(lorreConf.sleepInterval.toMillis)
-        mainLoop(iteration + 1, updatedLevels.getOrElse(accountsRefreshLevels))
+        mainLoop(iteration + 1, unhandledResetEvents)
       case _ =>
         logger.info("Synchronization is done")
     }
@@ -184,12 +190,12 @@ class TezosIndexer private (
 
   override def start(): Unit = {
     checkTezosConnection()
-    val accountRefreshesToRun =
+    val accountResetsToHandle =
       Await.result(
-        accountsEventsProcessor.unprocessedLevelsForRefreshingAccounts(lorreConf.chainEvents),
+        accountsResetHandler.unprocessedResetRequestLevels(lorreConf.chainEvents),
         atMost = 5.seconds
       )
-    mainLoop(0, accountRefreshesToRun)
+    mainLoop(0, accountResetsToHandle)
   }
 
   override def stop(): Future[ShutdownComplete] = terminationSequence()
@@ -239,8 +245,8 @@ object TezosIndexer extends LazyLogging {
     /* handles standard accounts data */
     val accountsProcessor = new AccountsProcessor(nodeOperator, db, batchingConf, lorreConf.blockRightsFetching)
 
-    /* handles occasional global accounts refreshes due to very specific events */
-    val accountsEventsProcessor = new AccountsEventsProcessor(db, indexedData)
+    /* handles wide-range accounts refresh due to occasional special events */
+    val accountsResetHandler = new AccountsResetHandler(db, indexedData)
 
     /* handles bakers data */
     val bakersProcessor = new BakersProcessor(nodeOperator, db, batchingConf, lorreConf.blockRightsFetching)
@@ -342,7 +348,7 @@ object TezosIndexer extends LazyLogging {
       accountsProcessor,
       bakersProcessor,
       rightsProcessor,
-      accountsEventsProcessor,
+      accountsResetHandler,
       gracefulTermination
     )
   }

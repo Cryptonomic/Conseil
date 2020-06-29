@@ -9,13 +9,24 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockHash
 import tech.cryptonomic.conseil.indexer.tezos.{TezosIndexedDataOperations, TezosDatabaseOperations => TezosDb}
 import slick.jdbc.PostgresProfile.api._
 
-object AccountsEventsProcessor {
+object AccountsResetHandler {
 
   /** Events on which to trigger accounts updates, as ordered pairs of
     * level and a pattern to decide which accounts needs to be reloaded.
     */
-  type AccountUpdatesEvents = SortedSet[(Int, ChainEvent.AccountIdPattern)]
+  type AccountResetEvents = SortedSet[(Int, ChainEvent.AccountIdPattern)]
 
+  /** A wrapper type to semantically identify a set of events for
+    * accounts reset that still haven't been processed by the handler.
+    * They will contain the events for block level yet not reached by
+    * the chain indexing.
+    *
+    * @param events left to process yet
+    */
+  case class UnhandledResetEvents(events: AccountResetEvents = SortedSet.empty) extends AnyVal
+
+  /* shortcut definition to unclutter the code */
+  private lazy val NoEventsToHandle = Future.successful(UnhandledResetEvents())
 }
 
 /** We capture global chain events that requires to refresh accounts
@@ -28,16 +39,16 @@ object AccountsEventsProcessor {
   * @param db raw access to the underlying slick database
   * @param indexedData access to the operations on locally indexed data
   */
-class AccountsEventsProcessor(
+class AccountsResetHandler(
     db: Database,
     indexedData: TezosIndexedDataOperations
 ) extends LazyLogging {
-  import AccountsEventsProcessor._
+  import AccountsResetHandler._
 
-  /** Finds unprocessed levels for account refreshes (i.e. when there is a need to reload all accounts data from the chain) */
-  private[tezos] def unprocessedLevelsForRefreshingAccounts(
+  /** Finds unprocessed levels requiring accounts reset (i.e. when there is a need to reload data for multiple accounts from the chain) */
+  private[tezos] def unprocessedResetRequestLevels(
       events: List[ChainEvent]
-  )(implicit ec: ExecutionContext): Future[AccountUpdatesEvents] =
+  )(implicit ec: ExecutionContext): Future[AccountResetEvents] =
     events.collectFirst {
       case ChainEvent.AccountsRefresh(levelsNeedingRefresh) if levelsNeedingRefresh.nonEmpty =>
         db.run(TezosDb.fetchProcessedEventsLevels(ChainEvent.accountsRefresh.render)).map { levels =>
@@ -54,14 +65,16 @@ class AccountsEventsProcessor(
   /* Possibly updates all accounts if the current block level is past any of the given ones
    *
    * @param events the relevant levels, each with its own selection pattern, that calls for a refresh
+   * @return the still unprocessed events, requiring to be handled later
    */
-  private[tezos] def processAccountRefreshes(events: AccountUpdatesEvents)(
+  private[tezos] def applyUnhandledAccountsResets(events: AccountResetEvents)(
       implicit ec: ExecutionContext
-  ): Future[AccountUpdatesEvents] =
+  ): Future[UnhandledResetEvents] =
     if (events.nonEmpty) {
+      //This method is too long and messy, should be better organized
       for {
         storedHead <- indexedData.fetchMaxLevel
-        updated <- if (events.exists(_._1 <= storedHead)) {
+        unhandled <- if (events.exists(_._1 <= storedHead)) {
           val (past, toCome) = events.partition(_._1 <= storedHead)
           val (levels, selectors) = past.unzip
           logger.info(
@@ -106,7 +119,7 @@ class AccountsEventsProcessor(
               Future.successful(events)
           }
         } else Future.successful(events)
-      } yield updated
-    } else Future.successful(events)
+      } yield UnhandledResetEvents(unhandled)
+    } else NoEventsToHandle
 
 }
