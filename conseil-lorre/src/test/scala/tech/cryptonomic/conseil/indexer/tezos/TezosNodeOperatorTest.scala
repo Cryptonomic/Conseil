@@ -31,8 +31,8 @@ class TezosNodeOperatorTest
         .when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe~")
         .returns(blockResponse)
 
-      val apiOps: TezosNodeOperations = new TezosNodeOperations
-      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apiOps)
+      val indexOps: TezosIndexedDataOperations = new TezosIndexedDataOperations
+      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, indexOps)
 
       //when
       val block: Future[TezosTypes.Block] =
@@ -83,8 +83,8 @@ class TezosNodeOperatorTest
             )
         )
 
-      val apiOps: TezosNodeOperations = new TezosNodeOperations
-      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apiOps)
+      val indexOps: TezosIndexedDataOperations = new TezosIndexedDataOperations
+      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, indexOps)
 
       //when
       val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks()
@@ -145,8 +145,8 @@ class TezosNodeOperatorTest
             )
         )
 
-      val apiOps: TezosNodeOperations = new TezosNodeOperations
-      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apiOps)
+      val indexOps: TezosIndexedDataOperations = new TezosIndexedDataOperations
+      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, indexOps)
 
       //when
       val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks(Some(1))
@@ -206,8 +206,8 @@ class TezosNodeOperatorTest
             )
         )
 
-      val apiOps: TezosNodeOperations = new TezosNodeOperations
-      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apiOps)
+      val indexOps: TezosIndexedDataOperations = new TezosIndexedDataOperations
+      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, indexOps)
 
       //when
       val blockPages: Future[nodeOp.PaginatedBlocksResults] =

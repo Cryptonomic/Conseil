@@ -10,7 +10,7 @@ import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class TezosNodeOperationsTest
+class TezosIndexedDataOperationsTest
     extends WordSpec
     with Matchers
     with InMemoryDatabase
@@ -26,7 +26,7 @@ class TezosNodeOperationsTest
       implicit val noTokenContracts: TokenContracts = TokenContracts.fromConfig(List.empty)
       implicit val noTNSContracts: TNSContract = TNSContract.noContract
 
-      val sut = new TezosNodeOperations {
+      val sut = new TezosIndexedDataOperations {
         override lazy val dbReadHandle = dbHandler
       }
 
