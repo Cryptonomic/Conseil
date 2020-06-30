@@ -127,7 +127,7 @@ object ConseilAppConfig extends LazyLogging {
 
     implicit private val bitcoinConfigurationReader: ConfigReader[List[BitcoinConfiguration]] =
       ConfigReader[ConfigObject].map { obj =>
-        obj.keySet.asScala.toSet.map(BitcoinConfiguration).toList
+        obj.keySet.asScala.toList.map(BitcoinConfiguration)
       }
 
     /** pureconfig reader for undefined Platform configurations */
