@@ -23,7 +23,7 @@ class ApiDataHelpersTest extends WordSpec with Matchers {
         encodeAny(java.lang.Integer.valueOf(1)) shouldBe Json.fromInt(1)
         encodeAny(java.lang.Long.valueOf(1L)) shouldBe Json.fromLong(1)
         encodeAny(java.math.BigDecimal.ZERO) shouldBe Json.fromBigDecimal(0)
-        encodeAny(java.sql.Timestamp.valueOf("2020-10-10 08:00:00")) shouldBe Json.fromLong(1602309600000L)
+        encodeAny(new java.sql.Timestamp(0)) shouldBe Json.fromLong(0L)
         encodeAny("a") shouldBe Json.fromString("a")
         encodeAny(true) shouldBe Json.True
         encodeAny(Vector(1, 2, 3)) shouldBe Json.fromValues(
