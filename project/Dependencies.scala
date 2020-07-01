@@ -178,6 +178,7 @@ object Dependencies {
       circe,
       cats,
       mouse,
+      http4s,
       radixTree,
       jna,
       chimney,
