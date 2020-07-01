@@ -476,6 +476,7 @@ class GenericPlatformDiscoveryOperationsTest
         sut.getTableAttributes(EntityPath("inputs", networkPath)).futureValue.value.toSet should matchTo(
           Set(
             Attribute("txid", "Txid", DataType.String, None, KeyType.NonKey, "inputs"),
+            Attribute("output_txid", "Output txid", DataType.String, None, KeyType.NonKey, "inputs"),
             Attribute("v_out", "V out", DataType.Int, None, KeyType.NonKey, "inputs"),
             Attribute("script_sig_asm", "Script sig asm", DataType.String, None, KeyType.NonKey, "inputs"),
             Attribute("script_sig_hex", "Script sig hex", DataType.String, None, KeyType.NonKey, "inputs"),
