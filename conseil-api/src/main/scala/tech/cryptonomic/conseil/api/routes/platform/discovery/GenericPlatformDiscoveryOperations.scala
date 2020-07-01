@@ -64,11 +64,19 @@ class GenericPlatformDiscoveryOperations(
     ).tupled.void.unsafeToFuture
   }
 
-  /** Pre-caching attributes without cardinality for multiple platforms */
+  /** Pre-caching attributes from slick without cardinality for multiple platforms
+    *
+    * @param  platforms list of platforms for which we want to fetch attributes
+    * @return database action with attributes to be cached
+    **/
   private def preCacheAttributes(platforms: List[Platform]): DBIO[AttributesCache] =
     DBIO.sequence(platforms.map(preCacheAttributes)).map(_.reduce(_ ++ _))
 
-  /** Pre-caching attributes without cardinality */
+  /** Pre-caching attributes from slick without cardinality
+    *
+    * @param  platform platform for which we want to fetch attributes
+    * @return database action with attributes to be cached
+    * */
   private def preCacheAttributes(platform: Platform): DBIO[AttributesCache] = {
     val result = for {
       tables <- MTable.getTables(Some(""), Some(platform.name), Some(""), Some(Seq("TABLE")))
@@ -139,13 +147,23 @@ class GenericPlatformDiscoveryOperations(
       .flatten
       .exists(_.column.contains(column.name))
 
+  /** Pre-caching attribute values from slick for multiple platforms
+    *
+    * @param  platforms the list of platforms for which we want to fetch attribute values
+    * @return database action with attribute values to be cached
+    * */
   private def preCacheAttributeValues(platforms: List[Platform]): DBIO[AttributeValuesCache] =
     DBIO.sequence(platforms.map(preCacheAttributeValues)).map(_.reduce(_ ++ _))
 
+  /** Pre-caching attribute values from slick for specific platform
+    *
+    * @param  platform platform for which we want to fetch attribute values
+    * @return database action with attribute values to be cached
+    * */
   private def preCacheAttributeValues(platform: Platform): DBIO[AttributeValuesCache] =
     DBIO.sequence {
-      cacheOverrides.getAttributesToCache.map {
-        case (table, column) =>
+      cacheOverrides.getAttributesToCache.collect {
+        case (schema, table, column) if schema == platform.name =>
           selectDistinct(platform.name, table, column).map { values =>
             val radixTree = RadixTree(values.map(x => x.toLowerCase -> x): _*)
             AttributeValuesCacheKey(platform.name, table, column) -> CacheEntry(now, radixTree)
@@ -182,13 +200,22 @@ class GenericPlatformDiscoveryOperations(
     result.unsafeToFuture()
   }
 
-  /** Method querying slick metadata tables for entities for list of platform-network tuples */
+  /** Pre-caching entities values from slick for multiple platform-network pairs
+    *
+    * @param xs list of platform-network pairs for which we want to fetch entities
+    * @return database action with entities to be cached
+    * */
   private def preCacheEntities(xs: List[(Platform, Network)]): DBIO[EntitiesCache] =
     DBIO
       .sequence(xs.map { case (platform, network) => preCacheEntities(platform.name, network.name) })
       .map(_.reduce(_ ++ _))
 
-  /** Method querying slick metadata tables for entities */
+  /** Pre-caching entities values from slick for specific platform-network pair
+    *
+    * @param platform platform for which we want to fetch entities
+    * @param network  network for which we want to fetch entities within specific platform
+    * @return database action with entities to be cached
+    * */
   private def preCacheEntities(platform: String, network: String): DBIO[EntitiesCache] = {
     val result = for {
       tables <- MTable.getTables(Some(""), Some(platform), Some(""), Some(Seq("TABLE")))
