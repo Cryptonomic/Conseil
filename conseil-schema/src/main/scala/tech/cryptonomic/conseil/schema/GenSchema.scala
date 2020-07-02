@@ -1,8 +1,8 @@
 package tech.cryptonomic.conseil.schema
 
-import pureconfig.{loadConfig, CamelCase, ConfigFieldMapping}
-import pureconfig.generic.auto._
-import pureconfig.generic.ProductHint
+import slick.codegen.SourceCodeGenerator
+import java.net.URI
+import java.nio.file.Paths
 
 /**
   * Uses Slick's code-generation capabilities to infer code from Conseil database schema.
@@ -10,42 +10,47 @@ import pureconfig.generic.ProductHint
   */
 object GenSchema extends App {
 
-  sealed trait DatabaseConfig {
-    def databaseName: String
-    def user: String
-    def password: String
-  }
+  /* configuration section needed, both locally or in the classpath-provided file,
+   * where the db connection definition is expected
+   * It uses a URI fragment syntax, following the rules of the Slick Generator
+   */
+  val configSection = "#slickgen"
 
-  final case class PostgresConfig(databaseName: String, user: String, password: String) extends DatabaseConfig {
-    lazy val url = s"jdbc:postgresql://localhost/${databaseName}"
-    lazy val jdbcDriver = "org.postgresql.Driver"
-    lazy val slickProfile = "slick.jdbc.PostgresProfile"
-    lazy val `package` = "tech.cryptonomic.conseil.common.tezos"
-    lazy val dest = "/tmp/slick"
-  }
-
-  //applies convention to uses CamelCase when reading config fields
-  implicit def hint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
-
-  val conseilDbConf = loadConfig[PostgresConfig](namespace = "conseil.db.properties")
-
-  conseilDbConf.foreach { cfg =>
-    println(s"Generating database Tables source file under ${cfg.dest}, in package ${cfg.`package`}")
-    slick.codegen.SourceCodeGenerator.main(
-      Array(
-        cfg.slickProfile,
-        cfg.jdbcDriver,
-        cfg.url,
-        cfg.dest,
-        cfg.`package`,
-        cfg.user,
-        cfg.password
-      )
+  val confUri = {
+    val externallyProvided = args.headOption.map(
+      confFile => Paths.get(confFile).toUri.resolve(configSection)
     )
+    val classpathProvided = new URI(configSection) //this looks up in the standard application.conf as a resource
+    println(s"""
+    | Loading schema definitions from db configurations located at
+    | - externally provided: $externallyProvided
+    | - classpath fallback: application.conf$classpathProvided
+    |
+    | The source files will be generated under the folder /tmp/conseil-slick
+    |
+    | If you need to customize the database connection defaults, pass the file name as argument.
+    | You're expected to provide a top-level hocon section named ${configSection.drop(1)}
+    | An example looks like
+    |
+    | ${configSection.drop(1)} {
+    |   profile: "slick.jdbc.PostgresProfile$$"
+    |   db {
+    |     driver: "org.portgresql.Driver"
+    |     url: "jdbc:postgresql:<host>/<db-name>"
+    |     user: ""
+    |     password: ""
+    |   }
+    | }
+    |
+    | If passing a custom file definition as argument to the task, remember
+    | you can <include required(classpath("application"))> to have everything
+    | provided by default as per the local docker-compose definitions, and
+    | only override what you need to.
+    """.stripMargin)
+
+    externallyProvided getOrElse classpathProvided
   }
 
-  conseilDbConf.left.foreach { failures =>
-    sys.error(failures.toList.mkString("\n"))
-  }
+  SourceCodeGenerator.run(uri = confUri, outputDir = None)
 
 }
