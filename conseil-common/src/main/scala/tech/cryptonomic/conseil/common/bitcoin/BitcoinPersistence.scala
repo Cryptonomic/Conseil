@@ -105,6 +105,7 @@ object BitcoinPersistence {
         case (transaction, input) =>
           Tables.InputsRow(
             txid = transaction.txid,
+            outputTxid = input.txid,
             vOut = input.vout,
             scriptSigAsm = input.scriptSig.map(_.asm),
             scriptSigHex = input.scriptSig.map(_.asm),
