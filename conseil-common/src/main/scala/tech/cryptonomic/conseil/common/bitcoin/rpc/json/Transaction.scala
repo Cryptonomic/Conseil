@@ -38,6 +38,7 @@ case class ScriptSig(
   * More info at: https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
   */
 case class TransactionInput(
+    txid: Option[String],
     vout: Option[Int],
     scriptSig: Option[ScriptSig],
     sequence: Long,

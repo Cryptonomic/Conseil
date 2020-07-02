@@ -190,6 +190,7 @@ trait BitcoinFixtures {
     )
 
     val inputResult = TransactionInput(
+      txid = None,
       vout = None,
       scriptSig = None,
       sequence = 4294967295L,
