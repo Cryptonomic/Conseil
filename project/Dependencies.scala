@@ -23,6 +23,7 @@ object Dependencies {
 
     val endpoints = "0.9.0"
     val cats = "2.1.1"
+    val catsEffect = "2.1.3"
     val mouse = "0.20"
     val monocle = "2.0.0"
     val circe = "0.11.1"
@@ -102,8 +103,11 @@ object Dependencies {
     "org.julienrf" %% "endpoints-akka-http-server"    % Versions.endpoints
   )
 
-  private val cats = Seq("org.typelevel"  %% "cats-core" % Versions.cats)
-  private val mouse = Seq("org.typelevel" %% "mouse"     % Versions.mouse) // related to cats
+  private val cats = Seq(
+    "org.typelevel" %% "cats-core"   % Versions.cats,
+    "org.typelevel" %% "cats-effect" % Versions.catsEffect
+  )
+  private val mouse = Seq("org.typelevel" %% "mouse" % Versions.mouse) // related to cats
 
   private val monocle = Seq(
     "com.github.julien-truffaut" %% "monocle-core"  % Versions.monocle exclude ("org.typelevel.cats", "cats-core"),

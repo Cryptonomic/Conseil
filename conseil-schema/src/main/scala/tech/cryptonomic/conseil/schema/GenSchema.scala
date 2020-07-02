@@ -1,8 +1,16 @@
 package tech.cryptonomic.conseil.schema
 
-import slick.codegen.SourceCodeGenerator
 import java.net.URI
 import java.nio.file.Paths
+
+import cats.implicits._
+import slick.codegen.SourceCodeGenerator
+import slick.basic.DatabaseConfig
+import slick.jdbc.PostgresProfile
+import slick.model.{Model, Table}
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
+import cats.effect._
 
 /**
   * Uses Slick's code-generation capabilities to infer code from Conseil database schema.
@@ -51,6 +59,90 @@ object GenSchema extends App {
     externallyProvided getOrElse classpathProvided
   }
 
-  SourceCodeGenerator.run(uri = confUri, outputDir = None)
+  io(uri = confUri, outputDir = None).unsafeRunSync()
 
+  /** Essentially follow along what the [[SourceCodeGenerator.run]] does,
+    * yet selecting only a number of tables, grouping the results in different
+    * source files based on the namespace.
+    *
+    * This keeps the different blockchains' db models separated, if we follow the
+    * namespace rule.
+    *
+    * @param uri will point to the configuration file, possibly in a subsection, using fragments
+    * @param outputDir we actually define this inside the configuration, but we could change that
+    * @return an IO effect to be executed via .unsafeRunSync() or similar calls
+    */
+  def io(
+      uri: URI,
+      outputDir: Option[String]
+  ): IO[Unit] = {
+    implicit val shift = IO.contextShift(ExecutionContext.global)
+
+    //we read configuration values
+    val dc = DatabaseConfig.forURI[PostgresProfile](uri)
+    val basePackage = dc.config.getString("codegen.package")
+    val out = outputDir orElse Option(dc.config.getString("codegen.outputDir")) getOrElse "."
+
+    /* Use cats.effect.Resource to get automatic-resource-management
+     * Wrapping the operations on resource content with a `resource.use` call
+     * will guarantee that those resources will be released after the execution.
+     */
+    val resources = for {
+      db <- Resource.fromAutoCloseable(IO(dc.db))
+      blocker <- Blocker[IO]
+    } yield (db, blocker)
+
+    resources.use {
+      case (db, blockingPool) =>
+        /* First we define the steps:
+         * - get the complete db model
+         * - extract schemas/namespaces from the model
+         * - filter the schemas we care about and write the sources for each
+         */
+        val getModel = IO.fromFuture(
+          IO.delay(
+            db.run(dc.profile.createModel(None)(ExecutionContext.global).withPinnedSession)
+          )
+        )
+
+        val getSchemas = (model: Model) =>
+          IO {
+            val schemas = model.tables.groupBy(_.name.schema).collect {
+              case (Some(schema), tables) if schema != "public" => (schema, tables)
+            }
+            println(s"""The database contains the following namespaces for model generation: ${schemas.keySet.mkString(
+              ", "
+            )}""")
+            schemas
+          }
+
+        /* we combine multiple IO operations into a single sequence within the same IO wrapper with traverse */
+        val writeSources = (schemas: List[(String, Seq[Table])]) =>
+          schemas.traverse {
+            case (schema, tables) =>
+              blockingPool.blockOn(
+                IO(
+                  new SourceCodeGenerator(new Model(tables))
+                    .writeToFile(dc.profileName, s"$out$schema", s"$basePackage.$schema")
+                ).start
+              )
+          }.flatMap { fibers =>
+            fibers.traverse(_.join)
+          }.void
+
+        /* sequence the operations, you might notice we use a custom context from cats.effect
+         * to run the blocking filesystem operations on
+         */
+        for {
+          model <- getModel
+          schemas <- getSchemas(model)
+          // fiber <- blockingPool.blockOn(writeSources(schemas.toList).start)
+          _ <- writeSources(schemas.toList)
+        } yield ()
+
+    }.handleErrorWith(
+      error => IO(Console.err.println(s"Failed to generate the slick model: $error"))
+    )
+
+  }
 }
