@@ -174,7 +174,9 @@ object Dependencies {
 
   val conseilCommonInclude: Seq[ModuleID] =
     concat(
+      config,
       logging,
+      pureConfig,
       slick,
       slickCodeGen,
       slickPG,

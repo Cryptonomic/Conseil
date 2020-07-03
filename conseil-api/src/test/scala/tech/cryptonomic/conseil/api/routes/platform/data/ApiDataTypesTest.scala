@@ -13,8 +13,8 @@ import tech.cryptonomic.conseil.api.metadata.{
 }
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataTypes.ApiQuery
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
+import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms._
-import tech.cryptonomic.conseil.common.config.{MetadataConfiguration, Platforms}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.common.metadata._
@@ -39,10 +39,8 @@ class ApiDataTypesTest
 
     new MetadataService(
       PlatformsConfiguration(
-        Map(
-          Platforms.Tezos -> List(
-                TezosConfiguration("alphanet", TezosNodeConfiguration("tezos-host", 123, "https://"), None)
-              )
+        List(
+          TezosConfiguration("alphanet", enabled = true, TezosNodeConfiguration("tezos-host", 123, "https://"), None)
         )
       ),
       TransparentUnitTransformation,

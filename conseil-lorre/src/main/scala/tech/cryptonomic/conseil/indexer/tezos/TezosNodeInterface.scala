@@ -86,7 +86,7 @@ private[tezos] class TezosNodeInterface(
 )(implicit system: ActorSystem)
     extends TezosRPCInterface
     with LazyLogging {
-  import config.nodeConfig
+  import config.node
 
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
@@ -110,7 +110,7 @@ private[tezos] class TezosNodeInterface(
     if (rejectingCalls.get) Source.empty[T] else call
 
   private[this] def translateCommandToUrl(command: String): String =
-    s"${nodeConfig.protocol}://${nodeConfig.hostname}:${nodeConfig.port}/${nodeConfig.pathPrefix}chains/${nodeConfig.chainEnv}/$command"
+    s"${node.protocol}://${node.hostname}:${node.port}/${node.pathPrefix}chains/${node.chainEnv}/$command"
 
   override def runGetQuery(network: String, command: String): Try[String] = withRejectionControl {
     Try {
@@ -199,16 +199,16 @@ private[tezos] class TezosNodeInterface(
 
   /* creates a connections pool based on the host network */
   private[this] def getHostPoolFlow[T] =
-    if (nodeConfig.protocol == "https")
+    if (node.protocol == "https")
       Http(system).cachedHostConnectionPoolHttps[T](
-        host = nodeConfig.hostname,
-        port = nodeConfig.port,
+        host = node.hostname,
+        port = node.port,
         settings = streamingRequestsConnectionPooling
       )
     else
       Http(system).cachedHostConnectionPool[T](
-        host = nodeConfig.hostname,
-        port = nodeConfig.port,
+        host = node.hostname,
+        port = node.port,
         settings = streamingRequestsConnectionPooling
       )
 
