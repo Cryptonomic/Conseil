@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.indexer.bitcoin
 import java.util.concurrent.Executors
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.FiniteDuration
 
 import cats.effect.{IO, Resource}
 import com.typesafe.scalalogging.LazyLogging
@@ -45,30 +46,72 @@ class BitcoinIndexer(
   private val httpExecutor = Executors.newFixedThreadPool(bitcoinConf.batchingConf.httpFetchThreadsCount)
 
   /**
-    * [[cats.ContextShift]] is the equivalent to [[ExecutionContext]], 
+    * [[cats.ContextShift]] is the equivalent to [[ExecutionContext]],
     * it's used by the Cats Effect related methods.
     */
-  implicit val contextShift = IO.contextShift(ExecutionContext.fromExecutor(indexerExecutor))
-  
+  implicit private val contextShift = IO.contextShift(ExecutionContext.fromExecutor(indexerExecutor))
+
   /**
     * [[ExecutionContext]] to handle stop method.
     */
-  implicit val indexerEC = ExecutionContext.fromExecutor(indexerExecutor)
+  implicit private val indexerEC = ExecutionContext.fromExecutor(indexerExecutor)
 
   /**
     * The timer to schedule continuous indexer runs.
     */
-  implicit val timer = IO.timer(indexerEC)
+  implicit private val timer = IO.timer(indexerEC)
 
   /**
     * Dedicated [[ExecutionContext]] for the http4s.
     */
-  val httpEC = ExecutionContext.fromExecutor(httpExecutor)
+  private val httpEC = ExecutionContext.fromExecutor(httpExecutor)
+
+  override def platform: Platforms.BlockchainPlatform = Platforms.Bitcoin
+
+  // TODO: Handle the cancelation in the right way, now it's imposible to use `ctrl-C`
+  //       to stop the mainLoop.
+  override def start(): Unit = {
+
+    /**
+      * Repeat [[cats.IO]] after the specified interval.
+      *
+      * @param interval finite duration interval
+      * @param f [[cats.IO]] to repeat
+      */
+    def repeatAfter[A](interval: FiniteDuration)(f: IO[A]): IO[Unit] =
+      for {
+        _ <- f
+        _ <- IO.sleep(interval)
+        _ <- repeatAfter(interval)(f)
+      } yield ()
+
+    indexer
+      .use(
+        bitcoinOperations =>
+          repeatAfter(lorreConf.sleepInterval) {
+
+            /**
+              * Place with all the computations for the Bitcoin.
+              * Currently, it only contains the blocks. But it can be extended to
+              * handle multiple computations.
+              */
+            bitcoinOperations.loadBlocks(lorreConf.depth).compile.drain
+          }
+      )
+      .unsafeRunSync()
+  }
+
+  override def stop(): Future[LorreIndexer.ShutdownComplete] =
+    Future {
+      indexerExecutor.shutdown()
+      httpExecutor.shutdown()
+      LorreIndexer.ShutdownComplete
+    }
 
   /**
     * Lorre indexer or the Bitcoin. This method creates all the dependencies and wraps it into the [[cats.Resource]].
     */
-  def indexer: Resource[IO, BitcoinOperations[IO]] =
+  private def indexer: Resource[IO, BitcoinOperations[IO]] =
     for {
       httpClient <- BlazeClientBuilder[IO](httpEC).resource
 
@@ -85,31 +128,6 @@ class BitcoinIndexer(
 
       bitcoinOperations <- BitcoinOperations.resource(rpcClient, tx, bitcoinConf.batchingConf)
     } yield bitcoinOperations
-
-  /**
-    * The method with all the computations for the Bitcoin. 
-    * Currently, it only contains the blocks. But it can be extended to 
-    * handle multiple computations.
-    */
-  def mainLoop(bitcoinOperations: BitcoinOperations[IO]): IO[Unit] =
-    for {
-      _ <- bitcoinOperations.loadBlocks(lorreConf.depth).compile.drain
-      _ <- IO.sleep(lorreConf.sleepInterval)
-      _ <- mainLoop(bitcoinOperations)
-    } yield ()
-
-  override def platform: Platforms.BlockchainPlatform = Platforms.Bitcoin
-
-  // TODO: Handle the cancelation in the right way, now it's imposible to use `ctrl-C`
-  //       to stop the mainLoop.
-  override def start(): Unit = indexer.use(mainLoop).unsafeRunSync()
-
-  override def stop(): Future[LorreIndexer.ShutdownComplete] =
-    Future {
-      indexerExecutor.shutdown()
-      httpExecutor.shutdown()
-      LorreIndexer.ShutdownComplete
-    }
 }
 
 object BitcoinIndexer {

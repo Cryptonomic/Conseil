@@ -33,15 +33,15 @@ class BitcoinOperations[F[_]: Concurrent](
     */
   def loadBlocks(depth: Depth): Stream[F, Unit] =
     Stream
-      .eval(tx.transact(Tables.Blocks.sortBy(_.height).take(1).result)) // get last block height
+      .eval(getLastBlock)
       .zip(bitcoinClient.getBlockChainInfo)
       .evalTap(_ => Concurrent[F].delay(logger.info(s"Start Lorre for Bitcoin")))
       .flatMap {
         case (block, info) =>
           depth match {
-            case Newest if block.size > 0 => loadBlocksWithTransactions(block.head.height to info.blocks)
-            case Newest | Everything => loadBlocksWithTransactions(1 to info.blocks)
-            case Custom(depth) => loadBlocksWithTransactions(depth to info.blocks)
+            case Newest => loadBlocksWithTransactions(block.map(_.height).getOrElse(1) to info.blocks)
+            case Everything => loadBlocksWithTransactions(1 to info.blocks)
+            case Custom(depth) => loadBlocksWithTransactions((info.blocks - depth) to info.blocks)
           }
       }
 
@@ -72,11 +72,18 @@ class BitcoinOperations[F[_]: Concurrent](
     * Get sequence of existing blocks from the database.
     *
     * @param range Inclusive range of the block's height
-    * @return
     */
   def getExistingBlocks(range: Range.Inclusive): F[Seq[Int]] =
     tx.transact(
-      Tables.Blocks.filter(block => block.height >= range.start && block.height <= range.end).map(_.height).result
+      Tables.Blocks.filter(_.height between(range.start, range.end)).map(_.height).result
+    )
+
+  /**
+    * Get the last block from the database.
+    */
+  def getLastBlock: F[Option[Tables.BlocksRow]] =
+    tx.transact(
+      Tables.Blocks.sortBy(_.height).take(1).result.headOption
     )
 }
 
