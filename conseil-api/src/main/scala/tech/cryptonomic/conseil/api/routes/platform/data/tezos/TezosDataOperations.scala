@@ -129,9 +129,6 @@ class TezosDataOperations extends ApiDataOperations {
     * @return the most recent block, if one exists in the database.
     */
   def latestBlockIO()(implicit ec: ExecutionContext): DBIO[Option[Tables.BlocksRow]] =
-    // Couldn't this query be done in single database request?
-    // I believe we could simply sort + take. Wouldn't this be faster?
-    // Probably we should test this out first
     fetchMaxBlockLevel.flatMap(
       maxLevel =>
         Tables.Blocks
