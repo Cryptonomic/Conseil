@@ -136,7 +136,6 @@ object GenSchema extends App {
         for {
           model <- getModel
           schemas <- getSchemas(model)
-          // fiber <- blockingPool.blockOn(writeSources(schemas.toList).start)
           _ <- writeSources(schemas.toList)
         } yield ()
 
