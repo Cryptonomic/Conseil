@@ -83,7 +83,7 @@ class BitcoinOperations[F[_]: Concurrent](
     */
   def getLastBlock: F[Option[Tables.BlocksRow]] =
     tx.transact(
-      Tables.Blocks.sortBy(_.height).take(1).result.headOption
+      Tables.Blocks.sortBy(_.height.desc).take(1).result.headOption
     )
 }
 
