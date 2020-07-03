@@ -1,13 +1,14 @@
 package tech.cryptonomic.conseil.indexer.tezos.processing
 
 import com.typesafe.scalalogging.LazyLogging
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 import scala.collection.immutable.SortedSet
 import tech.cryptonomic.conseil.common.config.ChainEvent
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockHash
 import tech.cryptonomic.conseil.indexer.tezos.{TezosIndexedDataOperations, TezosDatabaseOperations => TezosDb}
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 
 object AccountsResetHandler {
 
@@ -92,7 +93,7 @@ class AccountsResetHandler(
                 )
               db.run(
                   //put all accounts in checkpoint, log the past levels to the db, keep the rest for future cycles
-                  TezosDb.refillAccountsCheckpointFromExisting(hashRef, levelRef, timestamp, cycle, selectors.toSet) >>
+                  TezosDb.refillAccountsCheckpointFromExisting(hashRef, levelRef, timestamp, cycle, selectors) >>
                       TezosDb.writeProcessedEventsLevels(
                         ChainEvent.accountsRefresh.render,
                         levels.map(BigDecimal(_)).toList

@@ -5,19 +5,18 @@ import cats.syntax.applicative._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
-import tech.cryptonomic.conseil.indexer.tezos.michelson.JsonToMichelson.toMichelsonScript
-import tech.cryptonomic.conseil.indexer.tezos.michelson.dto.{MichelsonInstruction, MichelsonSchema}
 import tech.cryptonomic.conseil.common.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.common.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.common.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.indexer.config.{BatchFetchConfiguration, SodiumConfiguration}
+import tech.cryptonomic.conseil.indexer.tezos.michelson.JsonToMichelson.toMichelsonScript
+import tech.cryptonomic.conseil.indexer.tezos.michelson.dto.{MichelsonInstruction, MichelsonSchema}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
-import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 private[tezos] object TezosNodeOperator {
   type LazyPages[T] = Iterator[Future[T]]
@@ -660,14 +659,7 @@ private[tezos] class TezosNodeOperator(
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.{fetch, fetchMerge}
-    import tech.cryptonomic.conseil.common.tezos.TezosOptics.Blocks.{
-      acrossInternalParameters,
-      acrossInternalTransactions,
-      acrossScriptsCode,
-      acrossScriptsStorage,
-      acrossTransactionParameters,
-      acrossTransactions
-    }
+    import tech.cryptonomic.conseil.common.tezos.TezosOptics.Blocks._
 
     logger.info("Fetching block data in range: " + levelRange)
 
