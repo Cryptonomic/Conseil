@@ -62,7 +62,7 @@ class BitcoinOperations[F[_]: Concurrent](
             .through(bitcoinClient.getBlockHash(batchConf.hashBatchSize))
             .through(bitcoinClient.getBlockByHash(batchConf.blocksBatchSize))
             .through(bitcoinClient.getBlockWithTransactions(batchConf.transactionsBatchSize))
-            .evalTap { case (block, _) => Concurrent[F].delay(logger.info(s"Save block with height: ${block.height}")) }
+            .evalTap { case (block, _) => Concurrent[F].delay(logger.debug(s"Save block with height: ${block.height}")) }
             .map((persistence.createBlock _).tupled)
             .evalMap(tx.transact)
             .drain
