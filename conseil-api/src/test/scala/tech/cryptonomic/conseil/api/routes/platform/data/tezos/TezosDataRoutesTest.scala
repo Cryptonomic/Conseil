@@ -11,8 +11,8 @@ import tech.cryptonomic.conseil.api.metadata.{
   TransparentUnitTransformation
 }
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
+import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms._
-import tech.cryptonomic.conseil.common.config.{MetadataConfiguration, Platforms}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse, SimpleField}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
@@ -36,14 +36,13 @@ class TezosDataRoutesTest
   }
 
   val cfg = PlatformsConfiguration(
-    platforms = Map(
-      Tezos -> List(
-            TezosConfiguration(
-              "alphanet",
-              TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
-              None
-            )
-          )
+    List(
+      TezosConfiguration(
+        "alphanet",
+        enabled = true,
+        TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
+        None
+      )
     )
   )
 
@@ -62,10 +61,8 @@ class TezosDataRoutesTest
   val metadataService =
     new MetadataService(
       PlatformsConfiguration(
-        Map(
-          Platforms.Tezos -> List(
-                TezosConfiguration("alphanet", TezosNodeConfiguration("tezos-host", 123, "https://"), None)
-              )
+        List(
+          TezosConfiguration("alphanet", enabled = true, TezosNodeConfiguration("tezos-host", 123, "https://"), None)
         )
       ),
       TransparentUnitTransformation,

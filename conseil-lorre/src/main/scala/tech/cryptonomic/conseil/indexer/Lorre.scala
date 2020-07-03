@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.indexer
 
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.common.config.Platforms.{TezosConfiguration, UnknownPlatformConfiguration}
+import tech.cryptonomic.conseil.common.config.Platforms.TezosConfiguration
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig
 import tech.cryptonomic.conseil.indexer.logging.LorreInfoLogging
@@ -41,9 +41,6 @@ object Lorre extends App with LazyLogging with LorreAppConfig with LorreInfoLogg
     case conf: TezosConfiguration =>
       logger.info("Initializing indexer for Tezos Blockchain.")
       TezosIndexer.fromConfig(lorreConf, conf, callsConf, streamingClientConf, batchingConf)
-    case _: UnknownPlatformConfiguration =>
-      logger.error("Could not initialize indexer. Unsupported platform has been read from configuration file.")
-      sys.exit(1)
   }
 
   try {

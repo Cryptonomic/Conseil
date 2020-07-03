@@ -48,6 +48,17 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
     system.scheduler.schedule(ncc.delay, ncc.interval)(Security.updateKeys(ncc))
   }
 
+  config.platforms.platforms.foreach { conf =>
+    if (conf.enabled)
+      logger.info(
+        s"Configuring endpoints to expose data for platform: ${conf.platform.name} and network ${conf.network}."
+      )
+    else
+      logger.warn(
+        s"Configuration for platform: ${conf.platform.name} and network: ${conf.network} is disabled, skipping..."
+      )
+  }
+
   // this val is not lazy to force to fetch metadata and trigger logging at the start of the application
   private val metadataService =
     new MetadataService(config.platforms, transformation, cacheOverrides, ApiCache.cachedDiscoveryOperations)
@@ -152,7 +163,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
       }
 
     private val visiblePlatforms =
-      transformation.overridePlatforms(config.platforms.getPlatforms)
+      transformation.overridePlatforms(config.platforms.getPlatforms())
 
     /**
       * Function, that while used is going to execute function `init` for every platform found (and visible) in configuration.

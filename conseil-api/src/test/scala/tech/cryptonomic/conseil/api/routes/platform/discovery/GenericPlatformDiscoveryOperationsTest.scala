@@ -72,14 +72,13 @@ class GenericPlatformDiscoveryOperationsTest
   "getNetworks (all)" should {
       "return list with one element" in {
         val config = PlatformsConfiguration(
-          platforms = Map(
-            Tezos -> List(
-                  TezosConfiguration(
-                    "alphanet",
-                    TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
-                    None
-                  )
-                )
+          List(
+            TezosConfiguration(
+              "alphanet",
+              enabled = true,
+              TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
+              None
+            )
           )
         )
 
@@ -88,24 +87,24 @@ class GenericPlatformDiscoveryOperationsTest
 
       "return two networks" in {
         val config = PlatformsConfiguration(
-          platforms = Map(
-            Tezos -> List(
-                  TezosConfiguration(
-                    "alphanet",
-                    TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
-                    None
-                  ),
-                  TezosConfiguration(
-                    "alphanet-staging",
-                    TezosNodeConfiguration(
-                      protocol = "https",
-                      hostname = "nautilus.cryptonomic.tech",
-                      port = 8732,
-                      pathPrefix = "tezos/alphanet/"
-                    ),
-                    None
-                  )
-                )
+          List(
+            TezosConfiguration(
+              "alphanet",
+              enabled = true,
+              TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
+              None
+            ),
+            TezosConfiguration(
+              "alphanet-staging",
+              enabled = true,
+              TezosNodeConfiguration(
+                protocol = "https",
+                hostname = "nautilus.cryptonomic.tech",
+                port = 8732,
+                pathPrefix = "tezos/alphanet/"
+              ),
+              None
+            )
           )
         )
         config.getNetworks("tezos") should have size 2
@@ -113,15 +112,14 @@ class GenericPlatformDiscoveryOperationsTest
 
       "return networks from two platforms" in {
         val config = PlatformsConfiguration(
-          platforms = Map(
-            Tezos -> List(
-                  TezosConfiguration(
-                    "alphanet",
-                    TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
-                    None
-                  )
-                ),
-            Bitcoin -> List(BitcoinConfiguration("mainnet"))
+          List(
+            TezosConfiguration(
+              "alphanet",
+              enabled = true,
+              TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
+              None
+            ),
+            BitcoinConfiguration("mainnet", enabled = true)
           )
         )
 

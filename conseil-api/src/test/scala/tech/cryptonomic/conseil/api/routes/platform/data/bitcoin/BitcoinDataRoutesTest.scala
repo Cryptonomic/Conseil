@@ -8,7 +8,7 @@ import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, TransparentUnitTransformation}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.common.config.Platforms.{BitcoinConfiguration, PlatformsConfiguration}
-import tech.cryptonomic.conseil.common.config.{MetadataConfiguration, Platforms}
+import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
@@ -40,7 +40,7 @@ class BitcoinDataRoutesTest
 
   private val metadataService =
     new MetadataService(
-      PlatformsConfiguration(Map(Platforms.Bitcoin -> List(BitcoinConfiguration("mainnet")))),
+      PlatformsConfiguration(List(BitcoinConfiguration("mainnet", enabled = true))),
       TransparentUnitTransformation,
       stub[AttributeValuesCacheConfiguration],
       platformDiscoveryOperations

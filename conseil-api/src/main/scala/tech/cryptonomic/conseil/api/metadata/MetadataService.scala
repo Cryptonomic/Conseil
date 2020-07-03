@@ -18,7 +18,7 @@ class MetadataService(
     platformDiscoveryOperations: PlatformDiscoveryOperations
 )(implicit apiExecutionContext: ExecutionContext) {
 
-  private val platforms = transformation.overridePlatforms(config.getPlatforms)
+  private val platforms = transformation.overridePlatforms(config.getPlatforms())
 
   private val networks = platforms.map { platform =>
     platform.path -> transformation.overrideNetworks(platform.path, config.getNetworks(platform.name))

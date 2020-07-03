@@ -7,8 +7,10 @@ object MainOutputs {
 
   /* prepare output to display database access */
   def showDatabaseConfiguration(applicationScope: String): String = {
-    import com.typesafe.config._
     import java.util.Map.{Entry => JMEntry}
+
+    import com.typesafe.config._
+
     import scala.collection.JavaConverters._
 
     //decides if the value should be hidden, based on key content
@@ -20,9 +22,9 @@ object MainOutputs {
 
     //convert config key/value pairs rendering the values as checked text
     def renderValues(entries: (String, ConfigValue)): (String, String) = entries match {
-      case ((Secrets(key), value)) =>
+      case (Secrets(key), value) =>
         key -> value.render.map(_ => '*')
-      case ((key, value)) =>
+      case (key, value) =>
         key -> value.render
     }
 
@@ -31,16 +33,16 @@ object MainOutputs {
     //the meat of the method
     dbConf.entrySet.asScala.map { entry =>
       val (key, value) = renderValues(entry)
-      s" - ${key} = ${value}"
+      s" - $key = $value"
     }.mkString("Database configuration:\n\n", "\n", "\n")
   }
 
   /* custom display of each configuration type */
   val showPlatformConfiguration: PartialFunction[PlatformConfiguration, String] = {
-    case TezosConfiguration(_, TezosNodeConfiguration(host, port, protocol, prefix, chainEnv), _) =>
+    case TezosConfiguration(_, _, TezosNodeConfiguration(host, port, protocol, prefix, chainEnv), _) =>
       s"node $protocol://$host:$port/$prefix/$chainEnv"
-    case _ =>
-      "a non-descript platform configuration"
+    case BitcoinConfiguration(_, _) =>
+      s"node []" //TODO Add support for BitcoinConfiguration
   }
 
 }
