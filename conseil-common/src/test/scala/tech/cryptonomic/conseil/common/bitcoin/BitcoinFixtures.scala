@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.common.bitcoin
 
 import java.sql.Timestamp
+import java.time.Instant
 
 import tech.cryptonomic.conseil.common.bitcoin.rpc.json._
 
@@ -252,8 +253,8 @@ trait BitcoinFixtures {
       nTx = 1,
       previousBlockHash = Some("0000000000038b80cf5db1173e96f2290cfda12c505b0fe1bd37d6975e164a8a"),
       nextBlockHash = Some("0000000000035107dce8eb675c6fa9a08c7617c109b3553ad8f208dda24065a6"),
-      time = new Timestamp(1294691980),
-      medianTime = new Timestamp(1294691440)
+      time = Timestamp.valueOf("2011-01-10 21:39:40"),
+      medianTime = Timestamp.valueOf("2011-01-10 21:30:40")
     )
 
     val transactionRow = Tables.TransactionsRow(
@@ -267,8 +268,8 @@ trait BitcoinFixtures {
       weight = 536,
       version = 1,
       lockTime = new Timestamp(0),
-      blockTime = new Timestamp(1294691980),
-      time = new Timestamp(1294691980)
+      blockTime = Timestamp.valueOf("2011-01-10 21:39:40"),
+      time = Timestamp.valueOf("2011-01-10 21:39:40")
     )
 
     val inputRow = Tables.InputsRow(

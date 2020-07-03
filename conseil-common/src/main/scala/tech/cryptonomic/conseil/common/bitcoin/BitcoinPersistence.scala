@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.common.bitcoin
 
 import java.sql.Timestamp
+import java.time.Instant
 
 import cats.Id
 import cats.effect.{Concurrent, Resource}
@@ -11,6 +12,7 @@ import tech.cryptonomic.conseil.common.util.Conversion
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.bitcoin.rpc.json.{Block, Transaction, TransactionInput, TransactionOutput}
 import tech.cryptonomic.conseil.common.bitcoin.BitcoinPersistence._
+
 
 /**
   * Bitcoin persistence into the database using Slick.
@@ -66,8 +68,8 @@ object BitcoinPersistence {
         nTx = from.nTx,
         previousBlockHash = from.previousblockhash,
         nextBlockHash = from.nextblockhash,
-        medianTime = new Timestamp(from.mediantime),
-        time = new Timestamp(from.time)
+        medianTime = Timestamp.from(Instant.ofEpochSecond(from.mediantime)),
+        time = Timestamp.from(Instant.ofEpochSecond(from.time))
       )
   }
 
@@ -88,9 +90,9 @@ object BitcoinPersistence {
           vsize = from.vsize,
           weight = from.weight,
           version = from.version,
-          lockTime = new Timestamp(from.locktime),
-          blockTime = new Timestamp(from.blocktime),
-          time = new Timestamp(from.time)
+          lockTime = Timestamp.from(Instant.ofEpochSecond(from.locktime)),
+          blockTime = Timestamp.from(Instant.ofEpochSecond(from.blocktime)),
+          time = Timestamp.from(Instant.ofEpochSecond(from.time))
         )
     }
 
