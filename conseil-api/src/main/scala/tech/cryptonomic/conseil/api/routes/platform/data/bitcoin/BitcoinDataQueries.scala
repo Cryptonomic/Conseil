@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataOperations
-import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.generic.BitcoinFilter
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse}
 
 import scala.concurrent.{ExecutionContext, Future}

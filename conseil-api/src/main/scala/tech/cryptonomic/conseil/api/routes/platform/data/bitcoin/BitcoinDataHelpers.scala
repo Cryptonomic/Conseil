@@ -5,7 +5,6 @@ import cats.Functor
 import endpoints.algebra.Documentation
 import io.circe._
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataHelpers
-import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.generic.BitcoinDataEndpoints
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryValidationError
 
 /** Represents helper for Data Endpoints that can be used to implement custom encoder for Bitcoin specific types */

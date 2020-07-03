@@ -5,8 +5,8 @@ import endpoints.algebra.Documentation
 import endpoints.openapi
 import endpoints.openapi.model.{Info, MediaType, OpenApi, Schema}
 import tech.cryptonomic.conseil.api.routes.info.AppInfoEndpoint
-import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.generic.BitcoinDataEndpoints
-import tech.cryptonomic.conseil.api.routes.platform.data.tezos.generic.TezosDataEndpoints
+import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.BitcoinDataEndpoints
+import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosDataEndpoints
 import tech.cryptonomic.conseil.api.routes.platform.discovery.PlatformDiscoveryEndpoints
 
 /** OpenAPI documentation object */

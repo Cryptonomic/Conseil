@@ -1,11 +1,7 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.tezos.generic
+package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataJsonSchemas
-import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosDataOperations.{
-  AccountResult,
-  BlockResult,
-  OperationGroupResult
-}
+import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosDataOperations.{AccountResult, BlockResult, OperationGroupResult}
 import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 

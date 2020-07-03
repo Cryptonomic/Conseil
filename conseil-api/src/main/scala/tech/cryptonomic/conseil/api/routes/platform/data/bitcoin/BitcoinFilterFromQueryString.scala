@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.generic
+package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
 import cats.Functor
 import cats.syntax.functor._

@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.tezos.generic
+package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiFilter._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes
