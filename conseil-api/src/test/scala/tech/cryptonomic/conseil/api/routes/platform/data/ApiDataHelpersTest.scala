@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.api.routes.platform.data
 
+import java.time.Instant
+
 import io.circe.{Encoder, Json}
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OutputType, QueryResponse, QueryResponseWithOutput}
@@ -23,12 +25,13 @@ class ApiDataHelpersTest extends WordSpec with Matchers {
         encodeAny(java.lang.Integer.valueOf(1)) shouldBe Json.fromInt(1)
         encodeAny(java.lang.Long.valueOf(1L)) shouldBe Json.fromLong(1)
         encodeAny(java.math.BigDecimal.ZERO) shouldBe Json.fromBigDecimal(0)
-        encodeAny(new java.sql.Timestamp(0)) shouldBe Json.fromLong(0L)
         encodeAny("a") shouldBe Json.fromString("a")
         encodeAny(true) shouldBe Json.True
         encodeAny(Vector(1, 2, 3)) shouldBe Json.fromValues(
           List(Json.fromInt(1), Json.fromInt(2), Json.fromInt(3))
         )
+        val instant = Instant.parse("2007-12-03T10:15:30.00Z").toEpochMilli
+        encodeAny(new java.sql.Timestamp(instant)) shouldBe Json.fromLong(1196676930000L)
       }
       "convert 'Any' for custom data types conversion properly secondly" in {
         encodeAny(TestEntity("a")) shouldBe Json.fromString("a")
