@@ -3,11 +3,8 @@ package tech.cryptonomic.conseil.common.bitcoin
 import scala.concurrent.ExecutionContext
 
 import cats.effect._
-import cats.arrow.FunctionK
 import org.scalatest.{Matchers, WordSpec}
-import slickeffect.Transactor
 import slick.jdbc.PostgresProfile.api._
-import slick.dbio.DBIO
 
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
@@ -18,19 +15,20 @@ class BitcoinPersistenceTest
     with Matchers
     with InMemoryDatabase
     with BitcoinInMemoryDatabaseSetup
-    with BitcoinFixtures {
+    with BitcoinFixtures
+    with BitcoinStubs {
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
   "Bitcoin persistence" should {
-      "save block from the JSON-RPC response" in new BitcoinPersistenceStubs {
+      "save block from the JSON-RPC response" in new BitcoinPersistenceStubs(dbHandler) {
         (for {
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
           result <- tx.transact(Tables.Blocks.result)
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.blockRow)
       }
 
-      "save transaction from the JSON-RPC response" in new BitcoinPersistenceStubs {
+      "save transaction from the JSON-RPC response" in new BitcoinPersistenceStubs(dbHandler) {
         (for {
           // we have to have block row to save the transaction (due to the foreign key)
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
@@ -39,7 +37,7 @@ class BitcoinPersistenceTest
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.transactionRow)
       }
 
-      "save transaction input from the JSON-RPC response" in new BitcoinPersistenceStubs {
+      "save transaction input from the JSON-RPC response" in new BitcoinPersistenceStubs(dbHandler) {
         (for {
           // we have to have block and transaction row to save the input (due to the foreign key)
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
@@ -51,7 +49,7 @@ class BitcoinPersistenceTest
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.inputRow)
       }
 
-      "save transaction output from the JSON-RPC response" in new BitcoinPersistenceStubs {
+      "save transaction output from the JSON-RPC response" in new BitcoinPersistenceStubs(dbHandler) {
         (for {
           // we have to have block and transaction row to save the input (due to the foreign key)
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
@@ -63,7 +61,7 @@ class BitcoinPersistenceTest
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.outputRow)
       }
 
-      "save block with transactions using persistance (integration test)" in new BitcoinPersistenceStubs {
+      "save block with transactions using persistance (integration test)" in new BitcoinPersistenceStubs(dbHandler) {
         (for {
           // run
           _ <- tx.transact(
@@ -83,37 +81,5 @@ class BitcoinPersistenceTest
             )
       }
     }
-
-  /**
-    * Stubs that can help to provide tests for the [[BitcoinPersistence]].
-    *
-    * Usage example:
-    *
-    * {{{
-    *   "test name" in new BitcoinPersistanceStubs {
-    *     // bitcoinPersistanceStub is available in the current scope
-    *   }
-    * }}}
-    */
-  trait BitcoinPersistenceStubs {
-
-    /**
-      * This transactor object will actually execute any slick database action (DBIO) and convert
-      * the result into a lazy IO value. When the IO effect is run to obtain the value, the transactor
-      * automatically guarantees to properly release the underlying database resources.
-      *
-      * The default implementation of [[slickeffect.Transactor]] wraps Slick db into the resource,
-      * to handle proper shutdown at the end of the execution. In the test mode we want to encapsulate
-      * every single test, so we have to prevent `Transactor` from shutdown with providing own method
-      * to run the Slick query. The [[slickeffect.Transactor]] uses `FunctionK` to do the execution, so we
-      * need to `liftK` own effectful function with the `dbHandler.run`.
-      * More info about [[cats.arrow.FunctionK]]: https://github.com/typelevel/cats/blob/master/docs/src/main/tut/datatypes/functionk.md
-      */
-    val tx = Transactor.liftK(new FunctionK[DBIO, IO] {
-      def apply[A](dbio: DBIO[A]): IO[A] = Async.fromFuture(IO.delay(dbHandler.run(dbio)))
-    })
-
-    val bitcoinPersistanceStub = new BitcoinPersistence[IO]
-  }
 
 }
