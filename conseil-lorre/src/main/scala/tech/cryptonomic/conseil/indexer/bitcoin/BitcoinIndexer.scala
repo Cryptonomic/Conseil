@@ -52,9 +52,9 @@ class BitcoinIndexer(
   implicit private val contextShift = IO.contextShift(ExecutionContext.fromExecutor(indexerExecutor))
 
   /**
-    * [[ExecutionContext]] to handle stop method.
+    * [[ExecutionContext]] for the Lorre indexer.
     */
-  implicit private val indexerEC = ExecutionContext.fromExecutor(indexerExecutor)
+  private val indexerEC = ExecutionContext.fromExecutor(indexerExecutor)
 
   /**
     * The timer to schedule continuous indexer runs.
@@ -78,17 +78,17 @@ class BitcoinIndexer(
       * @param interval finite duration interval
       * @param f [[cats.IO]] to repeat
       */
-    def repeatAfter[A](interval: FiniteDuration)(f: IO[A]): IO[Unit] =
+    def repeatEvery[A](interval: FiniteDuration)(f: IO[A]): IO[Unit] =
       for {
         _ <- f
         _ <- IO.sleep(interval)
-        _ <- repeatAfter(interval)(f)
+        _ <- repeatEvery(interval)(f)
       } yield ()
 
     indexer
       .use(
         bitcoinOperations =>
-          repeatAfter(lorreConf.sleepInterval) {
+          repeatEvery(lorreConf.sleepInterval) {
 
             /**
               * Place with all the computations for the Bitcoin.
@@ -106,7 +106,7 @@ class BitcoinIndexer(
       indexerExecutor.shutdown()
       httpExecutor.shutdown()
       LorreIndexer.ShutdownComplete
-    }
+    }(ExecutionContext.global)
 
   /**
     * Lorre indexer or the Bitcoin. This method creates all the dependencies and wraps it into the [[cats.Resource]].

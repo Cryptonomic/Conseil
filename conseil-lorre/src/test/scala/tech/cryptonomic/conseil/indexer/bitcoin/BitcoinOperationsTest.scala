@@ -44,7 +44,7 @@ class BitcoinOperationsTest
           _ <- tx.transact(
             Tables.Blocks += RpcFixtures.blockResult.copy(hash = "hash2", height = 2).convertTo[Tables.BlocksRow]
           )
-          result <- bitcoinOperationsStub.getLastBlock
+          result <- bitcoinOperationsStub.getLatestIndexedBlock
         } yield result).unsafeRunSync() shouldBe Some(DbFixtures.blockRow.copy(hash = "hash2", height = 2))
       }
     }

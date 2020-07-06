@@ -33,7 +33,7 @@ class BitcoinOperations[F[_]: Concurrent](
     */
   def loadBlocks(depth: Depth): Stream[F, Unit] =
     Stream
-      .eval(getLastBlock)
+      .eval(getLatestIndexedBlock)
       .zip(bitcoinClient.getBlockChainInfo)
       .evalTap(_ => Concurrent[F].delay(logger.info(s"Start Lorre for Bitcoin")))
       .flatMap {
@@ -79,9 +79,9 @@ class BitcoinOperations[F[_]: Concurrent](
     )
 
   /**
-    * Get the last block from the database.
+    * Get the latest block from the database.
     */
-  def getLastBlock: F[Option[Tables.BlocksRow]] =
+  def getLatestIndexedBlock: F[Option[Tables.BlocksRow]] =
     tx.transact(
       Tables.Blocks.sortBy(_.height.desc).take(1).result.headOption
     )
