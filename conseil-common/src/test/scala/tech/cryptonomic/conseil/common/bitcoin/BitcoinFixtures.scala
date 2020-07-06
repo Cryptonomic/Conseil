@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.common.bitcoin
 
+import java.sql.Timestamp
+
 import tech.cryptonomic.conseil.common.bitcoin.rpc.json._
 
 /**
@@ -227,6 +229,69 @@ trait BitcoinFixtures {
       blocktime = 1294691980,
       vin = List(inputResult),
       vout = List(outputResult)
+    )
+  }
+
+  /**
+    * Fixtures containing Slick rows.
+    */
+  object DbFixtures {
+    val blockRow = Tables.BlocksRow(
+      hash = "00000000000335c47dd6ae953912d172a4d9839355f2083165043bb6f43c2f58",
+      size = 215,
+      strippedSize = 215,
+      weight = 860,
+      height = 102000,
+      version = 1,
+      versionHex = "00000001",
+      merkleRoot = "d6118e27502a9b239c4519351c765667c86b1a4f8ff7592c367e88e4dac63e01",
+      nonce = 3851572992L,
+      bits = "1b0404cb",
+      difficulty = 16307.42, // TODO: there is some bug in Slick, InMemoryDatabaseSetup creates a field with DECIMAL(21,2) instead NUMERIC as it is in the conseil.sql
+      chainWork = "00000000000000000000000000000000000000000000000008203c8509509ae0",
+      nTx = 1,
+      previousBlockHash = Some("0000000000038b80cf5db1173e96f2290cfda12c505b0fe1bd37d6975e164a8a"),
+      nextBlockHash = Some("0000000000035107dce8eb675c6fa9a08c7617c109b3553ad8f208dda24065a6"),
+      time = Timestamp.valueOf("2011-01-10 20:39:40"),
+      medianTime = Timestamp.valueOf("2011-01-10 20:30:40")
+    )
+
+    val transactionRow = Tables.TransactionsRow(
+      txid = "d6118e27502a9b239c4519351c765667c86b1a4f8ff7592c367e88e4dac63e01",
+      blockhash = "00000000000335c47dd6ae953912d172a4d9839355f2083165043bb6f43c2f58",
+      hash = "d6118e27502a9b239c4519351c765667c86b1a4f8ff7592c367e88e4dac63e01",
+      hex =
+        "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0704cb04041b0166ffffffff0100f2052a0100000043410476b42b3f2ff4ca18f71d6bd30de5e52cc055cc9f798c39d32e391ec227548fd1bd5104d07a7e1a443f01afb9781d64126fd3571f9c0d93747b30eeddd71a5332ac00000000",
+      size = 134,
+      vsize = 134,
+      weight = 536,
+      version = 1,
+      lockTime = new Timestamp(0),
+      blockTime = Timestamp.valueOf("2011-01-10 20:39:40"),
+      time = Timestamp.valueOf("2011-01-10 20:39:40")
+    )
+
+    val inputRow = Tables.InputsRow(
+      txid = "d6118e27502a9b239c4519351c765667c86b1a4f8ff7592c367e88e4dac63e01",
+      vOut = None,
+      scriptSigAsm = None,
+      scriptSigHex = None,
+      sequence = 4294967295L,
+      coinbase = Some("04cb04041b0166"),
+      txInWitness = None
+    )
+
+    val outputRow = Tables.OutputsRow(
+      txid = "d6118e27502a9b239c4519351c765667c86b1a4f8ff7592c367e88e4dac63e01",
+      value = Some(50.0),
+      n = 0,
+      scriptPubKeyAsm =
+        "0476b42b3f2ff4ca18f71d6bd30de5e52cc055cc9f798c39d32e391ec227548fd1bd5104d07a7e1a443f01afb9781d64126fd3571f9c0d93747b30eeddd71a5332 OP_CHECKSIG",
+      scriptPubKeyHex =
+        "410476b42b3f2ff4ca18f71d6bd30de5e52cc055cc9f798c39d32e391ec227548fd1bd5104d07a7e1a443f01afb9781d64126fd3571f9c0d93747b30eeddd71a5332ac",
+      scriptPubKeyReqSigs = None,
+      scriptPubKeyType = "pubkey",
+      scriptPubKeyAddresses = None
     )
   }
 }
