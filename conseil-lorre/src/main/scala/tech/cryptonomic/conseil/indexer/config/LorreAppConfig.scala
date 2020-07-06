@@ -11,7 +11,7 @@ import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.config.{PlatformConfiguration => _, _}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 
-import scala.util.Try
+import scala.util.{Success, Try}
 
 /** wraps all configuration needed to run Lorre */
 trait LorreAppConfig {
@@ -26,25 +26,28 @@ trait LorreAppConfig {
     case _ => None
   }
 
-  /* used by scopt to parse the depth object */
+  /* used by scopt to parse the block hash object */
   implicit private val blockHashRead: Read[BlockHash] = Read.reads(BlockHash)
+
+  /* used by scopt to parse the blockchain platform object */
+  implicit private val platformRead: Read[BlockchainPlatform] = Read.reads { str =>
+    Try(BlockchainPlatform.fromString(str)) match {
+      case Success(platform) => platform
+      case _ => throw new IllegalArgumentException("'" + str + "' is not a valid platform.")
+    }
+  }
 
   private case class ArgumentsConfig(
       depth: Depth = Newest,
       verbose: Boolean = false,
       headHash: Option[BlockHash] = None,
-      platform: String = "",
+      platform: BlockchainPlatform = Unknown,
       network: String = ""
   )
 
   private val argsParser = new OptionParser[ArgumentsConfig]("lorre") {
-    arg[String]("platform")
+    arg[BlockchainPlatform]("platform")
       .required()
-      .validate(
-        x =>
-          if (Try(BlockchainPlatform.fromString(x)).isSuccess) success
-          else failure(s"Platform $x is not supported currently")
-      )
       .action((x, c) => c.copy(platform = x))
       .text("which platform to use")
 
@@ -93,7 +96,7 @@ trait LorreAppConfig {
       ArgumentsConfig(depth, verbose, headHash, platform, network) = args
       lorre <- loadConfig[LorreConfiguration](namespace = "lorre").map(_.copy(depth = depth, headHash = headHash))
       nodeRequests <- loadConfig[NetworkCallsConfiguration]("lorre")
-      platform <- loadPlatformConfiguration(platform, network)
+      platform <- loadPlatformConfiguration(platform.name, network)
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.streaming-client")
       fetching <- loadConfig[BatchFetchConfiguration](namespace = "lorre.batched-fetches")
     } yield

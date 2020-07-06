@@ -12,12 +12,19 @@ object Platforms {
     def name: String
   }
 
+  /** Represents blockchain platform for Tezos */
   case object Tezos extends BlockchainPlatform {
     val name = "tezos"
   }
 
+  /** Represents blockchain platform for Bitcoin */
   case object Bitcoin extends BlockchainPlatform {
     val name = "bitcoin"
+  }
+
+  /** Represents blockchain platform, which is use only during arguments parsing, for better error handling */
+  case object Unknown extends BlockchainPlatform {
+    val name: String = "unknown"
   }
 
   object BlockchainPlatform {
