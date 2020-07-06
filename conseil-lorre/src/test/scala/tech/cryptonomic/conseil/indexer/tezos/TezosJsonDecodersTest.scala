@@ -106,7 +106,6 @@ class TezosJsonDecodersTest extends WordSpec with Matchers with EitherValues wit
         decoded shouldBe 'left
       }
 
-      //TODO This should be probably in different package
       "decode valid json base58check strings into a BlockHash" in {
         val decoded = decode[TezosBlockHash](jsonStringOf(validB58Hash))
         decoded.right.value shouldBe TezosBlockHash(validB58Hash)
