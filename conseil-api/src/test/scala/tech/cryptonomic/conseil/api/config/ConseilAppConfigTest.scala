@@ -102,14 +102,14 @@ class ConseilAppConfigTest extends WordSpec with Matchers with EitherValues {
         typedConfig.left.value.toList.head shouldBe an[ConvertFailure]
       }
 
-      "extract None, when configuration for Nautlos Cloud does not exist" in {
+      "extract None, when configuration for Nautilus Cloud does not exist" in {
         val config = ConfigFactory.parseString("")
         val typedConfig = pureconfig.loadConfig[Option[NautilusCloudConfiguration]](conf = config, namespace = "nautilus-cloud")
 
         typedConfig.right.value shouldBe empty
       }
 
-      "extract Some, when configuration for Nautlos Cloud exists" in {
+      "extract Some, when configuration for Nautilus Cloud exists" in {
         val config = ConfigFactory.parseString("""
             |nautilus-cloud {
             |  host: "http://localhost"
