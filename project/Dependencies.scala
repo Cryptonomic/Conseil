@@ -207,9 +207,7 @@ object Dependencies {
 
   val conseilApiInclude: Seq[ModuleID] =
     concat(
-      config,
       logging,
-      pureConfig,
       scopt,
       akka,
       akkaHttp,
