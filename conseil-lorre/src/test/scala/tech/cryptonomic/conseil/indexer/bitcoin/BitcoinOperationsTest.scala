@@ -32,21 +32,8 @@ class BitcoinOperationsTest
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
   "Bitcoin operations" should {
-      "return the latest block" in new BitcoinPersistenceStubs(dbHandler) with BitcoinOperationsStubs {
-        (txMock.transact[Option[Tables.BlocksRow]] _).expects(*).onCall { dbio: DBIO[Option[Tables.BlocksRow]] =>
-          tx.transact(dbio)
-        }
-
-        (for {
-          _ <- tx.transact(
-            Tables.Blocks += RpcFixtures.blockResult.copy(hash = "hash1", height = 1).convertTo[Tables.BlocksRow]
-          )
-          _ <- tx.transact(
-            Tables.Blocks += RpcFixtures.blockResult.copy(hash = "hash2", height = 2).convertTo[Tables.BlocksRow]
-          )
-          result <- bitcoinOperationsStub.getLatestIndexedBlock
-        } yield result).unsafeRunSync() shouldBe Some(DbFixtures.blockRow.copy(hash = "hash2", height = 2))
-      }
+      // "..." in new BitcoinPersistenceStubs(dbHandler) with BitcoinOperationsStubs { 
+      // }
     }
 
   /**

@@ -3,12 +3,11 @@ package tech.cryptonomic.conseil.indexer.bitcoin
 import cats.effect.{Concurrent, Resource}
 import com.typesafe.scalalogging.LazyLogging
 import fs2.Stream
-import slick.jdbc.PostgresProfile.api._
 import slickeffect.Transactor
 
 import tech.cryptonomic.conseil.common.config.Platforms.BitcoinBatchFetchConfiguration
 import tech.cryptonomic.conseil.common.rpc.RpcClient
-import tech.cryptonomic.conseil.common.bitcoin.{BitcoinPersistence, Tables}
+import tech.cryptonomic.conseil.common.bitcoin.BitcoinPersistence
 import tech.cryptonomic.conseil.common.bitcoin.rpc.BitcoinClient
 import tech.cryptonomic.conseil.indexer.config.{Custom, Depth, Everything, Newest}
 
@@ -33,7 +32,7 @@ class BitcoinOperations[F[_]: Concurrent](
     */
   def loadBlocks(depth: Depth): Stream[F, Unit] =
     Stream
-      .eval(getLatestIndexedBlock)
+      .eval(tx.transact(persistence.getLatestIndexedBlock))
       .zip(bitcoinClient.getBlockChainInfo)
       .evalTap(_ => Concurrent[F].delay(logger.info(s"Start Lorre for Bitcoin")))
       .flatMap {
@@ -53,7 +52,7 @@ class BitcoinOperations[F[_]: Concurrent](
     */
   def loadBlocksWithTransactions(range: Range.Inclusive): Stream[F, Unit] =
     Stream
-      .eval(getExistingBlocks(range))
+      .eval(tx.transact(persistence.getExistingBlocks(range)))
       .flatMap(
         existingBlocks =>
           Stream
@@ -68,23 +67,6 @@ class BitcoinOperations[F[_]: Concurrent](
             .drain
       )
 
-  /**
-    * Get sequence of existing blocks from the database.
-    *
-    * @param range Inclusive range of the block's height
-    */
-  def getExistingBlocks(range: Range.Inclusive): F[Seq[Int]] =
-    tx.transact(
-      Tables.Blocks.filter(_.height between(range.start, range.end)).map(_.height).result
-    )
-
-  /**
-    * Get the latest block from the database.
-    */
-  def getLatestIndexedBlock: F[Option[Tables.BlocksRow]] =
-    tx.transact(
-      Tables.Blocks.sortBy(_.height.desc).take(1).result.headOption
-    )
 }
 
 object BitcoinOperations {

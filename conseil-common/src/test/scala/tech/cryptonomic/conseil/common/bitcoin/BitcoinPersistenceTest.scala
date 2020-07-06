@@ -80,6 +80,35 @@ class BitcoinPersistenceTest
               DbFixtures.outputRow
             )
       }
+
+      "return existing blocks" in new BitcoinPersistenceStubs(dbHandler) {
+        (for {
+          // create blocks
+          _ <- tx.transact(
+            Tables.Blocks ++= List(
+                  RpcFixtures.blockResult.copy(hash = "hash1", height = 1),
+                  RpcFixtures.blockResult.copy(hash = "hash2", height = 2),
+                  RpcFixtures.blockResult.copy(hash = "hash3", height = 3)
+                ).map(_.convertTo[Tables.BlocksRow])
+          )
+          // test results
+          result <- tx.transact(bitcoinPersistanceStub.getExistingBlocks(1 to 2))
+        } yield result).unsafeRunSync() shouldBe Vector(1, 2)
+      }
+
+      "return the latest block" in new BitcoinPersistenceStubs(dbHandler) {
+        (for {
+          // create blocks
+          _ <- tx.transact(
+            Tables.Blocks ++= List(
+                  RpcFixtures.blockResult.copy(hash = "hash1", height = 1),
+                  RpcFixtures.blockResult.copy(hash = "hash2", height = 2)
+                ).map(_.convertTo[Tables.BlocksRow])
+          )
+          // test results
+          result <- tx.transact(bitcoinPersistanceStub.getLatestIndexedBlock)
+        } yield result).unsafeRunSync() shouldBe Some(DbFixtures.blockRow.copy(hash = "hash2", height = 2))
+      }
     }
 
 }
