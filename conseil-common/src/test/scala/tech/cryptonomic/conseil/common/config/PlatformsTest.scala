@@ -27,7 +27,7 @@ class PlatformsTest extends WordSpec with Matchers {
         config.getPlatforms() should contain only platformTezos
       }
 
-      "return disabled platforms, when enabled = false" in {
+      "return allow to ask for disabled platforms" in {
         config.getPlatforms(enabled = false) should contain only platformBitcoin
       }
 
@@ -35,7 +35,7 @@ class PlatformsTest extends WordSpec with Matchers {
         config.getNetworks("tezos") should contain only networkTezos
       }
 
-      "return networks for disabled platforms and specific name, when enabled = false" in {
+      "return allow to ask for networks, for disabled platforms and specific name" in {
         config.getNetworks("tezos", enabled = false) shouldBe empty
         config.getNetworks("bitcoin", enabled = false) should contain only networkBitcoin
       }
