@@ -142,11 +142,11 @@ object LorreAppConfig {
       for {
         config <- loadConfig[PlatformsConfiguration].flatMap {
           _.platforms.find(x => x.platform.name == platform && x.network == network) match {
-            case Some(value) if value.enabled => Right(value)
-            case Some(value) if !value.enabled =>
+            case Some(platformsConfig) if platformsConfig.enabled => Right(platformsConfig)
+            case Some(platformsConfig) if !platformsConfig.enabled =>
               Left(ConfigReaderFailures(new ConfigReaderFailure {
                 override def description: String =
-                  s"Could not find platform: $platform, network: $network because network is disabled"
+                  s"Could not run Lorre for platform: $platform, network: $network because this network is disabled"
                 override def location: Option[ConfigValueLocation] = None
               }))
             case None =>
