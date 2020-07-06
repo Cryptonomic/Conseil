@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.api.config
 
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{EitherValues, Matchers, WordSpec}
+import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
 import pureconfig.error.ConvertFailure
 import pureconfig.generic.auto._
 import tech.cryptonomic.conseil.api.config.ConseilAppConfig._
@@ -10,7 +10,7 @@ import tech.cryptonomic.conseil.common.config.Platforms
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class ConseilAppConfigTest extends WordSpec with Matchers with EitherValues {
+class ConseilAppConfigTest extends WordSpec with Matchers with EitherValues with OptionValues {
 
   "ConseilAppConfig" should {
       "extract the correct configuration list for Tezos platform's networks using default readers" in {
@@ -104,7 +104,8 @@ class ConseilAppConfigTest extends WordSpec with Matchers with EitherValues {
 
       "extract None, when configuration for Nautilus Cloud does not exist" in {
         val config = ConfigFactory.parseString("")
-        val typedConfig = pureconfig.loadConfig[Option[NautilusCloudConfiguration]](conf = config, namespace = "nautilus-cloud")
+        val typedConfig =
+          pureconfig.loadConfig[Option[NautilusCloudConfiguration]](conf = config, namespace = "nautilus-cloud")
 
         typedConfig.right.value shouldBe empty
       }
@@ -120,10 +121,10 @@ class ConseilAppConfigTest extends WordSpec with Matchers with EitherValues {
             |  interval: 30 seconds
             |}
             |""".stripMargin)
-        val typedConfig = pureconfig.loadConfig[Option[NautilusCloudConfiguration]](conf = config, namespace = "nautilus-cloud")
+        val typedConfig =
+          pureconfig.loadConfig[Option[NautilusCloudConfiguration]](conf = config, namespace = "nautilus-cloud")
 
-        typedConfig.right.value shouldBe Some(
-          NautilusCloudConfiguration(
+        typedConfig.right.value.value shouldBe NautilusCloudConfiguration(
             "http://localhost",
             1234,
             "apiKeys/dev",
@@ -131,7 +132,6 @@ class ConseilAppConfigTest extends WordSpec with Matchers with EitherValues {
             10 seconds,
             30 seconds
           )
-        )
       }
     }
 
