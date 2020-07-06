@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
 import com.github.ghik.silencer.silent
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.tezos.TezosTypes
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.JsonUtil.CirceCommonDecoders.decodeUntaggedEither
@@ -89,7 +88,7 @@ private[tezos] object TezosJsonDecoders {
     implicit val publicKeyDecoder: Decoder[PublicKey] = base58CheckDecoder.map(b58 => PublicKey(b58.content))
     implicit val pkhDecoder: Decoder[PublicKeyHash] = base58CheckDecoder.map(b58 => PublicKeyHash(b58.content))
     implicit val signatureDecoder: Decoder[Signature] = base58CheckDecoder.map(b58 => Signature(b58.content))
-    implicit val blockHashDecoder: Decoder[BlockHash] = base58CheckDecoder.map(b58 => BlockHash(b58.content))
+    implicit val blockHashDecoder: Decoder[TezosBlockHash] = base58CheckDecoder.map(b58 => TezosBlockHash(b58.content))
     implicit val opHashDecoder: Decoder[OperationHash] = base58CheckDecoder.map(b58 => OperationHash(b58.content))
     implicit val contractIdDecoder: Decoder[ContractId] = base58CheckDecoder.map(b58 => ContractId(b58.content))
     implicit val accountIdDecoder: Decoder[AccountId] = base58CheckDecoder.map(b58 => AccountId(b58.content))

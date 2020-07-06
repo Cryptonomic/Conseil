@@ -8,8 +8,7 @@ import com.typesafe.scalalogging.LazyLogging
 import mouse.any._
 import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, TezosConfiguration}
 import tech.cryptonomic.conseil.common.config._
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{FetchRights, _}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.ContractId
@@ -139,7 +138,7 @@ class TezosIndexer private (
     val blockPagesToSynchronize = lorreConf.depth match {
       case Newest => nodeOperator.getBlocksNotInDatabase()
       case Everything => nodeOperator.getLatestBlocks()
-      case Custom(n) => nodeOperator.getLatestBlocks(Some(n), lorreConf.headHash)
+      case Custom(n) => nodeOperator.getLatestBlocks(Some(n), lorreConf.headHash.map(TezosBlockHash))
     }
 
     blockPagesToSynchronize.flatMap {

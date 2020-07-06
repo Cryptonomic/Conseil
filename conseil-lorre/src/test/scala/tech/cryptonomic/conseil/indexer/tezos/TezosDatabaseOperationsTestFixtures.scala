@@ -4,7 +4,6 @@ import java.sql.Timestamp
 import java.time.{Instant, ZonedDateTime}
 
 import monocle.Optional
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.testkit.util.{RandomGenerationKit, RandomSeed}
 import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BakersRow, BlocksRow, OperationGroupsRow}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
@@ -42,10 +41,10 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
 
   /* randomly generates a number of accounts with associated block data */
   def generateAccounts(
-      howMany: Int,
-      blockHash: BlockHash,
-      blockLevel: Int,
-      time: Instant = testReferenceTimestamp.toInstant
+                        howMany: Int,
+                        blockHash: TezosBlockHash,
+                        blockLevel: Int,
+                        time: Instant = testReferenceTimestamp.toInstant
   )(
       implicit randomSeed: RandomSeed
   ): BlockTagged[Map[AccountId, Account]] = {
@@ -71,7 +70,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
   }
 
   /* randomly generates a number of delegates with associated block data */
-  def generateDelegates(delegatedHashes: List[String], blockHash: BlockHash, blockLevel: Int)(
+  def generateDelegates(delegatedHashes: List[String], blockHash: TezosBlockHash, blockLevel: Int)(
       implicit randomSeed: RandomSeed
   ): BlockTagged[Map[PublicKeyHash, Delegate]] = {
     require(
@@ -131,12 +130,12 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
         )
     }
 
-    def generateOne(level: Int, predecessorHash: BlockHash, genesis: Boolean = false): Block =
+    def generateOne(level: Int, predecessorHash: TezosBlockHash, genesis: Boolean = false): Block =
       Block(
         BlockData(
           protocol = "protocol",
           chain_id = Some(chainHash),
-          hash = BlockHash(generateHash(10)),
+          hash = TezosBlockHash(generateHash(10)),
           header = BlockHeader(
             level = level,
             proto = 1,
@@ -166,7 +165,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
       )
 
     //we need a block to start
-    val genesis = generateOne(0, BlockHash("genesis"), genesis = true)
+    val genesis = generateOne(0, TezosBlockHash("genesis"), genesis = true)
 
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel)
@@ -284,7 +283,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
       protocol = "protocol",
       chain_id = block.data.chain_id.map(ChainId),
       hash = OperationHash(generateHash(10)),
-      branch = BlockHash(generateHash(10)),
+      branch = TezosBlockHash(generateHash(10)),
       signature = Some(Signature(s"sig${generateHash(10)}")),
       contents = if (generateOperations) Operations.sampleOperations else List.empty
     )

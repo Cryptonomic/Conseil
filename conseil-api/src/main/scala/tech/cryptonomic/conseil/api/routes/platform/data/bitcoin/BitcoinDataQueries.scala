@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataOperations
+import tech.cryptonomic.conseil.common.bitcoin.BitcoinTypes.BitcoinBlockHash
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -23,8 +24,8 @@ class BitcoinDataQueries(api: ApiDataOperations) {
   }
 
   /** Fetches the block by specific hash */
-  def fetchBlockByHash(hash: String)(implicit ex: ExecutionContext): Future[Option[QueryResponse]] = {
-    val filter = BitcoinFilter(blockIds = Set(hash))
+  def fetchBlockByHash(hash: BitcoinBlockHash)(implicit ex: ExecutionContext): Future[Option[QueryResponse]] = {
+    val filter = BitcoinFilter(blockIds = Set(hash.value))
     api
       .queryWithPredicates("bitcoin", "blocks", filter.toQuery)
       .map(_.headOption)

@@ -8,7 +8,7 @@ import scala.collection.immutable.SortedSet
 import tech.cryptonomic.conseil.common.config.ChainEvent
 import tech.cryptonomic.conseil.indexer.tezos.{TezosIndexedDataOperations, TezosDatabaseOperations => TezosDb}
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.TezosBlockHash
 
 object AccountsResetHandler {
 
@@ -86,7 +86,7 @@ class AccountsResetHandler(
             case Some(referenceBlockForRefresh) =>
               val (hashRef, levelRef, timestamp, cycle) =
                 (
-                  BlockHash(referenceBlockForRefresh.hash),
+                  TezosBlockHash(referenceBlockForRefresh.hash),
                   referenceBlockForRefresh.level,
                   referenceBlockForRefresh.timestamp.toInstant,
                   referenceBlockForRefresh.metaCycle

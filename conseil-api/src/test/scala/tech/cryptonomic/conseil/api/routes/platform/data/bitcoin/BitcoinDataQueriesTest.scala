@@ -8,6 +8,7 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.BitcoinInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataOperations
+import tech.cryptonomic.conseil.common.bitcoin.BitcoinTypes.BitcoinBlockHash
 import tech.cryptonomic.conseil.common.bitcoin.Tables
 import tech.cryptonomic.conseil.common.bitcoin.Tables._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.Query
@@ -55,7 +56,7 @@ class BitcoinDataQueriesTest
         // given
         dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchBlockByHash("hash2")) { result =>
+        whenReady(sut.fetchBlockByHash(BitcoinBlockHash("hash2"))) { result =>
           result.value should contain key "hash"
           result.value("hash") shouldBe Some("hash2")
         }

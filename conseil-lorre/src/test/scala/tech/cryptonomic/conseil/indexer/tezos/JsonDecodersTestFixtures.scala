@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Scripted.Contracts
 
@@ -1348,7 +1347,7 @@ trait OperationsJsonData {
       protocol = "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
       chain_id = Some(ChainId("NetXSzLHKwSumh7")),
       hash = OperationHash("oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n"),
-      branch = BlockHash("BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy"),
+      branch = TezosBlockHash("BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy"),
       signature = Some(
         Signature("sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9")
       ),

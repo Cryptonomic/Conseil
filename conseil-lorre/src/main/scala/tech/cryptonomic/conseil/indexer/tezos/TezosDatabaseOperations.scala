@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 import slick.jdbc.PostgresProfile.api._
 import slick.lifted.{AbstractTable, TableQuery}
 import tech.cryptonomic.conseil.common.config.ChainEvent.AccountIdPattern
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{BlockHash, Query => _}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.tezos.Tables.{GovernanceRow, OriginatedAccountMapsRow}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
@@ -204,7 +204,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
   def writeAccountsCheckpoint(
-      accountIds: List[(BlockHash, Int, Option[Instant], Option[Int], Option[Int], List[AccountId])]
+      accountIds: List[(TezosBlockHash, Int, Option[Instant], Option[Int], Option[Int], List[AccountId])]
   ): DBIO[Option[Int]] = {
     logger.info(s"""Writing ${accountIds.map(_._6).map(_.length).sum} account checkpoints to DB...""")
     Tables.AccountsCheckpoint ++= accountIds.flatMap(_.convertToA[List, Tables.AccountsCheckpointRow])
@@ -216,7 +216,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
   def writeBakersCheckpoint(
-      delegatesKeyHashes: List[(BlockHash, Int, Option[Instant], Option[Int], Option[Int], List[PublicKeyHash])]
+      delegatesKeyHashes: List[(TezosBlockHash, Int, Option[Instant], Option[Int], Option[Int], List[PublicKeyHash])]
   ): DBIO[Option[Int]] = {
     logger.info(s"""Writing ${delegatesKeyHashes.map(_._6).map(_.length).sum} delegate checkpoints to DB...""")
     Tables.BakersCheckpoint ++= delegatesKeyHashes.flatMap(_.convertToA[List, Tables.BakersCheckpointRow])
@@ -297,7 +297,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * checkpoint to be later reloaded, based on the passed block reference
     */
   def refillAccountsCheckpointFromExisting(
-      hash: BlockHash,
+      hash: TezosBlockHash,
       level: Int,
       timestamp: Instant,
       cycle: Option[Int],
@@ -374,7 +374,7 @@ object TezosDatabaseOperations extends LazyLogging {
         val key = AccountId(row.accountId)
         val time = row.asof.toInstant
         if (collected.contains(key)) collected
-        else collected + (key -> (BlockHash(row.blockId), row.blockLevel, Some(time), row.cycle, None))
+        else collected + (key -> (TezosBlockHash(row.blockId), row.blockLevel, Some(time), row.cycle, None))
       }
 
     logger.info("Getting the latest accounts from checkpoints in the DB...")
@@ -402,7 +402,7 @@ object TezosDatabaseOperations extends LazyLogging {
       checkpoints.foldLeft(Map.empty[PublicKeyHash, BlockReference]) { (collected, row) =>
         val key = PublicKeyHash(row.delegatePkh)
         if (collected.contains(key)) collected
-        else collected + (key -> (BlockHash(row.blockId), row.blockLevel, None, row.cycle, row.period))
+        else collected + (key -> (TezosBlockHash(row.blockId), row.blockLevel, None, row.cycle, row.period))
       }
 
     logger.info("Getting the latest bakers from checkpoints in the DB...")
@@ -726,8 +726,8 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return
     */
   def getBakersForBlocks(
-      hashes: List[BlockHash]
-  )(implicit ec: ExecutionContext): DBIO[List[(BlockHash, List[BakerRolls])]] =
+      hashes: List[TezosBlockHash]
+  )(implicit ec: ExecutionContext): DBIO[List[(TezosBlockHash, List[BakerRolls])]] =
     DBIO.sequence {
       hashes.map { hash =>
         Tables.Bakers
@@ -828,7 +828,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param ec   Needed to compose the operations
     * @return     true if block and operations exists
     */
-  def blockExists(hash: BlockHash)(implicit ec: ExecutionContext): DBIO[Boolean] =
+  def blockExists(hash: TezosBlockHash)(implicit ec: ExecutionContext): DBIO[Boolean] =
     for {
       blockThere <- Tables.Blocks.findBy(_.hash).applied(hash.value).exists.result
       opsThere <- Tables.OperationGroups.filter(_.blockId === hash.value).exists.result

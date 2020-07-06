@@ -11,12 +11,20 @@ import tech.cryptonomic.conseil.indexer.config.{BakingAndEndorsingRights, BatchF
 import tech.cryptonomic.conseil.indexer.tezos.{TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator.LazyPages
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Account, AccountId, BlockReference, BlockTagged, Protocol4Delegate, PublicKeyHash, Voting}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
+  Account,
+  AccountId,
+  BlockReference,
+  BlockTagged,
+  Protocol4Delegate,
+  PublicKeyHash,
+  TezosBlockHash,
+  Voting
+}
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors.AccountsProcessingFailed
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 
 /** Collects operations related to handling accounts from
   * the tezos node.
@@ -50,7 +58,7 @@ class AccountsProcessor(
    */
   private def process(
       ids: Map[AccountId, BlockReference],
-      votingData: Map[BlockHash, List[Voting.BakerRolls]],
+      votingData: Map[TezosBlockHash, List[Voting.BakerRolls]],
       onlyProcessLatest: Boolean = false
   )(
       implicit ec: ExecutionContext
@@ -282,7 +290,7 @@ class AccountsProcessor(
    */
   private[tezos] def processAccountsForBlocks(
       updates: List[BlockTagged[List[AccountId]]],
-      votingData: Map[BlockHash, List[Voting.BakerRolls]]
+      votingData: Map[TezosBlockHash, List[Voting.BakerRolls]]
   )(
       implicit ec: ExecutionContext
   ): Future[List[BlockTagged[List[PublicKeyHash]]]] = {

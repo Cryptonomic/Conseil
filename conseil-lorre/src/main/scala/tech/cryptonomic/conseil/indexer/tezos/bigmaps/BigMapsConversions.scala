@@ -8,7 +8,6 @@ import tech.cryptonomic.conseil.indexer.tezos.michelson
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.common.util.Conversion
 import com.typesafe.scalalogging.Logger
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 
 /** Collects specific [[Conversion]] instances to implicitly convert between
   * big-map related entries and things to be used when saving such data
@@ -17,8 +16,8 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 object BigMapsConversions extends LazyLogging {
 
   // Simplify understanding in parts of the code
-  case class BlockBigMapDiff(get: (BlockHash, Option[OperationHash], Contract.BigMapDiff)) extends AnyVal
-  case class BlockContractIdsBigMapDiff(get: (BlockHash, List[ContractId], Contract.BigMapDiff)) extends AnyVal
+  case class BlockBigMapDiff(get: (TezosBlockHash, Option[OperationHash], Contract.BigMapDiff)) extends AnyVal
+  case class BlockContractIdsBigMapDiff(get: (TezosBlockHash, List[ContractId], Contract.BigMapDiff)) extends AnyVal
 
   //input to collect token data to convert
   case class TokenUpdatesInput(

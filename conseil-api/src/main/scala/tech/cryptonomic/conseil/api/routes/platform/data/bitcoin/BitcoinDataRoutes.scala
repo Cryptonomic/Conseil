@@ -8,6 +8,7 @@ import cats.syntax.bitraverse._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.metadata.MetadataService
 import tech.cryptonomic.conseil.api.routes.platform.data.{ApiDataOperations, ApiDataRoutes}
+import tech.cryptonomic.conseil.common.bitcoin.BitcoinTypes.BitcoinBlockHash
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.common.metadata
@@ -69,7 +70,7 @@ case class BitcoinDataRoutes(
   private val blockByHashRoute: Route = bitcoinBlockByHashEndpoint.implementedByAsync {
     case ((network, hash), _) =>
       platformNetworkValidation(network) {
-        dataQueries.fetchBlockByHash(hash)
+        dataQueries.fetchBlockByHash(BitcoinBlockHash(hash))
       }
   }
 

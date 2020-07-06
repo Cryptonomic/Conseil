@@ -7,7 +7,6 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
@@ -296,7 +295,7 @@ class TezosDatabaseOperationsTest
         val expectedCount = 3
 
         val block = generateBlockRows(1, testReferenceTimestamp).head
-        val accountsInfo = generateAccounts(expectedCount, BlockHash(block.hash), block.level)
+        val accountsInfo = generateAccounts(expectedCount, TezosBlockHash(block.hash), block.level)
 
         val writeAndGetRows = for {
           _ <- Tables.Blocks += block
@@ -328,7 +327,7 @@ class TezosDatabaseOperationsTest
       "fail to write accounts if the reference block is not stored" in {
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
-        val accountsInfo = generateAccounts(howMany = 1, blockHash = BlockHash("no-block-hash"), blockLevel = 1)
+        val accountsInfo = generateAccounts(howMany = 1, blockHash = TezosBlockHash("no-block-hash"), blockLevel = 1)
 
         val resultFuture = dbHandler.run(sut.writeAccounts(List(accountsInfo)))
 
@@ -356,7 +355,7 @@ class TezosDatabaseOperationsTest
         //prepare new accounts
         val accountChanges = 2
         val (hashUpdate, levelUpdate) = (second.hash, second.level)
-        val accountsInfo = generateAccounts(accountChanges, BlockHash(hashUpdate), levelUpdate)
+        val accountsInfo = generateAccounts(accountChanges, TezosBlockHash(hashUpdate), levelUpdate)
 
         //double-check for the identifier existence
         accountsInfo.content.keySet.map(_.id) should contain(account.accountId)
@@ -407,7 +406,7 @@ class TezosDatabaseOperationsTest
           blocks.map(
             block =>
               (
-                BlockHash(block.hash),
+                TezosBlockHash(block.hash),
                 block.level,
                 Some(time),
                 None,
@@ -533,7 +532,7 @@ class TezosDatabaseOperationsTest
         val block = generateBlockRows(1, testReferenceTimestamp).head
         val delegatedAccounts = generateAccountRows(howMany = expectedCount, block)
         val delegatesInfo =
-          generateDelegates(delegatedHashes = delegatedAccounts.map(_.accountId), BlockHash(block.hash), block.level)
+          generateDelegates(delegatedHashes = delegatedAccounts.map(_.accountId), TezosBlockHash(block.hash), block.level)
 
         val writeAndGetRows = for {
           _ <- Tables.Blocks += block
@@ -584,7 +583,7 @@ class TezosDatabaseOperationsTest
         val delegatedAccounts = generateAccountRows(howMany = 1, block)
         val delegatesInfo = generateDelegates(
           delegatedHashes = delegatedAccounts.map(_.accountId),
-          blockHash = BlockHash("no-block-hash"),
+          blockHash = TezosBlockHash("no-block-hash"),
           blockLevel = 1
         )
 
@@ -617,10 +616,10 @@ class TezosDatabaseOperationsTest
         val changes = 2
         val (hashUpdate, levelUpdate) = (second.hash, second.level)
         val delegatedKeys =
-          generateAccounts(howMany = changes, BlockHash(hashUpdate), levelUpdate).content.keySet.map(_.id)
+          generateAccounts(howMany = changes, TezosBlockHash(hashUpdate), levelUpdate).content.keySet.map(_.id)
         val delegatesInfo = generateDelegates(
           delegatedHashes = delegatedKeys.toList,
-          blockHash = BlockHash(hashUpdate),
+          blockHash = TezosBlockHash(hashUpdate),
           blockLevel = levelUpdate
         )
 
@@ -688,7 +687,7 @@ class TezosDatabaseOperationsTest
         val keys = blocks.map(
           block =>
             (
-              BlockHash(block.hash),
+              TezosBlockHash(block.hash),
               block.level,
               Some(testReferenceTimestamp.toInstant),
               None,
@@ -831,7 +830,7 @@ class TezosDatabaseOperationsTest
         )
 
         def entry(accountAtIndex: Int, atLevel: Int, time: Timestamp) =
-          AccountId(accountIds(accountAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, Some(time.toInstant), None, None)
+          AccountId(accountIds(accountAtIndex)) -> (TezosBlockHash(blockIds(atLevel)), atLevel, Some(time.toInstant), None, None)
 
         //expecting only the following to remain
         val expected =
@@ -881,7 +880,7 @@ class TezosDatabaseOperationsTest
         )
 
         def entry(delegateAtIndex: Int, atLevel: Int) =
-          PublicKeyHash(delegateKeyHashes(delegateAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, None, None, None)
+          PublicKeyHash(delegateKeyHashes(delegateAtIndex)) -> (TezosBlockHash(blockIds(atLevel)), atLevel, None, None, None)
 
         //expecting only the following to remain
         val expected =
@@ -1031,13 +1030,13 @@ class TezosDatabaseOperationsTest
 
         val blocks = generateBlockRows(1, testReferenceTimestamp)
         val opGroups = generateOperationGroupRows(blocks: _*)
-        val testHash = BlockHash(blocks.last.hash)
+        val testHash = TezosBlockHash(blocks.last.hash)
 
         val populateAndTest = for {
           _ <- Tables.Blocks ++= blocks
           _ <- Tables.OperationGroups ++= opGroups
           existing <- sut.blockExists(testHash)
-          nonExisting <- sut.blockExists(BlockHash("bogus-hash"))
+          nonExisting <- sut.blockExists(TezosBlockHash("bogus-hash"))
         } yield (existing, nonExisting)
 
         val (hit, miss) = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -1051,7 +1050,7 @@ class TezosDatabaseOperationsTest
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         val blocks = generateBlockRows(1, testReferenceTimestamp)
-        val testHash = BlockHash(blocks.last.hash)
+        val testHash = TezosBlockHash(blocks.last.hash)
 
         val populateAndTest = for {
           _ <- Tables.Blocks ++= blocks
@@ -1101,7 +1100,7 @@ class TezosDatabaseOperationsTest
         val expectedCount = 3
 
         val block = generateBlockRows(1, testReferenceTimestamp).head
-        val accountsInfo = generateAccounts(expectedCount, BlockHash(block.hash), block.level)
+        val accountsInfo = generateAccounts(expectedCount, TezosBlockHash(block.hash), block.level)
 
         val populate =
           (Tables.Blocks += block) >>
@@ -1114,7 +1113,7 @@ class TezosDatabaseOperationsTest
         //when
         val dbAction =
           sut.refillAccountsCheckpointFromExisting(
-            BlockHash(block.hash),
+            TezosBlockHash(block.hash),
             block.level,
             block.timestamp.toInstant,
             block.metaCycle
@@ -1147,7 +1146,7 @@ class TezosDatabaseOperationsTest
 
         val block = generateBlockRows(1, testReferenceTimestamp).head
         val BlockTagged(hash, level, ts, cycle, period, accountsContent) =
-          generateAccounts(expectedCount, BlockHash(block.hash), block.level)
+          generateAccounts(expectedCount, TezosBlockHash(block.hash), block.level)
         val updatedContent = accountsContent.map {
           case (AccountId(id), account) if id == "1" => (matchingId, account)
           case any => any
@@ -1166,7 +1165,7 @@ class TezosDatabaseOperationsTest
         //when
         val dbAction =
           sut.refillAccountsCheckpointFromExisting(
-            BlockHash(block.hash),
+            TezosBlockHash(block.hash),
             block.level,
             block.timestamp.toInstant,
             block.metaCycle,

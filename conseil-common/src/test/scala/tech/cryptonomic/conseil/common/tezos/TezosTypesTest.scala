@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.common.tezos
 import java.time.Instant
 
 import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 
 class TezosTypesTest extends WordSpec with Matchers with OptionValues with EitherValues {
@@ -50,7 +49,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues with Eithe
         import TezosTypes.Syntax._
         val someTime = Some(Instant.ofEpochMilli(0))
         val content = "A content string"
-        val (hash, level) = (BlockHash("hash"), 1)
+        val (hash, level) = (TezosBlockHash("hash"), 1)
 
         content.taggedWithBlock(hash, level, someTime, None, None) shouldEqual BlockTagged(
           hash,
@@ -67,7 +66,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues with Eithe
       "convert to a tuple" in {
         val someTime = Some(Instant.ofEpochMilli(0))
         val content = "A content string"
-        val (hash, level) = (BlockHash("hash"), 1)
+        val (hash, level) = (TezosBlockHash("hash"), 1)
 
         BlockTagged(hash, level, someTime, None, None, content).asTuple shouldEqual (hash, level, someTime, None, None, content)
       }

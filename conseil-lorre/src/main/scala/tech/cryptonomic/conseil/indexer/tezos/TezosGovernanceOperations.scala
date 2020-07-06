@@ -10,7 +10,6 @@ import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.DBIO
 import slick.jdbc.PostgresProfile.api.Database
 import cats.implicits._
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 
 /** Process blocks and voting data to compute details for
   * the governance-related cycles
@@ -29,7 +28,7 @@ object TezosGovernanceOperations extends LazyLogging {
     * @param ballotsPerLevel how many ballots for the single block level
     */
   case class GovernanceAggregate(
-      hash: BlockHash,
+      hash: TezosBlockHash,
       metadata: BlockHeaderMetadata,
       proposalId: Option[ProtocolId],
       allRolls: VoteRollsCounts,

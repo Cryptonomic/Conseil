@@ -9,7 +9,6 @@ import pureconfig.{loadConfig, CamelCase, ConfigFieldMapping, ConfigReader}
 import scopt.{OptionParser, Read}
 import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.config.{PlatformConfiguration => _, _}
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 
 import scala.util.Try
 
@@ -26,13 +25,10 @@ trait LorreAppConfig {
     case _ => None
   }
 
-  /* used by scopt to parse the depth object */
-  implicit private val blockHashRead: Read[BlockHash] = Read.reads(BlockHash)
-
   private case class ArgumentsConfig(
       depth: Depth = Newest,
       verbose: Boolean = false,
-      headHash: Option[BlockHash] = None,
+      headHash: Option[String] = None,
       platform: String = "",
       network: String = ""
   )
@@ -48,7 +44,7 @@ trait LorreAppConfig {
       .action((x, c) => c.copy(network = x))
       .text("which network to use")
 
-    opt[Option[BlockHash]]('h', "headHash")
+    opt[Option[String]]('h', "headHash")
       .action((x, c) => c.copy(headHash = x))
       .text("from which block to start. Default to actual head")
 

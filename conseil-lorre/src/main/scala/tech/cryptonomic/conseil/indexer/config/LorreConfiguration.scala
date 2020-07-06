@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.indexer.config
 
 import tech.cryptonomic.conseil.common.config.ChainEvent
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -20,7 +19,7 @@ final case class LorreConfiguration(
     feeUpdateInterval: Int,
     numberOfFeesAveraged: Int,
     depth: Depth,
-    headHash: Option[BlockHash],
+    headHash: Option[String],
     chainEvents: List[ChainEvent],
     blockRightsFetching: BakingAndEndorsingRights
 )

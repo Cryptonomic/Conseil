@@ -4,7 +4,6 @@ import cats.instances.future._
 import cats.syntax.applicative._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
 import tech.cryptonomic.conseil.common.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.common.util.JsonUtil.{fromJson, JsonString => JS}
@@ -98,10 +97,10 @@ private[tezos] class TezosNodeOperator(
     * duplicating any logic.
     */
   def getPaginatedEntitiesForBlock[Key, Entity](
-      entityLoad: (List[Key], BlockHash) => Future[Map[Key, Entity]]
+      entityLoad: (List[Key], TezosBlockHash) => Future[Map[Key, Entity]]
   )(
-      keyIndex: Map[Key, BlockHash]
-  ): LazyPages[(BlockHash, Map[Key, Entity])] = {
+      keyIndex: Map[Key, TezosBlockHash]
+  ): LazyPages[(TezosBlockHash, Map[Key, Entity])] = {
     //collect by hash and paginate based on that
     val reversedIndex =
       keyIndex.groupBy { case (key, blockHash) => blockHash }
@@ -119,7 +118,7 @@ private[tezos] class TezosNodeOperator(
     * @param accountId  Account ID
     * @return           The account
     */
-  def getAccountForBlock(blockHash: BlockHash, accountId: AccountId): Future[Account] =
+  def getAccountForBlock(blockHash: TezosBlockHash, accountId: AccountId): Future[Account] =
     node
       .runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountId.id}")
       .map(fromJson[Account])
@@ -184,7 +183,7 @@ private[tezos] class TezosNodeOperator(
     * @param accountId  Account ID
     * @return           The account
     */
-  def getAccountManagerForBlock(blockHash: BlockHash, accountId: AccountId): Future[ManagerKey] =
+  def getAccountManagerForBlock(blockHash: TezosBlockHash, accountId: AccountId): Future[ManagerKey] =
     node
       .runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountId.id}/manager_key")
       .map(fromJson[ManagerKey])
@@ -194,7 +193,7 @@ private[tezos] class TezosNodeOperator(
     * @param blockHash  Hash of given block.
     * @return           Accounts
     */
-  def getAllAccountsForBlock(blockHash: BlockHash): Future[Map[AccountId, Account]] =
+  def getAllAccountsForBlock(blockHash: TezosBlockHash): Future[Map[AccountId, Account]] =
     for {
       jsonEncodedAccounts <- node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts")
       accountIds = fromJson[List[String]](jsonEncodedAccounts).map(AccountId)
@@ -206,7 +205,9 @@ private[tezos] class TezosNodeOperator(
     *
     * @return               the pages of accounts wrapped in a [[Future]], indexed by AccountId
     */
-  val getPaginatedAccountsForBlock: Map[AccountId, BlockHash] => LazyPages[(BlockHash, Map[AccountId, Account])] =
+  val getPaginatedAccountsForBlock: Map[AccountId, TezosBlockHash] => LazyPages[
+    (TezosBlockHash, Map[AccountId, Account])
+  ] =
     getPaginatedEntitiesForBlock(getAccountsForBlock)
 
   /**
@@ -216,7 +217,7 @@ private[tezos] class TezosNodeOperator(
     * @param blockHash  the block storing the accounts, the head block if not specified
     * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
     */
-  def getAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash): Future[Map[AccountId, Account]] = {
+  def getAccountsForBlock(accountIds: List[AccountId], blockHash: TezosBlockHash): Future[Map[AccountId, Account]] = {
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
@@ -349,14 +350,14 @@ private[tezos] class TezosNodeOperator(
     * a proposal, though for the sake of naming consistency with tezos schema
     * we refer to that as a protocol ID.
     */
-  def getActiveProposals(blocks: List[BlockData]): Future[List[(BlockHash, Option[ProtocolId])]] = {
+  def getActiveProposals(blocks: List[BlockData]): Future[List[(TezosBlockHash, Option[ProtocolId])]] = {
     /* implicitly uses: TezosBlocksDataFetchers.currentProposalFetcher */
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 
     val nonGenesisHashes = blocks.filterNot(isGenesis).map(_.hash)
-    fetch[BlockHash, Option[ProtocolId], Future, List, Throwable].run(nonGenesisHashes)
+    fetch[TezosBlockHash, Option[ProtocolId], Future, List, Throwable].run(nonGenesisHashes)
   }
 
   /** Fetches rolls for all bakers of individual blocks
@@ -364,13 +365,15 @@ private[tezos] class TezosNodeOperator(
     * @param blockHashes defines the blocks we want the rolls for
     * @return the lists of rolls, for each individual requested hash
     */
-  def getBakerRollsForBlockHashes(blockHashes: List[BlockHash]): Future[List[(BlockHash, List[Voting.BakerRolls])]] = {
+  def getBakerRollsForBlockHashes(
+      blockHashes: List[TezosBlockHash]
+  ): Future[List[(TezosBlockHash, List[Voting.BakerRolls])]] = {
     /* implicitly uses: TezosBlocksDataFetchers.bakersRollsFetcher */
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 
-    fetch[BlockHash, List[Voting.BakerRolls], Future, List, Throwable].run(blockHashes)
+    fetch[TezosBlockHash, List[Voting.BakerRolls], Future, List, Throwable].run(blockHashes)
   }
 
   /** Fetches rolls for all bakers of individual blocks
@@ -381,7 +384,7 @@ private[tezos] class TezosNodeOperator(
   def getBakerRollsForBlocks(blocks: List[Block]): Future[List[BakerRollsByBlock]] = {
 
     /* given a hash-keyed pair, restores the full block information, searching in the input */
-    def adaptResults[A](hashKeyedValue: (BlockHash, A)) = {
+    def adaptResults[A](hashKeyedValue: (TezosBlockHash, A)) = {
       val (hash, a) = hashKeyedValue
       blocks
         .find(_.data.hash == hash)
@@ -422,14 +425,14 @@ private[tezos] class TezosNodeOperator(
     * We get the situation for a block identified by the input hash.
     * Any failure in fetching will result in a empty result.
     */
-  def fetchActiveBakers(blockHash: BlockHash): Future[Option[(BlockHash, List[AccountId])]] = {
+  def fetchActiveBakers(blockHash: TezosBlockHash): Future[Option[(TezosBlockHash, List[AccountId])]] = {
     /* implicitly uses: AccountsDataFetchers.activeDelegateFetcher */
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetchOne
 
     //we consider it might fail for, i.e., the genesis block, so we simply fallback to an empty result
-    fetchOne[BlockHash, List[AccountId], Future, List, Throwable]
+    fetchOne[TezosBlockHash, List[AccountId], Future, List, Throwable]
       .run(blockHash)
       .recover {
         case NonFatal(error) => None
@@ -487,8 +490,8 @@ private[tezos] class TezosNodeOperator(
     *
     * @return               the pages of delegates wrapped in a [[Future]], indexed by PublicKeyHash
     */
-  val getPaginatedDelegatesForBlock: Map[PublicKeyHash, BlockHash] => LazyPages[
-    (BlockHash, Map[PublicKeyHash, Delegate])
+  val getPaginatedDelegatesForBlock: Map[PublicKeyHash, TezosBlockHash] => LazyPages[
+    (TezosBlockHash, Map[PublicKeyHash, Delegate])
   ] =
     getPaginatedEntitiesForBlock(getDelegatesForBlock)
 
@@ -501,7 +504,7 @@ private[tezos] class TezosNodeOperator(
     */
   def getDelegatesForBlock(
       pkhs: List[PublicKeyHash],
-      blockHash: BlockHash = blockHeadHash
+      blockHash: TezosBlockHash = blockHeadHash
   ): Future[Map[PublicKeyHash, Delegate]] = {
     /* implicitly uses: AccountsDataFetchers.delegateFetcher */
     import cats.instances.future._
@@ -526,7 +529,7 @@ private[tezos] class TezosNodeOperator(
     * @param hash      Hash of the block
     * @return          the block data wrapped in a `Future`
     */
-  def getBlock(hash: BlockHash, offset: Option[Offset] = None): Future[Block] = {
+  def getBlock(hash: TezosBlockHash, offset: Option[Offset] = None): Future[Block] = {
     import TezosJsonDecoders.Circe.Blocks._
     import TezosJsonDecoders.Circe.decodeLiftingTo
 
@@ -550,7 +553,7 @@ private[tezos] class TezosNodeOperator(
     * @param hash      Hash of the block
     * @return          the block data wrapped in a `Future`
     */
-  def getBareBlock(hash: BlockHash, offset: Option[Offset] = None): Future[BlockData] = {
+  def getBareBlock(hash: TezosBlockHash, offset: Option[Offset] = None): Future[BlockData] = {
     import TezosJsonDecoders.Circe.Blocks._
     import TezosJsonDecoders.Circe.decodeLiftingTo
 
@@ -632,7 +635,10 @@ private[tezos] class TezosNodeOperator(
     * @param headHash   Hash of a block from which to start, None to start from a real head
     * @return           Blocks and Account hashes involved
     */
-  def getLatestBlocks(depth: Option[Int] = None, headHash: Option[BlockHash] = None): Future[PaginatedBlocksResults] =
+  def getLatestBlocks(
+      depth: Option[Int] = None,
+      headHash: Option[TezosBlockHash] = None
+  ): Future[PaginatedBlocksResults] =
     headHash
       .map(getBlock(_))
       .getOrElse(getBlockHead())
@@ -653,7 +659,7 @@ private[tezos] class TezosNodeOperator(
     * @return the async list of blocks with relative account ids touched in the operations
     */
   private def getBlocks(
-      reference: (BlockHash, Int),
+      reference: (TezosBlockHash, Int),
       levelRange: Range.Inclusive
   ): Future[BlockFetchingResults] = {
     import cats.instances.future._
@@ -718,7 +724,7 @@ private[tezos] class TezosNodeOperator(
       fetchedBlocksData <- fetch[Offset, BlockData, Future, List, Throwable].run(offsets)
       blockHashes = fetchedBlocksData.collect { case (offset, block) if !isGenesis(block) => block.hash }
       fetchedOperationsWithAccounts <- fetch[
-        BlockHash,
+        TezosBlockHash,
         (List[OperationsGroup], List[AccountId]),
         Future,
         List,
@@ -745,7 +751,7 @@ private[tezos] class TezosNodeOperator(
     * @param mapKeyHash we need to use a hashed b58check representation of the key to find the value
     * @return async json value of the content if all went correct
     */
-  def getBigMapContents(hash: BlockHash, mapId: BigDecimal, mapKeyHash: ScriptId): Future[JS] =
+  def getBigMapContents(hash: TezosBlockHash, mapId: BigDecimal, mapKeyHash: ScriptId): Future[JS] =
     node
       .runAsyncGetQuery(network, s"blocks/${hash.value}/context/big_maps/$mapId/${mapKeyHash.value}")
       .flatMap(result => Future.fromTry(JS.wrapString(JS.sanitize(result))))

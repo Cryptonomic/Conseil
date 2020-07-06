@@ -4,8 +4,8 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{FlatSpec, Matchers}
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.BlockHash
 import tech.cryptonomic.conseil.common.tezos.TezosTypes
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.TezosBlockHash
 import tech.cryptonomic.conseil.indexer.config.BatchFetchConfiguration
 
 import scala.concurrent.duration._
@@ -36,10 +36,10 @@ class TezosNodeOperatorTest
 
       //when
       val block: Future[TezosTypes.Block] =
-        nodeOp.getBlock(BlockHash("BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe"))
+        nodeOp.getBlock(TezosBlockHash("BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe"))
 
       //then
-      block.futureValue.data.hash shouldBe BlockHash("BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe")
+      block.futureValue.data.hash shouldBe TezosBlockHash("BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe")
     }
 
   "getLatestBlocks" should "correctly fetch all the blocks if no depth is passed-in" in {
@@ -72,11 +72,11 @@ class TezosNodeOperatorTest
                 //dirty trick to find the type of input content and provide the appropriate response
                 input match {
                   case (_: Int) :: tail => (0, TezosResponseBuilder.batchedGetBlockQueryResponse)
-                  case (hash: BlockHash) :: tail if command(hash) endsWith "operations" =>
+                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "operations" =>
                     (hash, TezosResponseBuilder.batchedGetOperationsQueryResponse)
-                  case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_quorum" =>
+                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "votes/current_quorum" =>
                     (hash, TezosResponseBuilder.votesQuorum)
-                  case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_proposal" =>
+                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "votes/current_proposal" =>
                     (hash, TezosResponseBuilder.votesProposal)
                 }
               )
@@ -132,13 +132,13 @@ class TezosNodeOperatorTest
                 //dirty trick to find the type of input content and provide the appropriate response
                 input match {
                   case (_: Int) :: tail => (0, TezosResponseBuilder.batchedGetBlockQueryResponse)
-                  case (hash: BlockHash) :: tail if command(hash) endsWith "operations" =>
+                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "operations" =>
                     (hash, TezosResponseBuilder.batchedGetOperationsQueryResponse)
-                  case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_period_kind" =>
+                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "votes/current_period_kind" =>
                     (hash, TezosResponseBuilder.votesPeriodKind)
-                  case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_quorum" =>
+                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "votes/current_quorum" =>
                     (hash, TezosResponseBuilder.votesQuorum)
-                  case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_proposal" =>
+                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "votes/current_proposal" =>
                     (hash, TezosResponseBuilder.votesProposal)
                 }
               )
@@ -193,13 +193,13 @@ class TezosNodeOperatorTest
                 //dirty trick to find the type of input content and provide the appropriate response
                 input match {
                   case (_: Int) :: tail => (0, TezosResponseBuilder.batchedGetBlockQueryResponse)
-                  case (hash: BlockHash) :: tail if command(hash) endsWith "operations" =>
+                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "operations" =>
                     (hash, TezosResponseBuilder.batchedGetOperationsQueryResponse)
-                  case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_period_kind" =>
+                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "votes/current_period_kind" =>
                     (hash, TezosResponseBuilder.votesPeriodKind)
-                  case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_quorum" =>
+                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "votes/current_quorum" =>
                     (hash, TezosResponseBuilder.votesQuorum)
-                  case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_proposal" =>
+                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "votes/current_proposal" =>
                     (hash, TezosResponseBuilder.votesProposal)
                 }
               )
@@ -211,7 +211,7 @@ class TezosNodeOperatorTest
 
       //when
       val blockPages: Future[nodeOp.PaginatedBlocksResults] =
-        nodeOp.getLatestBlocks(Some(1), Some(BlockHash("BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c")))
+        nodeOp.getLatestBlocks(Some(1), Some(TezosBlockHash("BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c")))
 
       //then
       val (pages, total) = blockPages.futureValue
