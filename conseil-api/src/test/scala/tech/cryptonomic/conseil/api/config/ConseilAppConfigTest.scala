@@ -43,7 +43,7 @@ class ConseilAppConfigTest extends WordSpec with Matchers with EitherValues with
                                             |]
         """.stripMargin)
 
-        val typedConfig = pureconfig.loadConfig[PlatformsConfiguration](conf = cfg, namespace = "platforms")
+        val typedConfig = pureconfig.loadConfig[PlatformsConfiguration](conf = cfg)
 
         typedConfig.right.value.platforms should contain only (
           TezosConfiguration(
