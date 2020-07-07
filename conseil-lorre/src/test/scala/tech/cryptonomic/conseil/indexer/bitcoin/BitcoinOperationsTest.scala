@@ -130,6 +130,9 @@ class BitcoinOperationsTest
 
     val dummyBitcoinOperationsMock = mock[DummyBitcoinOperationsMock]
 
+    /**
+      * BitcoinOperations with mocked: Bitcoin client, Persistance and transactor.
+      */
     def bitcoinOperationsStub: BitcoinOperations[IO] =
       new BitcoinOperations(
         bitcoinClient = bitcoinClientMock,
@@ -138,7 +141,10 @@ class BitcoinOperationsTest
         batchConf = batchConfig
       )
 
-    // Bitcoin Operations with mocked `loadBlocksWithTransactions`
+    /**
+      * BitcoinOperations with mocked `loadBlocksWithTransactions`.
+      * The method is used when testing the indexer startup with Depth.
+      */
     def dummyBitcoinOperationsStub: BitcoinOperations[IO] =
       new BitcoinOperations(
         bitcoinClient = bitcoinClientMock,
