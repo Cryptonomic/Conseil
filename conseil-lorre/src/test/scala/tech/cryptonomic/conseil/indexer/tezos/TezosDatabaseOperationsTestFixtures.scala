@@ -41,10 +41,10 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
 
   /* randomly generates a number of accounts with associated block data */
   def generateAccounts(
-                        howMany: Int,
-                        blockHash: TezosBlockHash,
-                        blockLevel: Int,
-                        time: Instant = testReferenceTimestamp.toInstant
+      howMany: Int,
+      blockHash: TezosBlockHash,
+      blockLevel: Int,
+      time: Instant = testReferenceTimestamp.toInstant
   )(
       implicit randomSeed: RandomSeed
   ): BlockTagged[Map[AccountId, Account]] = {
