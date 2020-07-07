@@ -5,8 +5,8 @@ import akka.http.scaladsl.server.Directives.complete
 import akka.http.scaladsl.server.Route
 import akka.util.ByteString
 import cats.Functor
-import endpoints.algebra.Documentation
 import endpoints.akkahttp.server.{Endpoints => AkkaEndpoints, JsonSchemaEntities => AkkaJsonSchemaEntities}
+import endpoints.algebra.Documentation
 import io.circe._
 import io.circe.syntax._
 import tech.cryptonomic.conseil.api.routes.platform.data.CsvConversions._
@@ -73,7 +73,9 @@ trait ApiDataHelpers extends AkkaEndpoints with AkkaJsonSchemaEntities with ApiD
     new JsonSchema[QueryResponse] {
       override def encoder: Encoder[QueryResponse] =
         (a: QueryResponse) =>
-          Json.obj(a.map(field => (field._1, field._2.map(_.asJson(anyEncoder)).getOrElse(Json.Null))).toList: _*)
+          Json.obj(a.map {
+            case (fieldName, fieldValue) => (fieldName, fieldValue.map(_.asJson(anyEncoder)).getOrElse(Json.Null))
+          }.toList: _*)
 
       //This shouldn't actually be used anywhere, in any case we can go as far as
       //assume that anything in the value is coming from json, but nothing more
@@ -95,8 +97,8 @@ trait ApiDataHelpers extends AkkaEndpoints with AkkaJsonSchemaEntities with ApiD
     }
 
   def defaultQsFunctor: Functor[QueryString] = new Functor[QueryString] {
-    override def map[From, To](f: QueryString[From])(map: From => To): QueryString[To] = new QueryString[To](
-      f.directive.map(map)
+    override def map[From, To](f: QueryString[From])(mapping: From => To): QueryString[To] = new QueryString[To](
+      f.directive.map(mapping)
     )
   }
 
