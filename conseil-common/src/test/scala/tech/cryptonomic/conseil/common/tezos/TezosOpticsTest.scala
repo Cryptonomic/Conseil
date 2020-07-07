@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.common.tezos
 
 import java.time.ZonedDateTime
+
 import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Scripted.Contracts
@@ -14,11 +15,11 @@ class TezosOpticsTest extends WordSpec with Matchers with OptionValues with Eith
         BlockData(
           protocol = "_",
           chain_id = None,
-          hash = BlockHash("_"),
+          hash = TezosBlockHash("_"),
           header = BlockHeader(
             level = 0,
             proto = 0,
-            predecessor = BlockHash("_"),
+            predecessor = TezosBlockHash("_"),
             timestamp = ZonedDateTime.now(),
             validation_pass = 0,
             operations_hash = None,
@@ -33,11 +34,11 @@ class TezosOpticsTest extends WordSpec with Matchers with OptionValues with Eith
             voting_period_kind = defaultVotingPeriod,
             nonce_hash = None,
             consumed_gas = PositiveDecimal(0),
-            level = BlockHeaderMetadataLevel(0, 0, 0, 0, 0, 0, false)
+            level = BlockHeaderMetadataLevel(0, 0, 0, 0, 0, 0, expected_commitment = false)
           )
         )
       val blockVotes = CurrentVotes.empty
-      val operationGroup = OperationsGroup("_", None, OperationHash("_"), BlockHash("_"), List.empty, None)
+      val operationGroup = OperationsGroup("_", None, OperationHash("_"), TezosBlockHash("_"), List.empty, None)
       val number = PositiveDecimal(1)
       val transaction = Transaction(
         number,
@@ -242,9 +243,9 @@ class TezosOpticsTest extends WordSpec with Matchers with OptionValues with Eith
 
         //then
         val associativeMap = modified.operationGroups.map { g =>
-          val params = g.contents.collect {
+          val params = g.contents.collectFirst {
             case t: Transaction => (t.parameters, t.parameters_micheline)
-          }.headOption.value
+          }.value
 
           val contents = params match {
             case (Some(Left(Parameters(Micheline(original), _))), Some(Left(Parameters(Micheline(copied), _)))) =>
@@ -280,9 +281,9 @@ class TezosOpticsTest extends WordSpec with Matchers with OptionValues with Eith
 
         //then
         val associativeMap = modified.operationGroups.map { g =>
-          val params = g.contents.collect {
+          val params = g.contents.collectFirst {
             case t: Transaction => (t.parameters, t.parameters_micheline)
-          }.headOption.value
+          }.value
 
           val contents = params match {
             case (Some(Left(Parameters(Micheline(original), _))), Some(Left(Parameters(Micheline(copied), _)))) =>

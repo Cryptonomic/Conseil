@@ -14,16 +14,15 @@ import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   Account,
   AccountId,
-  BlockHash,
   BlockReference,
   BlockTagged,
   Protocol4Delegate,
   PublicKeyHash,
+  TezosBlockHash,
   Voting
 }
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors.AccountsProcessingFailed
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
-
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 
@@ -59,7 +58,7 @@ class AccountsProcessor(
    */
   private def process(
       ids: Map[AccountId, BlockReference],
-      votingData: Map[BlockHash, List[Voting.BakerRolls]],
+      votingData: Map[TezosBlockHash, List[Voting.BakerRolls]],
       onlyProcessLatest: Boolean = false
   )(
       implicit ec: ExecutionContext
@@ -291,7 +290,7 @@ class AccountsProcessor(
    */
   private[tezos] def processAccountsForBlocks(
       updates: List[BlockTagged[List[AccountId]]],
-      votingData: Map[BlockHash, List[Voting.BakerRolls]]
+      votingData: Map[TezosBlockHash, List[Voting.BakerRolls]]
   )(
       implicit ec: ExecutionContext
   ): Future[List[BlockTagged[List[PublicKeyHash]]]] = {

@@ -9,16 +9,9 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, _}
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
-import tech.cryptonomic.conseil.common.tezos.Tables.{
-  AccountsHistoryRow,
-  AccountsRow,
-  BlocksRow,
-  FeesRow,
-  OperationGroupsRow,
-  OperationsRow
-}
+import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsHistoryRow, AccountsRow, BlocksRow, FeesRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockHash}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, TezosBlockHash}
 
 import scala.concurrent.duration._
 
@@ -216,7 +209,7 @@ class TezosDataOperationsTest
 
       "fetchBlock when DB is empty" in {
         // given
-        val input = BlockHash("xyz")
+        val input = TezosBlockHash("xyz")
 
         // when
         val result = sut.fetchBlock(input).futureValue
@@ -230,7 +223,7 @@ class TezosDataOperationsTest
         dbHandler.run(Tables.Blocks ++= blocksTmp).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.OperationGroups ++= operationGroupsTmp).isReadyWithin(5.seconds) shouldBe true
 
-        val input = BlockHash(blocksTmp.head.hash)
+        val input = TezosBlockHash(blocksTmp.head.hash)
 
         // when
         val result = sut.fetchBlock(input).futureValue.value

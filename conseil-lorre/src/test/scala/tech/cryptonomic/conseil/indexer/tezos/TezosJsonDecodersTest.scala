@@ -107,12 +107,12 @@ class TezosJsonDecodersTest extends WordSpec with Matchers with EitherValues wit
       }
 
       "decode valid json base58check strings into a BlockHash" in {
-        val decoded = decode[BlockHash](jsonStringOf(validB58Hash))
-        decoded.right.value shouldBe BlockHash(validB58Hash)
+        val decoded = decode[TezosBlockHash](jsonStringOf(validB58Hash))
+        decoded.right.value shouldBe TezosBlockHash(validB58Hash)
       }
 
       "fail to decode an invalid json base58check strings into a BlockHash" in {
-        val decoded = decode[BlockHash](jsonStringOf(invalidB58Hash))
+        val decoded = decode[TezosBlockHash](jsonStringOf(invalidB58Hash))
         decoded shouldBe 'left
       }
 

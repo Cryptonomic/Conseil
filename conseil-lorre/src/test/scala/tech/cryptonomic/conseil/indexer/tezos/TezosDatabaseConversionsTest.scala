@@ -197,7 +197,7 @@ class TezosDatabaseConversionsTest
         import OperationBalances._
         import SymbolSourceLabels.Show._
 
-        BlockTagged(BlockHash("sampleHash"), 123, None, None, None, sampleReveal)
+        BlockTagged(TezosBlockHash("sampleHash"), 123, None, None, None, sampleReveal)
           .convertToA[List, Tables.BalanceUpdatesRow] should contain only (
           Tables.BalanceUpdatesRow(
             id = 0,
@@ -232,7 +232,7 @@ class TezosDatabaseConversionsTest
         import OperationBalances._
         import SymbolSourceLabels.Show._
 
-        BlockTagged(BlockHash("sampleHash"), 123, None, None, None, sampleOrigination)
+        BlockTagged(TezosBlockHash("sampleHash"), 123, None, None, None, sampleOrigination)
           .convertToA[List, Tables.BalanceUpdatesRow] should contain only (
           Tables.BalanceUpdatesRow(
             id = 0,

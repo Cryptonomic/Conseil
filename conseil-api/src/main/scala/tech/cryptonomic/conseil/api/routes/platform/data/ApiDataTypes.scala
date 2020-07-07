@@ -1,7 +1,9 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.tezos
+package tech.cryptonomic.conseil.api.routes.platform.data
 
 import java.sql.Timestamp
 
+import cats.implicits._
+import io.scalaland.chimney.dsl._
 import tech.cryptonomic.conseil.api.metadata.MetadataService
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.OutputType.OutputType
@@ -12,10 +14,7 @@ import tech.cryptonomic.conseil.common.metadata.EntityPath
 import scala.concurrent.Future.successful
 import scala.concurrent.{ExecutionContext, Future}
 
-object TezosDataTypes {
-
-  import cats.implicits._
-  import io.scalaland.chimney.dsl._
+object ApiDataTypes {
 
   /** Replaces timestamp represented as Long in predicates with one understood by the SQL */
   private def replaceTimestampInPredicatesAndSnapshot(path: EntityPath, query: Query, metadataService: MetadataService)(

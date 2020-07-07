@@ -65,7 +65,7 @@ trait LorreInfoLogging {
       platform.name,
       platformConf.network,
       showPlatformConfiguration(platformConf),
-      lorreConf.headHash.fold("head")(_.value),
+      lorreConf.headHash.getOrElse("head"),
       lorreConf.depth,
       ignoreFailures._2.getOrElse("yes"),
       showDatabaseConfiguration("lorre"),

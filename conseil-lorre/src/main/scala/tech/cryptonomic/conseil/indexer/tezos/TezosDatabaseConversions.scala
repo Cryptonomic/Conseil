@@ -10,7 +10,6 @@ import com.typesafe.scalalogging.LazyLogging
 import io.scalaland.chimney.dsl._
 import monocle.Getter
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.Vote
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
 import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics}
@@ -704,10 +703,10 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
   implicit val blockAccountsAssociationToCheckpointRow =
     new Conversion[
       List,
-      (BlockHash, Int, Option[Instant], Option[Int], Option[Int], List[AccountId]),
+      (TezosBlockHash, Int, Option[Instant], Option[Int], Option[Int], List[AccountId]),
       Tables.AccountsCheckpointRow
     ] {
-      override def convert(from: (BlockHash, Int, Option[Instant], Option[Int], Option[Int], List[AccountId])) = {
+      override def convert(from: (TezosBlockHash, Int, Option[Instant], Option[Int], Option[Int], List[AccountId])) = {
         val (blockHash, blockLevel, timestamp, cycle, _, ids) = from
         ids.map(
           accountId =>
@@ -726,10 +725,12 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
   implicit val blockDelegatesAssociationToCheckpointRow =
     new Conversion[
       List,
-      (BlockHash, Int, Option[Instant], Option[Int], Option[Int], List[PublicKeyHash]),
+      (TezosBlockHash, Int, Option[Instant], Option[Int], Option[Int], List[PublicKeyHash]),
       Tables.BakersCheckpointRow
     ] {
-      override def convert(from: (BlockHash, Int, Option[Instant], Option[Int], Option[Int], List[PublicKeyHash])) = {
+      override def convert(
+          from: (TezosBlockHash, Int, Option[Instant], Option[Int], Option[Int], List[PublicKeyHash])
+      ) = {
         val (blockHash, blockLevel, _, cycle, period, pkhs) = from
         pkhs.map(
           keyHash =>
@@ -746,8 +747,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
     }
 
   implicit val bakerToRow =
-    new Conversion[Id, (BlockHash, Int, PublicKeyHash, Delegate, Option[Int], Option[Int]), Tables.BakersRow] {
-      override def convert(from: (BlockHash, Int, PublicKeyHash, Delegate, Option[Int], Option[Int])) = {
+    new Conversion[Id, (TezosBlockHash, Int, PublicKeyHash, Delegate, Option[Int], Option[Int]), Tables.BakersRow] {
+      override def convert(from: (TezosBlockHash, Int, PublicKeyHash, Delegate, Option[Int], Option[Int])) = {
         val (blockHash, blockLevel, keyHash, delegate, cycle, period) = from
         Tables.BakersRow(
           pkh = keyHash.value,

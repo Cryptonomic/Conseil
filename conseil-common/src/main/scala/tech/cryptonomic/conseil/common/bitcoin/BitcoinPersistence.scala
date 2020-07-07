@@ -13,7 +13,6 @@ import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.bitcoin.rpc.json.{Block, Transaction, TransactionInput, TransactionOutput}
 import tech.cryptonomic.conseil.common.bitcoin.BitcoinPersistence._
 
-
 /**
   * Bitcoin persistence into the database using Slick.
   */

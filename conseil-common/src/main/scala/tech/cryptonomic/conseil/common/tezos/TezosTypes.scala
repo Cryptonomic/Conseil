@@ -8,6 +8,9 @@ import scala.util.Try
   */
 object TezosTypes {
 
+  /** Case class representing hash to identify blocks across many block chains */
+  final case class TezosBlockHash(value: String) extends AnyVal
+
   //TODO use in a custom decoder for json strings that needs to have a proper encoding
   lazy val isBase58Check: String => Boolean = (s: String) => {
     val pattern = "^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]*$".r.pattern
@@ -15,7 +18,7 @@ object TezosTypes {
   }
 
   /** convenience alias to simplify declarations of block hash+level+timestamp+cycle+period tuples */
-  type BlockReference = (BlockHash, Int, Option[Instant], Option[Int], Option[Int])
+  type BlockReference = (TezosBlockHash, Int, Option[Instant], Option[Int], Option[Int])
 
   /** use to remove ambiguities about the meaning in voting proposals usage */
   type ProposalSupporters = Int
@@ -25,8 +28,6 @@ object TezosTypes {
   final case class PublicKeyHash(value: String) extends AnyVal
 
   final case class Signature(value: String) extends AnyVal
-
-  final case class BlockHash(value: String) extends AnyVal
 
   final case class OperationHash(value: String) extends AnyVal
 
@@ -49,12 +50,12 @@ object TezosTypes {
   final case class ScriptId(value: String) extends AnyVal
 
   /** a conventional value to get the latest block in the chain */
-  final lazy val blockHeadHash = BlockHash("head")
+  final lazy val blockHeadHash = TezosBlockHash("head")
 
   final case class BlockData(
       protocol: String,
       chain_id: Option[String],
-      hash: BlockHash,
+      hash: TezosBlockHash,
       header: BlockHeader,
       metadata: BlockMetadata
   )
@@ -62,7 +63,7 @@ object TezosTypes {
   final case class BlockHeader(
       level: Int,
       proto: Int,
-      predecessor: BlockHash,
+      predecessor: TezosBlockHash,
       timestamp: java.time.ZonedDateTime,
       validation_pass: Int,
       operations_hash: Option[String],
@@ -396,7 +397,7 @@ object TezosTypes {
       protocol: String,
       chain_id: Option[ChainId],
       hash: OperationHash,
-      branch: BlockHash,
+      branch: TezosBlockHash,
       contents: List[Operation],
       signature: Option[Signature]
   )
@@ -443,7 +444,7 @@ object TezosTypes {
     * Synthetic class, no domain correspondence, it's used to simplify signatures
     */
   final case class BlockTagged[T](
-      blockHash: BlockHash,
+      blockHash: TezosBlockHash,
       blockLevel: Int,
       timestamp: Option[Instant],
       cycle: Option[Int],
@@ -578,7 +579,7 @@ object TezosTypes {
 
       /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference */
       def taggedWithBlock(
-          hash: BlockHash,
+          hash: TezosBlockHash,
           level: Int,
           timestamp: Option[Instant] = None,
           cycle: Option[Int],
@@ -620,7 +621,7 @@ object TezosTypes {
     * @param governancePeriod governance period
     * @param blockHash        hash of a block
     */
-  final case class FetchRights(cycle: Option[Int], governancePeriod: Option[Int], blockHash: Option[BlockHash])
+  final case class FetchRights(cycle: Option[Int], governancePeriod: Option[Int], blockHash: Option[TezosBlockHash])
 
   object Fee {
 

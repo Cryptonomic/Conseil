@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.VotingOperations._
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
 import scala.util.Try
@@ -27,7 +28,7 @@ object TezosGovernanceOperations extends LazyLogging {
     * @param ballotsPerLevel how many ballots for the single block level
     */
   case class GovernanceAggregate(
-      hash: BlockHash,
+      hash: TezosBlockHash,
       metadata: BlockHeaderMetadata,
       proposalId: Option[ProtocolId],
       allRolls: VoteRollsCounts,

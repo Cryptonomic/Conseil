@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
-import tech.cryptonomic.conseil.api.routes.platform.data.tezos.Filter._
+import tech.cryptonomic.conseil.api.routes.platform.data.ApiFilter._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 
@@ -23,7 +23,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
   * @param sortBy                 Database column name to sort by
   * @param order                  Sort items ascending or descending
   */
-final case class Filter(
+final case class TezosFilter(
     limit: Option[Int] = Some(defaultLimit),
     blockIDs: Set[String] = Set.empty,
     levels: Set[Int] = Set.empty,
@@ -113,74 +113,7 @@ final case class Filter(
         )
       ).filter(_.set.nonEmpty),
       limit = limit.getOrElse(DataTypes.defaultLimitValue),
-      orderBy = sortBy.map { o =>
-        val direction = order match {
-          case Some(AscendingSort) => OrderDirection.asc
-          case _ => OrderDirection.desc
-        }
-        QueryOrdering(o, direction)
-      }.toList,
+      orderBy = toQueryOrdering(sortBy, order).toList,
       snapshot = None
     )
-}
-
-object Filter {
-
-  /** Define sorting order for api queries */
-  sealed trait Sorting extends Product with Serializable
-  case object AscendingSort extends Sorting
-  case object DescendingSort extends Sorting
-  object Sorting {
-
-    /** Read an input string (`asc` or `desc`) to return a
-      * (possible) [[Filter.Sorting]] value
-      */
-    def fromString(s: String): Option[Sorting] = s.toLowerCase match {
-      case "asc" => Some(AscendingSort)
-      case "desc" => Some(DescendingSort)
-      case _ => None
-    }
-  }
-
-  /** builds a filter from incoming string-based parameters */
-  def readParams(
-      limit: Option[Int],
-      blockIDs: Iterable[String],
-      levels: Iterable[Int],
-      chainIDs: Iterable[String],
-      protocols: Iterable[String],
-      operationGroupIDs: Iterable[String],
-      operationSources: Iterable[String],
-      operationDestinations: Iterable[String],
-      operationParticipants: Iterable[String],
-      operationKinds: Iterable[String],
-      accountIDs: Iterable[String],
-      accountManagers: Iterable[String],
-      accountDelegates: Iterable[String],
-      sortBy: Option[String],
-      order: Option[String]
-  ): Filter =
-    Filter(
-      limit,
-      blockIDs.toSet,
-      levels.toSet,
-      chainIDs.toSet,
-      protocols.toSet,
-      operationGroupIDs.toSet,
-      operationSources.toSet,
-      operationDestinations.toSet,
-      operationParticipants.toSet,
-      operationKinds.toSet,
-      accountIDs.toSet,
-      accountManagers.toSet,
-      accountDelegates.toSet,
-      sortBy,
-      order.flatMap(Sorting.fromString)
-    )
-
-  // Common values
-
-  // default limit on output results, if not available as call input
-  val defaultLimit = 10
-
 }

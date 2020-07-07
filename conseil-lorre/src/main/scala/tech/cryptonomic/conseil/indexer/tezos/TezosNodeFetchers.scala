@@ -62,7 +62,7 @@ private[tezos] trait TezosBlocksDataFetchers {
   type Offset = Int
 
   /** a fetcher of blocks */
-  implicit def blocksFetcher(hashRef: BlockHash) = new FutureFetcher {
+  implicit def blocksFetcher(hashRef: TezosBlockHash) = new FutureFetcher {
     import TezosJsonDecoders.Circe.Blocks._
 
     type Encoded = String
@@ -116,10 +116,10 @@ private[tezos] trait TezosBlocksDataFetchers {
     import TezosJsonDecoders.Circe.Operations._
 
     type Encoded = String
-    type In = BlockHash
+    type In = TezosBlockHash
     type Out = List[OperationsGroup]
 
-    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/operations"
+    private val makeUrl = (hash: TezosBlockHash) => s"blocks/${hash.value}/operations"
 
     override val fetchData = {
       Kleisli(
@@ -375,10 +375,10 @@ private[tezos] trait TezosBlocksDataFetchers {
   implicit val currentQuorumFetcher = new FutureFetcher {
 
     type Encoded = String
-    type In = BlockHash
+    type In = TezosBlockHash
     type Out = Option[Int]
 
-    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_quorum"
+    private val makeUrl = (hash: TezosBlockHash) => s"blocks/${hash.value}/votes/current_quorum"
 
     override val fetchData =
       Kleisli(
@@ -416,10 +416,10 @@ private[tezos] trait TezosBlocksDataFetchers {
     import TezosJsonDecoders.Circe._
 
     type Encoded = String
-    type In = BlockHash
+    type In = TezosBlockHash
     type Out = Option[ProtocolId]
 
-    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_proposal"
+    private val makeUrl = (hash: TezosBlockHash) => s"blocks/${hash.value}/votes/current_proposal"
 
     override val fetchData =
       Kleisli(
@@ -507,10 +507,10 @@ private[tezos] trait TezosBlocksDataFetchers {
     import cats.instances.future._
 
     type Encoded = String
-    type In = BlockHash
+    type In = TezosBlockHash
     type Out = List[Voting.BakerRolls]
 
-    private val makeUrl = (blockHash: BlockHash) => s"blocks/${blockHash.value}/votes/listings"
+    private val makeUrl = (blockHash: TezosBlockHash) => s"blocks/${blockHash.value}/votes/listings"
 
     override val fetchData =
       Kleisli(
@@ -675,7 +675,7 @@ trait AccountsDataFetchers {
   //common type alias to simplify signatures
   private type FutureFetcher = DataFetcher[Future, List, Throwable]
 
-  implicit def accountFetcher(referenceBlock: BlockHash) = new FutureFetcher {
+  implicit def accountFetcher(referenceBlock: TezosBlockHash) = new FutureFetcher {
     import TezosJsonDecoders.Circe.Accounts._
 
     type Encoded = String
@@ -712,7 +712,7 @@ trait AccountsDataFetchers {
     }
   }
 
-  implicit def delegateFetcher(referenceBlock: BlockHash) = new FutureFetcher {
+  implicit def delegateFetcher(referenceBlock: TezosBlockHash) = new FutureFetcher {
     import TezosJsonDecoders.Circe.Delegates._
 
     type Encoded = String
@@ -755,10 +755,10 @@ trait AccountsDataFetchers {
     import TezosJsonDecoders.Circe._
 
     type Encoded = String
-    type In = BlockHash
+    type In = TezosBlockHash
     type Out = List[AccountId]
 
-    private val makeUrl = (blockHash: BlockHash) => s"blocks/${blockHash.value}/context/delegates?active"
+    private val makeUrl = (blockHash: TezosBlockHash) => s"blocks/${blockHash.value}/context/delegates?active"
 
     override val fetchData = Kleisli(
       blockHashes => {

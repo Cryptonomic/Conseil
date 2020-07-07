@@ -3,17 +3,7 @@ package tech.cryptonomic.conseil.indexer.tezos.bigmaps
 import com.typesafe.scalalogging.LazyLogging
 import cats.implicits._
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
-  AccountId,
-  Block,
-  BlockHash,
-  Contract,
-  ContractId,
-  Decimal,
-  InvalidDecimal,
-  OperationHash,
-  ParametersCompatibility
-}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.common.util.Conversion
@@ -26,8 +16,8 @@ import com.typesafe.scalalogging.Logger
 object BigMapsConversions extends LazyLogging {
 
   // Simplify understanding in parts of the code
-  case class BlockBigMapDiff(get: (BlockHash, Option[OperationHash], Contract.BigMapDiff)) extends AnyVal
-  case class BlockContractIdsBigMapDiff(get: (BlockHash, List[ContractId], Contract.BigMapDiff)) extends AnyVal
+  case class BlockBigMapDiff(get: (TezosBlockHash, Option[OperationHash], Contract.BigMapDiff)) extends AnyVal
+  case class BlockContractIdsBigMapDiff(get: (TezosBlockHash, List[ContractId], Contract.BigMapDiff)) extends AnyVal
 
   //input to collect token data to convert
   case class TokenUpdatesInput(

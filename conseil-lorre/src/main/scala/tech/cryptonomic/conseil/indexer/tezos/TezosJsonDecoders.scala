@@ -35,7 +35,7 @@ private[tezos] object TezosJsonDecoders {
       import cats.syntax.either._
       import io.circe.parser.decode
 
-      decode[A](json).leftWiden[Throwable].raiseOrPure[Eff]
+      decode[A](json).leftWiden[Throwable].liftTo[Eff]
     }
 
     /* use this to decode starting from string, adding format validation on the string to build another object based on valid results */
@@ -88,7 +88,7 @@ private[tezos] object TezosJsonDecoders {
     implicit val publicKeyDecoder: Decoder[PublicKey] = base58CheckDecoder.map(b58 => PublicKey(b58.content))
     implicit val pkhDecoder: Decoder[PublicKeyHash] = base58CheckDecoder.map(b58 => PublicKeyHash(b58.content))
     implicit val signatureDecoder: Decoder[Signature] = base58CheckDecoder.map(b58 => Signature(b58.content))
-    implicit val blockHashDecoder: Decoder[BlockHash] = base58CheckDecoder.map(b58 => BlockHash(b58.content))
+    implicit val blockHashDecoder: Decoder[TezosBlockHash] = base58CheckDecoder.map(b58 => TezosBlockHash(b58.content))
     implicit val opHashDecoder: Decoder[OperationHash] = base58CheckDecoder.map(b58 => OperationHash(b58.content))
     implicit val contractIdDecoder: Decoder[ContractId] = base58CheckDecoder.map(b58 => ContractId(b58.content))
     implicit val accountIdDecoder: Decoder[AccountId] = base58CheckDecoder.map(b58 => AccountId(b58.content))

@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 import com.github.ghik.silencer.silent
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataOperations
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockHash}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, TezosBlockHash}
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.common.util.CollectionOps._
@@ -35,7 +35,7 @@ class TezosDataOperations extends ApiDataOperations {
     * @param hash The block's hash
     * @return The block along with its operations, if the hash matches anything
     */
-  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[BlockResult]] = {
+  def fetchBlock(hash: TezosBlockHash)(implicit ec: ExecutionContext): Future[Option[BlockResult]] = {
     val joins = for {
       groups <- Tables.OperationGroups if groups.blockId === hash.value
       block <- groups.blocksFk
