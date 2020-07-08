@@ -34,9 +34,13 @@ object Platforms {
   }
 
   /**
-    * Collects all platforms defined in configuration in a map.
-    * Should associates each platform to a list of its internally defined configuration type, matching the
-    * inner `platform.ConfigurationType`
+    * Collects all platforms configuration in a list.
+    *
+    * To access specific type of the configuration,
+    * - match the inner `BlockchainPlatform` type over one of supported platforms,
+    * - match the outer `PlatformConfiguration` type over one of specified platform's configuration.
+    *
+    * Keep in mind, that specific platform's configuration can be enabled or disabled.
     */
   case class PlatformsConfiguration(platforms: List[PlatformConfiguration]) {
 
