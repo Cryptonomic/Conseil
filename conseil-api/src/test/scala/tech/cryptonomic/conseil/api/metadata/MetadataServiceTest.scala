@@ -7,6 +7,7 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{BeforeAndAfterEach, Matchers, OneInstancePerTest, WordSpec}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.common.config.Platforms.{
+  BitcoinConfiguration,
   PlatformsConfiguration,
   TezosConfiguration,
   TezosNodeConfiguration
@@ -37,10 +38,9 @@ class MetadataServiceTest
   private val sut = (metadataOverridesConfiguration: Map[PlatformName, PlatformConfiguration]) =>
     new MetadataService(
       PlatformsConfiguration(
-        Map(
-          Platforms.Tezos -> List(
-                TezosConfiguration("mainnet", TezosNodeConfiguration("tezos-host", 123, "https://"), None)
-              )
+        List(
+          TezosConfiguration("mainnet", enabled = true, TezosNodeConfiguration("tezos-host", 123, "https://"), None),
+          BitcoinConfiguration("testnet", enabled = false)
         )
       ),
       new UnitTransformation(MetadataConfiguration(metadataOverridesConfiguration)),

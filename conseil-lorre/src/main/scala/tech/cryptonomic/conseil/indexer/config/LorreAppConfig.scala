@@ -2,20 +2,20 @@ package tech.cryptonomic.conseil.indexer.config
 
 import com.github.ghik.silencer.silent
 import com.typesafe.config.Config
-import pureconfig.error.{ConfigReaderFailures, ThrowableFailure}
+import pureconfig._
+import pureconfig.error.{ConfigReaderFailure, ConfigReaderFailures, ConfigValueLocation, ThrowableFailure}
 import pureconfig.generic.auto._
-import pureconfig.generic.{EnumCoproductHint, FieldCoproductHint, ProductHint}
-import pureconfig.{loadConfig, CamelCase, ConfigFieldMapping, ConfigReader}
+import pureconfig.generic.{EnumCoproductHint, FieldCoproductHint}
 import scopt.{OptionParser, Read}
 import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.config.{PlatformConfiguration => _, _}
 
-import scala.util.Try
+import scala.util.{Success, Try}
 
 /** wraps all configuration needed to run Lorre */
 trait LorreAppConfig {
-  import LorreAppConfig._
   import LorreAppConfig.Loaders._
+  import LorreAppConfig._
 
   /* used by scopt to parse the depth object */
   implicit private val depthRead: Read[Option[Depth]] = Read.reads {
@@ -25,16 +25,24 @@ trait LorreAppConfig {
     case _ => None
   }
 
+  /* used by scopt to parse the blockchain platform object */
+  implicit private val platformRead: Read[BlockchainPlatform] = Read.reads { str =>
+    Try(BlockchainPlatform.fromString(str)) match {
+      case Success(platform) => platform
+      case _ => throw new IllegalArgumentException("'" + str + "' is not a valid platform.")
+    }
+  }
+
   private case class ArgumentsConfig(
       depth: Depth = Newest,
       verbose: Boolean = false,
       headHash: Option[String] = None,
-      platform: String = "",
+      platform: BlockchainPlatform = Tezos, // we are setting up Tezos by default, but it does not really matter.
       network: String = ""
   )
 
   private val argsParser = new OptionParser[ArgumentsConfig]("lorre") {
-    arg[String]("platform")
+    arg[BlockchainPlatform]("platform")
       .required()
       .action((x, c) => c.copy(platform = x))
       .text("which platform to use")
@@ -72,9 +80,6 @@ trait LorreAppConfig {
     def readArgs(args: Array[String]): ConfigReader.Result[ArgumentsConfig] =
       argsParser.parse(args, ArgumentsConfig()).toRight[ConfigReaderFailures](sys.exit(1))
 
-    //applies convention to uses CamelCase when reading config fields
-    @silent("local method hint in method loadApplicationConfiguration is never used")
-    implicit def hint[T]: ProductHint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
     @silent("local val depthHint in method loadApplicationConfiguration is never used")
     implicit val depthHint: EnumCoproductHint[Depth] = new EnumCoproductHint[Depth]
     @silent("local val chainEventHint in method loadApplicationConfiguration is never used")
@@ -87,9 +92,9 @@ trait LorreAppConfig {
       ArgumentsConfig(depth, verbose, headHash, platform, network) = args
       lorre <- loadConfig[LorreConfiguration](namespace = "lorre").map(_.copy(depth = depth, headHash = headHash))
       nodeRequests <- loadConfig[NetworkCallsConfiguration]("lorre")
-      platform <- loadPlatformConfiguration(platform, network)
+      platform <- loadPlatformConfiguration(platform.name, network)
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.streaming-client")
-      fetching <- loadConfig[BatchFetchConfiguration](namespace = "lorre.batchedFetches")
+      fetching <- loadConfig[BatchFetchConfiguration](namespace = "lorre.batched-fetches")
     } yield
       CombinedConfiguration(
         lorre,
@@ -102,7 +107,7 @@ trait LorreAppConfig {
 
     //something went wrong
     loadedConf.left.foreach { failures =>
-      printConfigurationError(context = "Lorre application", failures.toList.mkString("\n\n"))
+      printConfigurationError(context = "Lorre application", failures.prettyPrint())
     }
     loadedConf
   }
@@ -128,26 +133,41 @@ object LorreAppConfig {
     def unapply(s: String): Option[Int] = util.Try(s.toInt).filter(_ > 0).toOption
   }
 
-  private[config] object Loaders {
+  private[config] object Loaders extends PlatformConfigurationHint {
 
     /*** Reads a specific platform configuration based on given 'platform' and 'network' */
     def loadPlatformConfiguration(
         platform: String,
-        network: String
-    ): Either[ConfigReaderFailures, PlatformConfiguration] = {
-      @silent("local method hint in method loadPlatformConfiguration is never used")
-      implicit def hint[T]: ProductHint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
+        network: String,
+        config: Option[Config] = None // for testing only
+    ): Either[ConfigReaderFailures, PlatformConfiguration] =
       // Note that Lorre process allows to run only one integration per process.
       // Configuration file can contain more than one, thus required parameters.
-      BlockchainPlatform.fromString(platform) match {
-        case Tezos =>
-          for {
-            node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.$platform.$network.node")
-            tns <- loadConfig[Option[TNSContractConfiguration]](namespace = s"tns.$network")
-          } yield TezosConfiguration(network, node, tns)
-        case UnknownPlatform(_) => Right(UnknownPlatformConfiguration(network))
-      }
-    }
+      for {
+        config <- config
+          .map(loadConfig[PlatformsConfiguration])
+          .getOrElse(loadConfig[PlatformsConfiguration])
+          .flatMap {
+            _.platforms.find(x => x.platform.name == platform && x.network == network) match {
+              case Some(platformsConfig) if platformsConfig.enabled => Right(platformsConfig)
+              case Some(platformsConfig) if !platformsConfig.enabled =>
+                Left(ConfigReaderFailures(new ConfigReaderFailure {
+                  override def description: String =
+                    s"Could not run Lorre for platform: $platform, network: $network because this network is disabled"
+                  override def location: Option[ConfigValueLocation] = None
+                }))
+              case None =>
+                Left(ConfigReaderFailures(new ConfigReaderFailure {
+                  override def description: String = s"Could not find platform: $platform, network: $network"
+                  override def location: Option[ConfigValueLocation] = None
+                }))
+            }
+          }
+        result <- config match {
+          case c: TezosConfiguration =>
+            loadConfig[Option[TNSContractConfiguration]](namespace = s"tns.$network").map(tns => c.copy(tns = tns))
+        }
+      } yield result
 
     /**
       * Reads a specific entry in the configuration file, to create a valid akka-http client host-pool configuration

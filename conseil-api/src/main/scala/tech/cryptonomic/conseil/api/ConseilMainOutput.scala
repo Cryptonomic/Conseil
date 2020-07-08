@@ -52,12 +52,13 @@ trait ConseilMainOutput {
 
   /* prepare output to display existing platforms and networks */
   private def showAvailablePlatforms(conf: PlatformsConfiguration): String =
-    conf.platforms.map {
-      case (platform, confs) =>
-        val networks = confs.map(_.network).mkString("\n  - ", "\n  - ", "\n")
-        s"""
-           |  Platform: ${platform.name}$networks
-      """.stripMargin
-    }.mkString("\n")
+    conf.platforms
+      .groupBy(_.platform)
+      .map {
+        case (platform, configuration) =>
+          val networks = configuration.map(_.network).mkString("\n  - ", "\n  - ", "\n")
+          s"  Platform: ${platform.name}$networks"
+      }
+      .mkString("\n")
 
 }
