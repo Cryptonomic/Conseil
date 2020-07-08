@@ -92,7 +92,7 @@ class BitcoinPersistenceTest
                 ).map(_.convertTo[Tables.BlocksRow])
           )
           // test results
-          result <- tx.transact(bitcoinPersistanceStub.getIndexedBlockHeights(1 to 2))
+          result <- tx.transact(bitcoinPersistenceStub.getIndexedBlockHeights(1 to 2))
         } yield result).unsafeRunSync() shouldBe Vector(1, 2)
       }
 
@@ -106,7 +106,7 @@ class BitcoinPersistenceTest
                 ).map(_.convertTo[Tables.BlocksRow])
           )
           // test results
-          result <- tx.transact(bitcoinPersistanceStub.getLatestIndexedBlock)
+          result <- tx.transact(bitcoinPersistenceStub.getLatestIndexedBlock)
         } yield result).unsafeRunSync() shouldBe Some(DbFixtures.blockRow.copy(hash = "hash2", height = 2))
       }
     }

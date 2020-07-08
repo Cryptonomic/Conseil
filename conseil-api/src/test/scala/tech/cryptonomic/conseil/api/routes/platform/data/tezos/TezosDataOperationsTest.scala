@@ -9,7 +9,14 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, _}
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
-import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsHistoryRow, AccountsRow, BlocksRow, FeesRow, OperationGroupsRow, OperationsRow}
+import tech.cryptonomic.conseil.common.tezos.Tables.{
+  AccountsHistoryRow,
+  AccountsRow,
+  BlocksRow,
+  FeesRow,
+  OperationGroupsRow,
+  OperationsRow
+}
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, TezosBlockHash}
 

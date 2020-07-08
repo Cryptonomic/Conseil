@@ -7,7 +7,6 @@ import cats.Id
 import cats.effect.{Concurrent, Resource}
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
-import slick.sql._
 
 import tech.cryptonomic.conseil.common.util.Conversion
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
@@ -41,13 +40,13 @@ class BitcoinPersistence[F[_]: Concurrent] extends LazyLogging {
     *
     * @param range Inclusive range of the block's height
     */
-  def getIndexedBlockHeights(range: Range.Inclusive): FixedSqlStreamingAction[Seq[Int], Int, Effect.Read] =
-    Tables.Blocks.filter(_.height between(range.start, range.end)).map(_.height).result
+  def getIndexedBlockHeights(range: Range.Inclusive): DBIO[Seq[Int]] =
+    Tables.Blocks.filter(_.height between (range.start, range.end)).map(_.height).result
 
   /**
     * Get the latest block from the database.
     */
-  def getLatestIndexedBlock: SqlAction[Option[Tables.BlocksRow], NoStream, Effect.Read] =
+  def getLatestIndexedBlock: DBIO[Option[Tables.BlocksRow]] =
     Tables.Blocks.sortBy(_.height.desc).take(1).result.headOption
 }
 

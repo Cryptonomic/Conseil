@@ -7,7 +7,9 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{BeforeAndAfterEach, Matchers, OneInstancePerTest, WordSpec}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.common.config.Platforms.{
+  BitcoinBatchFetchConfiguration,
   BitcoinConfiguration,
+  BitcoinNodeConfiguration,
   PlatformsConfiguration,
   TezosConfiguration,
   TezosNodeConfiguration
@@ -40,7 +42,12 @@ class MetadataServiceTest
       PlatformsConfiguration(
         List(
           TezosConfiguration("mainnet", enabled = true, TezosNodeConfiguration("tezos-host", 123, "https://"), None),
-          BitcoinConfiguration("testnet", enabled = false)
+          BitcoinConfiguration(
+            "testnet",
+            enabled = false,
+            BitcoinNodeConfiguration("host", 0, "protocol", "username", "password"),
+            BitcoinBatchFetchConfiguration(1, 1, 1, 1, 1)
+          )
         )
       ),
       new UnitTransformation(MetadataConfiguration(metadataOverridesConfiguration)),

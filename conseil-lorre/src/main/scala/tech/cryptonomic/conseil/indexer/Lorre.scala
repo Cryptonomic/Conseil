@@ -1,11 +1,7 @@
 package tech.cryptonomic.conseil.indexer
 
 import com.typesafe.scalalogging.LazyLogging
-<<<<<<< HEAD
-import tech.cryptonomic.conseil.common.config.Platforms.TezosConfiguration
-=======
-import tech.cryptonomic.conseil.common.config.Platforms.{TezosConfiguration, BitcoinConfiguration, UnknownPlatformConfiguration}
->>>>>>> bdffdd24... Lorre for Bitcoin
+import tech.cryptonomic.conseil.common.config.Platforms.{BitcoinConfiguration, TezosConfiguration}
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig
 import tech.cryptonomic.conseil.indexer.logging.LorreInfoLogging

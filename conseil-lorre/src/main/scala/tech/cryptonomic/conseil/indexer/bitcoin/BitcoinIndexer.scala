@@ -38,12 +38,12 @@ class BitcoinIndexer(
   /**
     * Executor for the rpc client, timer and to handle stop method.
     */
-  private val indexerExecutor = Executors.newFixedThreadPool(bitcoinConf.batchingConf.indexerThreadsCount)
+  private val indexerExecutor = Executors.newFixedThreadPool(bitcoinConf.batching.indexerThreadsCount)
 
   /**
     * Dedicated executor for the http4s.
     */
-  private val httpExecutor = Executors.newFixedThreadPool(bitcoinConf.batchingConf.httpFetchThreadsCount)
+  private val httpExecutor = Executors.newFixedThreadPool(bitcoinConf.batching.httpFetchThreadsCount)
 
   /**
     * [[cats.ContextShift]] is the equivalent to [[ExecutionContext]],
@@ -117,17 +117,17 @@ class BitcoinIndexer(
       httpClient <- BlazeClientBuilder[IO](httpEC).resource
 
       rpcClient <- RpcClient.resource(
-        bitcoinConf.nodeConfig.url,
-        maxConcurrent = bitcoinConf.batchingConf.indexerThreadsCount,
+        bitcoinConf.node.url,
+        maxConcurrent = bitcoinConf.batching.indexerThreadsCount,
         httpClient, // TODO: wrap it into retry and logger middleware
-        Authorization(BasicCredentials(bitcoinConf.nodeConfig.username, bitcoinConf.nodeConfig.password))
+        Authorization(BasicCredentials(bitcoinConf.node.username, bitcoinConf.node.password))
       )
 
       tx <- Transactor
         .fromDatabase[IO](IO.delay(DatabaseUtil.lorreDb))
         .map(_.configure(transactorConfig.transactionally)) // run operations in transaction
 
-      bitcoinOperations <- BitcoinOperations.resource(rpcClient, tx, bitcoinConf.batchingConf)
+      bitcoinOperations <- BitcoinOperations.resource(rpcClient, tx, bitcoinConf.batching)
     } yield bitcoinOperations
 }
 

@@ -166,7 +166,6 @@ object LorreAppConfig {
         result <- config match {
           case c: TezosConfiguration =>
             loadConfig[Option[TNSContractConfiguration]](namespace = s"tns.$network").map(tns => c.copy(tns = tns))
-          case c => c
         }
       } yield result
 

@@ -2,7 +2,9 @@ package tech.cryptonomic.conseil.common.config
 
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.common.config.Platforms.{
+  BitcoinBatchFetchConfiguration,
   BitcoinConfiguration,
+  BitcoinNodeConfiguration,
   PlatformsConfiguration,
   TezosConfiguration,
   TezosNodeConfiguration
@@ -13,7 +15,9 @@ class PlatformsTest extends WordSpec with Matchers {
 
   private val configTezosNode = TezosNodeConfiguration("host", 0, "protocol")
   private val configTezos = TezosConfiguration("mainnet", enabled = true, configTezosNode, None)
-  private val configBitcoin = BitcoinConfiguration("testnet", enabled = false)
+  private val configBitcoinNode = BitcoinNodeConfiguration("host", 0, "protocol", "username", "password")
+  private val configBitcoinBatching = BitcoinBatchFetchConfiguration(1, 1, 1, 1, 1)
+  private val configBitcoin = BitcoinConfiguration("testnet", enabled = false, configBitcoinNode, configBitcoinBatching)
   private val config = PlatformsConfiguration(List(configTezos, configBitcoin))
 
   private val platformTezos = PlatformDiscoveryTypes.Platform("tezos", "Tezos")

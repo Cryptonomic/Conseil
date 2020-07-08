@@ -30,9 +30,14 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
           new MetadataService(
             PlatformsConfiguration(
               List(
-                      TezosConfiguration("mainnet", enabled = true, TezosNodeConfiguration("tezos-host", 123, "https://"), None)
-                    )
-              ),
+                TezosConfiguration(
+                  "mainnet",
+                  enabled = true,
+                  TezosNodeConfiguration("tezos-host", 123, "https://"),
+                  None
+                )
+              )
+            ),
             new UnitTransformation(MetadataConfiguration(metadataOverridesConfiguration)),
             cacheOverrides,
             platformDiscoveryOperations

@@ -5,9 +5,18 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
-import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, TransparentUnitTransformation}
+import tech.cryptonomic.conseil.api.metadata.{
+  AttributeValuesCacheConfiguration,
+  MetadataService,
+  TransparentUnitTransformation
+}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
-import tech.cryptonomic.conseil.common.config.Platforms.{BitcoinConfiguration, PlatformsConfiguration}
+import tech.cryptonomic.conseil.common.config.Platforms.{
+  BitcoinBatchFetchConfiguration,
+  BitcoinConfiguration,
+  BitcoinNodeConfiguration,
+  PlatformsConfiguration
+}
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
@@ -40,7 +49,16 @@ class BitcoinDataRoutesTest
 
   private val metadataService =
     new MetadataService(
-      PlatformsConfiguration(List(BitcoinConfiguration("mainnet", enabled = true))),
+      PlatformsConfiguration(
+        List(
+          BitcoinConfiguration(
+            "mainnet",
+            enabled = true,
+            BitcoinNodeConfiguration("host", 0, "protocol", "username", "password"),
+            BitcoinBatchFetchConfiguration(1, 1, 1, 1, 1)
+          )
+        )
+      ),
       TransparentUnitTransformation,
       stub[AttributeValuesCacheConfiguration],
       platformDiscoveryOperations
@@ -100,8 +118,8 @@ class BitcoinDataRoutesTest
     }
 
   "not handle request for the not supported platform with GET" in {
-    // Due to the fact that platforms are hardcoded in path (not dynamic),
-    // request won't be handled for unsupported platforms and pushed down to the default rejection handler.
+      // Due to the fact that platforms are hardcoded in path (not dynamic),
+      // request won't be handled for unsupported platforms and pushed down to the default rejection handler.
       val getRequest = HttpRequest(
         HttpMethods.GET,
         uri = "/v2/data/notSupportedPlatform/mainnet/blocks"
