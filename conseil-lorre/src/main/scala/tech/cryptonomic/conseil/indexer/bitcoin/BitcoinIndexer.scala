@@ -95,7 +95,8 @@ class BitcoinIndexer(
               * Currently, it only contains the blocks. But it can be extended to
               * handle multiple computations.
               */
-            bitcoinOperations.loadBlocks(lorreConf.depth).compile.drain
+            IO.delay(logger.info(s"Start Lorre for Bitcoin")) *>
+              bitcoinOperations.loadBlocks(lorreConf.depth).compile.drain
           }
       )
       .unsafeRunSync()

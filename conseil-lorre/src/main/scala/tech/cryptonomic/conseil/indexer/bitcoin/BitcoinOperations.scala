@@ -34,7 +34,6 @@ class BitcoinOperations[F[_]: Concurrent](
     Stream
       .eval(tx.transact(persistence.getLatestIndexedBlock))
       .zip(bitcoinClient.getBlockChainInfo)
-      .evalTap(_ => Concurrent[F].delay(logger.info(s"Start Lorre for Bitcoin")))
       .flatMap {
         case (block, info) =>
           depth match {
@@ -61,7 +60,11 @@ class BitcoinOperations[F[_]: Concurrent](
             .through(bitcoinClient.getBlockHash(batchConf.hashBatchSize))
             .through(bitcoinClient.getBlockByHash(batchConf.blocksBatchSize))
             .through(bitcoinClient.getBlockWithTransactions(batchConf.transactionsBatchSize))
-            .evalTap { case (block, _) => Concurrent[F].delay(logger.debug(s"Save block with height: ${block.height}")) }
+            .evalTap { // log every 10 block
+              case (block, _) if (block.height % 10 == 0) =>
+                Concurrent[F].delay(logger.info(s"Save block with height: ${block.height}"))
+              case _ => Concurrent[F].unit
+            }
             .map((persistence.createBlock _).tupled)
             .evalMap(tx.transact)
             .drain
