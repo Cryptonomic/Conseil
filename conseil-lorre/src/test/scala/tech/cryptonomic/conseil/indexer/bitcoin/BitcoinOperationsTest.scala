@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.indexer.bitcoin
 
+import java.sql.Timestamp
+
 import scala.concurrent.ExecutionContext
 
 import cats.effect.{ContextShift, IO}
@@ -10,12 +12,12 @@ import org.scalamock.scalatest.MockFactory
 
 import tech.cryptonomic.conseil.common.config.Platforms.BitcoinBatchFetchConfiguration
 import tech.cryptonomic.conseil.common.rpc.RpcClient
-import tech.cryptonomic.conseil.common.bitcoin.{BitcoinFixtures, BitcoinPersistence, Tables}
+import tech.cryptonomic.conseil.common.bitcoin.{BitcoinPersistence, Tables}
 import tech.cryptonomic.conseil.common.bitcoin.rpc.BitcoinClient
 import tech.cryptonomic.conseil.common.bitcoin.rpc.json.BlockchainInfo
 import tech.cryptonomic.conseil.indexer.config.{Custom, Everything, Newest}
 
-class BitcoinOperationsTest extends WordSpec with MockFactory with Matchers with BitcoinFixtures {
+class BitcoinOperationsTest extends WordSpec with MockFactory with Matchers {
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
@@ -29,9 +31,7 @@ class BitcoinOperationsTest extends WordSpec with MockFactory with Matchers with
 
         // check if the method gets the latest block at the beginning
         (bitcoinPersistenceMock.getLatestIndexedBlock _) expects ()
-        (txMock.transact[Option[Tables.BlocksRow]] _) expects (*) returning (IO(
-              Some(DbFixtures.blockRow.copy(height = 5))
-            ))
+        (txMock.transact[Option[Tables.BlocksRow]] _) expects (*) returning (IO(Some(blockRow)))
 
         // mock Bitcoin client calls
         (bitcoinClientMock.getBlockChainInfo _) expects () returning (Stream(BlockchainInfo("mainnet", 10)).covary[IO])
@@ -73,9 +73,7 @@ class BitcoinOperationsTest extends WordSpec with MockFactory with Matchers with
 
         // check if the method gets the latest block at the beginning
         (bitcoinPersistenceMock.getLatestIndexedBlock _) expects ()
-        (txMock.transact[Option[Tables.BlocksRow]] _) expects (*) returning (IO(
-              Some(DbFixtures.blockRow.copy(height = 3))
-            ))
+        (txMock.transact[Option[Tables.BlocksRow]] _) expects (*) returning (IO(Some(blockRow.copy(height = 3))))
 
         // mock Bitcoin client calls
         (bitcoinClientMock.getBlockChainInfo _) expects () returning (Stream(BlockchainInfo("mainnet", 10)).covary[IO])
@@ -120,6 +118,26 @@ class BitcoinOperationsTest extends WordSpec with MockFactory with Matchers with
         extends BitcoinOperations[IO](bitcoinClientMock, bitcoinPersistenceMock, txMock, batchConfig)
 
     val bitcoinOperationsMock = mock[BitcoinOperationsMock]
+
+    val blockRow = Tables.BlocksRow(
+      hash = "hash",
+      size = 1,
+      strippedSize = 1,
+      weight = 1,
+      height = 5,
+      version = 1,
+      versionHex = "00000001",
+      merkleRoot = "merkleRoot",
+      nonce = 1L,
+      bits = "1",
+      difficulty = 1.0,
+      chainWork = "0",
+      nTx = 0,
+      previousBlockHash = None,
+      nextBlockHash = None,
+      time = Timestamp.valueOf("2011-01-10 20:39:40"),
+      medianTime = Timestamp.valueOf("2011-01-10 20:30:40")
+    )
   }
 
 }

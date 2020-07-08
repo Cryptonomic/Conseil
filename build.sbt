@@ -87,7 +87,7 @@ lazy val lorre = (project in file("conseil-lorre"))
     javaExtras = Seq("-Xmx512M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
   )
   .enableAssembly()
-  .dependsOn(common % "compile->compile;test->test", commonTestKit % Test)
+  .dependsOn(common, commonTestKit % Test)
 
 lazy val schema = (project in file("conseil-schema"))
   .settings(
