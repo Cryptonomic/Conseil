@@ -44,7 +44,7 @@ class BitcoinOperationsTest
         // test if method runs indexer with the correct range of the blocks
         (dummyBitcoinOperationsMock.loadBlocksWithTransactions _) expects (6 to 10) returning (Stream.empty)
 
-        dummyBitcoinOperationsStub.loadBlocks(Newest).compile.drain.unsafeRunSync() shouldBe (())
+        dummyBitcoinOperationsStub.loadBlocks(Newest).compile.drain.unsafeRunSync()
       }
 
       "run indexer for the all blocks" in new BitcoinOperationsStubs {
@@ -58,7 +58,7 @@ class BitcoinOperationsTest
         // test if method runs indexer with the correct range of the blocks
         (dummyBitcoinOperationsMock.loadBlocksWithTransactions _) expects (1 to 10) returning (Stream.empty)
 
-        dummyBitcoinOperationsStub.loadBlocks(Everything).compile.drain.unsafeRunSync() shouldBe (())
+        dummyBitcoinOperationsStub.loadBlocks(Everything).compile.drain.unsafeRunSync()
       }
 
       "run indexer for the custom blocks range" in new BitcoinOperationsStubs {
@@ -74,7 +74,7 @@ class BitcoinOperationsTest
         // test if method runs indexer with the correct range of the blocks
         (dummyBitcoinOperationsMock.loadBlocksWithTransactions _) expects (7 to 10) returning (Stream.empty)
 
-        dummyBitcoinOperationsStub.loadBlocks(Custom(3)).compile.drain.unsafeRunSync() shouldBe (())
+        dummyBitcoinOperationsStub.loadBlocks(Custom(3)).compile.drain.unsafeRunSync()
       }
 
       "index blocks with transactions with the given range" in new BitcoinOperationsStubs {
@@ -93,7 +93,7 @@ class BitcoinOperationsTest
         (bitcoinPersistenceMock.createBlock _) expects (*, *)
         (txMock.transact[Unit] _) expects (*) returning (IO.unit)
 
-        bitcoinOperationsStub.loadBlocksWithTransactions(1 to 10).compile.drain.unsafeRunSync() shouldBe (())
+        bitcoinOperationsStub.loadBlocksWithTransactions(1 to 10).compile.drain.unsafeRunSync()
       }
     }
 
