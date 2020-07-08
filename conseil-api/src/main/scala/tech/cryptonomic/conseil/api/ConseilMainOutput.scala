@@ -55,9 +55,9 @@ trait ConseilMainOutput {
     conf.platforms
       .groupBy(_.platform)
       .map {
-        case (key, values) =>
-          val networks = values.map(_.network).mkString("\n  - ", "\n  - ", "\n")
-          s"  Platform: ${key.name}$networks"
+        case (platform, configuration) =>
+          val networks = configuration.map(_.network).mkString("\n  - ", "\n  - ", "\n")
+          s"  Platform: ${platform.name}$networks"
       }
       .mkString("\n")
 
