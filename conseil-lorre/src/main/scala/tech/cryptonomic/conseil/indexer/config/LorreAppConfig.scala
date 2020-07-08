@@ -37,7 +37,7 @@ trait LorreAppConfig {
       depth: Depth = Newest,
       verbose: Boolean = false,
       headHash: Option[String] = None,
-      platform: BlockchainPlatform = Unknown,
+      platform: BlockchainPlatform = Tezos, // we are setting up Tezos by default, but it does not really matter.
       network: String = ""
   )
 

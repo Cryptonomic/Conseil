@@ -22,11 +22,6 @@ object Platforms {
     val name = "bitcoin"
   }
 
-  /** Represents blockchain platform, which is use only during arguments parsing, for better error handling */
-  case object Unknown extends BlockchainPlatform {
-    val name: String = "unknown"
-  }
-
   object BlockchainPlatform {
 
     /** maps a generic string to a typed BlockchainPlatform */
