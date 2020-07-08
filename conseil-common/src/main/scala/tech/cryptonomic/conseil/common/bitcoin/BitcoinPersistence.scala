@@ -37,11 +37,11 @@ class BitcoinPersistence[F[_]: Concurrent] extends LazyLogging {
     )
 
   /**
-    * Get sequence of existing blocks from the database.
+    * Get sequence of existing blocks heights from the database.
     *
     * @param range Inclusive range of the block's height
     */
-  def getExistingBlocks(range: Range.Inclusive): FixedSqlStreamingAction[Seq[Int], Int, Effect.Read] =
+  def getIndexedBlockHeights(range: Range.Inclusive): FixedSqlStreamingAction[Seq[Int], Int, Effect.Read] =
     Tables.Blocks.filter(_.height between(range.start, range.end)).map(_.height).result
 
   /**

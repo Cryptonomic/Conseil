@@ -92,7 +92,7 @@ class BitcoinPersistenceTest
                 ).map(_.convertTo[Tables.BlocksRow])
           )
           // test results
-          result <- tx.transact(bitcoinPersistanceStub.getExistingBlocks(1 to 2))
+          result <- tx.transact(bitcoinPersistanceStub.getIndexedBlockHeights(1 to 2))
         } yield result).unsafeRunSync() shouldBe Vector(1, 2)
       }
 

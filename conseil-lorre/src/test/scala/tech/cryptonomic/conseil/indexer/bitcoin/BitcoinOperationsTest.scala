@@ -79,7 +79,7 @@ class BitcoinOperationsTest
 
       "index blocks with transactions with the given range" in new BitcoinOperationsStubs {
         // check if the method gets existing blocks at the beginning
-        (bitcoinPersistenceMock.getExistingBlocks _) expects (1 to 10)
+        (bitcoinPersistenceMock.getIndexedBlockHeights _) expects (1 to 10)
         (txMock.transact[Seq[Int]] _) expects (*) returning (IO((1 to 10).toVector))
 
         // mock Bitcoin client calls

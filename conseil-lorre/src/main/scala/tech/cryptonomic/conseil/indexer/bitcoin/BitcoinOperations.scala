@@ -52,7 +52,7 @@ class BitcoinOperations[F[_]: Concurrent](
     */
   def loadBlocksWithTransactions(range: Range.Inclusive): Stream[F, Unit] =
     Stream
-      .eval(tx.transact(persistence.getExistingBlocks(range)))
+      .eval(tx.transact(persistence.getIndexedBlockHeights(range)))
       .flatMap(
         existingBlocks =>
           Stream
