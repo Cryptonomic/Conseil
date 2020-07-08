@@ -61,11 +61,11 @@ class BitcoinPersistenceTest
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.outputRow)
       }
 
-      "save block with transactions using persistance (integration test)" in new BitcoinPersistenceStubs(dbHandler) {
+      "save block with transactions using persistence (integration test)" in new BitcoinPersistenceStubs(dbHandler) {
         (for {
           // run
           _ <- tx.transact(
-            bitcoinPersistanceStub
+            bitcoinPersistenceStub
               .createBlock(RpcFixtures.blockResult, List(RpcFixtures.transactionResult))
           )
           // test results
