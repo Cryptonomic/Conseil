@@ -48,8 +48,8 @@ trait BitcoinStubs {
     * Usage example:
     *
     * {{{
-    *   "test name" in new BitcoinPersistanceStubs {
-    *     // bitcoinPersistanceStub is available in the current scope
+    *   "test name" in new BitcoinPersistenceStubs {
+    *     // bitcoinPersistenceStub is available in the current scope
     *   }
     * }}}
     */
@@ -71,7 +71,7 @@ trait BitcoinStubs {
       def apply[A](dbio: DBIO[A]): IO[A] = Async.fromFuture(IO.delay(dbHandler.run(dbio)))
     })
 
-    val bitcoinPersistanceStub = new BitcoinPersistence[IO]
+    val bitcoinPersistenceStub = new BitcoinPersistence[IO]
   }
 
 }
