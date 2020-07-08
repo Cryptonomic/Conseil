@@ -57,7 +57,7 @@ trait ConseilMainOutput {
       .map {
         case (key, values) =>
           val networks = values.map(_.network).mkString("\n  - ", "\n  - ", "\n")
-          s"Platform: ${key.name}$networks"
+          s"  Platform: ${key.name}$networks"
       }
       .mkString("\n")
 
