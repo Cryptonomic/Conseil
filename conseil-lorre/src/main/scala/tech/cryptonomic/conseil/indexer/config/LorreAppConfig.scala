@@ -138,27 +138,31 @@ object LorreAppConfig {
     /*** Reads a specific platform configuration based on given 'platform' and 'network' */
     def loadPlatformConfiguration(
         platform: String,
-        network: String
+        network: String,
+        config: Option[Config] = None // for testing only
     ): Either[ConfigReaderFailures, PlatformConfiguration] =
       // Note that Lorre process allows to run only one integration per process.
       // Configuration file can contain more than one, thus required parameters.
       for {
-        config <- loadConfig[PlatformsConfiguration].flatMap {
-          _.platforms.find(x => x.platform.name == platform && x.network == network) match {
-            case Some(platformsConfig) if platformsConfig.enabled => Right(platformsConfig)
-            case Some(platformsConfig) if !platformsConfig.enabled =>
-              Left(ConfigReaderFailures(new ConfigReaderFailure {
-                override def description: String =
-                  s"Could not run Lorre for platform: $platform, network: $network because this network is disabled"
-                override def location: Option[ConfigValueLocation] = None
-              }))
-            case None =>
-              Left(ConfigReaderFailures(new ConfigReaderFailure {
-                override def description: String = s"Could not find platform: $platform, network: $network"
-                override def location: Option[ConfigValueLocation] = None
-              }))
+        config <- config
+          .map(loadConfig[PlatformsConfiguration])
+          .getOrElse(loadConfig[PlatformsConfiguration])
+          .flatMap {
+            _.platforms.find(x => x.platform.name == platform && x.network == network) match {
+              case Some(platformsConfig) if platformsConfig.enabled => Right(platformsConfig)
+              case Some(platformsConfig) if !platformsConfig.enabled =>
+                Left(ConfigReaderFailures(new ConfigReaderFailure {
+                  override def description: String =
+                    s"Could not run Lorre for platform: $platform, network: $network because this network is disabled"
+                  override def location: Option[ConfigValueLocation] = None
+                }))
+              case None =>
+                Left(ConfigReaderFailures(new ConfigReaderFailure {
+                  override def description: String = s"Could not find platform: $platform, network: $network"
+                  override def location: Option[ConfigValueLocation] = None
+                }))
+            }
           }
-        }
         result <- config match {
           case c: TezosConfiguration =>
             loadConfig[Option[TNSContractConfiguration]](namespace = s"tns.$network").map(tns => c.copy(tns = tns))

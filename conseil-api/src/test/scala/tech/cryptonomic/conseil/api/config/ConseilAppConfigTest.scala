@@ -26,7 +26,7 @@ class ConseilAppConfigTest extends WordSpec with Matchers with EitherValues with
                                             |      protocol: "http",
                                             |      hostname: "localhost",
                                             |      port: 8732
-                                            |      path-prefix: ""
+                                            |      path-prefix: "tezos/alphanet/"
                                             |    }
                                             |  },
                                             |  {
@@ -37,7 +37,7 @@ class ConseilAppConfigTest extends WordSpec with Matchers with EitherValues with
                                             |      protocol: "https"
                                             |      hostname: "nautilus.cryptonomic.tech",
                                             |      port: 8732
-                                            |      path-prefix: "tezos/alphanet/"
+                                            |      path-prefix: "tezos/alphanet-staging/"
                                             |    }
                                             |  }
                                             |]
@@ -49,18 +49,13 @@ class ConseilAppConfigTest extends WordSpec with Matchers with EitherValues with
           TezosConfiguration(
             "alphanet",
             enabled = true,
-            TezosNodeConfiguration(hostname = "localhost", port = 8732, protocol = "http"),
+            TezosNodeConfiguration("localhost", 8732, "http", "tezos/alphanet/"),
             None
           ),
           TezosConfiguration(
             "alphanet-staging",
             enabled = false,
-            TezosNodeConfiguration(
-              hostname = "nautilus.cryptonomic.tech",
-              port = 8732,
-              protocol = "https",
-              pathPrefix = "tezos/alphanet/"
-            ),
+            TezosNodeConfiguration("nautilus.cryptonomic.tech", 8732, "https", "tezos/alphanet-staging/"),
             None
           )
         )
@@ -125,13 +120,13 @@ class ConseilAppConfigTest extends WordSpec with Matchers with EitherValues with
           pureconfig.loadConfig[Option[NautilusCloudConfiguration]](conf = config, namespace = "nautilus-cloud")
 
         typedConfig.right.value.value shouldBe NautilusCloudConfiguration(
-            "http://localhost",
-            1234,
-            "apiKeys/dev",
-            "exampleApiKeyDev",
-            10 seconds,
-            30 seconds
-          )
+          "http://localhost",
+          1234,
+          "apiKeys/dev",
+          "exampleApiKeyDev",
+          10 seconds,
+          30 seconds
+        )
       }
     }
 
