@@ -47,7 +47,7 @@ trait ConseilAppConfig {
       args <- readArgs(commandLineArgs)
       ArgumentsConfig(failFast, verbose) = args
       conseil <- loadConfig[ConseilConfiguration](namespace = "conseil")
-      platforms <- loadConfig[PlatformsConfiguration](namespace = "platforms")
+      platforms <- loadConfig[PlatformsConfiguration]
       metadataOverrides <- loadConfig[MetadataConfiguration]
       securityApi <- Security()
       nautilusCloud <- loadConfig[Option[NautilusCloudConfiguration]]("nautilus-cloud")
