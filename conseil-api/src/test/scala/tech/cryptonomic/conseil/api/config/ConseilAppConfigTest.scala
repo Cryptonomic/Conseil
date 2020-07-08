@@ -75,7 +75,7 @@ class ConseilAppConfigTest extends WordSpec with Matchers with EitherValues with
                                               |      protocol: "http",
                                               |      hostname: "localhost",
                                               |      port: 8732
-                                              |      pathPrefix: ""
+                                              |      path-prefix: ""
                                               |    }
                                               |  },
                                               |  {
@@ -86,7 +86,7 @@ class ConseilAppConfigTest extends WordSpec with Matchers with EitherValues with
                                               |      protocol: "https"
                                               |      hostname: "nautilus.cryptonomic.tech",
                                               |      port: 8732
-                                              |      pathPrefix: "tezos/alphanet/"
+                                              |      path-prefix: "tezos/alphanet/"
                                               |    }
                                               |  }
                                               |]
