@@ -792,7 +792,7 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         val (fetchRights, bakingRights) = from
         bakingRights
           .into[Tables.BakingRightsRow]
-          .withFieldRenamed(_.level, _.blockLevel) //fix after regeneration
+          .withFieldRenamed(_.level, _.blockLevel)
           .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
           .withFieldConst(_.estimatedTime, bakingRights.estimated_time.map(toSql))
           .withFieldConst(_.cycle, fetchRights.cycle)
@@ -827,7 +827,7 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
       val bakingRights = from
       bakingRights
         .into[Tables.BakingRightsRow]
-        .withFieldRenamed(_.level, _.blockLevel) //fix after regeneration
+        .withFieldRenamed(_.level, _.blockLevel)
         .withFieldConst(_.blockHash, None)
         .withFieldConst(_.estimatedTime, bakingRights.estimated_time.map(toSql))
         .transform
