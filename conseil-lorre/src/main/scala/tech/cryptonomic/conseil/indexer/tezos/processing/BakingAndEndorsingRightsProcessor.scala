@@ -118,7 +118,7 @@ class BakingAndEndorsingRightsProcessor(
         .getOrElse(0)
 
       berLogger.info(s"Level and position to fetch ($headLevel, $length)")
-      val range = List.range((headLevel + 1) max rightsStartLevel, headLevel + length)
+      val range = (((headLevel + 1) max rightsStartLevel) until (headLevel + length) by 1).toList
       Source
         .fromIterator(() => range.toIterator)
         .grouped(configuration.fetchSize)
@@ -147,7 +147,7 @@ class BakingAndEndorsingRightsProcessor(
 
     blockHead.flatMap { blockData =>
       val headLevel = blockData.header.level
-      val blockLevelsToUpdate = List.range(headLevel + 1, headLevel + configuration.updateSize)
+      val blockLevelsToUpdate = ((headLevel + 1) until (headLevel + configuration.updateSize) by 1).toList
       val br = nodeOperator.getBatchBakingRightsByLevels(blockLevelsToUpdate).flatMap { bakingRightsResult =>
         val brResults = bakingRightsResult.values.flatten
         logger.info(s"Got ${brResults.size} baking rights")
