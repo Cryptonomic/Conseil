@@ -6,16 +6,16 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 import scala.collection.immutable.SortedSet
 import tech.cryptonomic.conseil.common.config.ChainEvent
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BlockLevel, TezosBlockHash}
 import tech.cryptonomic.conseil.indexer.tezos.{TezosIndexedDataOperations, TezosDatabaseOperations => TezosDb}
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.TezosBlockHash
 
 object AccountsResetHandler {
 
   /** Events on which to trigger accounts updates, as ordered pairs of
     * level and a pattern to decide which accounts needs to be reloaded.
     */
-  type AccountResetEvents = SortedSet[(Int, ChainEvent.AccountIdPattern)]
+  type AccountResetEvents = SortedSet[(BlockLevel, ChainEvent.AccountIdPattern)]
 
   /** A wrapper type to semantically identify a set of events for
     * accounts reset that still haven't been processed by the handler.
@@ -54,7 +54,7 @@ class AccountsResetHandler(
       case ChainEvent.AccountsRefresh(levelsNeedingRefresh) if levelsNeedingRefresh.nonEmpty =>
         db.run(TezosDb.fetchProcessedEventsLevels(ChainEvent.accountsRefresh.render)).map { levels =>
           //used to remove processed events
-          val processed = levels.map(_.intValue).toSet
+          val processed = levels.toSet
           //we want individual event levels with the associated pattern, such that we can sort them by level
           val unprocessedEvents = levelsNeedingRefresh.toList.flatMap {
             case (accountPattern, levels) => levels.filterNot(processed).sorted.map(_ -> accountPattern)
@@ -96,7 +96,7 @@ class AccountsResetHandler(
                   TezosDb.refillAccountsCheckpointFromExisting(hashRef, levelRef, timestamp, cycle, selectors) >>
                       TezosDb.writeProcessedEventsLevels(
                         ChainEvent.accountsRefresh.render,
-                        levels.map(BigDecimal(_)).toList
+                        levels.toList
                       )
                 )
                 .andThen {

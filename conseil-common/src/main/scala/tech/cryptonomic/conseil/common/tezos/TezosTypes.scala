@@ -17,11 +17,20 @@ object TezosTypes {
     pattern.matcher(s).matches
   }
 
-  /** convenience alias to simplify declarations of block hash+level+timestamp+cycle+period tuples */
-  type BlockReference = (TezosBlockHash, Int, Option[Instant], Option[Int], Option[Int])
+  /** convenience class to keep multiple values referencing a specific block */
+  case class BlockReference(
+      hash: TezosBlockHash,
+      level: BlockLevel,
+      timestamp: Option[Instant],
+      cycle: Option[Int],
+      period: Option[Int]
+  )
 
   /** use to remove ambiguities about the meaning in voting proposals usage */
   type ProposalSupporters = Int
+
+  /** alias used to harmonize any reference to a block level */
+  type BlockLevel = Long
 
   final case class PublicKey(value: String) extends AnyVal
 
@@ -61,7 +70,7 @@ object TezosTypes {
   )
 
   final case class BlockHeader(
-      level: Int,
+      level: BlockLevel,
       proto: Int,
       predecessor: TezosBlockHash,
       timestamp: java.time.ZonedDateTime,
@@ -87,7 +96,7 @@ object TezosTypes {
   ) extends BlockMetadata
 
   final case class BlockHeaderMetadataLevel(
-      level: Int,
+      level: BlockLevel,
       level_position: Int,
       cycle: Int,
       cycle_position: Int,
@@ -169,12 +178,12 @@ object TezosTypes {
   type ParametersCompatibility = Either[Parameters, Micheline]
 
   final case class Endorsement(
-      level: Int,
+      level: BlockLevel,
       metadata: EndorsementMetadata
   ) extends Operation
 
   final case class SeedNonceRevelation(
-      level: Int,
+      level: BlockLevel,
       nonce: Nonce,
       metadata: BalanceUpdatesMetadata
   ) extends Operation
@@ -388,7 +397,7 @@ object TezosTypes {
         category: Option[String],
         contract: Option[ContractId],
         delegate: Option[PublicKeyHash],
-        level: Option[Int]
+        level: Option[BlockLevel]
     )
   }
 
@@ -408,7 +417,7 @@ object TezosTypes {
       change: Int,
       category: Option[String],
       delegate: Option[String],
-      level: Option[Int]
+      level: Option[BlockLevel]
   )
 
   final case class AppliedOperationResultStatus(
@@ -445,7 +454,7 @@ object TezosTypes {
     */
   final case class BlockTagged[T](
       blockHash: TezosBlockHash,
-      blockLevel: Int,
+      blockLevel: BlockLevel,
       timestamp: Option[Instant],
       cycle: Option[Int],
       period: Option[Int],
@@ -580,7 +589,7 @@ object TezosTypes {
       /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference */
       def taggedWithBlock(
           hash: TezosBlockHash,
-          level: Int,
+          level: BlockLevel,
           timestamp: Option[Instant] = None,
           cycle: Option[Int],
           period: Option[Int]
@@ -596,7 +605,7 @@ object TezosTypes {
 
   /** Baking rights model */
   final case class BakingRights(
-      level: Int,
+      level: BlockLevel,
       delegate: String,
       priority: Int,
       estimated_time: Option[ZonedDateTime],
@@ -606,13 +615,13 @@ object TezosTypes {
 
   /** Endorsing rights model */
   final case class EndorsingRights(
-      level: Int,
+      level: BlockLevel,
       delegate: String,
       slots: List[Int],
       estimated_time: Option[ZonedDateTime],
       cycle: Option[Int],
       governancePeriod: Option[Int],
-      endorsedBlock: Option[Int]
+      endorsedBlock: Option[BlockLevel]
   )
 
   /**
@@ -632,6 +641,8 @@ object TezosTypes {
       * @param high      Medium + one standard deviation
       * @param timestamp The timestamp when the calculation took place
       * @param kind      The kind of operation being averaged over
+      * @param cycle     The latest operation cycle when the computation took place
+      * @param level     The latest operation level when the computation took place
       */
     final case class AverageFees(
         low: Int,
@@ -640,7 +651,7 @@ object TezosTypes {
         timestamp: java.sql.Timestamp,
         kind: String,
         cycle: Option[Int],
-        level: Option[Int]
+        level: BlockLevel
     )
   }
 

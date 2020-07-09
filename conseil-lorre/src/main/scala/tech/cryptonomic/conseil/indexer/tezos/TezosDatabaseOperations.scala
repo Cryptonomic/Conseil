@@ -63,7 +63,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
     val keepMostRecent = (rows: List[Tables.AccountsRow]) =>
       rows
-        .sortBy(_.blockLevel)(Ordering[BigDecimal].reverse)
+        .sortBy(_.blockLevel)(Ordering[Long].reverse)
         .foldLeft((Queue.empty[Tables.AccountsRow], Set.empty[String])) { (accumulator, row) =>
           val (queued, index) = accumulator
           if (index(row.accountId)) accumulator else (queued :+ row, index + row.accountId)
@@ -204,7 +204,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
   def writeAccountsCheckpoint(
-      accountIds: List[(TezosBlockHash, Int, Option[Instant], Option[Int], Option[Int], List[AccountId])]
+      accountIds: List[(TezosBlockHash, BlockLevel, Option[Instant], Option[Int], Option[Int], List[AccountId])]
   ): DBIO[Option[Int]] = {
     logger.info(s"""Writing ${accountIds.map(_._6).map(_.length).sum} account checkpoints to DB...""")
     Tables.AccountsCheckpoint ++= accountIds.flatMap(_.convertToA[List, Tables.AccountsCheckpointRow])
@@ -216,7 +216,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
   def writeBakersCheckpoint(
-      delegatesKeyHashes: List[(TezosBlockHash, Int, Option[Instant], Option[Int], Option[Int], List[PublicKeyHash])]
+      delegatesKeyHashes: List[
+        (TezosBlockHash, BlockLevel, Option[Instant], Option[Int], Option[Int], List[PublicKeyHash])
+      ]
   ): DBIO[Option[Int]] = {
     logger.info(s"""Writing ${delegatesKeyHashes.map(_._6).map(_.length).sum} delegate checkpoints to DB...""")
     Tables.BakersCheckpoint ++= delegatesKeyHashes.flatMap(_.convertToA[List, Tables.BakersCheckpointRow])
@@ -298,7 +300,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def refillAccountsCheckpointFromExisting(
       hash: TezosBlockHash,
-      level: Int,
+      level: BlockLevel,
       timestamp: Instant,
       cycle: Option[Int],
       selectors: Set[AccountIdPattern] = Set(".*")
@@ -374,7 +376,8 @@ object TezosDatabaseOperations extends LazyLogging {
         val key = AccountId(row.accountId)
         val time = row.asof.toInstant
         if (collected.contains(key)) collected
-        else collected + (key -> (TezosBlockHash(row.blockId), row.blockLevel, Some(time), row.cycle, None))
+        else
+          collected + (key -> BlockReference(TezosBlockHash(row.blockId), row.blockLevel, Some(time), row.cycle, None))
       }
 
     logger.info("Getting the latest accounts from checkpoints in the DB...")
@@ -402,7 +405,8 @@ object TezosDatabaseOperations extends LazyLogging {
       checkpoints.foldLeft(Map.empty[PublicKeyHash, BlockReference]) { (collected, row) =>
         val key = PublicKeyHash(row.delegatePkh)
         if (collected.contains(key)) collected
-        else collected + (key -> (TezosBlockHash(row.blockId), row.blockLevel, None, row.cycle, row.period))
+        else
+          collected + (key -> BlockReference(TezosBlockHash(row.blockId), row.blockLevel, None, row.cycle, row.period))
       }
 
     logger.info("Getting the latest bakers from checkpoints in the DB...")
@@ -470,7 +474,7 @@ object TezosDatabaseOperations extends LazyLogging {
     DBIO.sequence {
       bakingRights.map { upd =>
         Tables.BakingRights
-          .filter(er => er.delegate === upd.delegate && er.level === upd.level)
+          .filter(er => er.delegate === upd.delegate && er.blockLevel === upd.level)
           .map(_.estimatedTime)
           .update(upd.estimated_time.map(datetime => Timestamp.from(datetime.toInstant)))
       }
@@ -484,7 +488,7 @@ object TezosDatabaseOperations extends LazyLogging {
     DBIO.sequence {
       endorsingRights.map { upd =>
         Tables.EndorsingRights
-          .filter(er => er.delegate === upd.delegate && er.level === upd.level)
+          .filter(er => er.delegate === upd.delegate && er.blockLevel === upd.level)
           .map(_.estimatedTime)
           .update(upd.estimated_time.map(datetime => Timestamp.from(datetime.toInstant)))
       }
@@ -512,24 +516,22 @@ object TezosDatabaseOperations extends LazyLogging {
     *  @param blockLevel block level
     *  @return list of baking rights rows
     */
-  def getBakingRightsForLevel(blockLevel: Int): DBIO[Seq[Tables.BakingRightsRow]] =
-    Tables.BakingRights.filter(_.level === blockLevel).result
+  def getBakingRightsForLevel(blockLevel: BlockLevel): DBIO[Seq[Tables.BakingRightsRow]] =
+    Tables.BakingRights.filter(_.blockLevel === blockLevel).result
 
   /** Fetches endorsing rights for given block level
     *  @param blockLevel block level
     *  @return list of endorsing rights rows
     */
-  def getEndorsingRightsForLevel(
-      blockLevel: Int
-  ): DBIO[Seq[Tables.EndorsingRightsRow]] =
-    Tables.EndorsingRights.filter(_.level === blockLevel).result
+  def getEndorsingRightsForLevel(blockLevel: BlockLevel): DBIO[Seq[Tables.EndorsingRightsRow]] =
+    Tables.EndorsingRights.filter(_.blockLevel === blockLevel).result
 
   /**
     * Fetches all governance entries for a given block level
     * @param level to identify the relevant block
     * @return the governance data
     */
-  def getGovernanceForLevel(level: Int): DBIO[Seq[GovernanceRow]] =
+  def getGovernanceForLevel(level: BlockLevel): DBIO[Seq[GovernanceRow]] =
     Tables.Governance.filter(_.level === level).result
 
   /**
@@ -585,7 +587,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
     val keepMostRecent = (rows: List[Tables.BakersRow]) =>
       rows
-        .sortBy(_.blockLevel)(Ordering[Int].reverse)
+        .sortBy(_.blockLevel)(Ordering[Long].reverse)
         .foldLeft((Queue.empty[Tables.BakersRow], Set.empty[String])) { (accumulator, row) =>
           val (queued, index) = accumulator
           if (index(row.pkh)) accumulator else (queued :+ row, index + row.pkh)
@@ -635,9 +637,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * then sums together all distinct votes (yay, nay, pass) in
     * a single result object.
     */
-  def getBallotOperationsForLevel(level: Int)(implicit ec: ExecutionContext): DBIO[Voting.BallotCounts] =
+  def getBallotOperationsForLevel(level: BlockLevel)(implicit ec: ExecutionContext): DBIO[Voting.BallotCounts] =
     Tables.Operations
-      .filter(op => op.kind === "ballot" && op.level === level)
+      .filter(op => op.kind === "ballot" && op.blockLevel === level)
       .groupBy(_.ballot)
       .map {
         case (vote, ops) => vote -> ops.length
@@ -668,14 +670,14 @@ object TezosDatabaseOperations extends LazyLogging {
     arr.trim.stripPrefix("[").stripSuffix("]").split(',').map(ProtocolId).toList
 
   /** Fetch the latest block level available for each account id stored */
-  def getLevelsForAccounts(ids: Set[AccountId]): DBIO[Seq[(String, BigDecimal)]] =
+  def getLevelsForAccounts(ids: Set[AccountId]): DBIO[Seq[(String, BlockLevel)]] =
     Tables.Accounts
       .map(table => (table.accountId, table.blockLevel))
       .filter(_._1 inSet ids.map(_.id))
       .result
 
   /** Fetch the latest block level available for each delegate pkh stored */
-  def getLevelsForDelegates(ids: Set[PublicKeyHash]): DBIO[Seq[(String, Int)]] =
+  def getLevelsForDelegates(ids: Set[PublicKeyHash]): DBIO[Seq[(String, BlockLevel)]] =
     Tables.Bakers
       .map(table => (table.pkh, table.blockLevel))
       .filter(_._1 inSet ids.map(_.value))
@@ -764,11 +766,15 @@ object TezosDatabaseOperations extends LazyLogging {
   def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(
       implicit ec: ExecutionContext
   ): DBIO[Option[AverageFees]] = {
+    type Cycle = Int
+    type Fee = BigDecimal
+    type FeeDetails = (Option[Fee], Timestamp, Option[Cycle], BlockLevel)
+
     def computeAverage(
-        ts: java.sql.Timestamp,
-        cycle: Option[Int],
-        level: Option[Int],
-        fees: Seq[(Option[BigDecimal], java.sql.Timestamp, Option[Int], Option[Int])]
+        ts: Timestamp,
+        cycle: Option[Cycle],
+        level: BlockLevel,
+        fees: Seq[FeeDetails]
     ): AverageFees = {
       val values = fees.map {
         case (fee, _, _, _) => fee.map(_.toDouble).getOrElse(0.0)
@@ -782,7 +788,7 @@ object TezosDatabaseOperations extends LazyLogging {
     val opQuery =
       Tables.Operations
         .filter(_.kind === kind)
-        .map(o => (o.fee, o.timestamp, o.cycle, o.level))
+        .map(o => (o.fee, o.timestamp, o.cycle, o.blockLevel))
         .distinct
         .sortBy { case (_, ts, _, _) => ts.desc }
         .take(numberOfFeesAveraged)
@@ -812,7 +818,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def fetchRecentOperationsHashByKind(
       ofKind: Set[String],
-      fromLevel: Int = 0
+      fromLevel: BlockLevel = 0
   ): DBIO[Seq[Option[String]]] =
     Tables.Operations
       .filter(
@@ -844,7 +850,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param eventType the type of event levels to fetch
     * @return a list of values marking specific levels that needs not be processed anymore
     */
-  def fetchProcessedEventsLevels(eventType: String): DBIO[Seq[BigDecimal]] =
+  def fetchProcessedEventsLevels(eventType: String): DBIO[Seq[BlockLevel]] =
     Tables.ProcessedChainEvents.filter(_.eventType === eventType).map(_.eventLevel).result
 
   /** Adds any new level for which a custom event processing has been executed
@@ -853,7 +859,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param levels the levels to write to db, currently there must be no collision with existing entries
     * @return the number of entries saved to the checkpoint
     */
-  def writeProcessedEventsLevels(eventType: String, levels: List[BigDecimal]): DBIO[Option[Int]] =
+  def writeProcessedEventsLevels(eventType: String, levels: List[BlockLevel]): DBIO[Option[Int]] =
     Tables.ProcessedChainEvents ++= levels.map(Tables.ProcessedChainEventsRow(_, eventType))
 
   import kantan.csv._

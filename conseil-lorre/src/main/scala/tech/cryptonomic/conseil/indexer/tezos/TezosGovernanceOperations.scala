@@ -155,7 +155,7 @@ object TezosGovernanceOperations extends LazyLogging {
   def aggregateData(db: Database)(
       activeProposalsBlocks: Map[Block, Option[ProtocolId]],
       activeProposalsBallots: Map[Block, List[Voting.Ballot]],
-      rollsByLevel: Map[Int, List[Voting.BakerRolls]]
+      rollsByLevel: Map[BlockLevel, List[Voting.BakerRolls]]
   )(
       implicit ec: ExecutionContext
   ): Future[List[GovernanceAggregate]] = {
@@ -242,7 +242,7 @@ object TezosGovernanceOperations extends LazyLogging {
    */
   private def fillAggregates(
       proposalsBlocks: Map[Block, Option[ProtocolId]],
-      rollsByLevel: Map[Int, List[Voting.BakerRolls]],
+      rollsByLevel: Map[BlockLevel, List[Voting.BakerRolls]],
       ballots: Map[Block, List[Voting.Ballot]],
       ballotCountsPerLevel: Map[Block, BallotsPerLevel],
       ballotCountsPerCycle: Map[Int, BallotsPerCycle],

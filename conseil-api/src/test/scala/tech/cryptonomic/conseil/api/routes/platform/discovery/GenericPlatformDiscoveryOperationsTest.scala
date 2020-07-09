@@ -8,7 +8,9 @@ import com.softwaremill.diffx.scalatest.DiffMatcher
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatest.OptionValues
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import slick.dbio
 import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.api.{BitcoinInMemoryDatabaseSetup, TezosInMemoryDatabaseSetup}
@@ -30,7 +32,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
 class GenericPlatformDiscoveryOperationsTest
-    extends WordSpec
+    extends AnyWordSpec
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
     with BitcoinInMemoryDatabaseSetup
@@ -194,7 +196,7 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "fees"),
             Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "fees"),
             Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "fees"),
-            Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "fees")
+            Attribute("level", "Level", DataType.LargeInt, None, KeyType.NonKey, "fees")
           )
         )
       }
@@ -208,7 +210,7 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "accounts"),
             Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "accounts"),
             Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "accounts"),
-            Attribute("block_level", "Block level", DataType.Decimal, None, KeyType.UniqueKey, "accounts"),
+            Attribute("block_level", "Block level", DataType.LargeInt, None, KeyType.UniqueKey, "accounts"),
             Attribute("manager", "Manager", DataType.String, None, KeyType.UniqueKey, "accounts"),
             Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
             Attribute("delegate_setable", "Delegate setable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
@@ -222,7 +224,7 @@ class GenericPlatformDiscoveryOperationsTest
       "return list of attributes of blocks" in {
         sut.getTableAttributes(EntityPath("blocks", networkPath)).futureValue.value.toSet should matchTo(
           Set(
-            Attribute("level", "Level", DataType.Int, None, KeyType.UniqueKey, "blocks"),
+            Attribute("level", "Level", DataType.LargeInt, None, KeyType.UniqueKey, "blocks"),
             Attribute("proto", "Proto", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("predecessor", "Predecessor", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "blocks"),
@@ -245,7 +247,7 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("active_proposal", "Active proposal", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("baker", "Baker", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.NonKey, "blocks"),
-            Attribute("meta_level", "Meta level", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("meta_level", "Meta level", DataType.LargeInt, None, KeyType.NonKey, "blocks"),
             Attribute("meta_level_position", "Meta level position", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("meta_cycle", "Meta cycle", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("meta_cycle_position", "Meta cycle position", DataType.Int, None, KeyType.NonKey, "blocks"),
@@ -281,7 +283,7 @@ class GenericPlatformDiscoveryOperationsTest
               "operations"
             ),
             Attribute("kind", "Kind", DataType.String, None, KeyType.UniqueKey, "operations"),
-            Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("level", "Level", DataType.LargeInt, None, KeyType.NonKey, "operations"),
             Attribute("delegate", "Delegate", DataType.String, None, KeyType.UniqueKey, "operations"),
             Attribute("slots", "Slots", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("nonce", "Nonce", DataType.String, None, KeyType.NonKey, "operations"),
@@ -338,7 +340,7 @@ class GenericPlatformDiscoveryOperationsTest
               "operations"
             ),
             Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "operations"),
-            Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
+            Attribute("block_level", "Block level", DataType.LargeInt, None, KeyType.UniqueKey, "operations"),
             Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
             Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
@@ -367,7 +369,7 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operation_groups"),
             Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "operation_groups"),
             Attribute("block_id", "Block id", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
-            Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operation_groups")
+            Attribute("block_level", "Block level", DataType.LargeInt, None, KeyType.UniqueKey, "operation_groups")
           )
         )
       }
@@ -385,7 +387,7 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "bakers"),
             Attribute("deactivated", "Deactivated", DataType.Boolean, None, KeyType.NonKey, "bakers"),
             Attribute("grace_period", "Grace period", DataType.Int, None, KeyType.NonKey, "bakers"),
-            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "bakers"),
+            Attribute("block_level", "Block level", DataType.LargeInt, None, KeyType.NonKey, "bakers"),
             Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "bakers"),
             Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "bakers")
           )

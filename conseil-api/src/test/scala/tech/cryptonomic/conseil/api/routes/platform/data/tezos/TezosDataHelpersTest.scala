@@ -3,10 +3,11 @@ package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 import java.sql.Timestamp
 
 import io.circe.Json
-import org.scalatest.{Matchers, WordSpecLike}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 
-class TezosDataHelpersTest extends TezosDataHelpers with WordSpecLike with Matchers {
+class TezosDataHelpersTest extends TezosDataHelpers with AnyWordSpecLike with Matchers {
 
   "TezosDataHelpers" should {
       val encodeAny = anySchema.encoder
@@ -44,7 +45,7 @@ class TezosDataHelpersTest extends TezosDataHelpers with WordSpecLike with Match
       }
       "encode Tezos Accounts into json properly" in {
         encodeAny(
-          AccountsRow("account1", "block1", blockLevel = BigDecimal.valueOf(1L), balance = BigDecimal.valueOf(1000))
+          AccountsRow("account1", "block1", blockLevel = 1L, balance = BigDecimal.valueOf(1000))
         ) shouldBe Json.fromFields(
           List(
             "accountId" -> Json.fromString("account1"),

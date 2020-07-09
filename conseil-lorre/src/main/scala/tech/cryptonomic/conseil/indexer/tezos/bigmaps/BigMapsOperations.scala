@@ -211,7 +211,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     //we want to use block levels to figure out correct processing order
     //and then collect only the latest contents for each map-id and key
     val newContent = blocks
-      .sortBy(_.data.header.level)(Ordering[Int].reverse)
+      .sortBy(_.data.header.level)(Ordering[Long].reverse)
       .foldLeft(Map.empty[(BigDecimal, String), BigMapContentsRow]) {
         case (collected, block) =>
           val seen = collected.keySet
@@ -387,7 +387,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
                 address = tokenUpdate.accountId.id,
                 balance = BigDecimal(tokenUpdate.balance),
                 blockId = blockData.hash.value,
-                blockLevel = BigDecimal(blockData.header.level),
+                blockLevel = blockData.header.level,
                 asof = toSql(blockData.header.timestamp)
               )
           )

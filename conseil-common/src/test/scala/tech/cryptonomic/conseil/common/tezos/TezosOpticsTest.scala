@@ -1,13 +1,14 @@
 package tech.cryptonomic.conseil.common.tezos
 
 import java.time.ZonedDateTime
-
-import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
+import org.scalatest.{EitherValues, OptionValues}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Scripted.Contracts
 import TezosOptics.Blocks.{acrossScriptsCode, acrossScriptsStorage, acrossTransactionParameters, acrossTransactions}
 
-class TezosOpticsTest extends WordSpec with Matchers with OptionValues with EitherValues {
+class TezosOpticsTest extends AnyWordSpec with Matchers with OptionValues with EitherValues {
 
   "The optics for tezos types" should {
 
