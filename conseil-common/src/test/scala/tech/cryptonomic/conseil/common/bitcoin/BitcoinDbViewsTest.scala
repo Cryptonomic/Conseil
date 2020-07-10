@@ -29,28 +29,24 @@ class BitcoinDbViewsTest
           scriptPubKey = RpcFixtures.outputResult.scriptPubKey.copy(addresses = Some(List("address2")))
         )
 
-        val input = RpcFixtures.inputResult.copy(txid = Some("tx1"), vout = Some(0))
+        val block1 = RpcFixtures.blockResult.copy(height = 1, hash = "hash1")
+        val block2 = RpcFixtures.blockResult.copy(height = 2, hash = "hash2")
+
+        val tx1 = RpcFixtures.transactionResult.copy(txid = "tx1", blockhash = block1.hash, vout = List(unspentOutput))
+
+        val input = RpcFixtures.inputResult.copy(txid = Some(tx1.txid), vout = Some(0))
+
+        val tx2 = RpcFixtures.transactionResult.copy(
+          txid = "tx2",
+          blockhash = block2.hash,
+          vin = List(input),
+          vout = List(spentOutput)
+        )
 
         (for {
           // run
-          _ <- tx.transact(
-            bitcoinPersistenceStub
-              .createBlock(
-                RpcFixtures.blockResult.copy(height = 1, hash = "hash1"),
-                List(RpcFixtures.transactionResult.copy(txid = "tx1", blockhash = "hash1", vout = List(unspentOutput)))
-              )
-          )
-
-          _ <- tx.transact(
-            bitcoinPersistenceStub
-              .createBlock(
-                RpcFixtures.blockResult.copy(height = 2, hash = "hash2"),
-                List(
-                  RpcFixtures.transactionResult
-                    .copy(txid = "tx2", blockhash = "hash2", vin = List(input), vout = List(spentOutput))
-                )
-              )
-          )
+          _ <- tx.transact(bitcoinPersistenceStub.createBlock(block1, List(tx1)))
+          _ <- tx.transact(bitcoinPersistenceStub.createBlock(block2,List(tx2)))
 
           // create view
           _ <- tx.transact(Views.createAccountsViewSql)
