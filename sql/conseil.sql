@@ -853,3 +853,19 @@ CREATE TABLE bitcoin.outputs (
 
 ALTER TABLE ONLY bitcoin.outputs
   ADD CONSTRAINT bitcoin_outputs_txid_fkey FOREIGN KEY (txid) REFERENCES bitcoin.transactions(txid);
+
+CREATE OR REPLACE VIEW bitcoin.accounts AS
+SELECT
+  script_pub_key_addresses AS address,
+  SUM(
+    CASE WHEN bitcoin.inputs.output_txid IS NULL THEN
+      value
+    ELSE
+      0
+    END) AS value
+FROM
+  bitcoin.outputs
+  LEFT JOIN bitcoin.inputs ON bitcoin.outputs.txid = bitcoin.inputs.output_txid
+    AND bitcoin.outputs.n = bitcoin.inputs.v_out
+  GROUP BY
+    bitcoin.outputs.script_pub_key_addresses;
