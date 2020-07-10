@@ -50,7 +50,7 @@ object Security extends ErrorAccumulatingCirceSupport with LazyLogging {
   /** creates security data from configuration */
   def apply(): Either[pureconfig.error.ConfigReaderFailures, SecurityApi] =
     pureconfig
-      .loadConfig[SecurityApi](namespace = "conseil.security.apiKeys")
+      .loadConfig[SecurityApi](namespace = "conseil.security.api-keys")
       .filterOrElse(
         _.isValid,
         ConfigReaderFailures(
