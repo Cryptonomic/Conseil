@@ -34,6 +34,20 @@ class BitcoinPersistence[F[_]: Concurrent] extends LazyLogging {
       Tables.Inputs ++= transactions.flatMap(t => t.vin.map(c => (t, c))).map(_.convertTo[Tables.InputsRow]),
       Tables.Outputs ++= transactions.flatMap(t => t.vout.map(c => (t, c))).map(_.convertTo[Tables.OutputsRow])
     )
+
+  /**
+    * Get sequence of existing blocks heights from the database.
+    *
+    * @param range Inclusive range of the block's height
+    */
+  def getIndexedBlockHeights(range: Range.Inclusive): DBIO[Seq[Int]] =
+    Tables.Blocks.filter(_.height between (range.start, range.end)).map(_.height).result
+
+  /**
+    * Get the latest block from the database.
+    */
+  def getLatestIndexedBlock: DBIO[Option[Tables.BlocksRow]] =
+    Tables.Blocks.sortBy(_.height.desc).take(1).result.headOption
 }
 
 object BitcoinPersistence {

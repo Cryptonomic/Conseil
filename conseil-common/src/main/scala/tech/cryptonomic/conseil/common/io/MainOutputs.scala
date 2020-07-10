@@ -41,8 +41,8 @@ object MainOutputs {
   val showPlatformConfiguration: PartialFunction[PlatformConfiguration, String] = {
     case TezosConfiguration(_, _, TezosNodeConfiguration(host, port, protocol, prefix, chainEnv), _) =>
       s"node $protocol://$host:$port/$prefix/$chainEnv"
-    case BitcoinConfiguration(_, _) =>
-      s"node []" //TODO Add support for BitcoinConfiguration
+    case BitcoinConfiguration(_, _, node, _) =>
+      s"node ${node.url}"
   }
 
 }

@@ -143,31 +143,30 @@ object LorreAppConfig {
     ): Either[ConfigReaderFailures, PlatformConfiguration] =
       // Note that Lorre process allows to run only one integration per process.
       // Configuration file can contain more than one, thus required parameters.
-      for {
-        config <- config
-          .map(loadConfig[PlatformsConfiguration])
-          .getOrElse(loadConfig[PlatformsConfiguration])
-          .flatMap {
-            _.platforms.find(x => x.platform.name == platform && x.network == network) match {
-              case Some(platformsConfig) if platformsConfig.enabled => Right(platformsConfig)
-              case Some(platformsConfig) if !platformsConfig.enabled =>
-                Left(ConfigReaderFailures(new ConfigReaderFailure {
-                  override def description: String =
-                    s"Could not run Lorre for platform: $platform, network: $network because this network is disabled"
-                  override def location: Option[ConfigValueLocation] = None
-                }))
-              case None =>
-                Left(ConfigReaderFailures(new ConfigReaderFailure {
-                  override def description: String = s"Could not find platform: $platform, network: $network"
-                  override def location: Option[ConfigValueLocation] = None
-                }))
-            }
+      config
+        .map(loadConfig[PlatformsConfiguration])
+        .getOrElse(loadConfig[PlatformsConfiguration])
+        .flatMap {
+          _.platforms.find(x => x.platform.name == platform && x.network == network) match {
+            case Some(platformsConfig) if platformsConfig.enabled => Right(platformsConfig)
+            case Some(platformsConfig) if !platformsConfig.enabled =>
+              Left(ConfigReaderFailures(new ConfigReaderFailure {
+                override def description: String =
+                  s"Could not run Lorre for platform: $platform, network: $network because this network is disabled"
+                override def location: Option[ConfigValueLocation] = None
+              }))
+            case None =>
+              Left(ConfigReaderFailures(new ConfigReaderFailure {
+                override def description: String = s"Could not find platform: $platform, network: $network"
+                override def location: Option[ConfigValueLocation] = None
+              }))
           }
-        result <- config match {
+        }
+        .flatMap {
           case c: TezosConfiguration =>
             loadConfig[Option[TNSContractConfiguration]](namespace = s"tns.$network").map(tns => c.copy(tns = tns))
+          case c => Right(c)
         }
-      } yield result
 
     /**
       * Reads a specific entry in the configuration file, to create a valid akka-http client host-pool configuration

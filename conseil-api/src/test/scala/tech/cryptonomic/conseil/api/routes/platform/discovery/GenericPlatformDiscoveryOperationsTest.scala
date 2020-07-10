@@ -119,7 +119,24 @@ class GenericPlatformDiscoveryOperationsTest
               TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
               None
             ),
-            BitcoinConfiguration("mainnet", enabled = true)
+            BitcoinConfiguration(
+              "mainnet",
+              enabled = true,
+              BitcoinNodeConfiguration(
+                hostname = "mainnet",
+                port = 1,
+                protocol = "https",
+                username = "username",
+                password = "password"
+              ),
+              BitcoinBatchFetchConfiguration(
+                indexerThreadsCount = 1,
+                httpFetchThreadsCount = 1,
+                hashBatchSize = 1,
+                blocksBatchSize = 1,
+                transactionsBatchSize = 1
+              )
+            )
           )
         )
 

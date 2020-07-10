@@ -532,7 +532,11 @@ class TezosDatabaseOperationsTest
         val block = generateBlockRows(1, testReferenceTimestamp).head
         val delegatedAccounts = generateAccountRows(howMany = expectedCount, block)
         val delegatesInfo =
-          generateDelegates(delegatedHashes = delegatedAccounts.map(_.accountId), TezosBlockHash(block.hash), block.level)
+          generateDelegates(
+            delegatedHashes = delegatedAccounts.map(_.accountId),
+            TezosBlockHash(block.hash),
+            block.level
+          )
 
         val writeAndGetRows = for {
           _ <- Tables.Blocks += block

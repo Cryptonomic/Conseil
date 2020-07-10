@@ -95,8 +95,33 @@ object Platforms {
     override val platform: BlockchainPlatform = Tezos
   }
 
+  /** configurations to describe a bitcoin node */
+  final case class BitcoinNodeConfiguration(
+      hostname: String,
+      port: Int,
+      protocol: String,
+      username: String,
+      password: String
+  ) {
+    val url = s"$protocol://$hostname:$port"
+  }
+
+  /** configurations to describe a bitcoin batch fetch */
+  final case class BitcoinBatchFetchConfiguration(
+      indexerThreadsCount: Int,
+      httpFetchThreadsCount: Int,
+      hashBatchSize: Int,
+      blocksBatchSize: Int,
+      transactionsBatchSize: Int
+  )
+
   /** collects all config related to a bitcoin network */
-  final case class BitcoinConfiguration(network: String, enabled: Boolean) extends PlatformConfiguration {
+  final case class BitcoinConfiguration(
+      network: String,
+      enabled: Boolean,
+      node: BitcoinNodeConfiguration,
+      batching: BitcoinBatchFetchConfiguration
+  ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Bitcoin
   }
 
