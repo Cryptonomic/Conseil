@@ -31,6 +31,12 @@ trait Views {
   /** Collection-like TableQuery object for view Accounts */
   lazy val Accounts = new TableQuery(tag => new Accounts(tag))
 
+  /**
+    * Bitcoin accounts are based on unspent transaction output (UTXO) model (https://en.wikipedia.org/wiki/Unspent_transaction_output)
+    * To calculate current balance for the given address, find all the existing transaction outputs with the address
+    * and check that it hasn't already been spent.
+    *
+    */
   lazy val createAccountsViewSql = sqlu"""
     CREATE OR REPLACE VIEW bitcoin.accounts AS
       SELECT

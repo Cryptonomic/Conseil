@@ -20,6 +20,11 @@ class BitcoinDbViewsTest
 
   "Bitcoin db views" should {
 
+      /**
+        * The logic behind the Bitcoin accounts is explained in [[Views.createAccountsViewSql]]
+        * In the example below, we create two blocks with two transactions, 
+        * one of which is spent and the other is not.
+        */
       "return balance for the given address" in new BitcoinPersistenceStubs(dbHandler) {
         val unspentOutput = RpcFixtures.outputResult.copy(
           scriptPubKey = RpcFixtures.outputResult.scriptPubKey.copy(addresses = Some(List("address1")))
@@ -46,7 +51,7 @@ class BitcoinDbViewsTest
         (for {
           // run
           _ <- tx.transact(bitcoinPersistenceStub.createBlock(block1, List(tx1)))
-          _ <- tx.transact(bitcoinPersistenceStub.createBlock(block2,List(tx2)))
+          _ <- tx.transact(bitcoinPersistenceStub.createBlock(block2, List(tx2)))
 
           // create view
           _ <- tx.transact(Views.createAccountsViewSql)
