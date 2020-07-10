@@ -7,17 +7,20 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 /**
   * Represents a query filter submitted to the Conseil API.
   *
-  * @param limit                  How many records to return
-  * @param blockIds               Block IDs
-  * @param transactionIDs         Transaction IDs
-  * @param sortBy                 Database column name to sort by
-  * @param order                  Sort items ascending or descending
+  * @param limit            How many records to return
+  * @param blockIds         Block IDs
+  * @param blockHashes      Block Hashes
+  * @param transactionIDs   Transaction IDs
+  * @param accountAddresses Account addresses
+  * @param sortBy           Database column name to sort by
+  * @param order            Sort items ascending or descending
   */
 final case class BitcoinFilter(
     limit: Option[Int] = Some(defaultLimit),
     blockIds: Set[String] = Set.empty,
     blockHashes: Set[String] = Set.empty,
     transactionIDs: Set[String] = Set.empty,
+    accountAddresses: Set[String] = Set.empty,
     sortBy: Option[String] = None,
     order: Option[Sorting] = Some(DescendingSort)
 ) {
@@ -41,6 +44,11 @@ final case class BitcoinFilter(
           field = "blockhash",
           operation = OperationType.in,
           set = blockHashes.toList
+        ),
+        Predicate( // to find accounts by specific address
+          field = "address",
+          operation = OperationType.in,
+          set = accountAddresses.toList
         )
       ).filter(_.set.nonEmpty),
       limit = limit.getOrElse(DataTypes.defaultLimitValue),

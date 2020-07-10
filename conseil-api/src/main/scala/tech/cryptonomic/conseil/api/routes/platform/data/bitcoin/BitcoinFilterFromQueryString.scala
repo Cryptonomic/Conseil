@@ -19,6 +19,7 @@ private[bitcoin] trait BitcoinFilterFromQueryString { self: JsonEntities =>
       List[String],
       List[String],
       List[String],
+      List[String],
       Option[String],
       Option[String]
   )
@@ -30,6 +31,7 @@ private[bitcoin] trait BitcoinFilterFromQueryString { self: JsonEntities =>
           qs[List[String]]("block_id") &
           qs[List[String]]("block_hash") &
           qs[List[String]]("transaction_id") &
+          qs[List[String]]("account_addresses") &
           qs[Option[String]]("sort_by") &
           qs[Option[String]]("order")
     raw map (flatten(_))
@@ -38,12 +40,13 @@ private[bitcoin] trait BitcoinFilterFromQueryString { self: JsonEntities =>
   /** Function for mapping query string to Filter */
   val bitcoinQsFilter: QueryString[BitcoinFilter] =
     filterQs.map {
-      case (limit, blockIds, blockHashes, transactionIds, sortBy, order) =>
+      case (limit, blockIds, blockHashes, transactionIds, accountAddresses, sortBy, order) =>
         BitcoinFilter(
           limit,
           blockIds.toSet,
           blockHashes.toSet,
           transactionIds.toSet,
+          accountAddresses.toSet,
           sortBy,
           order.flatMap(Sorting.fromString)
         )

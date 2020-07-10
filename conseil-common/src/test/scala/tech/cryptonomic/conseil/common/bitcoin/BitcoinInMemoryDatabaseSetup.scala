@@ -8,10 +8,11 @@ trait BitcoinInMemoryDatabaseSetup extends InMemoryDatabaseSetup {
   registerSchema(
     "bitcoin",
     Seq(
-      Fixture(Tables.Blocks),
-      Fixture(Tables.Transactions),
-      Fixture(Tables.Inputs),
-      Fixture(Tables.Outputs)
+      Fixture.table(Tables.Blocks),
+      Fixture.table(Tables.Transactions),
+      Fixture.table(Tables.Inputs),
+      Fixture.table(Tables.Outputs),
+      Fixture.view(Views.AccountsViewSql)
     )
   )
 }

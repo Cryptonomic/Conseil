@@ -106,6 +106,22 @@ case class BitcoinDataRoutes(
       }
   }
 
+  /** V2 Route implementation for accounts endpoint */
+  private val accountsRoute: Route = bitcoinAccountsEndpoint.implementedByAsync {
+    case ((network, filter), _) =>
+      platformNetworkValidation(network) {
+        dataQueries.fetchAccounts(filter.toQuery.withLimitCap(maxQueryResultSize))
+      }
+  }
+
+  /** V2 Route implementation for accounts by address endpoint */
+  private val accountsByAddressRoute: Route = bitcoinAccountByAddressEndpoint.implementedByAsync {
+    case ((network, address), _) =>
+      platformNetworkValidation(network) {
+        dataQueries.fetchAccountByAddress(address)
+      }
+  }
+
   /** V2 concatenated routes */
   override val getRoute: Route =
     concat(
@@ -115,7 +131,9 @@ case class BitcoinDataRoutes(
       transactionsRoute,
       transactionByIdRoute,
       inputsRoute,
-      outputsRoute
+      outputsRoute,
+      accountsRoute,
+      accountsByAddressRoute
     )
 
   /** Function for validation of the platform and network with flatten */

@@ -37,7 +37,7 @@ trait Views {
     * and check that it hasn't already been spent.
     *
     */
-  lazy val createAccountsViewSql = sqlu"""
+  lazy val AccountsViewSql = sqlu"""
     CREATE OR REPLACE VIEW bitcoin.accounts AS
       SELECT
         script_pub_key_addresses AS address,
