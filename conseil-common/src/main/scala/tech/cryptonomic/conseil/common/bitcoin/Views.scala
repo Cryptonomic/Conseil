@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.common.bitcoin
 
+import slick.sql.SqlAction
+
 // Views from the database, this file is created manually, because Slick isn't able to generate it in the right way.
 
 /** Stand-alone Slick data model for immediate use */
@@ -37,7 +39,7 @@ trait Views {
     * and check that it hasn't already been spent.
     *
     */
-  lazy val AccountsViewSql = sqlu"""
+  lazy val AccountsViewSql: SqlAction[Int, NoStream, Effect] = sqlu"""
     CREATE OR REPLACE VIEW bitcoin.accounts AS
       SELECT
         script_pub_key_addresses AS address,

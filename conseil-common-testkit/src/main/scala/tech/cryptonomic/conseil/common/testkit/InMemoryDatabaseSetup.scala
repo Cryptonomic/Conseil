@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.common.testkit
 import slick.dbio.{DBIOAction, Effect}
 import slick.jdbc.PostgresProfile.DDL
 import slick.jdbc.PostgresProfile.api._
+import slick.sql.SqlAction
 
 trait InMemoryDatabaseSetup {
 
@@ -32,7 +33,9 @@ trait InMemoryDatabaseSetup {
     def table[U](query: TableQuery[_ <: Table[U]]): Fixture = TFixture(query)
 
     /** Creates fixture for views */
-    def view(createSql: String): Fixture = VFixture(createSql)
+    def view(createSql: String): Fixture = view(Iterable(createSql))
+    def view(createAction: SqlAction[Int, NoStream, Effect]): Fixture = view(createAction.statements)
+    def view(createStatements: Iterable[String]): Fixture = VFixture(createStatements)
   }
 
   /*** Represents fixture for common slick tables */
@@ -42,8 +45,8 @@ trait InMemoryDatabaseSetup {
   }
 
   /*** Represents fixture for custom slick views */
-  case class VFixture(createSql: String) extends Fixture {
-    private val ddl = DDL(createSql, "") // We do not need to drop views
+  case class VFixture(createSql: Iterable[String]) extends Fixture {
+    private val ddl = DDL(createSql, Iterable.empty) // We do not need to drop views
 
     def create: DBIOAction[Unit, NoStream, Effect.Schema] = ddl.create
     def delete: DBIOAction[Int, NoStream, Effect.Write] = DBIOAction.successful(0)
