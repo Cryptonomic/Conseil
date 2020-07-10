@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
-import tech.cryptonomic.conseil.common.bitcoin.Views
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.tezos.Tables
 

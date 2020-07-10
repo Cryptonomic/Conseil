@@ -124,9 +124,9 @@ class BitcoinDataQueriesTest
         dbHandler.run(Tables.Inputs ++= inputs).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.Outputs ++= outputs).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchAccountByAddress("script_pub_key_address_1")) { result =>
-          result.value should (contain key "address" and contain value Some("script_pub_key_address_1"))
-          result.value should (contain key "value" and contain value Some("1"))
+        whenReady(sut.fetchAccountByAddress("script_pub_key_address_2")) { result =>
+          result.value should (contain key "address" and contain value output2.scriptPubKeyAddresses)
+          //TODO Once we will replace BigDecimal into something better, we should compare 'value' field here as well
         }
       }
     }
@@ -230,11 +230,12 @@ object BitcoinDataQueriesTest {
 
     val input1: InputsRow = InputsRow(txid = "1", sequence = 1, vOut = Some(1), outputTxid = Some("1"))
     val input2: InputsRow = InputsRow(txid = "2", sequence = 2, vOut = Some(2))
-    val input3: InputsRow = InputsRow(txid = "3", sequence = 3, vOut = Some(3))
+    val input3: InputsRow = InputsRow(txid = "3", sequence = 3, vOut = Some(3), outputTxid = Some("3"))
     val inputs: Seq[InputsRow] = List(input1, input2, input3)
 
     val output1: OutputsRow = OutputsRow(
       txid = "1",
+      value = Some(1L),
       n = 1,
       scriptPubKeyAsm = "script_pub_asm_1",
       scriptPubKeyHex = "script_pub_hex_1",
@@ -243,6 +244,7 @@ object BitcoinDataQueriesTest {
     )
     val output2: OutputsRow = OutputsRow(
       txid = "2",
+      value = Some(BigDecimal.valueOf(10.0)),
       n = 2,
       scriptPubKeyAsm = "script_pub_asm_2",
       scriptPubKeyHex = "script_pub_hex_2",
@@ -251,6 +253,7 @@ object BitcoinDataQueriesTest {
     )
     val output3: OutputsRow = OutputsRow(
       txid = "3",
+      value = Some(100L),
       n = 3,
       scriptPubKeyAsm = "script_pub_asm_3",
       scriptPubKeyHex = "script_pub_hex_3",
