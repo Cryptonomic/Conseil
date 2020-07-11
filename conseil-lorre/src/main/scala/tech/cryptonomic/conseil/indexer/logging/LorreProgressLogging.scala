@@ -16,7 +16,7 @@ trait LorreProgressLogging {
     * @param processStartNanos a nano-time from jvm monotonic time, used to identify when the whole processing operation began
     * @param processed how many entities were processed at the current checkpoint
     */
-  def logProcessingProgress(entityName: String, totalToProcess: Int, processStartNanos: Long)(
+  def logProcessingProgress(entityName: String, totalToProcess: Long, processStartNanos: Long)(
       processed: Int
   ): Unit = {
     val elapsed = System.nanoTime() - processStartNanos

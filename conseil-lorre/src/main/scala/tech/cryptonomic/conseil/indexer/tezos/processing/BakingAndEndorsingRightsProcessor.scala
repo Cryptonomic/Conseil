@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.indexer.tezos.processing
 
 import tech.cryptonomic.conseil.common.tezos.TezosOptics
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
+  Block,
   BlockHeaderMetadata,
   Endorsement,
   EndorsingRights,
@@ -46,15 +47,13 @@ class BakingAndEndorsingRightsProcessor(
   ): Future[Unit] = {
     import cats.implicits._
 
-    val blockHashesWithCycleAndGovernancePeriod = fetchingResults.map { results =>
-      {
-        val data = results._1.data
-        val hash = data.hash
+    val blockHashesWithCycleAndGovernancePeriod = fetchingResults.map {
+      case (Block(data, _, _), _) => {
         data.metadata match {
-          case GenesisMetadata => FetchRights(None, None, Some(hash))
+          case GenesisMetadata =>
+            FetchRights(None, None, Some(data.hash))
           case BlockHeaderMetadata(_, _, _, _, _, level) =>
-            FetchRights(Some(level.cycle), Some(level.voting_period), Some(hash))
-
+            FetchRights(Some(level.cycle), Some(level.voting_period), Some(data.hash))
         }
       }
     }
@@ -63,33 +62,34 @@ class BakingAndEndorsingRightsProcessor(
       nodeOperator.getBatchBakingRights(blockHashesWithCycleAndGovernancePeriod),
       nodeOperator.getBatchEndorsingRights(blockHashesWithCycleAndGovernancePeriod)
     ).mapN { (br, er) =>
-      val updatedEndorsingRights = updateEndorsingRights(er, fetchingResults)
+      val updatedEndorsingRights = addEndorsedBlockToRights(er, fetchingResults)
       (db.run(TezosDb.upsertBakingRights(br)), db.run(TezosDb.upsertEndorsingRights(updatedEndorsingRights)))
     }.void
   }
 
   /** Updates endorsing rights with endorsed block */
-  private def updateEndorsingRights(
+  private def addEndorsedBlockToRights(
       endorsingRights: Map[FetchRights, List[EndorsingRights]],
       fetchingResults: nodeOperator.BlockFetchingResults
-  ): Map[FetchRights, List[EndorsingRights]] =
+  ): Map[FetchRights, List[EndorsingRights]] = {
+
+    val endorsementsForBlock = fetchingResults.map {
+      case (Block(data, operations, _), _) =>
+        data.hash -> operations.flatMap(_.contents.collect { case e: Endorsement => e })
+    }.toMap.withDefaultValue(List.empty)
+
     endorsingRights.map {
-      case (fetchRights, endorsingRightsList) =>
-        fetchRights -> endorsingRightsList.map { rights =>
-              val endorsedBlock = fetchingResults.find {
-                case (block, _) =>
-                  fetchRights.blockHash.contains(block.data.hash)
-              }.flatMap {
-                case (block, _) =>
-                  block.operationGroups.flatMap {
-                    _.contents.collect {
-                      case e: Endorsement if e.metadata.delegate.value == rights.delegate => e
-                    }.map(_.level)
-                  }.headOption
-              }
-              rights.copy(endorsedBlock = endorsedBlock)
-            }
+      case (fetch @ FetchRights(_, _, Some(fetchHash)), rightsList) if endorsementsForBlock.contains(fetchHash) =>
+        val updatedRights = rightsList.map { rights =>
+          val endorsedLevel = endorsementsForBlock(fetchHash).collect {
+            case endorsement if endorsement.metadata.delegate.value == rights.delegate => endorsement.level
+          }.headOption
+          rights.copy(endorsedBlock = endorsedLevel)
+        }
+        fetch -> updatedRights
+      case noEndorseInfo => noEndorseInfo
     }
+  }
 
   /** Fetches future baking and endorsing rights to insert it into the DB */
   private[tezos] def writeFutureRights()(implicit ec: ExecutionContext): Unit = {
@@ -104,7 +104,7 @@ class BakingAndEndorsingRightsProcessor(
 
     (blockHead, brLevelFut, erLevelFut).mapN { (head, brLevel, erLevel) =>
       val headLevel = head.header.level
-      val rightsStartLevel = math.max(brLevel, erLevel) + 1
+      val rightsStartLevel = (brLevel max erLevel) + 1
       berLogger.info(
         s"Current Tezos block head level: $headLevel DB stored baking rights level: $brLevel DB stored endorsing rights level: $erLevel"
       )
@@ -118,7 +118,7 @@ class BakingAndEndorsingRightsProcessor(
         .getOrElse(0)
 
       berLogger.info(s"Level and position to fetch ($headLevel, $length)")
-      val range = List.range(Math.max(headLevel + 1, rightsStartLevel), headLevel + length)
+      val range = List.range((headLevel + 1) max rightsStartLevel, headLevel + length)
       Source
         .fromIterator(() => range.toIterator)
         .grouped(configuration.fetchSize)

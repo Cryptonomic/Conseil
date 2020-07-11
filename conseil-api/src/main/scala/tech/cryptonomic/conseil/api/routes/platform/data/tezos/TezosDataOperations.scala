@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 import com.github.ghik.silencer.silent
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataOperations
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, TezosBlockHash}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockLevel, TezosBlockHash}
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.common.util.CollectionOps._
@@ -138,14 +138,14 @@ class TezosDataOperations extends ApiDataOperations {
     )
 
   /* use as max block level when none exists */
-  private[tezos] val defaultBlockLevel: BigDecimal = -1
+  private[tezos] val defaultBlockLevel: BlockLevel = -1
 
   /** Computes the max level of blocks or [[defaultBlockLevel]] if no block exists */
-  private[tezos] def fetchMaxBlockLevel: DBIO[Int] =
+  private[tezos] def fetchMaxBlockLevel: DBIO[BlockLevel] =
     Tables.Blocks
       .map(_.level)
       .max
-      .getOrElse(defaultBlockLevel.toInt)
+      .getOrElse(defaultBlockLevel)
       .result
 
 }

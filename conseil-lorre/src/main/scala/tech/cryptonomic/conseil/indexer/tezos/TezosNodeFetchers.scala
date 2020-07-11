@@ -59,7 +59,7 @@ private[tezos] trait TezosBlocksDataFetchers {
   private type FutureFetcher = DataFetcher[Future, List, Throwable]
 
   /** untyped alias to clarify intent */
-  type Offset = Int
+  type Offset = Long
 
   /** a fetcher of blocks */
   implicit def blocksFetcher(hashRef: TezosBlockHash) = new FutureFetcher {
@@ -159,7 +159,7 @@ private[tezos] trait TezosBlocksDataFetchers {
     import TezosJsonDecoders.Circe.Rights._
 
     /** the input type, e.g. ids of data */
-    override type In = Int
+    override type In = BlockLevel
 
     /** the output type, e.g. the decoded block data */
     override type Out = List[BakingRights]
@@ -167,12 +167,12 @@ private[tezos] trait TezosBlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (level: Int) => s"blocks/head/helpers/baking_rights?level=$level"
+    private val makeUrl = (level: BlockLevel) => s"blocks/head/helpers/baking_rights?level=$level"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
-    override val fetchData: Kleisli[Future, List[Int], List[(Int, String)]] =
+    override val fetchData: Kleisli[Future, List[BlockLevel], List[(BlockLevel, String)]] =
       Kleisli(
         levels => {
           berLogger.info("Fetching future baking rights")
@@ -210,7 +210,7 @@ private[tezos] trait TezosBlocksDataFetchers {
     import TezosJsonDecoders.Circe.Rights._
 
     /** the input type, e.g. ids of data */
-    override type In = Int
+    override type In = BlockLevel
 
     /** the output type, e.g. the decoded block data */
     override type Out = List[EndorsingRights]
@@ -218,12 +218,12 @@ private[tezos] trait TezosBlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (level: Int) => s"blocks/head/helpers/endorsing_rights?level=$level"
+    private val makeUrl = (level: BlockLevel) => s"blocks/head/helpers/endorsing_rights?level=$level"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
-    override val fetchData: Kleisli[Future, List[Int], List[(Int, String)]] =
+    override val fetchData: Kleisli[Future, List[BlockLevel], List[(BlockLevel, String)]] =
       Kleisli(
         levels => {
           berLogger.info("Fetching future endorsing rights")

@@ -4,7 +4,9 @@ import java.sql.Timestamp
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatest.OptionValues
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, _}
@@ -23,7 +25,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, TezosBlockHa
 import scala.concurrent.duration._
 
 class TezosDataOperationsTest
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
@@ -2301,7 +2303,7 @@ class TezosDataOperationsTest
           accountId = "id",
           blockId = "blockid",
           balance = BigDecimal(1.0),
-          blockLevel = BigDecimal(1),
+          blockLevel = 1,
           asof = new Timestamp(1)
         )
 
@@ -2341,21 +2343,21 @@ class TezosDataOperationsTest
             accountId = "id1",
             blockId = "blockid1",
             balance = BigDecimal(1.0),
-            blockLevel = BigDecimal(1),
+            blockLevel = 1,
             asof = new Timestamp(1)
           ),
           AccountsHistoryRow(
             accountId = "id1",
             blockId = "blockid2",
             balance = BigDecimal(2.0),
-            blockLevel = BigDecimal(2),
+            blockLevel = 2,
             asof = new Timestamp(2)
           ),
           AccountsHistoryRow(
             accountId = "id1",
             blockId = "blockid3",
             balance = BigDecimal(3.0),
-            blockLevel = BigDecimal(3),
+            blockLevel = 3,
             asof = new Timestamp(3)
           )
         )
@@ -2395,21 +2397,21 @@ class TezosDataOperationsTest
             accountId = "id1",
             blockId = "blockid1",
             balance = BigDecimal(1.0),
-            blockLevel = BigDecimal(1),
+            blockLevel = 1,
             asof = new Timestamp(1)
           ),
           AccountsHistoryRow(
             accountId = "id2",
             blockId = "blockid2",
             balance = BigDecimal(2.0),
-            blockLevel = BigDecimal(2),
+            blockLevel = 2,
             asof = new Timestamp(2)
           ),
           AccountsHistoryRow(
             accountId = "id3",
             blockId = "blockid3",
             balance = BigDecimal(3.0),
-            blockLevel = BigDecimal(3),
+            blockLevel = 3,
             asof = new Timestamp(3)
           )
         )

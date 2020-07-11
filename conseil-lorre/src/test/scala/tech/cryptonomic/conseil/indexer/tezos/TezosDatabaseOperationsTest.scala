@@ -5,7 +5,9 @@ import java.time.Instant
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatest.OptionValues
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
@@ -19,7 +21,7 @@ import scala.language.postfixOps
 import scala.util.Random
 
 class TezosDatabaseOperationsTest
-    extends WordSpec
+    extends AnyWordSpec
     with TezosDatabaseOperationsTestFixtures
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
@@ -834,7 +836,8 @@ class TezosDatabaseOperationsTest
         )
 
         def entry(accountAtIndex: Int, atLevel: Int, time: Timestamp) =
-          AccountId(accountIds(accountAtIndex)) -> (TezosBlockHash(blockIds(atLevel)), atLevel, Some(time.toInstant), None, None)
+          AccountId(accountIds(accountAtIndex)) ->
+              BlockReference(TezosBlockHash(blockIds(atLevel)), atLevel, Some(time.toInstant), None, None)
 
         //expecting only the following to remain
         val expected =
@@ -884,7 +887,8 @@ class TezosDatabaseOperationsTest
         )
 
         def entry(delegateAtIndex: Int, atLevel: Int) =
-          PublicKeyHash(delegateKeyHashes(delegateAtIndex)) -> (TezosBlockHash(blockIds(atLevel)), atLevel, None, None, None)
+          PublicKeyHash(delegateKeyHashes(delegateAtIndex)) ->
+              BlockReference(TezosBlockHash(blockIds(atLevel)), atLevel, None, None, None)
 
         //expecting only the following to remain
         val expected =
@@ -949,7 +953,7 @@ class TezosDatabaseOperationsTest
           timestamp = latest,
           kind = ops.head.kind,
           cycle = None,
-          level = Some(block.level)
+          level = block.level
         )
 
         //check
@@ -1020,7 +1024,7 @@ class TezosDatabaseOperationsTest
           timestamp = latest,
           kind = ops.head.kind,
           cycle = None,
-          level = Some(0)
+          level = 0
         )
         //check
         val feesCalculation = sut.calculateAverageFees(selection.head.kind, feesToConsider)
@@ -1081,7 +1085,7 @@ class TezosDatabaseOperationsTest
 
       "write new custom update events to the processed table on db" in {
         //given
-        val values = (1 to 3).map(BigDecimal(_)).toList
+        val values = (1L to 3L).toList
 
         //when
         val populate = dbHandler.run(sut.writeProcessedEventsLevels("event", values))
@@ -1133,7 +1137,7 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
         forAll(checkpoint.values) {
-          case (hash, level, instantOpt, cycleOpt, periodOpt) =>
+          case BlockReference(hash, level, instantOpt, cycleOpt, periodOpt) =>
             hash.value shouldEqual block.hash
             level shouldEqual block.level
             instantOpt.value shouldEqual block.timestamp.toInstant
@@ -1187,7 +1191,7 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
         forAll(checkpoint.values) {
-          case (hash, level, instantOpt, cycleOpt, periodOpt) =>
+          case BlockReference(hash, level, instantOpt, cycleOpt, periodOpt) =>
             hash.value shouldEqual block.hash
             level shouldEqual block.level
             instantOpt.value shouldEqual block.timestamp.toInstant

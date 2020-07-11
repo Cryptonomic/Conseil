@@ -88,7 +88,7 @@ CREATE TABLE tezos.governance (
     voting_period integer NOT NULL,
     voting_period_kind character varying NOT NULL,
     cycle integer,
-    level integer,
+    level bigint,
     block_hash character varying NOT NULL,
     proposal_hash character varying NOT NULL,
     yay_count integer,
@@ -113,7 +113,7 @@ CREATE INDEX governance_proposal_hash_idx ON tezos.governance USING btree (propo
 
 
 CREATE TABLE tezos.processed_chain_events (
-    event_level numeric,
+    event_level bigint,
     event_type char varying,
     PRIMARY KEY (event_level, event_type)
 );
@@ -135,7 +135,7 @@ CREATE TABLE tezos.token_balances (
     address text NOT NULL,
     balance numeric NOT NULL,
     block_id character varying NOT NULL,
-    block_level numeric DEFAULT '-1'::integer NOT NULL,
+    block_level bigint DEFAULT '-1'::integer NOT NULL,
     asof timestamp without time zone NOT NULL,
     PRIMARY KEY (token_id, address, block_level)
 );
@@ -163,7 +163,7 @@ CREATE TABLE tezos.accounts (
     script character varying,
     storage character varying,
     balance numeric NOT NULL,
-    block_level numeric DEFAULT '-1'::integer NOT NULL,
+    block_level bigint DEFAULT '-1'::integer NOT NULL,
     manager character varying, -- retro-compat from protocol 5+
     spendable boolean, -- retro-compat from protocol 5+
     delegate_setable boolean, -- retro-compat from protocol 5+
@@ -179,7 +179,7 @@ CREATE TABLE tezos.accounts_history (
     counter integer,
     storage character varying,
     balance numeric NOT NULL,
-    block_level numeric DEFAULT '-1'::integer NOT NULL,
+    block_level bigint DEFAULT '-1'::integer NOT NULL,
     delegate_value char varying, -- retro-compat from protocol 5+
     asof timestamp without time zone NOT NULL,
     is_baker boolean NOT NULL DEFAULT false,
@@ -197,7 +197,7 @@ CREATE INDEX ix_account_id ON tezos.accounts_history USING btree (account_id);
 CREATE TABLE tezos.accounts_checkpoint (
     account_id character varying NOT NULL,
     block_id character varying NOT NULL,
-    block_level integer DEFAULT '-1'::integer NOT NULL,
+    block_level bigint DEFAULT '-1'::integer NOT NULL,
     asof timestamp with time zone NOT NULL,
     cycle integer
 );
@@ -209,7 +209,7 @@ CREATE TABLE tezos.accounts_checkpoint (
 
 CREATE TABLE tezos.baking_rights (
     block_hash character varying,
-    level integer NOT NULL,
+    block_level bigint NOT NULL,
     delegate character varying NOT NULL,
     priority integer NOT NULL,
     estimated_time timestamp without time zone,
@@ -230,11 +230,11 @@ CREATE TABLE tezos.balance_updates (
     kind character varying NOT NULL,
     account_id character varying NOT NULL,
     change numeric NOT NULL,
-    level numeric,
+    level bigint,
     category character varying,
     operation_group_hash character varying,
     block_id character varying NOT NULL,
-    block_level integer NOT NULL,
+    block_level bigint NOT NULL,
     cycle integer,
     period integer
 );
@@ -264,7 +264,7 @@ ALTER SEQUENCE tezos.balance_updates_id_seq OWNED BY tezos.balance_updates.id;
 --
 
 CREATE TABLE tezos.blocks (
-    level integer NOT NULL,
+    level bigint NOT NULL,
     proto integer NOT NULL,
     predecessor character varying NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
@@ -280,7 +280,7 @@ CREATE TABLE tezos.blocks (
     active_proposal character varying,
     baker character varying,
     consumed_gas numeric,
-    meta_level integer,
+    meta_level bigint,
     meta_level_position integer,
     meta_cycle integer,
     meta_cycle_position integer,
@@ -308,7 +308,7 @@ CREATE TABLE tezos.bakers (
     rolls integer DEFAULT 0 NOT NULL,
     deactivated boolean NOT NULL,
     grace_period integer NOT NULL,
-    block_level integer DEFAULT '-1'::integer NOT NULL,
+    block_level bigint DEFAULT '-1'::integer NOT NULL,
     cycle integer,
     period integer
 );
@@ -327,7 +327,7 @@ CREATE TABLE tezos.bakers_history (
     rolls integer DEFAULT 0 NOT NULL,
     deactivated boolean NOT NULL,
     grace_period integer NOT NULL,
-    block_level integer DEFAULT '-1'::integer NOT NULL,
+    block_level bigint DEFAULT '-1'::integer NOT NULL,
     cycle integer,
     period integer,
     asof timestamp without time zone NOT NULL
@@ -341,7 +341,7 @@ CREATE TABLE tezos.bakers_history (
 CREATE TABLE tezos.bakers_checkpoint (
     delegate_pkh character varying NOT NULL,
     block_id character varying NOT NULL,
-    block_level integer DEFAULT '-1'::integer NOT NULL,
+    block_level bigint DEFAULT '-1'::integer NOT NULL,
     cycle integer,
     period integer
 );
@@ -353,13 +353,13 @@ CREATE TABLE tezos.bakers_checkpoint (
 
 CREATE TABLE tezos.endorsing_rights (
     block_hash character varying,
-    level integer NOT NULL,
+    block_level bigint NOT NULL,
     delegate character varying NOT NULL,
     slot integer NOT NULL,
     estimated_time timestamp without time zone,
     cycle integer,
     governance_period integer,
-    endorsed_block integer
+    endorsed_block bigint
 );
 
 
@@ -374,7 +374,7 @@ CREATE TABLE tezos.fees (
     "timestamp" timestamp without time zone NOT NULL,
     kind character varying NOT NULL,
     cycle integer,
-    level integer
+    level bigint
 );
 
 
@@ -389,7 +389,7 @@ CREATE TABLE tezos.operation_groups (
     branch character varying NOT NULL,
     signature character varying,
     block_id character varying NOT NULL,
-    block_level integer NOT NULL
+    block_level bigint NOT NULL
 );
 
 
@@ -404,7 +404,7 @@ CREATE TABLE tezos.operations (
     operation_id integer NOT NULL,
     operation_group_hash character varying NOT NULL,
     kind character varying NOT NULL,
-    level integer,
+    level bigint ,
     delegate character varying,
     slots character varying,
     nonce character varying,
@@ -434,7 +434,7 @@ CREATE TABLE tezos.operations (
     paid_storage_size_diff numeric,
     originated_contracts character varying,
     block_hash character varying NOT NULL,
-    block_level integer NOT NULL,
+    block_level bigint NOT NULL,
     ballot character varying,
     internal boolean NOT NULL,
     period integer,
@@ -526,7 +526,7 @@ ALTER TABLE ONLY tezos.accounts
 --
 
 ALTER TABLE ONLY tezos.baking_rights
-    ADD CONSTRAINT baking_rights_pkey PRIMARY KEY (level, delegate);
+    ADD CONSTRAINT baking_rights_pkey PRIMARY KEY (block_level, delegate);
 
 
 --
@@ -558,7 +558,7 @@ ALTER TABLE ONLY tezos.bakers
 --
 
 ALTER TABLE ONLY tezos.endorsing_rights
-    ADD CONSTRAINT endorsing_rights_pkey PRIMARY KEY (level, delegate, slot);
+    ADD CONSTRAINT endorsing_rights_pkey PRIMARY KEY (block_level, delegate, slot);
 
 
 --
@@ -573,7 +573,7 @@ ALTER TABLE ONLY tezos.operations
 -- Name: baking_rights_level_idx; Type: INDEX; Schema: tezos; Owner: -
 --
 
-CREATE INDEX baking_rights_level_idx ON tezos.baking_rights USING btree (level);
+CREATE INDEX baking_rights_level_idx ON tezos.baking_rights USING btree (block_level);
 
 CREATE INDEX baking_rights_delegate_idx ON tezos.baking_rights USING btree (delegate);
 
@@ -583,7 +583,7 @@ CREATE INDEX ix_delegate_priority ON tezos.baking_rights USING btree (delegate, 
 -- Name: endorsing_rights_level_idx; Type: INDEX; Schema: tezos; Owner: -
 --
 
-CREATE INDEX endorsing_rights_level_idx ON tezos.endorsing_rights USING btree (level);
+CREATE INDEX endorsing_rights_level_idx ON tezos.endorsing_rights USING btree (block_level);
 
 CREATE INDEX endorsing_rights_delegate_idx ON tezos.endorsing_rights USING btree (delegate);
 

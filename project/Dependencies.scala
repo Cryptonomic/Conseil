@@ -35,7 +35,8 @@ object Dependencies {
     val apacheCommonText = "1.7"
     val radixTree = "0.5.1"
 
-    val scalaTest = "3.0.5"
+    val scalaTest = "3.1.2"
+    val scalaTestScalaCheck = "3.1.2.0"
     val scalaTestJson = "0.0.3"
     val scalaMock = "4.1.0"
     val testContainerPostgres = "1.12.3"
@@ -143,9 +144,13 @@ object Dependencies {
     "com.fasterxml.jackson.module" %% "jackson-module-scala" % Versions.jackson
   )
 
-  private val scalaTestCompile = Seq("org.scalatest" %% "scalatest" % Versions.scalaTest) // Dedicated for common-testkit
-  private val scalaTest = scalaTestCompile.map(_     % Test)
-  private val scalaTestJson = Seq("com.stephenn"     %% "scalatest-json-jsonassert" % Versions.scalaTestJson % Test)
+  private val scalaTestCompile = Seq(
+    "org.scalactic"     %% "scalactic"       % Versions.scalaTest,
+    "org.scalatest"     %% "scalatest"       % Versions.scalaTest,
+    "org.scalatestplus" %% "scalacheck-1-14" % Versions.scalaTestScalaCheck
+  ) // Dedicated for common-testkit
+  private val scalaTest = scalaTestCompile.map(_ % Test)
+  private val scalaTestJson = Seq("com.stephenn" %% "scalatest-json-jsonassert" % Versions.scalaTestJson % Test)
 
   private val scalaMock = Seq("org.scalamock" %% "scalamock" % Versions.scalaMock % Test)
 

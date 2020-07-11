@@ -366,7 +366,7 @@ class BigMapsOperationsTest
           block =>
             val sampleOperations = generateOperationGroup(block, generateOperations = true)
             val opGroupHash = sampleOperations.hash
-            val updateValue = block.data.header.level match {
+            val updateValue = block.data.header.level.toInt match {
               case 1 => List(10) //block-lvl 1 will carry one update
               case 2 => List(20, 50) //block-lvl 2 will carry both updates
               case _ => List.empty
@@ -539,7 +539,7 @@ class BigMapsOperationsTest
 
         val operationsWithDiffs: List[List[OperationsGroup]] = blocks.map { block =>
           val sampleOperations = generateOperationGroup(block, generateOperations = true)
-          val sourceIdsToCopy = block.data.header.level match {
+          val sourceIdsToCopy = block.data.header.level.toInt match {
             case 1 => List(1) //block-lvl 1 will copy contents from map 1
             case 2 => List(1, 2) //block-lvl 2 will copy contents from map 1 and 2 both
             case _ => List.empty

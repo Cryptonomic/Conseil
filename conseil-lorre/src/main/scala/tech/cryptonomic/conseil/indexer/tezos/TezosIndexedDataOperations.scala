@@ -1,11 +1,11 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
+import scala.concurrent.Future
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.sql.DatabaseMetadataOperations
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockLevel
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
-
-import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Functionality for fetching data from the Conseil database specific only for conseil-lorre module.
@@ -18,30 +18,33 @@ private[tezos] class TezosIndexedDataOperations extends DatabaseMetadataOperatio
     *
     * @return Max level or -1 if no blocks were found in the database.
     */
-  def fetchMaxLevel()(implicit ec: ExecutionContext): Future[Int] = {
-    val optionalMax: Future[Option[Int]] = runQuery(Tables.Blocks.map(_.level).max.result)
-    optionalMax.map(_.getOrElse(-1))
-  }
+  def fetchMaxLevel(): Future[BlockLevel] =
+    runQuery(
+      Tables.Blocks
+        .map(_.level)
+        .max
+        .getOrElse(defaultBlockLevel)
+        .result
+    )
 
   /**
     * Fetches the max level of baking rights.
     *
     * @return Max level or -1 if no baking rights were found in the database.
     */
-  def fetchMaxBakingRightsLevel()(implicit ec: ExecutionContext): Future[Int] = {
-    val optionalMax: Future[Option[Int]] = runQuery(Tables.BakingRights.map(_.level).max.result)
-    optionalMax.map(_.getOrElse(-1))
-  }
+  def fetchMaxBakingRightsLevel(): Future[BlockLevel] =
+    runQuery(Tables.BakingRights.map(_.blockLevel).max.getOrElse(defaultBlockLevel).result)
 
   /**
     * Fetches the max level of endorsing rights.
     *
     * @return Max level or -1 if no endorsing rights were found in the database.
     */
-  def fetchMaxEndorsingRightsLevel()(implicit ec: ExecutionContext): Future[Int] = {
-    val optionalMax: Future[Option[Int]] = runQuery(Tables.EndorsingRights.map(_.level).max.result)
-    optionalMax.map(_.getOrElse(-1))
-  }
+  def fetchMaxEndorsingRightsLevel(): Future[BlockLevel] =
+    runQuery(Tables.EndorsingRights.map(_.blockLevel).max.getOrElse(defaultBlockLevel).result)
+
+  /* use as max block level when none exists */
+  private[tezos] val defaultBlockLevel: BlockLevel = -1
 
   /**
     * Fetches a block by level from the db
@@ -49,7 +52,7 @@ private[tezos] class TezosIndexedDataOperations extends DatabaseMetadataOperatio
     * @param level the requested level for the block
     * @return the block if that level is already stored
     */
-  def fetchBlockAtLevel(level: Int): Future[Option[Tables.BlocksRow]] =
+  def fetchBlockAtLevel(level: BlockLevel): Future[Option[Tables.BlocksRow]] =
     runQuery(Tables.Blocks.filter(_.level === level).result.headOption)
 
 }

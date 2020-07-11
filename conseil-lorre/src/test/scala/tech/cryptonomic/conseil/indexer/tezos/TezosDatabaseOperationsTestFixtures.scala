@@ -33,7 +33,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
         high = high,
         timestamp = new Timestamp(startAt.getTime + current),
         kind = "kind",
-        level = None,
+        level = 1,
         cycle = None
       )
     }.toList
@@ -43,7 +43,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
   def generateAccounts(
       howMany: Int,
       blockHash: TezosBlockHash,
-      blockLevel: Int,
+      blockLevel: BlockLevel,
       time: Instant = testReferenceTimestamp.toInstant
   )(
       implicit randomSeed: RandomSeed
@@ -70,7 +70,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
   }
 
   /* randomly generates a number of delegates with associated block data */
-  def generateDelegates(delegatedHashes: List[String], blockHash: TezosBlockHash, blockLevel: Int)(
+  def generateDelegates(delegatedHashes: List[String], blockHash: TezosBlockHash, blockLevel: BlockLevel)(
       implicit randomSeed: RandomSeed
   ): BlockTagged[Map[PublicKeyHash, Delegate]] = {
     require(

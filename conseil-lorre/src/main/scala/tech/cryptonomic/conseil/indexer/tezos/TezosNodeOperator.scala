@@ -13,13 +13,13 @@ import tech.cryptonomic.conseil.indexer.tezos.michelson.JsonToMichelson.toMichel
 import tech.cryptonomic.conseil.indexer.tezos.michelson.dto.{MichelsonInstruction, MichelsonSchema}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.math.max
+import scala.collection.immutable.NumericRange
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 private[tezos] object TezosNodeOperator {
   type LazyPages[T] = Iterator[Future[T]]
-  type Paginated[T] = (LazyPages[T], Int)
+  type Paginated[T, N] = (LazyPages[T], N)
 
   /**
     * Output of operation signing.
@@ -34,18 +34,6 @@ private[tezos] object TezosNodeOperator {
     * @param operationGroupID Operation group ID
     */
   final case class OperationResult(results: AppliedOperation, operationGroupID: String)
-
-  /**
-    * Given a contiguous valus range, creates sub-ranges of max the given size
-    * @param pageSize how big a part is allowed to be
-    * @param range a range of contiguous values to partition into (possibly) smaller parts
-    * @return an iterator over the part, which are themselves `Ranges`
-    */
-  def partitionRanges(pageSize: Int)(range: Range.Inclusive): Iterator[Range.Inclusive] =
-    range
-      .grouped(pageSize)
-      .filterNot(_.isEmpty)
-      .map(subRange => subRange.head to subRange.last)
 
   val isGenesis = (data: BlockData) => data.header.level == 0
 
@@ -79,9 +67,9 @@ private[tezos] class TezosNodeOperator(
   type BlockFetchingResults = List[(Block, List[AccountId])]
   type AccountFetchingResults = List[BlockTagged[Map[AccountId, Account]]]
   type DelegateFetchingResults = List[BlockTagged[Map[PublicKeyHash, Delegate]]]
-  type PaginatedBlocksResults = Paginated[BlockFetchingResults]
-  type PaginatedAccountResults = Paginated[AccountFetchingResults]
-  type PaginatedDelegateResults = Paginated[DelegateFetchingResults]
+  type PaginatedBlocksResults = Paginated[BlockFetchingResults, Long]
+  type PaginatedAccountResults = Paginated[AccountFetchingResults, Long]
+  type PaginatedDelegateResults = Paginated[DelegateFetchingResults, Long]
 
   //introduced to simplify signatures
   type BallotsByBlock = (Block, List[Voting.Ballot])
@@ -143,11 +131,11 @@ private[tezos] class TezosNodeOperator(
     * @param blockLevels  Block levels
     * @return             Baking rights
     */
-  def getBatchBakingRightsByLevels(blockLevels: List[Int]): Future[Map[Int, List[BakingRights]]] = {
+  def getBatchBakingRightsByLevels(blockLevels: List[BlockLevel]): Future[Map[BlockLevel, List[BakingRights]]] = {
     /* implicitly uses: TezosBlocksDataFetchers.futureBakingRightsFetcher */
     import cats.instances.future._
     import cats.instances.list._
-    fetch[Int, List[BakingRights], Future, List, Throwable].run(blockLevels).map(_.toMap)
+    fetch[BlockLevel, List[BakingRights], Future, List, Throwable].run(blockLevels).map(_.toMap)
   }
 
   /**
@@ -155,11 +143,11 @@ private[tezos] class TezosNodeOperator(
     * @param blockLevels  Block levels
     * @return             Endorsing rights
     */
-  def getBatchEndorsingRightsByLevel(blockLevels: List[Int]): Future[Map[Int, List[EndorsingRights]]] = {
+  def getBatchEndorsingRightsByLevel(blockLevels: List[BlockLevel]): Future[Map[BlockLevel, List[EndorsingRights]]] = {
     /* implicitly uses: TezosBlocksDataFetchers.futureEndorsingRightsFetcher */
     import cats.instances.future._
     import cats.instances.list._
-    fetch[Int, List[EndorsingRights], Future, List, Throwable].run(blockLevels).map(_.toMap)
+    fetch[BlockLevel, List[EndorsingRights], Future, List, Throwable].run(blockLevels).map(_.toMap)
   }
 
   /**
@@ -254,7 +242,7 @@ private[tezos] class TezosNodeOperator(
     import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 
     val reverseIndex =
-      accountsBlocksIndex.groupBy { case (id, (blockHash, level, timestamp, cycle, period)) => blockHash }
+      accountsBlocksIndex.groupBy { case (id, ref) => ref.hash }
         .mapValues(_.keySet)
         .toMap
 
@@ -271,12 +259,12 @@ private[tezos] class TezosNodeOperator(
       data.groupBy {
         case (id, _) => accountsBlocksIndex(id)
       }.map {
-        case ((hash, level, timestamp, cycle, period), accounts) =>
+        case (BlockReference(hash, level, timestamp, cycle, period), accounts) =>
           accounts.taggedWithBlock(hash, level, timestamp, cycle, period)
       }.toList
 
     //fetch accounts by requested ids and group them together with corresponding blocks
-    val pages = getPaginatedAccountsForBlock(accountsBlocksIndex.mapValues(_._1)) map { futureMap =>
+    val pages = getPaginatedAccountsForBlock(accountsBlocksIndex.mapValues(_.hash)) map { futureMap =>
           futureMap.andThen {
             case Success((hash, accountsMap)) =>
               val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
@@ -444,7 +432,7 @@ private[tezos] class TezosNodeOperator(
     import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 
     val reverseIndex =
-      keysBlocksIndex.groupBy { case (pkh, (blockHash, level, timestamp, cycle, period)) => blockHash }
+      keysBlocksIndex.groupBy { case (pkh, ref) => ref.hash }
         .mapValues(_.keySet)
         .toMap
 
@@ -461,12 +449,12 @@ private[tezos] class TezosNodeOperator(
       data.groupBy {
         case (pkh, _) => keysBlocksIndex(pkh)
       }.map {
-        case ((hash, level, timestamp, cycle, period), delegates) =>
+        case (BlockReference(hash, level, timestamp, cycle, period), delegates) =>
           delegates.taggedWithBlock(hash, level, timestamp, cycle, period)
       }.toList
 
     //fetch delegates by requested pkh and group them together with corresponding blocks
-    val pages = getPaginatedDelegatesForBlock(keysBlocksIndex.mapValues(_._1)) map { futureMap =>
+    val pages = getPaginatedDelegatesForBlock(keysBlocksIndex.mapValues(_.hash)) map { futureMap =>
           futureMap.andThen {
             case Success((hash, delegatesMap)) =>
               val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
@@ -583,18 +571,11 @@ private[tezos] class TezosNodeOperator(
     * @param levels a range of levels to partition into (possibly) smaller parts
     * @return an iterator over the part, which are themselves `Ranges`
     */
-  def partitionBlocksRanges(levels: Range.Inclusive): Iterator[Range.Inclusive] =
-    TezosNodeOperator.partitionRanges(blockPageSize)(levels)
-
-  /**
-    * Given a list of generic elements, creates sub-lists of max the given size
-    * @param elements a list of elements to partition into (possibly) smaller parts
-    * @return an iterator over the part, which are themselves elements
-    */
-  def partitionElements[E](elements: List[E]): Iterator[List[E]] =
-    TezosNodeOperator.partitionRanges(blockPageSize)(Range.inclusive(0, elements.size - 1)) map { range =>
-        elements.take(range.end + 1).drop(range.start)
-      }
+  def partitionLevelsRange(levels: NumericRange.Inclusive[BlockLevel]): Iterator[NumericRange.Inclusive[BlockLevel]] =
+    levels
+      .grouped(blockPageSize)
+      .filterNot(_.isEmpty)
+      .map(subRange => subRange.head to subRange.last)
 
   /**
     * Gets all blocks from the head down to the oldest block not already in the database.
@@ -618,11 +599,11 @@ private[tezos] class TezosNodeOperator(
             maxLevel,
             headLevel - maxLevel
           )
-        val pagedResults = partitionBlocksRanges((maxLevel + 1) to headLevel).map(
+        val paginatedResults = partitionLevelsRange((maxLevel + 1) to headLevel).map(
           page => getBlocks((headHash, headLevel), page)
         )
-        val minLevel = if (bootstrapping) 1 else maxLevel
-        (pagedResults, headLevel - minLevel)
+        val minLevel = if (bootstrapping) 1L else maxLevel
+        (paginatedResults, headLevel - minLevel)
       } else {
         logger.info("No new blocks to fetch from the network")
         (Iterator.empty, 0)
@@ -645,11 +626,11 @@ private[tezos] class TezosNodeOperator(
       .map { maxHead =>
         val headLevel = maxHead.data.header.level
         val headHash = maxHead.data.hash
-        val minLevel = depth.fold(1)(d => max(1, headLevel - d + 1))
-        val pagedResults = partitionBlocksRanges(minLevel to headLevel).map(
+        val minLevel = depth.map(d => headLevel - d + 1).filter(_ >= 1).getOrElse(1L)
+        val paginatedResults = partitionLevelsRange(minLevel to headLevel).map(
           page => getBlocks((headHash, headLevel), page)
         )
-        (pagedResults, headLevel - minLevel + 1)
+        (paginatedResults, headLevel - minLevel + 1)
       }
 
   /**
@@ -659,8 +640,8 @@ private[tezos] class TezosNodeOperator(
     * @return the async list of blocks with relative account ids touched in the operations
     */
   private def getBlocks(
-      reference: (TezosBlockHash, Int),
-      levelRange: Range.Inclusive
+      reference: (TezosBlockHash, BlockLevel),
+      levelRange: NumericRange.Inclusive[BlockLevel]
   ): Future[BlockFetchingResults] = {
     import cats.instances.future._
     import cats.instances.list._

@@ -14,6 +14,7 @@ import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   Account,
   AccountId,
+  BlockLevel,
   BlockReference,
   BlockTagged,
   Protocol4Delegate,
@@ -177,7 +178,7 @@ class AccountsProcessor(
       */
     def updateTaggedAccountsWithIsActivated(
         taggedAccounts: List[BlockTagged[AccountsIndex]],
-        activatedViaOperationsPerLevel: Map[Int, Set[PublicKeyHash]],
+        activatedViaOperationsPerLevel: Map[BlockLevel, Set[PublicKeyHash]],
         activatedViaAccountIds: Set[PublicKeyHash]
     ): List[BlockTagged[AccountsIndex]] =
       taggedAccounts.map { taggedAccount =>
@@ -192,7 +193,7 @@ class AccountsProcessor(
       }
 
     /** Get all pkh for each level in input, belonging to any activate-account operation */
-    def fetchActivationOperationsByLevel(levels: List[Int]): Future[Map[Int, List[PublicKeyHash]]] = {
+    def fetchActivationOperationsByLevel(levels: List[BlockLevel]): Future[Map[BlockLevel, List[PublicKeyHash]]] = {
       import slick.jdbc.PostgresProfile.api._
       db.run {
         DBIO.sequence {
@@ -221,7 +222,7 @@ class AccountsProcessor(
       if (onlyProcessLatest) db.run {
         TezosDb.getLevelsForAccounts(ids.keySet).map { currentlyStored =>
           ids.filterNot {
-            case (AccountId(id), (_, updateLevel, _, _, _)) =>
+            case (AccountId(id), BlockReference(_, updateLevel, _, _, _)) =>
               currentlyStored.exists { case (storedId, storedLevel) => storedId == id && storedLevel > updateLevel }
           }
         }
@@ -304,10 +305,10 @@ class AccountsProcessor(
 
     val sorted = updates.flatMap {
       case BlockTagged(hash, level, timestamp, cycle, period, ids) =>
-        ids.map(_ -> (hash, level, timestamp, cycle, period))
+        ids.map(_ -> BlockReference(hash, level, timestamp, cycle, period))
     }.sortBy {
-      case (id, (hash, level, timestamp, cycle, period)) => level
-    }(Ordering[Int].reverse)
+      case (id, ref) => ref.level
+    }(Ordering[Long].reverse)
 
     val toBeFetched = keepMostRecent(sorted)
 
@@ -325,7 +326,7 @@ class AccountsProcessor(
           checkpoints.size
         )
         // here we need to get missing bakers for the given block
-        db.run(TezosDb.getBakersForBlocks(checkpoints.values.map(_._1).toList)).flatMap { bakers =>
+        db.run(TezosDb.getBakersForBlocks(checkpoints.values.map(_.hash).toList)).flatMap { bakers =>
           process(checkpoints, bakers.toMap, onlyProcessLatest = true).map(_ => Done)
         }
 

@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.common.config
 
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockLevel
+
 sealed trait ChainEvent extends Product with Serializable
 
 object ChainEvent {
@@ -13,7 +15,7 @@ object ChainEvent {
   val accountsRefresh: ChainEventType = ChainEventType("accountsRefresh")
 
   //these will be used as values
-  final case class AccountsRefresh(levels: Map[String, List[Int]]) extends ChainEvent
+  final case class AccountsRefresh(levels: Map[String, List[BlockLevel]]) extends ChainEvent
 
 }
 

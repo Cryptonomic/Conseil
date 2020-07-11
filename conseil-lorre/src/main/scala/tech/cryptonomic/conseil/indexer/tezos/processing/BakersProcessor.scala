@@ -96,7 +96,7 @@ class BakersProcessor(
       if (onlyProcessLatest) db.run {
         TezosDb.getLevelsForDelegates(ids.keySet).map { currentlyStored =>
           ids.filterNot {
-            case (PublicKeyHash(pkh), (_, updateLevel, _, _, _)) =>
+            case (PublicKeyHash(pkh), BlockReference(_, updateLevel, _, _, _)) =>
               currentlyStored.exists {
                 case (storedPkh, storedLevel) => storedPkh == pkh && storedLevel > updateLevel
               }
@@ -167,10 +167,10 @@ class BakersProcessor(
 
     val sorted = updates.flatMap {
       case BlockTagged(hash, level, timestamp, cycle, period, ids) =>
-        ids.map(_ -> (hash, level, timestamp, cycle, period))
+        ids.map(_ -> BlockReference(hash, level, timestamp, cycle, period))
     }.sortBy {
-      case (id, (hash, level, timestamp, cycle, period)) => level
-    }(Ordering[Int].reverse)
+      case (id, ref) => ref.level
+    }(Ordering[Long].reverse)
 
     val toBeFetched = keepMostRecent(sorted)
 
