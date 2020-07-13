@@ -9,17 +9,22 @@ import com.typesafe.scalalogging.LazyLogging
 /** Definitions and common utilities for fork-detection */
 object ForkDetector {
 
-  /** A data type that express the of search results of a comparison by level */
+  /** A data type that expresses the outcomes of comparing block by-level-search results.
+    * We refer to instances of the [[SearchBlockId]] interface, specifically.
+    */
   sealed trait IdMatchResult
 
+  /** Ids matched for a given level */
   case object SameId extends IdMatchResult
+
+  /** Ids differed for a given level, therefore we assume a fork happened */
   case object ForkedId extends IdMatchResult
 
   /** Provides a block identifier, given a blockchain level,
     * i.e. how high in the chain is the block
     *
     * Generically provides a way to verify some chain position to verify
-    * that a forking have happened, by comparing the block between a remote
+    * that a fork have happened, by comparing the block between a remote
     * and local version.
     *
     * - BlockId is the type identifying the block. We can't assume anything
@@ -39,7 +44,7 @@ object ForkDetector {
 
 }
 
-/** Defines the algorithms to detect and identify a forking
+/** Defines the algorithms to detect and identify a fork
   * in the blockchain in comparison to the locally indexed data
   *
   * @param indexerSearch run the search on the local indexer

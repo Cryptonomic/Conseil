@@ -84,7 +84,7 @@ class ForkDetectorSpec extends AnyPropSpec with ScalaCheckDrivenPropertyChecks w
      *  e.g. a cats.Id[Int] = Int
      */
     def detector(forkingPoint: Long) = new ForkDetector[cats.Id, BlockId](
-      indexerSearch = (_) => blockA,
+      indexerSearch = _ => blockA,
       nodeSearch = lvl => if (lvl >= forkingPoint) blockB else blockA
     )
 
