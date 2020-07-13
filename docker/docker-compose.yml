@@ -82,7 +82,6 @@ services:
       CONSEIL_LORRE_DB_URL: "jdbc:postgresql://conseil-postgres:5432/conseil-local"
       CONSEIL_LORRE_DB_USER: "conseiluser"
       CONSEIL_LORRE_DB_PASSWORD: "p@ssw0rd"
-      CONSEIL_LORRE_SECURITY_KEY: "conseil"
 
       CONSEIL_XTZ_NETWORK: "carthagenet"
       CONSEIL_XTZ_ENABLED: "true"
