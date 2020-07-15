@@ -4,7 +4,9 @@ import java.sql.Timestamp
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatest.OptionValues
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.BitcoinInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataOperations
@@ -18,7 +20,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 class BitcoinDataQueriesTest
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with InMemoryDatabase
     with BitcoinInMemoryDatabaseSetup
@@ -126,7 +128,14 @@ class BitcoinDataQueriesTest
 
         whenReady(sut.fetchAccountByAddress("script_pub_key_address_2")) { result =>
           result.value should (contain key "address" and contain value output2.scriptPubKeyAddresses)
-          //TODO Once we will replace BigDecimal into something better, we should compare 'value' field here as well
+          //TODO Fix test for 'value' field in AccountRow
+          //Issue with the current approach is that type inside case class is from 'scala' while slick is mapping data inside 'QueryResponse' to 'java'.
+          //Additionally BigDecimals are not easy comparable with 'scalatest'.
+          //Once type for 'value' field inside AccountRow will be changed from 'BigDecimal' into something else or
+          //the type returned by 'fetchAccountByAddress' will be different than 'QueryResponse',
+          //assert below should be either uncommented (in case of replacing 'BigDecimal')
+          //or entire test should be updated (in case of changing returned type by 'fetchAccountByAddress').
+          //result.value should (contain key "value" and contain value output2.value)
         }
       }
     }
