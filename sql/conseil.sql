@@ -869,3 +869,49 @@ FROM
     AND bitcoin.outputs.n = bitcoin.inputs.v_out
   GROUP BY
     bitcoin.outputs.script_pub_key_addresses;
+
+CREATE SCHEMA ethereum; 
+
+-- Table is based on eth_getBlockByHash from https://eth.wiki/json-rpc/API
+CREATE TABLE ethereum.blocks (
+  hash text NOT NULL PRIMARY KEY,
+  number integer NOT NULL,
+  difficulty integer NOT NULL,
+  extra_data text NOT NULL,
+  gas_limit integer NOT NULL,
+  gas_used integer NOT NULL,
+  logs_bloom text NOT NULL,
+  miner text NOT NULL,
+  mix_hash text NOT NULL,
+  nonce text NOT NULL,
+  parent_hash text,
+  receipts_root text NOT NULL,
+  sha3_uncles text NOT NULL,
+  size integer NOT NULL,
+  state_root text NOT NULL,
+  total_difficulty integer NOT NULL,
+  transactions_root text NOT NULL,
+  uncles text,
+  timestamp timestamp without time zone NOT NULL
+);
+
+-- Table is based on eth_getTransactionByHash from https://eth.wiki/json-rpc/API
+CREATE TABLE ethereum.transactions (
+  hash text NOT NULL PRIMARY KEY,
+  block_hash text NOT NULL,
+  block_number text NOT NULL,
+  "from" text NOT NULL,
+  gas integer NOT NULL,
+  gas_price integer NOT NULL,
+  input text NOT NULL,
+  nonce integer NOT NULL,
+  "to" text NOT NULL,
+  transaction_index integer NOT NULL,
+  value integer NOT NULL,
+  v text NOT NULL,
+  r text NOT NULL,
+  s text NOT NULL
+);
+
+ALTER TABLE ONLY ethereum.transactions
+  ADD CONSTRAINT ethereum_transactions_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES ethereum.blocks(hash);
