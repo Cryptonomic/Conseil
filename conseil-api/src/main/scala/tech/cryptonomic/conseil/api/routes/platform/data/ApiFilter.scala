@@ -18,6 +18,12 @@ trait ApiFilter {
       case "desc" => Some(DescendingSort)
       case _ => None
     }
+
+    /** Read an input [[ApiFilter.Sorting]] and converts to [[String]] */
+    def asString(s: Sorting): String = s match {
+      case AscendingSort => "asc"
+      case DescendingSort => "desc"
+    }
   }
 
   // default limit on output results, if not available as call input

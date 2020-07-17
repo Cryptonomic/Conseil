@@ -21,7 +21,7 @@ object Dependencies {
     val slickEffect = "0.3.0-M3"
     val postgres = "42.1.4"
 
-    val endpoints = "0.9.0"
+    val endpoints = "0.10.0"
     val cats = "2.1.1"
     val catsEffect = "2.1.3"
     val mouse = "0.20"
@@ -91,18 +91,18 @@ object Dependencies {
   private val slickCodeGen = Seq("com.typesafe.slick" %% "slick-codegen" % Versions.slick)
   private val slickPG = Seq("com.github.tminglei"     %% "slick-pg"      % Versions.slickPG)
   private val slickEffect = Seq(
-    "com.kubukoz" %% "slick-effect" % Versions.slickEffect exclude ("com.typesafe.slick", "slick"),
+    "com.kubukoz" %% "slick-effect"            % Versions.slickEffect exclude ("com.typesafe.slick", "slick"),
     "com.kubukoz" %% "slick-effect-transactor" % Versions.slickEffect exclude ("com.typesafe.slick", "slick")
   )
 
   private val postgres = Seq("org.postgresql" % "postgresql" % Versions.postgres)
 
   private val endpoints = Seq(
-    "org.julienrf" %% "endpoints-algebra"             % Versions.endpoints,
-    "org.julienrf" %% "endpoints-openapi"             % Versions.endpoints,
-    "org.julienrf" %% "endpoints-json-schema-generic" % Versions.endpoints,
-    "org.julienrf" %% "endpoints-json-schema-circe"   % Versions.endpoints,
-    "org.julienrf" %% "endpoints-akka-http-server"    % Versions.endpoints
+    "org.julienrf" %% "endpoints-algebra"                % Versions.endpoints,
+    "org.julienrf" %% "endpoints-openapi"                % Versions.endpoints,
+    "org.julienrf" %% "endpoints-json-schema-generic"    % Versions.endpoints,
+    "org.julienrf" %% "endpoints-json-schema-circe"      % Versions.endpoints,
+    "org.julienrf" %% "endpoints-akka-http-server-circe" % Versions.endpoints
   )
 
   private val cats = Seq(

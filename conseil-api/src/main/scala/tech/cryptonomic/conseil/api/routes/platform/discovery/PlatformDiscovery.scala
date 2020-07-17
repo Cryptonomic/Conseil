@@ -25,7 +25,7 @@ class PlatformDiscovery(metadataService: MetadataService)
     extends LazyLogging
     with PlatformDiscoveryEndpoints
     with akkahttp.server.Endpoints
-    with akkahttp.server.JsonSchemaEntities {
+    with akkahttp.server.circe.JsonSchemaEntities {
 
   /** Metadata route implementation for platforms endpoint */
   private lazy val platformsRoute = platformsEndpoint.implementedBy(_ => metadataService.getPlatforms)
@@ -48,7 +48,7 @@ class PlatformDiscovery(metadataService: MetadataService)
 
   /** Metadata route implementation for attributes values endpoint */
   private lazy val attributesValuesRoute = attributesValuesEndpoint.implementedByAsync {
-    case ((platform, network, entity), attribute, _) =>
+    case (((platform, network, entity), attribute), _) =>
       metadataService.getAttributeValues(platform, network, entity, attribute)
   }
 

@@ -66,7 +66,7 @@ trait PlatformDiscoveryEndpoints
     )
 
   /** Metadata attributes values endpoint */
-  def attributesValuesEndpoint: Endpoint[((String, String, String), String, Option[String]), Option[
+  def attributesValuesEndpoint: Endpoint[(((String, String, String), String), Option[String]), Option[
     Either[List[AttributesValidationError], List[String]]
   ]] =
     endpoint(

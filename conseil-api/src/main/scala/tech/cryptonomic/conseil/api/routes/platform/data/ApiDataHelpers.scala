@@ -5,7 +5,8 @@ import akka.http.scaladsl.server.Directives.complete
 import akka.http.scaladsl.server.Route
 import akka.util.ByteString
 import cats.Functor
-import endpoints.akkahttp.server.{Endpoints => AkkaEndpoints, JsonSchemaEntities => AkkaJsonSchemaEntities}
+import endpoints.akkahttp.server.{Endpoints => AkkaEndpoints}
+import endpoints.akkahttp.server.circe.{JsonSchemaEntities => AkkaJsonSchemaEntities}
 import endpoints.algebra.Documentation
 import io.circe._
 import io.circe.syntax._
