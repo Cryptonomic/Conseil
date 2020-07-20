@@ -36,8 +36,7 @@ private[tezos] trait TezosFilterFromQueryString extends ApiFilterQueryString { s
   //TODO Before updating endpoints higher than 0.10 we need to decrease number of parameters in single structure first
   /** Function for extracting query string with query params */
   private def filterQs: QueryString[TezosQueryParams] = {
-    val raw =
-      qs[Option[Int]]("limit") &
+    val raw = limit &
           qs[Set[String]]("block_id") &
           qs[Set[Int]]("block_level") &
           qs[Set[String]]("block_netid") &
@@ -50,8 +49,8 @@ private[tezos] trait TezosFilterFromQueryString extends ApiFilterQueryString { s
           qs[Set[String]]("account_id") &
           qs[Set[String]]("account_manager") &
           qs[Set[String]]("account_delegate") &
-          qs[Option[String]]("sort_by") &
-          qs[Option[Sorting]]("order")
+          sortBy &
+          order
     raw map (flatten(_))
   }
 

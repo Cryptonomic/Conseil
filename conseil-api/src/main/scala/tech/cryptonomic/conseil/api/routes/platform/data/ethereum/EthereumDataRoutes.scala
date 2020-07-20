@@ -37,7 +37,7 @@ case class EthereumDataRoutes(
       val path = EntityPath(entity, NetworkPath(network, PlatformPath(platform)))
       pathValidation(path) {
         apiQuery
-          .withNetwork(network)
+          .withNetwork(network) // We need to add network here, cause we are going to support multiple networks in the same schema
           .validate(path, metadataService, metadataConfiguration)
           .flatMap { validationResult =>
             validationResult.map { validQuery =>
@@ -115,6 +115,7 @@ case class EthereumDataRoutes(
     else
       Future.successful(None)
 
+  //TODO Can this be done better?
   implicit private class ApiQueryOps(q: ApiQuery) {
     def withNetwork(network: String): ApiQuery = {
       val predicate = ApiPredicate("network", OperationType.eq, Some(List(network)))

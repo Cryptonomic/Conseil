@@ -25,12 +25,12 @@ private[ethereum] trait EthereumFilterFromQueryString extends ApiFilterQueryStri
 
   /** Function for extracting query string with query params */
   private def filterQs: QueryString[EthereumQueryParams] = {
-    val raw = qs[Option[Int]]("limit") &
+    val raw = limit &
           qs[Set[String]]("block_id") &
           qs[Set[String]]("block_hash") &
           qs[Set[String]]("transaction_id") &
-          qs[Option[String]]("sort_by") &
-          qs[Option[Sorting]]("order")
+          sortBy &
+          order
 
     raw map (flatten(_))
   }

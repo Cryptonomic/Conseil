@@ -53,16 +53,16 @@ object OpenApiDoc
     * In this case if query fails to validate it will return 400 Bad Request.
     * */
   override def validated[A](
-      response: List[OpenApiDoc.DocumentedResponse],
+      response: List[DocumentedResponse],
       invalidDocs: Documentation
-  ): List[OpenApiDoc.DocumentedResponse] =
-    response :+ OpenApiDoc.DocumentedResponse(
+  ): List[DocumentedResponse] =
+    response :+ DocumentedResponse(
           status = 400,
           documentation = invalidDocs.getOrElse(""),
           content = Map(
             "application/json" -> MediaType(schema = Some(Schema.Array(Schema.simpleString, None)))
           )
-        ) :+ OpenApiDoc.DocumentedResponse(
+        ) :+ DocumentedResponse(
           status = 200,
           documentation = invalidDocs.getOrElse(""),
           content = Map(
@@ -88,10 +88,10 @@ object OpenApiDoc
     DocumentedJsonSchema.Primitive("Any - not yet supported")
 
   override def validatedAttributes[A](
-      response: List[OpenApiDoc.DocumentedResponse],
+      response: List[DocumentedResponse],
       invalidDocs: Documentation
-  ): List[OpenApiDoc.DocumentedResponse] =
-    response :+ OpenApiDoc.DocumentedResponse(
+  ): List[DocumentedResponse] =
+    response :+ DocumentedResponse(
           status = 400,
           documentation = invalidDocs.getOrElse(""),
           content = Map(

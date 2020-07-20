@@ -4,11 +4,12 @@ import akka.http.scaladsl.server.Route
 import cats.Functor
 import endpoints.algebra.Documentation
 import io.circe._
-import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataHelpers
+import tech.cryptonomic.conseil.api.routes.platform.data.ApiCirceJsonSchema
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryValidationError
+import tech.cryptonomic.conseil.api.routes.platform.data.ApiValidation.defaultValidated
 
 /** Represents helper for Data Endpoints that can be used to implement custom encoder for Bitcoin specific types */
-private[bitcoin] class BitcoinDataHelpers extends BitcoinDataEndpoints with ApiDataHelpers {
+private[bitcoin] class BitcoinDataHelpers extends BitcoinDataEndpoints with ApiCirceJsonSchema {
 
   /** Method for validating query request */
   override def validated[A](
