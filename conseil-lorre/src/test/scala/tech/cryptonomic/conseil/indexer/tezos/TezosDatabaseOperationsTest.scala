@@ -11,10 +11,10 @@ import org.scalatest.matchers.should.Matchers
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
+import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
-import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -74,23 +74,6 @@ class TezosDatabaseOperationsTest
             row.timestamp shouldEqual fee.timestamp
             row.kind shouldEqual fee.kind
         }
-      }
-
-      "tell if there are any stored blocks" in {
-        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-        //generate data
-        val blocks = generateBlockRows(toLevel = 5, testReferenceTimestamp)
-
-        //check initial condition
-        dbHandler.run(sut.doBlocksExist()).futureValue shouldBe false
-
-        //store some blocks
-        dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
-
-        //check final condition
-        dbHandler.run(sut.doBlocksExist()).futureValue shouldBe true
-
       }
 
       "write blocks" in {
@@ -212,7 +195,7 @@ class TezosDatabaseOperationsTest
                 case _ => None
               }
 
-              operationMatch shouldBe 'defined
+              operationMatch shouldBe defined
 
               val operation = operationMatch.value
 
@@ -526,7 +509,7 @@ class TezosDatabaseOperationsTest
 
       }
 
-      "write delegates for a single block" in {
+      "write bakers for a single block" in {
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         val expectedCount = 3
@@ -582,7 +565,7 @@ class TezosDatabaseOperationsTest
 
       }
 
-      "fail to write delegates if the reference block is not stored" in {
+      "fail to write bakers if the reference block is not stored" in {
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         val block = generateBlockRows(1, testReferenceTimestamp).head
@@ -600,14 +583,14 @@ class TezosDatabaseOperationsTest
         }
       }
 
-      "update delegates if they exists already" in {
+      "update bakers if they exists already" in {
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         //generate data
         val blocks @ (second :: first :: genesis :: Nil) =
           generateBlockRows(toLevel = 2, startAt = testReferenceTimestamp)
         val account = generateAccountRows(1, first).head
-        val delegate = generateDelegateRows(1, first).head
+        val delegate = generateBakerRows(1, first).head
 
         val populate =
           DBIO.seq(
@@ -730,7 +713,7 @@ class TezosDatabaseOperationsTest
 
       }
 
-      "clean the delegates checkpoints with no selection" in {
+      "clean the bakers checkpoints with no selection" in {
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         //generate data
@@ -767,7 +750,7 @@ class TezosDatabaseOperationsTest
         survivors shouldBe empty
       }
 
-      "clean the delegates checkpoints with a partial key hash selection" in {
+      "clean the bakers checkpoints with a partial key hash selection" in {
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         //generate data
@@ -862,7 +845,7 @@ class TezosDatabaseOperationsTest
 
       }
 
-      "read latest delegate key hashes from checkpoint" in {
+      "read latest baker key hashes from checkpoint" in {
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         //generate data
@@ -1030,43 +1013,6 @@ class TezosDatabaseOperationsTest
         val feesCalculation = sut.calculateAverageFees(selection.head.kind, feesToConsider)
 
         dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
-
-      }
-
-      "correctly verify when a block exists" in {
-        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-        val blocks = generateBlockRows(1, testReferenceTimestamp)
-        val opGroups = generateOperationGroupRows(blocks: _*)
-        val testHash = TezosBlockHash(blocks.last.hash)
-
-        val populateAndTest = for {
-          _ <- Tables.Blocks ++= blocks
-          _ <- Tables.OperationGroups ++= opGroups
-          existing <- sut.blockExists(testHash)
-          nonExisting <- sut.blockExists(TezosBlockHash("bogus-hash"))
-        } yield (existing, nonExisting)
-
-        val (hit, miss) = dbHandler.run(populateAndTest.transactionally).futureValue
-
-        hit shouldBe true
-        miss shouldBe false
-
-      }
-
-      "say a block doesn't exist if it has no associated operation group" in {
-        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-        val blocks = generateBlockRows(1, testReferenceTimestamp)
-        val testHash = TezosBlockHash(blocks.last.hash)
-
-        val populateAndTest = for {
-          _ <- Tables.Blocks ++= blocks
-          found <- sut.blockExists(testHash)
-        } yield found
-
-        val exists = dbHandler.run(populateAndTest.transactionally).futureValue
-        exists shouldBe false
 
       }
 

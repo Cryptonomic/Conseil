@@ -45,7 +45,7 @@ trait Tables {
   def ddl = schema
 
   /** Entity class storing rows of table Accounts
-    *  @param accountId Database column account_id SqlType(varchar), PrimaryKey
+    *  @param accountId Database column account_id SqlType(varchar)
     *  @param blockId Database column block_id SqlType(varchar)
     *  @param counter Database column counter SqlType(int4), Default(None)
     *  @param script Database column script SqlType(varchar), Default(None)
@@ -57,7 +57,9 @@ trait Tables {
     *  @param delegateSetable Database column delegate_setable SqlType(bool), Default(None)
     *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
     *  @param isBaker Database column is_baker SqlType(bool), Default(false)
-    *  @param isActivated Database column is_activated SqlType(bool), Default(false) */
+    *  @param isActivated Database column is_activated SqlType(bool), Default(false)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar) */
   case class AccountsRow(
       accountId: String,
       blockId: String,
@@ -71,7 +73,9 @@ trait Tables {
       delegateSetable: Option[Boolean] = None,
       delegateValue: Option[String] = None,
       isBaker: Boolean = false,
-      isActivated: Boolean = false
+      isActivated: Boolean = false,
+      invalidatedAsof: Option[java.sql.Timestamp] = None,
+      forkId: String
   )
 
   /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */
@@ -82,7 +86,8 @@ trait Tables {
       e3: GR[scala.math.BigDecimal],
       e4: GR[Long],
       e5: GR[Option[Boolean]],
-      e6: GR[Boolean]
+      e6: GR[Boolean],
+      e7: GR[Option[java.sql.Timestamp]]
   ): GR[AccountsRow] = GR { prs =>
     import prs._
     AccountsRow.tupled(
@@ -99,7 +104,9 @@ trait Tables {
         <<?[Boolean],
         <<?[String],
         <<[Boolean],
-        <<[Boolean]
+        <<[Boolean],
+        <<?[java.sql.Timestamp],
+        <<[String]
       )
     )
   }
@@ -120,7 +127,9 @@ trait Tables {
         delegateSetable,
         delegateValue,
         isBaker,
-        isActivated
+        isActivated,
+        invalidatedAsof,
+        forkId
       ) <> (AccountsRow.tupled, AccountsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -139,20 +148,24 @@ trait Tables {
           delegateSetable,
           delegateValue,
           Rep.Some(isBaker),
-          Rep.Some(isActivated)
+          Rep.Some(isActivated),
+          invalidatedAsof,
+          Rep.Some(forkId)
         )
       ).shaped.<>(
         { r =>
           import r._;
           _1.map(
-            _ => AccountsRow.tupled((_1.get, _2.get, _3, _4, _5, _6.get, _7.get, _8, _9, _10, _11, _12.get, _13.get))
+            _ =>
+              AccountsRow
+                .tupled((_1.get, _2.get, _3, _4, _5, _6.get, _7.get, _8, _9, _10, _11, _12.get, _13.get, _14, _15.get))
           )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
 
-    /** Database column account_id SqlType(varchar), PrimaryKey */
-    val accountId: Rep[String] = column[String]("account_id", O.PrimaryKey)
+    /** Database column account_id SqlType(varchar) */
+    val accountId: Rep[String] = column[String]("account_id")
 
     /** Database column block_id SqlType(varchar) */
     val blockId: Rep[String] = column[String]("block_id")
@@ -190,21 +203,34 @@ trait Tables {
     /** Database column is_activated SqlType(bool), Default(false) */
     val isActivated: Rep[Boolean] = column[Boolean]("is_activated", O.Default(false))
 
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
+
+    /** Primary key of Accounts (database name accounts_pkey) */
+    val pk = primaryKey("accounts_pkey", (accountId, forkId))
+
     /** Foreign key referencing Blocks (database name accounts_block_id_fkey) */
-    lazy val blocksFk = foreignKey("accounts_block_id_fkey", blockId, Blocks)(
-      r => r.hash,
+    lazy val blocksFk = foreignKey("accounts_block_id_fkey", (blockId, forkId), Blocks)(
+      r => (r.hash, r.forkId),
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
 
+    /** Index over (blockId) (database name ix_accounts_block_id) */
+    val index1 = index("ix_accounts_block_id", blockId)
+
     /** Index over (blockLevel) (database name ix_accounts_block_level) */
-    val index1 = index("ix_accounts_block_level", blockLevel)
+    val index2 = index("ix_accounts_block_level", blockLevel)
 
     /** Index over (isActivated) (database name ix_accounts_is_activated) */
-    val index2 = index("ix_accounts_is_activated", isActivated)
+    val index3 = index("ix_accounts_is_activated", isActivated)
 
     /** Index over (manager) (database name ix_accounts_manager) */
-    val index3 = index("ix_accounts_manager", manager)
+    val index4 = index("ix_accounts_manager", manager)
   }
 
   /** Collection-like TableQuery object for table Accounts */
@@ -287,7 +313,9 @@ trait Tables {
     *  @param isBaker Database column is_baker SqlType(bool), Default(false)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
     *  @param isActivated Database column is_activated SqlType(bool), Default(false)
-    *  @param isActiveBaker Database column is_active_baker SqlType(bool), Default(None) */
+    *  @param isActiveBaker Database column is_active_baker SqlType(bool), Default(None)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar) */
   case class AccountsHistoryRow(
       accountId: String,
       blockId: String,
@@ -300,7 +328,9 @@ trait Tables {
       isBaker: Boolean = false,
       cycle: Option[Int] = None,
       isActivated: Boolean = false,
-      isActiveBaker: Option[Boolean] = None
+      isActiveBaker: Option[Boolean] = None,
+      invalidatedAsof: Option[java.sql.Timestamp] = None,
+      forkId: String
   )
 
   /** GetResult implicit for fetching AccountsHistoryRow objects using plain SQL queries */
@@ -312,7 +342,8 @@ trait Tables {
       e4: GR[Long],
       e5: GR[java.sql.Timestamp],
       e6: GR[Boolean],
-      e7: GR[Option[Boolean]]
+      e7: GR[Option[Boolean]],
+      e8: GR[Option[java.sql.Timestamp]]
   ): GR[AccountsHistoryRow] = GR { prs =>
     import prs._
     AccountsHistoryRow.tupled(
@@ -328,7 +359,9 @@ trait Tables {
         <<[Boolean],
         <<?[Int],
         <<[Boolean],
-        <<?[Boolean]
+        <<?[Boolean],
+        <<?[java.sql.Timestamp],
+        <<[String]
       )
     )
   }
@@ -349,7 +382,9 @@ trait Tables {
         isBaker,
         cycle,
         isActivated,
-        isActiveBaker
+        isActiveBaker,
+        invalidatedAsof,
+        forkId
       ) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -367,14 +402,17 @@ trait Tables {
           Rep.Some(isBaker),
           cycle,
           Rep.Some(isActivated),
-          isActiveBaker
+          isActiveBaker,
+          invalidatedAsof,
+          Rep.Some(forkId)
         )
       ).shaped.<>(
         { r =>
           import r._;
           _1.map(
             _ =>
-              AccountsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9.get, _10, _11.get, _12))
+              AccountsHistoryRow
+                .tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9.get, _10, _11.get, _12, _13, _14.get))
           )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -415,6 +453,13 @@ trait Tables {
 
     /** Database column is_active_baker SqlType(bool), Default(None) */
     val isActiveBaker: Rep[Option[Boolean]] = column[Option[Boolean]]("is_active_baker", O.Default(None))
+
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
 
     /** Index over (accountId) (database name ix_account_id) */
     val index1 = index("ix_account_id", accountId)
@@ -673,7 +718,7 @@ trait Tables {
   lazy val BakerRegistry = new TableQuery(tag => new BakerRegistry(tag))
 
   /** Entity class storing rows of table Bakers
-    *  @param pkh Database column pkh SqlType(varchar), PrimaryKey
+    *  @param pkh Database column pkh SqlType(varchar)
     *  @param blockId Database column block_id SqlType(varchar)
     *  @param balance Database column balance SqlType(numeric), Default(None)
     *  @param frozenBalance Database column frozen_balance SqlType(numeric), Default(None)
@@ -684,7 +729,9 @@ trait Tables {
     *  @param gracePeriod Database column grace_period SqlType(int4)
     *  @param blockLevel Database column block_level SqlType(int8), Default(-1)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
-    *  @param period Database column period SqlType(int4), Default(None) */
+    *  @param period Database column period SqlType(int4), Default(None)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar) */
   case class BakersRow(
       pkh: String,
       blockId: String,
@@ -697,7 +744,9 @@ trait Tables {
       gracePeriod: Int,
       blockLevel: Long = -1L,
       cycle: Option[Int] = None,
-      period: Option[Int] = None
+      period: Option[Int] = None,
+      invalidatedAsof: Option[java.sql.Timestamp] = None,
+      forkId: String
   )
 
   /** GetResult implicit for fetching BakersRow objects using plain SQL queries */
@@ -707,7 +756,8 @@ trait Tables {
       e2: GR[Int],
       e3: GR[Boolean],
       e4: GR[Long],
-      e5: GR[Option[Int]]
+      e5: GR[Option[Int]],
+      e6: GR[Option[java.sql.Timestamp]]
   ): GR[BakersRow] = GR { prs =>
     import prs._
     BakersRow.tupled(
@@ -723,7 +773,9 @@ trait Tables {
         <<[Int],
         <<[Long],
         <<?[Int],
-        <<?[Int]
+        <<?[Int],
+        <<?[java.sql.Timestamp],
+        <<[String]
       )
     )
   }
@@ -743,7 +795,9 @@ trait Tables {
         gracePeriod,
         blockLevel,
         cycle,
-        period
+        period,
+        invalidatedAsof,
+        forkId
       ) <> (BakersRow.tupled, BakersRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -761,18 +815,24 @@ trait Tables {
           Rep.Some(gracePeriod),
           Rep.Some(blockLevel),
           cycle,
-          period
+          period,
+          invalidatedAsof,
+          Rep.Some(forkId)
         )
       ).shaped.<>(
         { r =>
           import r._;
-          _1.map(_ => BakersRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get, _10.get, _11, _12)))
+          _1.map(
+            _ =>
+              BakersRow
+                .tupled((_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get, _10.get, _11, _12, _13, _14.get))
+          )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
 
-    /** Database column pkh SqlType(varchar), PrimaryKey */
-    val pkh: Rep[String] = column[String]("pkh", O.PrimaryKey)
+    /** Database column pkh SqlType(varchar) */
+    val pkh: Rep[String] = column[String]("pkh")
 
     /** Database column block_id SqlType(varchar) */
     val blockId: Rep[String] = column[String]("block_id")
@@ -810,9 +870,19 @@ trait Tables {
     /** Database column period SqlType(int4), Default(None) */
     val period: Rep[Option[Int]] = column[Option[Int]]("period", O.Default(None))
 
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
+
+    /** Primary key of Bakers (database name bakers_pkey) */
+    val pk = primaryKey("bakers_pkey", (pkh, forkId))
+
     /** Foreign key referencing Blocks (database name bakers_block_id_fkey) */
-    lazy val blocksFk = foreignKey("bakers_block_id_fkey", blockId, Blocks)(
-      r => r.hash,
+    lazy val blocksFk = foreignKey("bakers_block_id_fkey", (blockId, forkId), Blocks)(
+      r => (r.hash, r.forkId),
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
@@ -875,13 +945,6 @@ trait Tables {
     /** Database column period SqlType(int4), Default(None) */
     val period: Rep[Option[Int]] = column[Option[Int]]("period", O.Default(None))
 
-    /** Foreign key referencing Blocks (database name baker_checkpoint_block_id_fkey) */
-    lazy val blocksFk = foreignKey("baker_checkpoint_block_id_fkey", blockId, Blocks)(
-      r => r.hash,
-      onUpdate = ForeignKeyAction.NoAction,
-      onDelete = ForeignKeyAction.NoAction
-    )
-
     /** Index over (blockLevel) (database name ix_bakers_checkpoint_block_level) */
     val index1 = index("ix_bakers_checkpoint_block_level", blockLevel)
   }
@@ -902,7 +965,9 @@ trait Tables {
     *  @param blockLevel Database column block_level SqlType(int8), Default(-1)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
     *  @param period Database column period SqlType(int4), Default(None)
-    *  @param asof Database column asof SqlType(timestamp) */
+    *  @param asof Database column asof SqlType(timestamp)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar) */
   case class BakersHistoryRow(
       pkh: String,
       blockId: String,
@@ -916,7 +981,9 @@ trait Tables {
       blockLevel: Long = -1L,
       cycle: Option[Int] = None,
       period: Option[Int] = None,
-      asof: java.sql.Timestamp
+      asof: java.sql.Timestamp,
+      invalidatedAsof: Option[java.sql.Timestamp] = None,
+      forkId: String
   )
 
   /** GetResult implicit for fetching BakersHistoryRow objects using plain SQL queries */
@@ -927,7 +994,8 @@ trait Tables {
       e3: GR[Boolean],
       e4: GR[Long],
       e5: GR[Option[Int]],
-      e6: GR[java.sql.Timestamp]
+      e6: GR[java.sql.Timestamp],
+      e7: GR[Option[java.sql.Timestamp]]
   ): GR[BakersHistoryRow] = GR { prs =>
     import prs._
     BakersHistoryRow.tupled(
@@ -944,7 +1012,9 @@ trait Tables {
         <<[Long],
         <<?[Int],
         <<?[Int],
-        <<[java.sql.Timestamp]
+        <<[java.sql.Timestamp],
+        <<?[java.sql.Timestamp],
+        <<[String]
       )
     )
   }
@@ -966,7 +1036,9 @@ trait Tables {
         blockLevel,
         cycle,
         period,
-        asof
+        asof,
+        invalidatedAsof,
+        forkId
       ) <> (BakersHistoryRow.tupled, BakersHistoryRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -985,15 +1057,18 @@ trait Tables {
           Rep.Some(blockLevel),
           cycle,
           period,
-          Rep.Some(asof)
+          Rep.Some(asof),
+          invalidatedAsof,
+          Rep.Some(forkId)
         )
       ).shaped.<>(
         { r =>
           import r._;
           _1.map(
             _ =>
-              BakersHistoryRow
-                .tupled((_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get, _10.get, _11, _12, _13.get))
+              BakersHistoryRow.tupled(
+                (_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get, _10.get, _11, _12, _13.get, _14, _15.get)
+              )
           )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -1040,6 +1115,13 @@ trait Tables {
 
     /** Database column asof SqlType(timestamp) */
     val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
+
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
   }
 
   /** Collection-like TableQuery object for table BakersHistory */
@@ -1052,7 +1134,9 @@ trait Tables {
     *  @param priority Database column priority SqlType(int4)
     *  @param estimatedTime Database column estimated_time SqlType(timestamp), Default(None)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
-    *  @param governancePeriod Database column governance_period SqlType(int4), Default(None) */
+    *  @param governancePeriod Database column governance_period SqlType(int4), Default(None)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar) */
   case class BakingRightsRow(
       blockHash: Option[String] = None,
       blockLevel: Long,
@@ -1060,7 +1144,9 @@ trait Tables {
       priority: Int,
       estimatedTime: Option[java.sql.Timestamp] = None,
       cycle: Option[Int] = None,
-      governancePeriod: Option[Int] = None
+      governancePeriod: Option[Int] = None,
+      invalidatedAsof: Option[java.sql.Timestamp] = None,
+      forkId: String
   )
 
   /** GetResult implicit for fetching BakingRightsRow objects using plain SQL queries */
@@ -1073,14 +1159,26 @@ trait Tables {
       e5: GR[Option[Int]]
   ): GR[BakingRightsRow] = GR { prs =>
     import prs._
-    BakingRightsRow.tupled((<<?[String], <<[Long], <<[String], <<[Int], <<?[java.sql.Timestamp], <<?[Int], <<?[Int]))
+    BakingRightsRow.tupled(
+      (
+        <<?[String],
+        <<[Long],
+        <<[String],
+        <<[Int],
+        <<?[java.sql.Timestamp],
+        <<?[Int],
+        <<?[Int],
+        <<?[java.sql.Timestamp],
+        <<[String]
+      )
+    )
   }
 
   /** Table description of table baking_rights. Objects of this class serve as prototypes for rows in queries. */
   class BakingRights(_tableTag: Tag)
       extends profile.api.Table[BakingRightsRow](_tableTag, Some("tezos"), "baking_rights") {
     def * =
-      (blockHash, blockLevel, delegate, priority, estimatedTime, cycle, governancePeriod) <> (BakingRightsRow.tupled, BakingRightsRow.unapply)
+      (blockHash, blockLevel, delegate, priority, estimatedTime, cycle, governancePeriod, invalidatedAsof, forkId) <> (BakingRightsRow.tupled, BakingRightsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -1092,11 +1190,13 @@ trait Tables {
           Rep.Some(priority),
           estimatedTime,
           cycle,
-          governancePeriod
+          governancePeriod,
+          invalidatedAsof,
+          Rep.Some(forkId)
         )
       ).shaped.<>(
         { r =>
-          import r._; _2.map(_ => BakingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7)))
+          import r._; _2.map(_ => BakingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7, _8, _9.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1123,12 +1223,19 @@ trait Tables {
     /** Database column governance_period SqlType(int4), Default(None) */
     val governancePeriod: Rep[Option[Int]] = column[Option[Int]]("governance_period", O.Default(None))
 
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
+
     /** Primary key of BakingRights (database name baking_rights_pkey) */
-    val pk = primaryKey("baking_rights_pkey", (blockLevel, delegate))
+    val pk = primaryKey("baking_rights_pkey", (blockLevel, delegate, forkId))
 
     /** Foreign key referencing Blocks (database name fk_block_hash) */
-    lazy val blocksFk = foreignKey("fk_block_hash", blockHash, Blocks)(
-      r => Rep.Some(r.hash),
+    lazy val blocksFk = foreignKey("fk_block_hash", (blockHash, forkId), Blocks)(
+      r => (Rep.Some(r.hash), r.forkId),
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
@@ -1139,15 +1246,18 @@ trait Tables {
     /** Index over (blockLevel) (database name baking_rights_level_idx) */
     val index2 = index("baking_rights_level_idx", blockLevel)
 
+    /** Index over (blockHash) (database name fki_fk_block_hash) */
+    val index3 = index("fki_fk_block_hash", blockHash)
+
     /** Index over (delegate,priority) (database name ix_delegate_priority) */
-    val index3 = index("ix_delegate_priority", (delegate, priority))
+    val index4 = index("ix_delegate_priority", (delegate, priority))
   }
 
   /** Collection-like TableQuery object for table BakingRights */
   lazy val BakingRights = new TableQuery(tag => new BakingRights(tag))
 
   /** Entity class storing rows of table BalanceUpdates
-    *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey
+    *  @param id Database column id SqlType(serial), AutoInc
     *  @param source Database column source SqlType(varchar)
     *  @param sourceId Database column source_id SqlType(int4), Default(None)
     *  @param sourceHash Database column source_hash SqlType(varchar), Default(None)
@@ -1160,7 +1270,9 @@ trait Tables {
     *  @param blockId Database column block_id SqlType(varchar)
     *  @param blockLevel Database column block_level SqlType(int8)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
-    *  @param period Database column period SqlType(int4), Default(None) */
+    *  @param period Database column period SqlType(int4), Default(None)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar) */
   case class BalanceUpdatesRow(
       id: Int,
       source: String,
@@ -1175,7 +1287,9 @@ trait Tables {
       blockId: String,
       blockLevel: Long,
       cycle: Option[Int] = None,
-      period: Option[Int] = None
+      period: Option[Int] = None,
+      invalidatedAsof: Option[java.sql.Timestamp] = None,
+      forkId: String
   )
 
   /** GetResult implicit for fetching BalanceUpdatesRow objects using plain SQL queries */
@@ -1186,7 +1300,8 @@ trait Tables {
       e3: GR[Option[String]],
       e4: GR[scala.math.BigDecimal],
       e5: GR[Option[Long]],
-      e6: GR[Long]
+      e6: GR[Long],
+      e7: GR[Option[java.sql.Timestamp]]
   ): GR[BalanceUpdatesRow] = GR { prs =>
     import prs._
     BalanceUpdatesRow.tupled(
@@ -1204,7 +1319,9 @@ trait Tables {
         <<[String],
         <<[Long],
         <<?[Int],
-        <<?[Int]
+        <<?[Int],
+        <<?[java.sql.Timestamp],
+        <<[String]
       )
     )
   }
@@ -1227,7 +1344,9 @@ trait Tables {
         blockId,
         blockLevel,
         cycle,
-        period
+        period,
+        invalidatedAsof,
+        forkId
       ) <> (BalanceUpdatesRow.tupled, BalanceUpdatesRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -1247,22 +1366,25 @@ trait Tables {
           Rep.Some(blockId),
           Rep.Some(blockLevel),
           cycle,
-          period
+          period,
+          invalidatedAsof,
+          Rep.Some(forkId)
         )
       ).shaped.<>(
         { r =>
           import r._;
           _1.map(
             _ =>
-              BalanceUpdatesRow
-                .tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7.get, _8, _9, _10, _11.get, _12.get, _13, _14))
+              BalanceUpdatesRow.tupled(
+                (_1.get, _2.get, _3, _4, _5.get, _6.get, _7.get, _8, _9, _10, _11.get, _12.get, _13, _14, _15, _16.get)
+              )
           )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
 
-    /** Database column id SqlType(serial), AutoInc, PrimaryKey */
-    val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
+    /** Database column id SqlType(serial), AutoInc */
+    val id: Rep[Int] = column[Int]("id", O.AutoInc)
 
     /** Database column source SqlType(varchar) */
     val source: Rep[String] = column[String]("source")
@@ -1302,6 +1424,16 @@ trait Tables {
 
     /** Database column period SqlType(int4), Default(None) */
     val period: Rep[Option[Int]] = column[Option[Int]]("period", O.Default(None))
+
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
+
+    /** Primary key of BalanceUpdates (database name balance_updates_pkey) */
+    val pk = primaryKey("balance_updates_pkey", (id, forkId))
 
     /** Index over (accountId) (database name ix_balance_updates_account_id) */
     val index1 = index("ix_balance_updates_account_id", accountId)
@@ -1440,7 +1572,9 @@ trait Tables {
     *  @param utcYear Database column utc_year SqlType(int4)
     *  @param utcMonth Database column utc_month SqlType(int4)
     *  @param utcDay Database column utc_day SqlType(int4)
-    *  @param utcTime Database column utc_time SqlType(varchar) */
+    *  @param utcTime Database column utc_time SqlType(varchar)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar) */
   case class BlocksRow(
       level: Long,
       proto: Int,
@@ -1468,7 +1602,9 @@ trait Tables {
       utcYear: Int,
       utcMonth: Int,
       utcDay: Int,
-      utcTime: String
+      utcTime: String,
+      invalidatedAsof: Option[java.sql.Timestamp] = None,
+      forkId: String
   )
 
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
@@ -1480,7 +1616,8 @@ trait Tables {
       e4: GR[Option[String]],
       e5: GR[Option[Int]],
       e6: GR[Option[scala.math.BigDecimal]],
-      e7: GR[Option[Long]]
+      e7: GR[Option[Long]],
+      e8: GR[Option[java.sql.Timestamp]]
   ): GR[BlocksRow] = GR { prs =>
     import prs._
     BlocksRow(
@@ -1510,6 +1647,8 @@ trait Tables {
       <<[Int],
       <<[Int],
       <<[Int],
+      <<[String],
+      <<?[java.sql.Timestamp],
       <<[String]
     )
   }
@@ -1517,14 +1656,15 @@ trait Tables {
   /** Table description of table blocks. Objects of this class serve as prototypes for rows in queries. */
   class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, Some("tezos"), "blocks") {
     def * =
-      (level :: proto :: predecessor :: timestamp :: fitness :: context :: signature :: protocol :: chainId :: hash :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: priority :: utcYear :: utcMonth :: utcDay :: utcTime :: HNil)
+      (level :: proto :: predecessor :: timestamp :: fitness :: context :: signature :: protocol :: chainId :: hash :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: priority :: utcYear :: utcMonth :: utcDay :: utcTime :: invalidatedAsof :: forkId :: HNil)
         .mapTo[BlocksRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       (Rep.Some(level) :: Rep.Some(proto) :: Rep.Some(predecessor) :: Rep.Some(timestamp) :: Rep.Some(fitness) :: context :: signature :: Rep
             .Some(protocol) :: chainId :: Rep.Some(hash) :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: priority :: Rep
-            .Some(utcYear) :: Rep.Some(utcMonth) :: Rep.Some(utcDay) :: Rep.Some(utcTime) :: HNil).shaped.<>(
+            .Some(utcYear) :: Rep.Some(utcMonth) :: Rep.Some(utcDay) :: Rep.Some(utcTime) :: invalidatedAsof :: Rep
+            .Some(forkId) :: HNil).shaped.<>(
         r =>
           BlocksRow(
             r(0).asInstanceOf[Option[Long]].get,
@@ -1553,7 +1693,9 @@ trait Tables {
             r(23).asInstanceOf[Option[Int]].get,
             r(24).asInstanceOf[Option[Int]].get,
             r(25).asInstanceOf[Option[Int]].get,
-            r(26).asInstanceOf[Option[String]].get
+            r(26).asInstanceOf[Option[String]].get,
+            r(27).asInstanceOf[Option[java.sql.Timestamp]],
+            r(28).asInstanceOf[Option[String]].get
           ),
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1640,8 +1782,15 @@ trait Tables {
     /** Database column utc_time SqlType(varchar) */
     val utcTime: Rep[String] = column[String]("utc_time")
 
-    /** Uniqueness Index over (hash) (database name blocks_hash_key) */
-    val index1 = index("blocks_hash_key", hash :: HNil, unique = true)
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
+
+    /** Uniqueness Index over (hash,forkId) (database name blocks_hash_fork_id_key) */
+    val index1 = index("blocks_hash_fork_id_key", hash :: forkId :: HNil, unique = true)
 
     /** Index over (level) (database name ix_blocks_level) */
     val index2 = index("ix_blocks_level", level :: HNil)
@@ -1658,7 +1807,9 @@ trait Tables {
     *  @param estimatedTime Database column estimated_time SqlType(timestamp), Default(None)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
     *  @param governancePeriod Database column governance_period SqlType(int4), Default(None)
-    *  @param endorsedBlock Database column endorsed_block SqlType(int8), Default(None) */
+    *  @param endorsedBlock Database column endorsed_block SqlType(int8), Default(None)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar) */
   case class EndorsingRightsRow(
       blockHash: Option[String] = None,
       blockLevel: Long,
@@ -1667,7 +1818,9 @@ trait Tables {
       estimatedTime: Option[java.sql.Timestamp] = None,
       cycle: Option[Int] = None,
       governancePeriod: Option[Int] = None,
-      endorsedBlock: Option[Long] = None
+      endorsedBlock: Option[Long] = None,
+      invalidatedAsof: Option[java.sql.Timestamp] = None,
+      forkId: String
   )
 
   /** GetResult implicit for fetching EndorsingRightsRow objects using plain SQL queries */
@@ -1682,7 +1835,18 @@ trait Tables {
   ): GR[EndorsingRightsRow] = GR { prs =>
     import prs._
     EndorsingRightsRow.tupled(
-      (<<?[String], <<[Long], <<[String], <<[Int], <<?[java.sql.Timestamp], <<?[Int], <<?[Int], <<?[Long])
+      (
+        <<?[String],
+        <<[Long],
+        <<[String],
+        <<[Int],
+        <<?[java.sql.Timestamp],
+        <<?[Int],
+        <<?[Int],
+        <<?[Long],
+        <<?[java.sql.Timestamp],
+        <<[String]
+      )
     )
   }
 
@@ -1690,7 +1854,18 @@ trait Tables {
   class EndorsingRights(_tableTag: Tag)
       extends profile.api.Table[EndorsingRightsRow](_tableTag, Some("tezos"), "endorsing_rights") {
     def * =
-      (blockHash, blockLevel, delegate, slot, estimatedTime, cycle, governancePeriod, endorsedBlock) <> (EndorsingRightsRow.tupled, EndorsingRightsRow.unapply)
+      (
+        blockHash,
+        blockLevel,
+        delegate,
+        slot,
+        estimatedTime,
+        cycle,
+        governancePeriod,
+        endorsedBlock,
+        invalidatedAsof,
+        forkId
+      ) <> (EndorsingRightsRow.tupled, EndorsingRightsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -1703,11 +1878,13 @@ trait Tables {
           estimatedTime,
           cycle,
           governancePeriod,
-          endorsedBlock
+          endorsedBlock,
+          invalidatedAsof,
+          Rep.Some(forkId)
         )
       ).shaped.<>(
         { r =>
-          import r._; _2.map(_ => EndorsingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7, _8)))
+          import r._; _2.map(_ => EndorsingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7, _8, _9, _10.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1737,12 +1914,19 @@ trait Tables {
     /** Database column endorsed_block SqlType(int8), Default(None) */
     val endorsedBlock: Rep[Option[Long]] = column[Option[Long]]("endorsed_block", O.Default(None))
 
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
+
     /** Primary key of EndorsingRights (database name endorsing_rights_pkey) */
-    val pk = primaryKey("endorsing_rights_pkey", (blockLevel, delegate, slot))
+    val pk = primaryKey("endorsing_rights_pkey", (blockLevel, delegate, slot, forkId))
 
     /** Foreign key referencing Blocks (database name fk_block_hash) */
-    lazy val blocksFk = foreignKey("fk_block_hash", blockHash, Blocks)(
-      r => Rep.Some(r.hash),
+    lazy val blocksFk = foreignKey("fk_block_hash", (blockHash, forkId), Blocks)(
+      r => (Rep.Some(r.hash), r.forkId),
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
@@ -1753,8 +1937,11 @@ trait Tables {
     /** Index over (blockLevel) (database name endorsing_rights_level_idx) */
     val index2 = index("endorsing_rights_level_idx", blockLevel)
 
+    /** Index over (blockHash) (database name fki_fk_block_hash2) */
+    val index3 = index("fki_fk_block_hash2", blockHash)
+
     /** Index over (delegate,slot) (database name ix_delegate_slot) */
-    val index3 = index("ix_delegate_slot", (delegate, slot))
+    val index4 = index("ix_delegate_slot", (delegate, slot))
   }
 
   /** Collection-like TableQuery object for table EndorsingRights */
@@ -1767,7 +1954,9 @@ trait Tables {
     *  @param timestamp Database column timestamp SqlType(timestamp)
     *  @param kind Database column kind SqlType(varchar)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
-    *  @param level Database column level SqlType(int8), Default(None) */
+    *  @param level Database column level SqlType(int8), Default(None)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar) */
   case class FeesRow(
       low: Int,
       medium: Int,
@@ -1775,7 +1964,9 @@ trait Tables {
       timestamp: java.sql.Timestamp,
       kind: String,
       cycle: Option[Int] = None,
-      level: Option[Long] = None
+      level: Option[Long] = None,
+      invalidatedAsof: Option[java.sql.Timestamp] = None,
+      forkId: String
   )
 
   /** GetResult implicit for fetching FeesRow objects using plain SQL queries */
@@ -1784,21 +1975,47 @@ trait Tables {
       e1: GR[java.sql.Timestamp],
       e2: GR[String],
       e3: GR[Option[Int]],
-      e4: GR[Option[Long]]
+      e4: GR[Option[Long]],
+      e5: GR[Option[java.sql.Timestamp]]
   ): GR[FeesRow] = GR { prs =>
     import prs._
-    FeesRow.tupled((<<[Int], <<[Int], <<[Int], <<[java.sql.Timestamp], <<[String], <<?[Int], <<?[Long]))
+    FeesRow.tupled(
+      (
+        <<[Int],
+        <<[Int],
+        <<[Int],
+        <<[java.sql.Timestamp],
+        <<[String],
+        <<?[Int],
+        <<?[Long],
+        <<?[java.sql.Timestamp],
+        <<[String]
+      )
+    )
   }
 
   /** Table description of table fees. Objects of this class serve as prototypes for rows in queries. */
   class Fees(_tableTag: Tag) extends profile.api.Table[FeesRow](_tableTag, Some("tezos"), "fees") {
-    def * = (low, medium, high, timestamp, kind, cycle, level) <> (FeesRow.tupled, FeesRow.unapply)
+    def * =
+      (low, medium, high, timestamp, kind, cycle, level, invalidatedAsof, forkId) <> (FeesRow.tupled, FeesRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(low), Rep.Some(medium), Rep.Some(high), Rep.Some(timestamp), Rep.Some(kind), cycle, level)).shaped.<>(
+      (
+        (
+          Rep.Some(low),
+          Rep.Some(medium),
+          Rep.Some(high),
+          Rep.Some(timestamp),
+          Rep.Some(kind),
+          cycle,
+          level,
+          invalidatedAsof,
+          Rep.Some(forkId)
+        )
+      ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => FeesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7)))
+          import r._; _1.map(_ => FeesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7, _8, _9.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1823,6 +2040,13 @@ trait Tables {
 
     /** Database column level SqlType(int8), Default(None) */
     val level: Rep[Option[Long]] = column[Option[Long]]("level", O.Default(None))
+
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
   }
 
   /** Collection-like TableQuery object for table Fees */
@@ -1847,7 +2071,9 @@ trait Tables {
     *  @param blockPassCount Database column block_pass_count SqlType(int4), Default(None)
     *  @param blockYayRolls Database column block_yay_rolls SqlType(numeric), Default(None)
     *  @param blockNayRolls Database column block_nay_rolls SqlType(numeric), Default(None)
-    *  @param blockPassRolls Database column block_pass_rolls SqlType(numeric), Default(None) */
+    *  @param blockPassRolls Database column block_pass_rolls SqlType(numeric), Default(None)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar) */
   case class GovernanceRow(
       votingPeriod: Int,
       votingPeriodKind: String,
@@ -1867,7 +2093,9 @@ trait Tables {
       blockPassCount: Option[Int] = None,
       blockYayRolls: Option[scala.math.BigDecimal] = None,
       blockNayRolls: Option[scala.math.BigDecimal] = None,
-      blockPassRolls: Option[scala.math.BigDecimal] = None
+      blockPassRolls: Option[scala.math.BigDecimal] = None,
+      invalidatedAsof: Option[java.sql.Timestamp] = None,
+      forkId: String
   )
 
   /** GetResult implicit for fetching GovernanceRow objects using plain SQL queries */
@@ -1876,7 +2104,8 @@ trait Tables {
       e1: GR[String],
       e2: GR[Option[Int]],
       e3: GR[Option[Long]],
-      e4: GR[Option[scala.math.BigDecimal]]
+      e4: GR[Option[scala.math.BigDecimal]],
+      e5: GR[Option[java.sql.Timestamp]]
   ): GR[GovernanceRow] = GR { prs =>
     import prs._
     GovernanceRow.tupled(
@@ -1899,7 +2128,9 @@ trait Tables {
         <<?[Int],
         <<?[scala.math.BigDecimal],
         <<?[scala.math.BigDecimal],
-        <<?[scala.math.BigDecimal]
+        <<?[scala.math.BigDecimal],
+        <<?[java.sql.Timestamp],
+        <<[String]
       )
     )
   }
@@ -1926,7 +2157,9 @@ trait Tables {
         blockPassCount,
         blockYayRolls,
         blockNayRolls,
-        blockPassRolls
+        blockPassRolls,
+        invalidatedAsof,
+        forkId
       ) <> (GovernanceRow.tupled, GovernanceRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -1951,7 +2184,9 @@ trait Tables {
           blockPassCount,
           blockYayRolls,
           blockNayRolls,
-          blockPassRolls
+          blockPassRolls,
+          invalidatedAsof,
+          Rep.Some(forkId)
         )
       ).shaped.<>(
         { r =>
@@ -1959,7 +2194,29 @@ trait Tables {
           _1.map(
             _ =>
               GovernanceRow.tupled(
-                (_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19)
+                (
+                  _1.get,
+                  _2.get,
+                  _3,
+                  _4,
+                  _5.get,
+                  _6.get,
+                  _7,
+                  _8,
+                  _9,
+                  _10,
+                  _11,
+                  _12,
+                  _13,
+                  _14,
+                  _15,
+                  _16,
+                  _17,
+                  _18,
+                  _19,
+                  _20,
+                  _21.get
+                )
               )
           )
         },
@@ -2030,8 +2287,15 @@ trait Tables {
     val blockPassRolls: Rep[Option[scala.math.BigDecimal]] =
       column[Option[scala.math.BigDecimal]]("block_pass_rolls", O.Default(None))
 
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
+
     /** Primary key of Governance (database name governance_pkey) */
-    val pk = primaryKey("governance_pkey", (blockHash, proposalHash, votingPeriodKind))
+    val pk = primaryKey("governance_pkey", (blockHash, proposalHash, votingPeriodKind, forkId))
 
     /** Index over (blockHash) (database name governance_block_hash_idx) */
     val index1 = index("governance_block_hash_idx", blockHash)
@@ -2082,7 +2346,9 @@ trait Tables {
     *  @param branch Database column branch SqlType(varchar)
     *  @param signature Database column signature SqlType(varchar), Default(None)
     *  @param blockId Database column block_id SqlType(varchar)
-    *  @param blockLevel Database column block_level SqlType(int8) */
+    *  @param blockLevel Database column block_level SqlType(int8)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar) */
   case class OperationGroupsRow(
       protocol: String,
       chainId: Option[String] = None,
@@ -2090,24 +2356,39 @@ trait Tables {
       branch: String,
       signature: Option[String] = None,
       blockId: String,
-      blockLevel: Long
+      blockLevel: Long,
+      invalidatedAsof: Option[java.sql.Timestamp] = None,
+      forkId: String
   )
 
   /** GetResult implicit for fetching OperationGroupsRow objects using plain SQL queries */
   implicit def GetResultOperationGroupsRow(
       implicit e0: GR[String],
       e1: GR[Option[String]],
-      e2: GR[Long]
+      e2: GR[Long],
+      e3: GR[Option[java.sql.Timestamp]]
   ): GR[OperationGroupsRow] = GR { prs =>
     import prs._
-    OperationGroupsRow.tupled((<<[String], <<?[String], <<[String], <<[String], <<?[String], <<[String], <<[Long]))
+    OperationGroupsRow.tupled(
+      (
+        <<[String],
+        <<?[String],
+        <<[String],
+        <<[String],
+        <<?[String],
+        <<[String],
+        <<[Long],
+        <<?[java.sql.Timestamp],
+        <<[String]
+      )
+    )
   }
 
   /** Table description of table operation_groups. Objects of this class serve as prototypes for rows in queries. */
   class OperationGroups(_tableTag: Tag)
       extends profile.api.Table[OperationGroupsRow](_tableTag, Some("tezos"), "operation_groups") {
     def * =
-      (protocol, chainId, hash, branch, signature, blockId, blockLevel) <> (OperationGroupsRow.tupled, OperationGroupsRow.unapply)
+      (protocol, chainId, hash, branch, signature, blockId, blockLevel, invalidatedAsof, forkId) <> (OperationGroupsRow.tupled, OperationGroupsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -2119,11 +2400,14 @@ trait Tables {
           Rep.Some(branch),
           signature,
           Rep.Some(blockId),
-          Rep.Some(blockLevel)
+          Rep.Some(blockLevel),
+          invalidatedAsof,
+          Rep.Some(forkId)
         )
       ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => OperationGroupsRow.tupled((_1.get, _2, _3.get, _4.get, _5, _6.get, _7.get)))
+          import r._;
+          _1.map(_ => OperationGroupsRow.tupled((_1.get, _2, _3.get, _4.get, _5, _6.get, _7.get, _8, _9.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -2149,18 +2433,28 @@ trait Tables {
     /** Database column block_level SqlType(int8) */
     val blockLevel: Rep[Long] = column[Long]("block_level")
 
-    /** Primary key of OperationGroups (database name OperationGroups_pkey) */
-    val pk = primaryKey("OperationGroups_pkey", (blockId, hash))
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
+
+    /** Primary key of OperationGroups (database name operation_groups_pkey) */
+    val pk = primaryKey("operation_groups_pkey", (blockId, hash, forkId))
 
     /** Foreign key referencing Blocks (database name block) */
-    lazy val blocksFk = foreignKey("block", blockId, Blocks)(
-      r => r.hash,
+    lazy val blocksFk = foreignKey("block", (blockId, forkId), Blocks)(
+      r => (r.hash, r.forkId),
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
 
+    /** Index over (blockId) (database name fki_block) */
+    val index1 = index("fki_block", blockId)
+
     /** Index over (blockLevel) (database name ix_operation_groups_block_level) */
-    val index1 = index("ix_operation_groups_block_level", blockLevel)
+    val index2 = index("ix_operation_groups_block_level", blockLevel)
   }
 
   /** Collection-like TableQuery object for table OperationGroups */
@@ -2170,7 +2464,7 @@ trait Tables {
     *  @param branch Database column branch SqlType(varchar), Default(None)
     *  @param numberOfSlots Database column number_of_slots SqlType(int4), Default(None)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
-    *  @param operationId Database column operation_id SqlType(serial), AutoInc, PrimaryKey
+    *  @param operationId Database column operation_id SqlType(serial), AutoInc
     *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
     *  @param kind Database column kind SqlType(varchar)
     *  @param level Database column level SqlType(int8), Default(None)
@@ -2213,7 +2507,9 @@ trait Tables {
     *  @param utcYear Database column utc_year SqlType(int4)
     *  @param utcMonth Database column utc_month SqlType(int4)
     *  @param utcDay Database column utc_day SqlType(int4)
-    *  @param utcTime Database column utc_time SqlType(varchar) */
+    *  @param utcTime Database column utc_time SqlType(varchar)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar) */
   case class OperationsRow(
       branch: Option[String] = None,
       numberOfSlots: Option[Int] = None,
@@ -2261,7 +2557,9 @@ trait Tables {
       utcYear: Int,
       utcMonth: Int,
       utcDay: Int,
-      utcTime: String
+      utcTime: String,
+      invalidatedAsof: Option[java.sql.Timestamp] = None,
+      forkId: String
   )
 
   /** GetResult implicit for fetching OperationsRow objects using plain SQL queries */
@@ -2275,7 +2573,8 @@ trait Tables {
       e6: GR[Option[Boolean]],
       e7: GR[Long],
       e8: GR[Boolean],
-      e9: GR[java.sql.Timestamp]
+      e9: GR[java.sql.Timestamp],
+      e10: GR[Option[java.sql.Timestamp]]
   ): GR[OperationsRow] = GR { prs =>
     import prs._
     OperationsRow(
@@ -2325,6 +2624,8 @@ trait Tables {
       <<[Int],
       <<[Int],
       <<[Int],
+      <<[String],
+      <<?[java.sql.Timestamp],
       <<[String]
     )
   }
@@ -2332,7 +2633,7 @@ trait Tables {
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, Some("tezos"), "operations") {
     def * =
-      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: ballotPeriod :: timestamp :: errors :: utcYear :: utcMonth :: utcDay :: utcTime :: HNil)
+      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: ballotPeriod :: timestamp :: errors :: utcYear :: utcMonth :: utcDay :: utcTime :: invalidatedAsof :: forkId :: HNil)
         .mapTo[OperationsRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -2341,7 +2642,7 @@ trait Tables {
             .Some(blockHash) :: Rep.Some(blockLevel) :: ballot :: Rep.Some(internal) :: period :: ballotPeriod :: Rep
             .Some(timestamp) :: errors :: Rep.Some(utcYear) :: Rep.Some(utcMonth) :: Rep.Some(utcDay) :: Rep.Some(
             utcTime
-          ) :: HNil).shaped.<>(
+          ) :: invalidatedAsof :: Rep.Some(forkId) :: HNil).shaped.<>(
         r =>
           OperationsRow(
             r(0).asInstanceOf[Option[String]],
@@ -2390,7 +2691,9 @@ trait Tables {
             r(43).asInstanceOf[Option[Int]].get,
             r(44).asInstanceOf[Option[Int]].get,
             r(45).asInstanceOf[Option[Int]].get,
-            r(46).asInstanceOf[Option[String]].get
+            r(46).asInstanceOf[Option[String]].get,
+            r(47).asInstanceOf[Option[java.sql.Timestamp]],
+            r(48).asInstanceOf[Option[String]].get
           ),
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -2404,8 +2707,8 @@ trait Tables {
     /** Database column cycle SqlType(int4), Default(None) */
     val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
 
-    /** Database column operation_id SqlType(serial), AutoInc, PrimaryKey */
-    val operationId: Rep[Int] = column[Int]("operation_id", O.AutoInc, O.PrimaryKey)
+    /** Database column operation_id SqlType(serial), AutoInc */
+    val operationId: Rep[Int] = column[Int]("operation_id", O.AutoInc)
 
     /** Database column operation_group_hash SqlType(varchar) */
     val operationGroupHash: Rep[String] = column[String]("operation_group_hash")
@@ -2541,49 +2844,63 @@ trait Tables {
     /** Database column utc_time SqlType(varchar) */
     val utcTime: Rep[String] = column[String]("utc_time")
 
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
+
+    /** Primary key of Operations (database name operations_pkey) */
+    val pk = primaryKey("operations_pkey", operationId :: forkId :: HNil)
+
     /** Foreign key referencing Blocks (database name fk_blockhashes) */
-    lazy val blocksFk = foreignKey("fk_blockhashes", blockHash :: HNil, Blocks)(
-      r => r.hash :: HNil,
+    lazy val blocksFk = foreignKey("fk_blockhashes", blockHash :: forkId :: HNil, Blocks)(
+      r => r.hash :: r.forkId :: HNil,
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
 
     /** Foreign key referencing OperationGroups (database name fk_opgroups) */
-    lazy val operationGroupsFk = foreignKey("fk_opgroups", operationGroupHash :: blockHash :: HNil, OperationGroups)(
-      r => r.hash :: r.blockId :: HNil,
-      onUpdate = ForeignKeyAction.NoAction,
-      onDelete = ForeignKeyAction.NoAction
-    )
+    lazy val operationGroupsFk =
+      foreignKey("fk_opgroups", operationGroupHash :: blockHash :: forkId :: HNil, OperationGroups)(
+        r => r.hash :: r.blockId :: r.forkId :: HNil,
+        onUpdate = ForeignKeyAction.NoAction,
+        onDelete = ForeignKeyAction.NoAction
+      )
+
+    /** Index over (blockHash) (database name fki_fk_blockhashes) */
+    val index1 = index("fki_fk_blockhashes", blockHash :: HNil)
 
     /** Index over (managerPubkey) (database name ix_manager_pubkey) */
-    val index1 = index("ix_manager_pubkey", managerPubkey :: HNil)
+    val index2 = index("ix_manager_pubkey", managerPubkey :: HNil)
 
     /** Index over (operationGroupHash) (database name ix_operation_group_hash) */
-    val index2 = index("ix_operation_group_hash", operationGroupHash :: HNil)
+    val index3 = index("ix_operation_group_hash", operationGroupHash :: HNil)
 
     /** Index over (blockLevel) (database name ix_operations_block_level) */
-    val index3 = index("ix_operations_block_level", blockLevel :: HNil)
+    val index4 = index("ix_operations_block_level", blockLevel :: HNil)
 
     /** Index over (cycle) (database name ix_operations_cycle) */
-    val index4 = index("ix_operations_cycle", cycle :: HNil)
+    val index5 = index("ix_operations_cycle", cycle :: HNil)
 
     /** Index over (delegate) (database name ix_operations_delegate) */
-    val index5 = index("ix_operations_delegate", delegate :: HNil)
+    val index6 = index("ix_operations_delegate", delegate :: HNil)
 
     /** Index over (destination) (database name ix_operations_destination) */
-    val index6 = index("ix_operations_destination", destination :: HNil)
+    val index7 = index("ix_operations_destination", destination :: HNil)
 
     /** Index over (kind) (database name ix_operations_kind) */
-    val index7 = index("ix_operations_kind", kind :: HNil)
+    val index8 = index("ix_operations_kind", kind :: HNil)
 
     /** Index over (source) (database name ix_operations_source) */
-    val index8 = index("ix_operations_source", source :: HNil)
+    val index9 = index("ix_operations_source", source :: HNil)
 
     /** Index over (timestamp) (database name ix_operations_timestamp) */
-    val index9 = index("ix_operations_timestamp", timestamp :: HNil)
+    val index10 = index("ix_operations_timestamp", timestamp :: HNil)
 
     /** Index over (originatedContracts) (database name ix_originated_contracts) */
-    val index10 = index("ix_originated_contracts", originatedContracts :: HNil)
+    val index11 = index("ix_originated_contracts", originatedContracts :: HNil)
   }
 
   /** Collection-like TableQuery object for table Operations */
@@ -2787,14 +3104,18 @@ trait Tables {
     *  @param balance Database column balance SqlType(numeric)
     *  @param blockId Database column block_id SqlType(varchar)
     *  @param blockLevel Database column block_level SqlType(int8), Default(-1)
-    *  @param asof Database column asof SqlType(timestamp) */
+    *  @param asof Database column asof SqlType(timestamp)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar) */
   case class TokenBalancesRow(
       tokenId: Int,
       address: String,
       balance: scala.math.BigDecimal,
       blockId: String,
       blockLevel: Long = -1L,
-      asof: java.sql.Timestamp
+      asof: java.sql.Timestamp,
+      invalidatedAsof: Option[java.sql.Timestamp] = None,
+      forkId: String
   )
 
   /** GetResult implicit for fetching TokenBalancesRow objects using plain SQL queries */
@@ -2803,11 +3124,21 @@ trait Tables {
       e1: GR[String],
       e2: GR[scala.math.BigDecimal],
       e3: GR[Long],
-      e4: GR[java.sql.Timestamp]
+      e4: GR[java.sql.Timestamp],
+      e5: GR[Option[java.sql.Timestamp]]
   ): GR[TokenBalancesRow] = GR { prs =>
     import prs._
     TokenBalancesRow.tupled(
-      (<<[Int], <<[String], <<[scala.math.BigDecimal], <<[String], <<[Long], <<[java.sql.Timestamp])
+      (
+        <<[Int],
+        <<[String],
+        <<[scala.math.BigDecimal],
+        <<[String],
+        <<[Long],
+        <<[java.sql.Timestamp],
+        <<?[java.sql.Timestamp],
+        <<[String]
+      )
     )
   }
 
@@ -2815,7 +3146,7 @@ trait Tables {
   class TokenBalances(_tableTag: Tag)
       extends profile.api.Table[TokenBalancesRow](_tableTag, Some("tezos"), "token_balances") {
     def * =
-      (tokenId, address, balance, blockId, blockLevel, asof) <> (TokenBalancesRow.tupled, TokenBalancesRow.unapply)
+      (tokenId, address, balance, blockId, blockLevel, asof, invalidatedAsof, forkId) <> (TokenBalancesRow.tupled, TokenBalancesRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -2826,11 +3157,13 @@ trait Tables {
           Rep.Some(balance),
           Rep.Some(blockId),
           Rep.Some(blockLevel),
-          Rep.Some(asof)
+          Rep.Some(asof),
+          invalidatedAsof,
+          Rep.Some(forkId)
         )
       ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => TokenBalancesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))
+          import r._; _1.map(_ => TokenBalancesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7, _8.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -2853,8 +3186,15 @@ trait Tables {
     /** Database column asof SqlType(timestamp) */
     val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
 
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
+
     /** Primary key of TokenBalances (database name token_balances_pkey) */
-    val pk = primaryKey("token_balances_pkey", (tokenId, address, blockLevel))
+    val pk = primaryKey("token_balances_pkey", (tokenId, address, blockLevel, forkId))
   }
 
   /** Collection-like TableQuery object for table TokenBalances */

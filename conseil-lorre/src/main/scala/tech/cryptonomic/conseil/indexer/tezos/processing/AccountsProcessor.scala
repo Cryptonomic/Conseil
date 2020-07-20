@@ -201,7 +201,7 @@ class AccountsProcessor(
             TezosDb
               .fetchRecentOperationsHashByKind(Set("activate_account"), level)
               .map(
-                optionalOperationHashes => level -> optionalOperationHashes.toList.flattenOption.map(PublicKeyHash(_))
+                optionalOperationHashes => level -> optionalOperationHashes.toList.map(PublicKeyHash(_))
               )
           }
         }.map(_.toMap)

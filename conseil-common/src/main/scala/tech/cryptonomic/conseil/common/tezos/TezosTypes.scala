@@ -177,6 +177,21 @@ object TezosTypes {
   //operations definition
   type ParametersCompatibility = Either[Parameters, Micheline]
 
+  /** The set of operations kinds */
+  val knownOperationKinds = Set(
+    "seed_nonce_revelation",
+    "delegation",
+    "transaction",
+    "activate_account",
+    "origination",
+    "reveal",
+    "double_endorsement_evidence",
+    "double_baking_evidence",
+    "endorsement",
+    "proposals",
+    "ballot"
+  )
+
   final case class Endorsement(
       level: BlockLevel,
       metadata: EndorsementMetadata

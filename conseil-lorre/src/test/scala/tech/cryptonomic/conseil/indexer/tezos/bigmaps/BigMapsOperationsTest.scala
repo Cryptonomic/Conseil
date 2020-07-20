@@ -7,8 +7,13 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
-import tech.cryptonomic.conseil.common.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow, TokenBalancesRow}
-import tech.cryptonomic.conseil.common.tezos.{Tables, TezosTypes}
+import tech.cryptonomic.conseil.common.tezos.Tables.{
+  BigMapContentsRow,
+  BigMapsRow,
+  OriginatedAccountMapsRow,
+  TokenBalancesRow
+}
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables, TezosTypes}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperationsTestFixtures, TezosInMemoryDatabaseSetup}
@@ -248,7 +253,8 @@ class BigMapsOperationsTest
             balance = BigDecimal(50),
             blockId = blockToSave.data.hash.value,
             blockLevel = blockToSave.data.header.level,
-            asof = Timestamp.from(blockToSave.data.header.timestamp.toInstant)
+            asof = Timestamp.from(blockToSave.data.header.timestamp.toInstant),
+            forkId = Fork.mainForkId
           )
         )
 
