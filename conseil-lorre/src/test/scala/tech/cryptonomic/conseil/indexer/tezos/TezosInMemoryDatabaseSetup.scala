@@ -23,7 +23,10 @@ trait TezosInMemoryDatabaseSetup extends InMemoryDatabaseSetup {
       Fixture(Tables.BakersCheckpoint),
       Fixture(Tables.BakersHistory),
       Fixture(Tables.RegisteredTokens),
-      Fixture(Tables.TokenBalances)
+      Fixture(Tables.TokenBalances),
+      Fixture(Tables.BakingRights),
+      Fixture(Tables.EndorsingRights),
+      Fixture(Tables.Governance)
     )
   )
 }

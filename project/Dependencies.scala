@@ -41,6 +41,7 @@ object Dependencies {
     val scalaMock = "4.1.0"
     val testContainerPostgres = "1.12.3"
     val diffX = "0.3.3"
+    val scalaCheckShapeless = "1.2.5"
 
     val libsodiumJna = "1.0.4"
     val jna = "5.5.0"
@@ -91,7 +92,7 @@ object Dependencies {
   private val slickCodeGen = Seq("com.typesafe.slick" %% "slick-codegen" % Versions.slick)
   private val slickPG = Seq("com.github.tminglei"     %% "slick-pg"      % Versions.slickPG)
   private val slickEffect = Seq(
-    "com.kubukoz" %% "slick-effect" % Versions.slickEffect exclude ("com.typesafe.slick", "slick"),
+    "com.kubukoz" %% "slick-effect"            % Versions.slickEffect exclude ("com.typesafe.slick", "slick"),
     "com.kubukoz" %% "slick-effect-transactor" % Versions.slickEffect exclude ("com.typesafe.slick", "slick")
   )
 
@@ -145,9 +146,10 @@ object Dependencies {
   )
 
   private val scalaTestCompile = Seq(
-    "org.scalactic"     %% "scalactic"       % Versions.scalaTest,
-    "org.scalatest"     %% "scalatest"       % Versions.scalaTest,
-    "org.scalatestplus" %% "scalacheck-1-14" % Versions.scalaTestScalaCheck
+    "org.scalactic"              %% "scalactic"                 % Versions.scalaTest,
+    "org.scalatest"              %% "scalatest"                 % Versions.scalaTest,
+    "org.scalatestplus"          %% "scalacheck-1-14"           % Versions.scalaTestScalaCheck,
+    "com.github.alexarchambault" %% "scalacheck-shapeless_1.14" % Versions.scalaCheckShapeless
   ) // Dedicated for common-testkit
   private val scalaTest = scalaTestCompile.map(_ % Test)
   private val scalaTestJson = Seq("com.stephenn" %% "scalatest-json-jsonassert" % Versions.scalaTestJson % Test)

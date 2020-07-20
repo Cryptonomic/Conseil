@@ -9,7 +9,7 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.api.sql.DefaultDatabaseOperations._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
-import tech.cryptonomic.conseil.common.tezos.Tables
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
 import tech.cryptonomic.conseil.common.tezos.Tables.FeesRow
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -32,7 +32,8 @@ class DefaultDatabaseOperationsTest
           Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)),
           s"$i-example",
           None,
-          None
+          None,
+          forkId = Fork.mainForkId
         )
       }
 

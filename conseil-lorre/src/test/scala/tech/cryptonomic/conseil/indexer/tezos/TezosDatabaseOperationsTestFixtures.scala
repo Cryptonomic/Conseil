@@ -9,7 +9,7 @@ import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BakersRow, Blo
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Scripted.Contracts
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
-import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics, TezosTypes}
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables, TezosOptics, TezosTypes}
 
 import scala.util.Random
 
@@ -254,7 +254,8 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
         utcYear = 1970,
         utcMonth = 1,
         utcDay = 1,
-        utcTime = "00:00:00"
+        utcTime = "00:00:00",
+        forkId = Fork.mainForkId
       )
 
     //we need somewhere to start with
@@ -308,7 +309,8 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
             branch = generateHash(10),
             signature = Some(s"sig${generateHash(10)}"),
             blockId = block.hash,
-            blockLevel = block.level
+            blockLevel = block.level,
+            forkId = Fork.mainForkId
           )
       )
       .toList
@@ -335,7 +337,8 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
           utcYear = 1970,
           utcMonth = 1,
           utcDay = 1,
-          utcTime = "00:00:00"
+          utcTime = "00:00:00",
+          forkId = Fork.mainForkId
         )
     }
 
@@ -349,14 +352,15 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
         blockId = block.hash,
         balance = 0,
         counter = Some(0),
-        script = None
+        script = None,
+        forkId = Fork.mainForkId
       )
     }.toList
 
   }
 
   /* randomly generates a number of delegate rows for some block */
-  def generateDelegateRows(howMany: Int, block: BlocksRow)(implicit randomSeed: RandomSeed): List[BakersRow] = {
+  def generateBakerRows(howMany: Int, block: BlocksRow)(implicit randomSeed: RandomSeed): List[BakersRow] = {
     require(
       howMany > 0,
       "the test can only generate a positive number of delegates, you asked for a non positive value"
@@ -374,7 +378,8 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
         stakingBalance = Some(0),
         delegatedBalance = Some(0),
         deactivated = true,
-        gracePeriod = 0
+        gracePeriod = 0,
+        forkId = Fork.mainForkId
       )
     }
 

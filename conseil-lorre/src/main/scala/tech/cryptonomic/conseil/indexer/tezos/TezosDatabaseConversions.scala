@@ -12,7 +12,7 @@ import monocle.Getter
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
-import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics}
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables, TezosOptics}
 import tech.cryptonomic.conseil.common.util.Conversion
 
 import scala.util.Try
@@ -76,7 +76,16 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
     override def convert(from: AverageFees) =
-      from.into[Tables.FeesRow].transform
+      Tables.FeesRow(
+        low = from.low,
+        medium = from.medium,
+        high = from.high,
+        timestamp = from.timestamp,
+        kind = from.kind,
+        cycle = from.cycle,
+        level = Some(from.level),
+        forkId = Fork.mainForkId
+      )
   }
 
   implicit val blockAccountsToAccountRows =
@@ -109,7 +118,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
               delegateSetable = toDelegateSetable(delegate),
               delegateValue = toDelegateValue(delegate),
               isBaker = isBaker.getOrElse(false),
-              isActivated = isActivated.getOrElse(false)
+              isActivated = isActivated.getOrElse(false),
+              forkId = Fork.mainForkId
             )
         }.toList
       }
@@ -136,6 +146,7 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
             .withFieldConst(_.asof, Timestamp.from(blockTaggedAccounts.timestamp.getOrElse(Instant.ofEpochMilli(0))))
             .withFieldConst(_.cycle, blockTaggedAccounts.cycle)
             .withFieldConst(_.isActiveBaker, isActiveBaker)
+            .withFieldConst(_.forkId, Fork.mainForkId)
             .transform
         }
 
@@ -194,7 +205,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         utcYear = year,
         utcMonth = month,
         utcDay = day,
-        utcTime = time
+        utcTime = time,
+        forkId = Fork.mainForkId
       )
     }
   }
@@ -209,7 +221,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
           branch = og.branch.value,
           signature = og.signature.map(_.value),
           blockId = from.data.hash.value,
-          blockLevel = from.data.header.level
+          blockLevel = from.data.header.level,
+          forkId = Fork.mainForkId
         )
       }
   }
@@ -250,7 +263,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         utcYear = year,
         utcMonth = month,
         utcDay = day,
-        utcTime = time
+        utcTime = time,
+        forkId = Fork.mainForkId
       )
   }
 
@@ -272,7 +286,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         utcYear = year,
         utcMonth = month,
         utcDay = day,
-        utcTime = time
+        utcTime = time,
+        forkId = Fork.mainForkId
       )
   }
 
@@ -294,7 +309,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         utcYear = year,
         utcMonth = month,
         utcDay = day,
-        utcTime = time
+        utcTime = time,
+        forkId = Fork.mainForkId
       )
   }
 
@@ -323,7 +339,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         utcYear = year,
         utcMonth = month,
         utcDay = day,
-        utcTime = time
+        utcTime = time,
+        forkId = Fork.mainForkId
       )
   }
 
@@ -391,7 +408,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         utcYear = year,
         utcMonth = month,
         utcDay = day,
-        utcTime = time
+        utcTime = time,
+        forkId = Fork.mainForkId
       )
   }
 
@@ -446,7 +464,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         utcYear = year,
         utcMonth = month,
         utcDay = day,
-        utcTime = time
+        utcTime = time,
+        forkId = Fork.mainForkId
       )
   }
 
@@ -475,7 +494,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         utcYear = year,
         utcMonth = month,
         utcDay = day,
-        utcTime = time
+        utcTime = time,
+        forkId = Fork.mainForkId
       )
   }
 
@@ -499,7 +519,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         utcYear = year,
         utcMonth = month,
         utcDay = day,
-        utcTime = time
+        utcTime = time,
+        forkId = Fork.mainForkId
       )
   }
 
@@ -522,7 +543,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         utcYear = year,
         utcMonth = month,
         utcDay = day,
-        utcTime = time
+        utcTime = time,
+        forkId = Fork.mainForkId
       )
 
   }
@@ -548,11 +570,12 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         utcYear = year,
         utcMonth = month,
         utcDay = day,
-        utcTime = time
+        utcTime = time,
+        forkId = Fork.mainForkId
       )
   }
 
-  /** Not all operations have some form of balance updates... we're ignoring some type, like ballots,
+  /** Not all operations have some form of balance updates... we're ignoring some type, like double_x_evidence,
     * thus we can't extract from those anyway.
     * We get back an empty List, where not applicable
     * We define a typeclass/trait that encodes the availability of balance updates, to reuse it for operations as well as blocks
@@ -588,7 +611,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
                   blockId = blockHash.value,
                   blockLevel = blockLevel,
                   cycle = cycle,
-                  period = period
+                  period = period,
+                  forkId = Fork.mainForkId
                 )
             }
         }
@@ -768,7 +792,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
           gracePeriod = delegate.grace_period,
           blockLevel = blockLevel,
           cycle = cycle,
-          period = period
+          period = period,
+          forkId = Fork.mainForkId
         )
       }
     }
@@ -780,6 +805,7 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         bakersRow
           .into[Tables.BakersHistoryRow]
           .withFieldConst(_.asof, Timestamp.from(instant.getOrElse(Instant.ofEpochMilli(0))))
+          .withFieldConst(_.forkId, Fork.mainForkId)
           .transform
       }
     }
@@ -790,14 +816,16 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
           from: (FetchRights, BakingRights)
       ): Tables.BakingRightsRow = {
         val (fetchRights, bakingRights) = from
-        bakingRights
-          .into[Tables.BakingRightsRow]
-          .withFieldRenamed(_.level, _.blockLevel)
-          .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
-          .withFieldConst(_.estimatedTime, bakingRights.estimated_time.map(toSql))
-          .withFieldConst(_.cycle, fetchRights.cycle)
-          .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
-          .transform
+        Tables.BakingRightsRow(
+          blockHash = fetchRights.blockHash.map(_.value),
+          blockLevel = bakingRights.level,
+          delegate = bakingRights.delegate,
+          priority = bakingRights.priority,
+          estimatedTime = bakingRights.estimated_time.map(toSql),
+          cycle = fetchRights.cycle,
+          governancePeriod = fetchRights.governancePeriod,
+          forkId = Fork.mainForkId
+        )
       }
     }
 
@@ -808,47 +836,50 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
       ): List[Tables.EndorsingRightsRow] = {
         val (fetchRights, endorsingRights) = from
         endorsingRights.slots.map { slot =>
-          endorsingRights
-            .into[Tables.EndorsingRightsRow]
-            .withFieldRenamed(_.level, _.blockLevel)
-            .withFieldConst(_.endorsedBlock, endorsingRights.endorsedBlock)
-            .withFieldConst(_.estimatedTime, endorsingRights.estimated_time.map(toSql))
-            .withFieldConst(_.slot, slot)
-            .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
-            .withFieldConst(_.cycle, fetchRights.cycle)
-            .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
-            .transform
+          Tables.EndorsingRightsRow(
+            blockHash = fetchRights.blockHash.map(_.value),
+            blockLevel = endorsingRights.level,
+            delegate = endorsingRights.delegate,
+            slot = slot,
+            estimatedTime = endorsingRights.estimated_time.map(toSql),
+            governancePeriod = fetchRights.governancePeriod,
+            endorsedBlock = endorsingRights.endorsedBlock,
+            forkId = Fork.mainForkId
+          )
         }
       }
     }
 
   implicit val bakingRightsToRowsWithoutBlockHash = new Conversion[Id, BakingRights, Tables.BakingRightsRow] {
-    override def convert(from: BakingRights): Tables.BakingRightsRow = {
-      val bakingRights = from
-      bakingRights
-        .into[Tables.BakingRightsRow]
-        .withFieldRenamed(_.level, _.blockLevel)
-        .withFieldConst(_.blockHash, None)
-        .withFieldConst(_.estimatedTime, bakingRights.estimated_time.map(toSql))
-        .transform
-    }
+    override def convert(from: BakingRights): Tables.BakingRightsRow =
+      Tables.BakingRightsRow(
+        blockHash = None,
+        blockLevel = from.level,
+        delegate = from.delegate,
+        priority = from.priority,
+        estimatedTime = from.estimated_time.map(toSql),
+        cycle = from.cycle,
+        governancePeriod = from.governancePeriod,
+        forkId = Fork.mainForkId
+      )
   }
 
   implicit val endorsingRightsToRowsWithoutBlockHash =
     new Conversion[List, EndorsingRights, Tables.EndorsingRightsRow] {
-      override def convert(from: EndorsingRights): List[Tables.EndorsingRightsRow] = {
-        val endorsingRights = from
-        endorsingRights.slots.map { slot =>
-          endorsingRights
-            .into[Tables.EndorsingRightsRow]
-            .withFieldRenamed(_.level, _.blockLevel)
-            .withFieldConst(_.endorsedBlock, endorsingRights.endorsedBlock)
-            .withFieldConst(_.estimatedTime, endorsingRights.estimated_time.map(toSql))
-            .withFieldConst(_.slot, slot)
-            .withFieldConst(_.blockHash, None)
-            .transform
+      override def convert(from: EndorsingRights): List[Tables.EndorsingRightsRow] =
+        from.slots.map { slot =>
+          Tables.EndorsingRightsRow(
+            blockHash = None,
+            blockLevel = from.level,
+            delegate = from.delegate,
+            slot = slot,
+            estimatedTime = from.estimated_time.map(toSql),
+            cycle = from.cycle,
+            governancePeriod = from.governancePeriod,
+            endorsedBlock = from.endorsedBlock,
+            forkId = Fork.mainForkId
+          )
         }
-      }
     }
 
   implicit val governanceConv =
@@ -886,7 +917,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
           blockPassCount = from.ballotsPerLevel.map(_.pass),
           blockYayRolls = Some(yayRollsPerLevel),
           blockNayRolls = Some(nayRollsPerLevel),
-          blockPassRolls = Some(passRollsPerLevel)
+          blockPassRolls = Some(passRollsPerLevel),
+          forkId = Fork.mainForkId
         )
 
       }

@@ -14,7 +14,7 @@ import tech.cryptonomic.conseil.common.tezos.Tables.{
   OriginatedAccountMapsRow,
   TokenBalancesRow
 }
-import tech.cryptonomic.conseil.common.tezos.{Tables, TezosTypes}
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables, TezosTypes}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperationsTestFixtures, TezosInMemoryDatabaseSetup}
@@ -252,7 +252,8 @@ class BigMapsOperationsTest
             balance = BigDecimal(50),
             blockId = blockToSave.data.hash.value,
             blockLevel = blockToSave.data.header.level,
-            asof = Timestamp.from(blockToSave.data.header.timestamp.toInstant)
+            asof = Timestamp.from(blockToSave.data.header.timestamp.toInstant),
+            forkId = Fork.mainForkId
           )
         )
 

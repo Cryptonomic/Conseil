@@ -5,6 +5,7 @@ import java.sql.Timestamp
 import io.circe.Json
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
+import tech.cryptonomic.conseil.common.tezos.Fork
 import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 
 class TezosDataHelpersTest extends TezosDataHelpers with AnyWordSpecLike with Matchers {
@@ -24,7 +25,8 @@ class TezosDataHelpersTest extends TezosDataHelpers with AnyWordSpecLike with Ma
             utcYear = 2020,
             utcMonth = 6,
             utcDay = 20,
-            utcTime = "20:00:00"
+            utcTime = "20:00:00",
+            forkId = Fork.mainForkId
           )
         ) shouldBe Json.fromFields(
           List(
@@ -38,14 +40,21 @@ class TezosDataHelpersTest extends TezosDataHelpers with AnyWordSpecLike with Ma
             "utcYear" -> Json.fromInt(2020),
             "utcMonth" -> Json.fromInt(6),
             "utcDay" -> Json.fromInt(20),
-            "utcTime" -> Json.fromString("20:00:00")
+            "utcTime" -> Json.fromString("20:00:00"),
+            "forkId" -> Json.fromString("leader")
           )
         )
 
       }
       "encode Tezos Accounts into json properly" in {
         encodeAny(
-          AccountsRow("account1", "block1", blockLevel = 1L, balance = BigDecimal.valueOf(1000))
+          AccountsRow(
+            "account1",
+            "block1",
+            blockLevel = 1L,
+            balance = BigDecimal.valueOf(1000),
+            forkId = Fork.mainForkId
+          )
         ) shouldBe Json.fromFields(
           List(
             "accountId" -> Json.fromString("account1"),
@@ -53,7 +62,8 @@ class TezosDataHelpersTest extends TezosDataHelpers with AnyWordSpecLike with Ma
             "blockLevel" -> Json.fromInt(1),
             "balance" -> Json.fromInt(1000),
             "isBaker" -> Json.False,
-            "isActivated" -> Json.False
+            "isActivated" -> Json.False,
+            "forkId" -> Json.fromString("leader")
           )
         )
       }
@@ -70,7 +80,8 @@ class TezosDataHelpersTest extends TezosDataHelpers with AnyWordSpecLike with Ma
             utcYear = 2020,
             utcMonth = 6,
             utcDay = 20,
-            utcTime = "20:00:00"
+            utcTime = "20:00:00",
+            forkId = Fork.mainForkId
           )
         ) shouldBe Json.fromFields(
           List(
@@ -84,7 +95,8 @@ class TezosDataHelpersTest extends TezosDataHelpers with AnyWordSpecLike with Ma
             "utcYear" -> Json.fromInt(2020),
             "utcMonth" -> Json.fromInt(6),
             "utcDay" -> Json.fromInt(20),
-            "utcTime" -> Json.fromString("20:00:00")
+            "utcTime" -> Json.fromString("20:00:00"),
+            "forkId" -> Json.fromString("leader")
           )
         )
       }
@@ -95,7 +107,8 @@ class TezosDataHelpersTest extends TezosDataHelpers with AnyWordSpecLike with Ma
             hash = "hash",
             branch = "branch",
             blockId = "blockId",
-            blockLevel = 1
+            blockLevel = 1,
+            forkId = Fork.mainForkId
           )
         ) shouldBe Json.fromFields(
           List(
@@ -103,7 +116,8 @@ class TezosDataHelpersTest extends TezosDataHelpers with AnyWordSpecLike with Ma
             "hash" -> Json.fromString("hash"),
             "branch" -> Json.fromString("branch"),
             "blockId" -> Json.fromString("blockId"),
-            "blockLevel" -> Json.fromInt(1)
+            "blockLevel" -> Json.fromInt(1),
+            "forkId" -> Json.fromString("leader")
           )
         )
       }
