@@ -872,10 +872,14 @@ FROM
 
 CREATE SCHEMA ethereum; 
 
+-- List of the Ethereum based blockchains implemented in Conseil
+CREATE TYPE ethereum.blockchains AS ENUM ('ethereum', 'quorum');
+
 -- Table is based on eth_getBlockByHash from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.blocks (
   hash text NOT NULL PRIMARY KEY,
   number integer NOT NULL,
+  blockchain ethereum.blockchains,
   difficulty integer NOT NULL,
   extra_data text NOT NULL,
   gas_limit integer NOT NULL,
@@ -899,7 +903,7 @@ CREATE TABLE ethereum.blocks (
 CREATE TABLE ethereum.transactions (
   hash text NOT NULL PRIMARY KEY,
   block_hash text NOT NULL,
-  block_number text NOT NULL,
+  block_number integer NOT NULL,
   "from" text NOT NULL,
   gas integer NOT NULL,
   gas_price integer NOT NULL,
@@ -915,3 +919,19 @@ CREATE TABLE ethereum.transactions (
 
 ALTER TABLE ONLY ethereum.transactions
   ADD CONSTRAINT ethereum_transactions_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES ethereum.blocks(hash);
+
+-- Table is based on eth_getLogs from https://eth.wiki/json-rpc/API
+CREATE TABLE ethereum.logs (
+  address text NOT NULL PRIMARY KEY,
+  block_hash text NOT NULL,
+  block_number integer NOT NULL,
+  data text NOT NULL,
+  log_index integer NOT NULL,
+  removed boolean NOT NULL,
+  topics text NOT NULL,
+  transaction_hash text NOT NULL,
+  transaction_index integer NOT NULL
+);
+
+ALTER TABLE ONLY ethereum.logs
+  ADD CONSTRAINT ethereum_logs_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES ethereum.blocks(hash);
