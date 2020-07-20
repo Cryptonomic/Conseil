@@ -873,13 +873,13 @@ FROM
 CREATE SCHEMA ethereum; 
 
 -- List of the Ethereum based blockchains implemented in Conseil
-CREATE TYPE ethereum.blockchains AS ENUM ('ethereum', 'quorum');
+CREATE TYPE ethereum.networks AS ENUM ('ethereum', 'quorum');
 
 -- Table is based on eth_getBlockByHash from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.blocks (
   hash text NOT NULL PRIMARY KEY,
   number integer NOT NULL,
-  blockchain ethereum.blockchains,
+  network ethereum.networks NOT NULL, -- column unbound to RPC-API
   difficulty integer NOT NULL,
   extra_data text NOT NULL,
   gas_limit integer NOT NULL,

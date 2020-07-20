@@ -21,7 +21,7 @@ trait Tables {
   /** Entity class storing rows of table Blocks
     *  @param hash Database column hash SqlType(text), PrimaryKey
     *  @param number Database column number SqlType(int4)
-    *  @param blockchain Database column blockchain SqlType("ethereum"."blockchains"), Default(None)
+    *  @param network Database column network SqlType("ethereum"."networks")
     *  @param difficulty Database column difficulty SqlType(int4)
     *  @param extraData Database column extra_data SqlType(text)
     *  @param gasLimit Database column gas_limit SqlType(int4)
@@ -42,7 +42,7 @@ trait Tables {
   case class BlocksRow(
       hash: String,
       number: Int,
-      blockchain: Option[String] = None,
+      network: String,
       difficulty: Int,
       extraData: String,
       gasLimit: Int,
@@ -74,7 +74,7 @@ trait Tables {
       (
         <<[String],
         <<[Int],
-        <<?[String],
+        <<[String],
         <<[Int],
         <<[String],
         <<[Int],
@@ -102,7 +102,7 @@ trait Tables {
       (
         hash,
         number,
-        blockchain,
+        network,
         difficulty,
         extraData,
         gasLimit,
@@ -128,7 +128,7 @@ trait Tables {
         (
           Rep.Some(hash),
           Rep.Some(number),
-          blockchain,
+          Rep.Some(network),
           Rep.Some(difficulty),
           Rep.Some(extraData),
           Rep.Some(gasLimit),
@@ -156,7 +156,7 @@ trait Tables {
                 (
                   _1.get,
                   _2.get,
-                  _3,
+                  _3.get,
                   _4.get,
                   _5.get,
                   _6.get,
@@ -187,8 +187,8 @@ trait Tables {
     /** Database column number SqlType(int4) */
     val number: Rep[Int] = column[Int]("number")
 
-    /** Database column blockchain SqlType("ethereum"."blockchains"), Default(None) */
-    val blockchain: Rep[Option[String]] = column[Option[String]]("blockchain", O.Default(None))
+    /** Database column network SqlType("ethereum"."networks") */
+    val network: Rep[String] = column[String]("network")
 
     /** Database column difficulty SqlType(int4) */
     val difficulty: Rep[Int] = column[Int]("difficulty")
