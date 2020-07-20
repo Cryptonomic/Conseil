@@ -173,7 +173,7 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
        */
       for {
         totallyArbitrary <- arbitrary[BlocksRow]
-        arbitraryB52C <- Gen.infiniteStream(arbitraryBase58CheckString)
+        arbitraryB58C <- Gen.infiniteStream(arbitraryBase58CheckString)
         arbitraryTimestamp <- timestampGenerator
         arbitraryFit <- databaseFriendlyStringGenerator
         arbitraryCtx <- Gen.option(databaseFriendlyStringGenerator)
@@ -184,9 +184,9 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
       } yield
         ForkValid(
           totallyArbitrary.copy(
-            predecessor = arbitraryB52C(0),
-            protocol = arbitraryB52C(1),
-            hash = arbitraryB52C(2),
+            predecessor = arbitraryB58C(0),
+            protocol = arbitraryB58C(1),
+            hash = arbitraryB58C(2),
             activeProposal = arbitraryProposal,
             fitness = arbitraryFit.value,
             context = arbitraryCtx.map(_.value),
@@ -261,7 +261,7 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
       for {
         totallyArbitrary <- arbitrary[AccountsRow]
         arbitraryBase58Check <- arbitraryBase58CheckString
-        arbitraryB52C <- Gen.infiniteStream(Gen.option(arbitraryBase58CheckString))
+        arbitraryB58COption <- Gen.infiniteStream(Gen.option(arbitraryBase58CheckString))
         DBSafe(arbitraryBalance) <- databaseFriendlyBigDecimalGenerator
         arbitraryScript <- Gen.option(databaseFriendlyStringGenerator)
         arbitraryStorage <- Gen.option(databaseFriendlyStringGenerator)
@@ -272,8 +272,8 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
             balance = arbitraryBalance,
             script = arbitraryScript.map(_.value),
             storage = arbitraryStorage.map(_.value),
-            manager = arbitraryB52C(0),
-            delegateValue = arbitraryB52C(1),
+            manager = arbitraryB58COption(0),
+            delegateValue = arbitraryB58COption(1),
             invalidatedAsof = None,
             forkId = Fork.mainForkId
           )
