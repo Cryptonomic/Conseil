@@ -3,13 +3,12 @@ package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 import java.sql.Timestamp
 
 import com.typesafe.scalalogging.LazyLogging
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.OptionValues
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.BitcoinInMemoryDatabaseSetup
-import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataOperations
 import tech.cryptonomic.conseil.common.bitcoin.BitcoinTypes.BitcoinBlockHash
 import tech.cryptonomic.conseil.common.bitcoin.Tables
 import tech.cryptonomic.conseil.common.bitcoin.Tables._
@@ -30,10 +29,10 @@ class BitcoinDataQueriesTest
     with IntegrationPatience
     with BitcoinDataQueriesTest.Fixtures {
 
-  "BitcoinDataQueries" should {
-      val sut = new BitcoinDataQueries(new ApiDataOperations {
+  "BitcoinDataOperations" should {
+      val sut = new BitcoinDataOperations {
         override lazy val dbReadHandle = dbHandler
-      })
+      }
 
       "return proper number of blocks, while fetching all blocks" in {
         // given

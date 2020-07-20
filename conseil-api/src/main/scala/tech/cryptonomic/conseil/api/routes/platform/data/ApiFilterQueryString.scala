@@ -12,6 +12,6 @@ trait ApiFilterQueryString { self: algebra.JsonEntities =>
 
   val order: QueryString[Option[Sorting]] = qs("sorting")
 
-  implicit val sortingQueryString: QueryStringParam[Sorting] = stringQueryString.xmapPartial(fromString)(asString)
-  implicit val optionalSortingQueryString: QueryStringParam[Option[Sorting]] = optionalQueryStringParam[Sorting]
+  implicit lazy val sortingQueryString: QueryStringParam[Sorting] = stringQueryString.xmapPartial(fromString)(asString)
+  implicit lazy val optionalSortingQueryString: QueryStringParam[Option[Sorting]] = optionalQueryStringParam[Sorting]
 }

@@ -81,14 +81,14 @@ class ConseilAppConfigTest extends AnyWordSpec with Matchers with EitherValues w
                                               |    }
                                               |  },
                                               |  {
-                                              |    name: "ethereum"
+                                              |    name: "OpenChain"
                                               |    network: "alphanet-staging"
                                               |    enabled: false,
                                               |    node: {
                                               |      protocol: "https"
                                               |      hostname: "nautilus.cryptonomic.tech",
                                               |      port: 8732
-                                              |      path-prefix: "tezos/alphanet/"
+                                              |      path-prefix: "openchain/alphanet/"
                                               |    }
                                               |  }
                                               |]

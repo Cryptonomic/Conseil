@@ -7,8 +7,8 @@ import cats.instances.future._
 import cats.syntax.bitraverse._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.metadata.MetadataService
+import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataTypes.ApiQuery
-import tech.cryptonomic.conseil.api.routes.platform.data.{ApiDataOperations, ApiDataRoutes}
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.ethereum.EthereumTypes.EthereumBlockHash
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{ApiPredicate, OperationType, QueryResponseWithOutput}
@@ -20,7 +20,7 @@ import scala.concurrent.{ExecutionContext, Future}
 case class EthereumDataRoutes(
     metadataService: MetadataService,
     metadataConfiguration: MetadataConfiguration,
-    operations: ApiDataOperations,
+    operations: EthereumDataOperations,
     maxQueryResultSize: Int
 )(
     implicit apiExecutionContext: ExecutionContext
@@ -29,7 +29,6 @@ case class EthereumDataRoutes(
     with LazyLogging {
 
   private val platformPath = PlatformPath("ethereum")
-  private val dataQueries = new EthereumDataQueries(operations)
 
   /** V2 Route implementation for query endpoint */
   override val postRoute: Route = queryEndpoint.implementedByAsync {
@@ -55,7 +54,7 @@ case class EthereumDataRoutes(
   private val blocksRoute: Route = ethereumBlocksEndpoint.implementedByAsync {
     case ((network, filter), _) =>
       platformNetworkValidation(network) {
-        dataQueries.fetchBlocks(filter.toQuery(network).withLimitCap(maxQueryResultSize))
+        operations.fetchBlocks(filter.toQuery(network).withLimitCap(maxQueryResultSize))
       }
   }
 
@@ -63,7 +62,7 @@ case class EthereumDataRoutes(
   private val blocksHeadRoute: Route = ethereumBlocksHeadEndpoint.implementedByAsync {
     case (network, _) =>
       platformNetworkValidation(network) {
-        dataQueries.fetchBlocksHead(network)
+        operations.fetchBlocksHead(network)
       }
   }
 
@@ -71,7 +70,7 @@ case class EthereumDataRoutes(
   private val blockByHashRoute: Route = ethereumBlockByHashEndpoint.implementedByAsync {
     case ((network, hash), _) =>
       platformNetworkValidation(network) {
-        dataQueries.fetchBlockByHash(network, EthereumBlockHash(hash))
+        operations.fetchBlockByHash(network, EthereumBlockHash(hash))
       }
   }
 
@@ -79,7 +78,7 @@ case class EthereumDataRoutes(
   private val transactionsRoute: Route = ethereumTransactionsEndpoint.implementedByAsync {
     case ((network, filter), _) =>
       platformNetworkValidation(network) {
-        dataQueries.fetchTransactions(filter.toQuery(network).withLimitCap(maxQueryResultSize))
+        operations.fetchTransactions(filter.toQuery(network).withLimitCap(maxQueryResultSize))
       }
   }
 
@@ -87,7 +86,7 @@ case class EthereumDataRoutes(
   private val transactionByIdRoute: Route = ethereumTransactionByIdEndpoint.implementedByAsync {
     case ((network, id), _) =>
       platformNetworkValidation(network) {
-        dataQueries.fetchTransactionById(network, id)
+        operations.fetchTransactionById(network, id)
       }
   }
 
