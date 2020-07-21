@@ -17,7 +17,7 @@ class EthereumDataOperations extends ApiDataOperations {
 
   /** Fetches the latest block, ordered by time */
   def fetchBlocksHead(network: String)(implicit ex: ExecutionContext): Future[Option[QueryResponse]] = {
-    val filter = EthereumFilter(limit = Some(1), sortBy = Some("time"))
+    val filter = EthereumFilter(limit = Some(1), sortBy = Some("timestamp"))
     queryWithPredicates("ethereum", "blocks", filter.toQuery(network)).map(_.headOption)
   }
 
@@ -40,4 +40,8 @@ class EthereumDataOperations extends ApiDataOperations {
     val filter = EthereumFilter(transactionIDs = Set(id))
     queryWithPredicates("ethereum", "transactions", filter.toQuery(network)).map(_.headOption)
   }
+
+  /** Fetches the list of logs for given query */
+  def fetchLogs(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =
+    queryWithPredicates("ethereum", "logs", query).map(Some(_))
 }
