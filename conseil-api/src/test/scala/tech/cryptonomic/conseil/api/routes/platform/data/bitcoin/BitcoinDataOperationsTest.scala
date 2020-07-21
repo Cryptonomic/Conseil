@@ -18,7 +18,7 @@ import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
-class BitcoinDataQueriesTest
+class BitcoinDataOperationsTest
     extends AnyWordSpec
     with Matchers
     with InMemoryDatabase
@@ -27,7 +27,7 @@ class BitcoinDataQueriesTest
     with OptionValues
     with LazyLogging
     with IntegrationPatience
-    with BitcoinDataQueriesTest.Fixtures {
+    with BitcoinDataOperationsTest.Fixtures {
 
   "BitcoinDataOperations" should {
       val sut = new BitcoinDataOperations {
@@ -68,7 +68,7 @@ class BitcoinDataQueriesTest
         dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchBlocks(Query.empty)) { result =>
+        whenReady(sut.fetchTransactions(Query.empty)) { result =>
           result.value.size shouldBe 3
         }
       }
@@ -140,7 +140,7 @@ class BitcoinDataQueriesTest
     }
 }
 
-object BitcoinDataQueriesTest {
+object BitcoinDataOperationsTest {
   trait Fixtures {
     val block1: BlocksRow = BlocksRow(
       hash = "hash1",
