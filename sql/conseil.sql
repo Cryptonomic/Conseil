@@ -878,12 +878,12 @@ CREATE TYPE ethereum.networks AS ENUM ('ethereum', 'quorum');
 -- Table is based on eth_getBlockByHash from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.blocks (
   hash text NOT NULL PRIMARY KEY,
-  number integer NOT NULL,
   network ethereum.networks NOT NULL, -- column unbound to RPC-API
-  difficulty integer NOT NULL,
+  number text NOT NULL,
+  difficulty text NOT NULL,
   extra_data text NOT NULL,
-  gas_limit integer NOT NULL,
-  gas_used integer NOT NULL,
+  gas_limit text NOT NULL,
+  gas_used text NOT NULL,
   logs_bloom text NOT NULL,
   miner text NOT NULL,
   mix_hash text NOT NULL,
@@ -891,9 +891,9 @@ CREATE TABLE ethereum.blocks (
   parent_hash text,
   receipts_root text NOT NULL,
   sha3_uncles text NOT NULL,
-  size integer NOT NULL,
+  size text NOT NULL,
   state_root text NOT NULL,
-  total_difficulty integer NOT NULL,
+  total_difficulty text NOT NULL,
   transactions_root text NOT NULL,
   uncles text,
   timestamp timestamp without time zone NOT NULL
@@ -902,16 +902,17 @@ CREATE TABLE ethereum.blocks (
 -- Table is based on eth_getTransactionByHash from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.transactions (
   hash text NOT NULL PRIMARY KEY,
+  network ethereum.networks NOT NULL, -- column unbound to RPC-API
   block_hash text NOT NULL,
-  block_number integer NOT NULL,
+  block_number text NOT NULL,
   "from" text NOT NULL,
-  gas integer NOT NULL,
-  gas_price integer NOT NULL,
+  gas text NOT NULL,
+  gas_price text NOT NULL,
   input text NOT NULL,
-  nonce integer NOT NULL,
+  nonce text NOT NULL,
   "to" text NOT NULL,
-  transaction_index integer NOT NULL,
-  value integer NOT NULL,
+  transaction_index text NOT NULL,
+  value text NOT NULL,
   v text NOT NULL,
   r text NOT NULL,
   s text NOT NULL
@@ -923,14 +924,15 @@ ALTER TABLE ONLY ethereum.transactions
 -- Table is based on eth_getLogs from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.logs (
   address text NOT NULL PRIMARY KEY,
+  network ethereum.networks NOT NULL, -- column unbound to RPC-API
   block_hash text NOT NULL,
-  block_number integer NOT NULL,
+  block_number text NOT NULL,
   data text NOT NULL,
-  log_index integer NOT NULL,
+  log_index text NOT NULL,
   removed boolean NOT NULL,
   topics text NOT NULL,
   transaction_hash text NOT NULL,
-  transaction_index integer NOT NULL
+  transaction_index text NOT NULL
 );
 
 ALTER TABLE ONLY ethereum.logs
