@@ -155,6 +155,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
 
     /**
       * Map, that contains list of available `ApiDataRoutes` accessed by platform name.
+      *
       * @see `tech.cryptonomic.conseil.common.config.Platforms` to get list of possible platforms.
       */
     lazy val cachedDataEndpoints: Map[String, ApiDataRoutes] =
@@ -183,15 +184,17 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
       network <- transformation.overrideNetworks(platform.path, config.platforms.getNetworks(platform.name))
     } yield platform -> network
 
-    cachedDiscoveryOperations.init(visibleNetworks).onComplete {
-      case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
-      case Success(_) => logger.info("Pre-caching successful!")
-    }
+    if (visibleNetworks.nonEmpty) { // At least one blockchain is enabled
+      cachedDiscoveryOperations.init(visibleNetworks).onComplete {
+        case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
+        case Success(_) => logger.info("Pre-caching successful!")
+      }
 
-    cachedDiscoveryOperations.initAttributesCache(visibleNetworks).onComplete {
-      case Failure(exception) => logger.error("Pre-caching attributes failed", exception)
-      case Success(_) => logger.info("Pre-caching attributes successful!")
-    }
+      cachedDiscoveryOperations.initAttributesCache(visibleNetworks).onComplete {
+        case Failure(exception) => logger.error("Pre-caching attributes failed", exception)
+        case Success(_) => logger.info("Pre-caching attributes successful!")
+      }
+    } else logger.warn("Pre-catching could not be done, because all of the block-chains are disabled!")
   }
 
 }
