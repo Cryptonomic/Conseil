@@ -1,10 +1,11 @@
 package tech.cryptonomic.conseil.indexer.tezos.michelson.renderer
 
-import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import tech.cryptonomic.conseil.indexer.tezos.michelson.dto._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.renderer.MichelsonRenderer._
 
-class MichelsonRendererSpec extends FlatSpec with Matchers {
+class MichelsonRendererSpec extends AnyFlatSpec with Matchers {
 
   it should "render single MichelsonType" in {
       MichelsonType("contract").render() shouldBe "contract"

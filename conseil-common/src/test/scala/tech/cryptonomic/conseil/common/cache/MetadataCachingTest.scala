@@ -2,13 +2,15 @@ package tech.cryptonomic.conseil.common.cache
 
 import cats.effect._
 import com.rklaehn.radixtree.RadixTree
-import org.scalatest.{Matchers, OneInstancePerTest, OptionValues, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.{OneInstancePerTest, OptionValues}
 import tech.cryptonomic.conseil.common.cache.MetadataCaching._
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 
 import scala.concurrent.ExecutionContext
 
-class MetadataCachingTest extends WordSpec with Matchers with OneInstancePerTest with OptionValues {
+class MetadataCachingTest extends AnyWordSpec with Matchers with OneInstancePerTest with OptionValues {
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 

@@ -5,8 +5,8 @@ import java.sql.Timestamp
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.OptionValues
-import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.BitcoinInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataOperations

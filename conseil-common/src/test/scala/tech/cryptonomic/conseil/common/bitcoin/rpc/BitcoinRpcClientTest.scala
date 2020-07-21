@@ -1,13 +1,12 @@
 package tech.cryptonomic.conseil.common.bitcoin.rpc
 
 import scala.concurrent.ExecutionContext
-
 import cats.effect.{ContextShift, IO}
 import fs2.Stream
-import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
-
-import tech.cryptonomic.conseil.common.bitcoin.{BitcoinFixtures, BitcoinStubs}
+import org.scalatest.wordspec.AnyWordSpec
+import tech.cryptonomic.conseil.common.rpc.RpcClient
+import tech.cryptonomic.conseil.common.bitcoin.BitcoinFixtures
 
 class BitcoinRpcClientTest extends AnyWordSpec with Matchers with BitcoinFixtures with BitcoinStubs {
 

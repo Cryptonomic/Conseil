@@ -1,9 +1,11 @@
 package tech.cryptonomic.conseil.indexer.tezos.michelson.contracts
 
-import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatest.OptionValues
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 
-class TokenContractsTest extends WordSpec with Matchers with OptionValues {
+class TokenContractsTest extends AnyWordSpec with Matchers with OptionValues {
 
   "The Token Contracts operations for a known FA1.2 compliant contract" should {
 

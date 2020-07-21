@@ -3,10 +3,11 @@ package tech.cryptonomic.conseil.api.routes.platform.data
 import java.time.Instant
 
 import io.circe.{Encoder, Json}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OutputType, QueryResponse, QueryResponseWithOutput}
 
-class ApiDataHelpersTest extends WordSpec with Matchers {
+class ApiDataHelpersTest extends AnyWordSpec with Matchers {
 
   private case class TestEntity(value: String)
 

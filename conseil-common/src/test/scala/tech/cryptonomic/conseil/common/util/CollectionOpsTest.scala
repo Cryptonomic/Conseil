@@ -1,9 +1,10 @@
 package tech.cryptonomic.conseil.common.util
 
-import org.scalatest.{Matchers, WordSpec}
 import CollectionOps._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class CollectionOpsTest extends WordSpec with Matchers {
+class CollectionOpsTest extends AnyWordSpec with Matchers {
 
   "Collection operations" should {
 

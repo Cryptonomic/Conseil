@@ -3,15 +3,17 @@ package tech.cryptonomic.conseil.indexer.tezos
 import java.sql.Timestamp
 
 import org.scalatest.Inspectors._
-import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
+import org.scalatest.{EitherValues, OptionValues}
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.Tables
 import TezosDatabaseConversions._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 
 class TezosDatabaseConversionsTest
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with OptionValues
     with EitherValues

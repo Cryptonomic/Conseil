@@ -4,7 +4,8 @@ import java.sql.Timestamp
 import java.time.LocalDateTime
 
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.api.sql.DefaultDatabaseOperations._
@@ -17,7 +18,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class DefaultDatabaseOperationsTest
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup

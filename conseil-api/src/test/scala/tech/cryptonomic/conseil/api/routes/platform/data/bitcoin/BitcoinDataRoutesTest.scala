@@ -3,21 +3,23 @@ package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.api.metadata.{
   AttributeValuesCacheConfiguration,
   MetadataService,
   TransparentUnitTransformation
 }
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
+import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms.{
   BitcoinBatchFetchConfiguration,
   BitcoinConfiguration,
   BitcoinNodeConfiguration,
   PlatformsConfiguration
 }
-import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
@@ -25,7 +27,7 @@ import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, Platfo
 import scala.concurrent.{ExecutionContext, Future}
 
 class BitcoinDataRoutesTest
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with ScalatestRouteTest
     with ScalaFutures

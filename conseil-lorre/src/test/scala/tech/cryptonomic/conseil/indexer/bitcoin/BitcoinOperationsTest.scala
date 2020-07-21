@@ -3,14 +3,12 @@ package tech.cryptonomic.conseil.indexer.bitcoin
 import java.sql.Timestamp
 
 import scala.concurrent.ExecutionContext
-
 import cats.effect.{ContextShift, IO}
 import fs2.Stream
 import slickeffect.Transactor
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
 import org.scalamock.scalatest.MockFactory
-
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.config.Platforms.BitcoinBatchFetchConfiguration
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.bitcoin.{BitcoinPersistence, Tables}

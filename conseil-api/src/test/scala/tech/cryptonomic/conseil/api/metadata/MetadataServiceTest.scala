@@ -3,17 +3,12 @@ package tech.cryptonomic.conseil.api.metadata
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.scalatest.{BeforeAndAfterEach, Matchers, OneInstancePerTest, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.{BeforeAndAfterEach, OneInstancePerTest}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
-import tech.cryptonomic.conseil.common.config.Platforms.{
-  BitcoinBatchFetchConfiguration,
-  BitcoinConfiguration,
-  BitcoinNodeConfiguration,
-  PlatformsConfiguration,
-  TezosConfiguration,
-  TezosNodeConfiguration
-}
+import tech.cryptonomic.conseil.common.config.Platforms.{BitcoinBatchFetchConfiguration, BitcoinConfiguration, BitcoinNodeConfiguration, PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.common.config.Types.PlatformName
 import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.DataType.{Hash, Int}
@@ -22,7 +17,7 @@ import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Att
 import tech.cryptonomic.conseil.common.metadata._
 
 class MetadataServiceTest
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with ScalatestRouteTest
     with MockFactory

@@ -1,12 +1,10 @@
 package tech.cryptonomic.conseil.common.bitcoin
 
 import scala.concurrent.ExecutionContext
-
 import cats.effect._
-import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import slick.jdbc.PostgresProfile.api._
-
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 
 class BitcoinDbViewsTest
