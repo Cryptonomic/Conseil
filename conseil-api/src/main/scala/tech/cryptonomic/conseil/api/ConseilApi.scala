@@ -201,11 +201,13 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
         case Success(_) => logger.info("Pre-caching attributes successful!")
       }
     } else {
-      throw NoNetworkEnabledError("""
-        |Pre-catching could not be done, because all of the block-chains are disabled!
-        | It means that application is NOT configured properly.
-        | Please double check configuration file and start API again.
-        |""".stripMargin)
+      throw NoNetworkEnabledError(
+        """|Pre-caching can't be done, because there is no enabled block-chain defined.
+           | This probably means the application is NOT properly configured.
+           | The API needs a platform section to be defined, which lists at least one enabled chain and network.
+           | Please double-check the configuration file and start the API service again.
+           |""".stripMargin
+      )
     }
   }
 
