@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.api
 import com.typesafe.scalalogging.Logger
 import tech.cryptonomic.conseil.BuildInfo
 import tech.cryptonomic.conseil.api.config.ConseilConfiguration
-import tech.cryptonomic.conseil.common.config.Platforms.PlatformsConfiguration
+import tech.cryptonomic.conseil.common.config.Platforms.{PlatformConfiguration, PlatformsConfiguration}
 import tech.cryptonomic.conseil.common.io.MainOutputs._
 
 /** Defines what to print when starting Conseil */
@@ -56,10 +56,16 @@ trait ConseilMainOutput {
       .groupBy(_.platform)
       .map {
         case (platform, configuration) =>
-          val networks =
-            configuration.map(c => s"${c.network} (enabled: ${c.enabled})").mkString("\n  - ", "\n  - ", "\n")
+          val networks = showAvailableNetworks(configuration)
           s"  Platform: ${platform.name}$networks"
       }
       .mkString("\n")
+
+  /* prepare output to display existing networks */
+  private def showAvailableNetworks(configuration: List[PlatformConfiguration]): String =
+    configuration.map { c =>
+      val disabled = if (!c.enabled) " (disabled)" else ""
+      s"${c.network}$disabled"
+    }.mkString("\n  - ", "\n  - ", "\n")
 
 }
