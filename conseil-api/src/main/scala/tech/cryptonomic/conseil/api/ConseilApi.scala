@@ -10,6 +10,7 @@ import akka.stream.ActorMaterializer
 import cats.effect.{ContextShift, IO}
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives.cors
 import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.api.ConseilApi.NoNetworkEnabledError
 import tech.cryptonomic.conseil.api.config.ConseilAppConfig.CombinedConfiguration
 import tech.cryptonomic.conseil.api.directives.{EnableCORSDirectives, RecordingDirectives, ValidatingDirectives}
 import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
@@ -30,6 +31,11 @@ import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
 object ConseilApi {
+
+  /** Exception, which is thrown when no network is enabled in configuration */
+  case class NoNetworkEnabledError(message: String) extends Exception(message)
+
+  /** Creates Conseil API based on a given configuration */
   def create(config: CombinedConfiguration)(implicit system: ActorSystem): ConseilApi = new ConseilApi(config)
 }
 
@@ -195,13 +201,11 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
         case Success(_) => logger.info("Pre-caching attributes successful!")
       }
     } else {
-      logger.error(
-        """
-          |Pre-catching could not be done, because all of the block-chains are disabled! 
-          | Application is probably misconfigured. Please double check configuration files and start application again.
-          |""".stripMargin
-      )
-      sys.exit(1)
+      throw NoNetworkEnabledError("""
+        |Pre-catching could not be done, because all of the block-chains are disabled!
+        | It means that application is NOT configured properly.
+        | Please double check configuration file and start API again.
+        |""".stripMargin)
     }
   }
 
