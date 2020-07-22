@@ -194,7 +194,15 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
         case Failure(exception) => logger.error("Pre-caching attributes failed", exception)
         case Success(_) => logger.info("Pre-caching attributes successful!")
       }
-    } else logger.warn("Pre-catching could not be done, because all of the block-chains are disabled!")
+    } else {
+      logger.error(
+        """
+          |Pre-catching could not be done, because all of the block-chains are disabled! 
+          | Application is probably misconfigured. Please double check configuration files and start application again.
+          |""".stripMargin
+      )
+      sys.exit(1)
+    }
   }
 
 }
