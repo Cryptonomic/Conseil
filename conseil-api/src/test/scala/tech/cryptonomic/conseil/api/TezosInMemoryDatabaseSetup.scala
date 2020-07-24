@@ -7,20 +7,20 @@ trait TezosInMemoryDatabaseSetup extends InMemoryDatabaseSetup {
   registerSchema(
     "tezos",
     Seq(
-      Fixture(Tables.Blocks),
-      Fixture(Tables.OperationGroups),
-      Fixture(Tables.Operations),
-      Fixture(Tables.BalanceUpdates),
-      Fixture(Tables.Accounts),
-      Fixture(Tables.Fees),
-      Fixture(Tables.AccountsCheckpoint),
-      Fixture(Tables.AccountsHistory),
-      Fixture(Tables.ProcessedChainEvents),
-      Fixture(Tables.BigMaps),
-      Fixture(Tables.BigMapContents),
-      Fixture(Tables.OriginatedAccountMaps),
-      Fixture(Tables.Bakers),
-      Fixture(Tables.BakersCheckpoint)
+      Fixture.table(Tables.Blocks),
+      Fixture.table(Tables.OperationGroups),
+      Fixture.table(Tables.Operations),
+      Fixture.table(Tables.BalanceUpdates),
+      Fixture.table(Tables.Accounts),
+      Fixture.table(Tables.Fees),
+      Fixture.table(Tables.AccountsCheckpoint),
+      Fixture.table(Tables.AccountsHistory),
+      Fixture.table(Tables.ProcessedChainEvents),
+      Fixture.table(Tables.BigMaps),
+      Fixture.table(Tables.BigMapContents),
+      Fixture.table(Tables.OriginatedAccountMaps),
+      Fixture.table(Tables.Bakers),
+      Fixture.table(Tables.BakersCheckpoint)
     )
   )
 }

@@ -4,7 +4,9 @@ import java.sql.Timestamp
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatest.OptionValues
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.BitcoinInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataOperations
@@ -18,7 +20,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 class BitcoinDataQueriesTest
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with InMemoryDatabase
     with BitcoinInMemoryDatabaseSetup
@@ -102,6 +104,38 @@ class BitcoinDataQueriesTest
 
         whenReady(sut.fetchOutputs(Query.empty)) { result =>
           result.value.size shouldBe 3
+        }
+      }
+
+      "return proper number of accounts, while fetching all of accounts" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Inputs ++= inputs).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Outputs ++= outputs).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchAccounts(Query.empty)) { result =>
+          result.value.size shouldBe 3
+        }
+      }
+
+      "return proper account by address" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Inputs ++= inputs).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Outputs ++= outputs).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchAccountByAddress("script_pub_key_address_2")) { result =>
+          result.value should (contain key "address" and contain value output2.scriptPubKeyAddresses)
+          //TODO Fix test for 'value' field in AccountRow
+          //Issue with the current approach is that type inside case class is from 'scala' while slick is mapping data inside 'QueryResponse' to 'java'.
+          //Additionally BigDecimals are not easy comparable with 'scalatest'.
+          //Once type for 'value' field inside AccountRow will be changed from 'BigDecimal' into something else or
+          //the type returned by 'fetchAccountByAddress' will be different than 'QueryResponse',
+          //assert below should be either uncommented (in case of replacing 'BigDecimal')
+          //or entire test should be updated (in case of changing returned type by 'fetchAccountByAddress').
+          //result.value should (contain key "value" and contain value output2.value)
         }
       }
     }
@@ -203,31 +237,37 @@ object BitcoinDataQueriesTest {
     )
     val transactions: Seq[TransactionsRow] = List(transaction1, transaction2, transaction3)
 
-    val input1: InputsRow = InputsRow(txid = "1", sequence = 1, vOut = Some(1))
-    val input2: InputsRow = InputsRow(txid = "2", sequence = 2, vOut = Some(1))
-    val input3: InputsRow = InputsRow(txid = "3", sequence = 3, vOut = Some(1))
+    val input1: InputsRow = InputsRow(txid = "1", sequence = 1, vOut = Some(1), outputTxid = Some("1"))
+    val input2: InputsRow = InputsRow(txid = "2", sequence = 2, vOut = Some(2))
+    val input3: InputsRow = InputsRow(txid = "3", sequence = 3, vOut = Some(3), outputTxid = Some("3"))
     val inputs: Seq[InputsRow] = List(input1, input2, input3)
 
     val output1: OutputsRow = OutputsRow(
       txid = "1",
+      value = Some(1L),
       n = 1,
       scriptPubKeyAsm = "script_pub_asm_1",
       scriptPubKeyHex = "script_pub_hex_1",
-      scriptPubKeyType = "script_pub_type_1"
+      scriptPubKeyType = "script_pub_type_1",
+      scriptPubKeyAddresses = Some("script_pub_key_address_1")
     )
     val output2: OutputsRow = OutputsRow(
       txid = "2",
+      value = Some(BigDecimal.valueOf(10.0)),
       n = 2,
       scriptPubKeyAsm = "script_pub_asm_2",
       scriptPubKeyHex = "script_pub_hex_2",
-      scriptPubKeyType = "script_pub_type_2"
+      scriptPubKeyType = "script_pub_type_2",
+      scriptPubKeyAddresses = Some("script_pub_key_address_2")
     )
     val output3: OutputsRow = OutputsRow(
       txid = "3",
+      value = Some(100L),
       n = 3,
       scriptPubKeyAsm = "script_pub_asm_3",
       scriptPubKeyHex = "script_pub_hex_3",
-      scriptPubKeyType = "script_pub_type_3"
+      scriptPubKeyType = "script_pub_type_3",
+      scriptPubKeyAddresses = Some("script_pub_key_address_3")
     )
     val outputs: Seq[OutputsRow] = List(output1, output2, output3)
   }

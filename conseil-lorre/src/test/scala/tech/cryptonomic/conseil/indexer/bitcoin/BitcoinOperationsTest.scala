@@ -7,7 +7,8 @@ import scala.concurrent.ExecutionContext
 import cats.effect.{ContextShift, IO}
 import fs2.Stream
 import slickeffect.Transactor
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 import org.scalamock.scalatest.MockFactory
 
 import tech.cryptonomic.conseil.common.config.Platforms.BitcoinBatchFetchConfiguration
@@ -17,7 +18,7 @@ import tech.cryptonomic.conseil.common.bitcoin.rpc.BitcoinClient
 import tech.cryptonomic.conseil.common.bitcoin.rpc.json.BlockchainInfo
 import tech.cryptonomic.conseil.indexer.config.{Custom, Everything, Newest}
 
-class BitcoinOperationsTest extends WordSpec with MockFactory with Matchers {
+class BitcoinOperationsTest extends AnyWordSpec with MockFactory with Matchers {
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 

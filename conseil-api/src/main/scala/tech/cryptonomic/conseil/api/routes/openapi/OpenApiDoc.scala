@@ -38,6 +38,8 @@ object OpenApiDoc
     bitcoinTransactionByIdEndpoint,
     bitcoinInputsEndpoint,
     bitcoinOutputsEndpoint,
+    bitcoinAccountsEndpoint,
+    bitcoinAccountByAddressEndpoint,
     platformsEndpoint,
     networksEndpoint,
     entitiesEndpoint,

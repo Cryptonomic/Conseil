@@ -3,13 +3,14 @@ package tech.cryptonomic.conseil.common.bitcoin
 import scala.concurrent.ExecutionContext
 
 import cats.effect._
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 import slick.jdbc.PostgresProfile.api._
 
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 
 class BitcoinDbViewsTest
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with InMemoryDatabase
     with BitcoinInMemoryDatabaseSetup
@@ -21,7 +22,7 @@ class BitcoinDbViewsTest
   "Bitcoin db views" should {
 
       /**
-        * The logic behind the Bitcoin accounts is explained in [[Views.createAccountsViewSql]]
+        * The logic behind the Bitcoin accounts is explained in [[Views.AccountsViewSql]]
         * In the example below, we create two blocks with two transactions, 
         * one of which is spent and the other is not.
         */
@@ -54,7 +55,7 @@ class BitcoinDbViewsTest
           _ <- tx.transact(bitcoinPersistenceStub.createBlock(block2, List(tx2)))
 
           // create view
-          _ <- tx.transact(Views.createAccountsViewSql)
+          _ <- tx.transact(Views.AccountsViewSql)
 
           // test results
           result <- tx.transact(Views.Accounts.result)
