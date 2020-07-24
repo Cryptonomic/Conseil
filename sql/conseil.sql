@@ -931,3 +931,66 @@ CREATE TABLE ethereum.logs (
 
 ALTER TABLE ONLY ethereum.logs
   ADD CONSTRAINT ethereum_logs_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES ethereum.blocks(hash);
+
+-- The schema for Quorum is duplicated from Ethereum
+CREATE SCHEMA quorum;
+
+-- Table is based on eth_getBlockByHash from https://eth.wiki/json-rpc/API
+CREATE TABLE quorum.blocks (
+  hash text NOT NULL PRIMARY KEY,
+  number text NOT NULL,
+  difficulty text NOT NULL,
+  extra_data text NOT NULL,
+  gas_limit text NOT NULL,
+  gas_used text NOT NULL,
+  logs_bloom text NOT NULL,
+  miner text NOT NULL,
+  mix_hash text NOT NULL,
+  nonce text NOT NULL,
+  parent_hash text,
+  receipts_root text NOT NULL,
+  sha3_uncles text NOT NULL,
+  size text NOT NULL,
+  state_root text NOT NULL,
+  total_difficulty text NOT NULL,
+  transactions_root text NOT NULL,
+  uncles text,
+  timestamp timestamp without time zone NOT NULL
+);
+
+-- Table is based on eth_getTransactionByHash from https://eth.wiki/json-rpc/API
+CREATE TABLE quorum.transactions (
+  hash text NOT NULL PRIMARY KEY,
+  block_hash text NOT NULL,
+  block_number text NOT NULL,
+  "from" text NOT NULL,
+  gas text NOT NULL,
+  gas_price text NOT NULL,
+  input text NOT NULL,
+  nonce text NOT NULL,
+  "to" text NOT NULL,
+  transaction_index text NOT NULL,
+  value text NOT NULL,
+  v text NOT NULL,
+  r text NOT NULL,
+  s text NOT NULL
+);
+
+ALTER TABLE ONLY quorum.transactions
+  ADD CONSTRAINT quorum_transactions_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES quorum.blocks(hash);
+
+-- Table is based on eth_getLogs from https://eth.wiki/json-rpc/API
+CREATE TABLE quorum.logs (
+  address text NOT NULL PRIMARY KEY,
+  block_hash text NOT NULL,
+  block_number text NOT NULL,
+  data text NOT NULL,
+  log_index text NOT NULL,
+  removed boolean NOT NULL,
+  topics text NOT NULL,
+  transaction_hash text NOT NULL,
+  transaction_index text NOT NULL
+);
+
+ALTER TABLE ONLY quorum.logs
+  ADD CONSTRAINT quorum_logs_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES quorum.blocks(hash);
