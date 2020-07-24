@@ -20,7 +20,6 @@ trait Tables {
 
   /** Entity class storing rows of table Blocks
     *  @param hash Database column hash SqlType(text), PrimaryKey
-    *  @param network Database column network SqlType("ethereum"."networks")
     *  @param number Database column number SqlType(text)
     *  @param difficulty Database column difficulty SqlType(text)
     *  @param extraData Database column extra_data SqlType(text)
@@ -41,7 +40,6 @@ trait Tables {
     *  @param timestamp Database column timestamp SqlType(timestamp) */
   case class BlocksRow(
       hash: String,
-      network: String,
       number: String,
       difficulty: String,
       extraData: String,
@@ -81,7 +79,6 @@ trait Tables {
         <<[String],
         <<[String],
         <<[String],
-        <<[String],
         <<?[String],
         <<[String],
         <<[String],
@@ -100,7 +97,6 @@ trait Tables {
     def * =
       (
         hash,
-        network,
         number,
         difficulty,
         extraData,
@@ -126,7 +122,6 @@ trait Tables {
       (
         (
           Rep.Some(hash),
-          Rep.Some(network),
           Rep.Some(number),
           Rep.Some(difficulty),
           Rep.Some(extraData),
@@ -163,16 +158,15 @@ trait Tables {
                   _8.get,
                   _9.get,
                   _10.get,
-                  _11.get,
-                  _12,
+                  _11,
+                  _12.get,
                   _13.get,
                   _14.get,
                   _15.get,
                   _16.get,
                   _17.get,
-                  _18.get,
-                  _19,
-                  _20.get
+                  _18,
+                  _19.get
                 )
               )
           )
@@ -182,9 +176,6 @@ trait Tables {
 
     /** Database column hash SqlType(text), PrimaryKey */
     val hash: Rep[String] = column[String]("hash", O.PrimaryKey)
-
-    /** Database column network SqlType("ethereum"."networks") */
-    val network: Rep[String] = column[String]("network")
 
     /** Database column number SqlType(text) */
     val number: Rep[String] = column[String]("number")
@@ -246,7 +237,6 @@ trait Tables {
 
   /** Entity class storing rows of table Logs
     *  @param address Database column address SqlType(text), PrimaryKey
-    *  @param network Database column network SqlType("ethereum"."networks")
     *  @param blockHash Database column block_hash SqlType(text)
     *  @param blockNumber Database column block_number SqlType(text)
     *  @param data Database column data SqlType(text)
@@ -257,7 +247,6 @@ trait Tables {
     *  @param transactionIndex Database column transaction_index SqlType(text) */
   case class LogsRow(
       address: String,
-      network: String,
       blockHash: String,
       blockNumber: String,
       data: String,
@@ -272,32 +261,20 @@ trait Tables {
   implicit def GetResultLogsRow(implicit e0: GR[String], e1: GR[Boolean]): GR[LogsRow] = GR { prs =>
     import prs._
     LogsRow.tupled(
-      (
-        <<[String],
-        <<[String],
-        <<[String],
-        <<[String],
-        <<[String],
-        <<[String],
-        <<[Boolean],
-        <<[String],
-        <<[String],
-        <<[String]
-      )
+      (<<[String], <<[String], <<[String], <<[String], <<[String], <<[Boolean], <<[String], <<[String], <<[String])
     )
   }
 
   /** Table description of table logs. Objects of this class serve as prototypes for rows in queries. */
   class Logs(_tableTag: Tag) extends profile.api.Table[LogsRow](_tableTag, Some("ethereum"), "logs") {
     def * =
-      (address, network, blockHash, blockNumber, data, logIndex, removed, topics, transactionHash, transactionIndex) <> (LogsRow.tupled, LogsRow.unapply)
+      (address, blockHash, blockNumber, data, logIndex, removed, topics, transactionHash, transactionIndex) <> (LogsRow.tupled, LogsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       (
         (
           Rep.Some(address),
-          Rep.Some(network),
           Rep.Some(blockHash),
           Rep.Some(blockNumber),
           Rep.Some(data),
@@ -310,16 +287,13 @@ trait Tables {
       ).shaped.<>(
         { r =>
           import r._;
-          _1.map(_ => LogsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get, _10.get)))
+          _1.map(_ => LogsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
 
     /** Database column address SqlType(text), PrimaryKey */
     val address: Rep[String] = column[String]("address", O.PrimaryKey)
-
-    /** Database column network SqlType("ethereum"."networks") */
-    val network: Rep[String] = column[String]("network")
 
     /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
@@ -358,7 +332,6 @@ trait Tables {
 
   /** Entity class storing rows of table Transactions
     *  @param hash Database column hash SqlType(text), PrimaryKey
-    *  @param network Database column network SqlType("ethereum"."networks")
     *  @param blockHash Database column block_hash SqlType(text)
     *  @param blockNumber Database column block_number SqlType(text)
     *  @param from Database column from SqlType(text)
@@ -374,7 +347,6 @@ trait Tables {
     *  @param s Database column s SqlType(text) */
   case class TransactionsRow(
       hash: String,
-      network: String,
       blockHash: String,
       blockNumber: String,
       from: String,
@@ -408,7 +380,6 @@ trait Tables {
         <<[String],
         <<[String],
         <<[String],
-        <<[String],
         <<[String]
       )
     )
@@ -418,14 +389,13 @@ trait Tables {
   class Transactions(_tableTag: Tag)
       extends profile.api.Table[TransactionsRow](_tableTag, Some("ethereum"), "transactions") {
     def * =
-      (hash, network, blockHash, blockNumber, from, gas, gasPrice, input, nonce, to, transactionIndex, value, v, r, s) <> (TransactionsRow.tupled, TransactionsRow.unapply)
+      (hash, blockHash, blockNumber, from, gas, gasPrice, input, nonce, to, transactionIndex, value, v, r, s) <> (TransactionsRow.tupled, TransactionsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       (
         (
           Rep.Some(hash),
-          Rep.Some(network),
           Rep.Some(blockHash),
           Rep.Some(blockNumber),
           Rep.Some(from),
@@ -460,8 +430,7 @@ trait Tables {
                   _11.get,
                   _12.get,
                   _13.get,
-                  _14.get,
-                  _15.get
+                  _14.get
                 )
               )
           )
@@ -471,9 +440,6 @@ trait Tables {
 
     /** Database column hash SqlType(text), PrimaryKey */
     val hash: Rep[String] = column[String]("hash", O.PrimaryKey)
-
-    /** Database column network SqlType("ethereum"."networks") */
-    val network: Rep[String] = column[String]("network")
 
     /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")

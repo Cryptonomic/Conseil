@@ -872,13 +872,9 @@ FROM
 
 CREATE SCHEMA ethereum; 
 
--- List of the Ethereum based blockchains implemented in Conseil
-CREATE TYPE ethereum.networks AS ENUM ('ethereum', 'quorum');
-
 -- Table is based on eth_getBlockByHash from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.blocks (
   hash text NOT NULL PRIMARY KEY,
-  network ethereum.networks NOT NULL, -- column unbound to RPC-API
   number text NOT NULL,
   difficulty text NOT NULL,
   extra_data text NOT NULL,
@@ -902,7 +898,6 @@ CREATE TABLE ethereum.blocks (
 -- Table is based on eth_getTransactionByHash from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.transactions (
   hash text NOT NULL PRIMARY KEY,
-  network ethereum.networks NOT NULL, -- column unbound to RPC-API
   block_hash text NOT NULL,
   block_number text NOT NULL,
   "from" text NOT NULL,
@@ -924,7 +919,6 @@ ALTER TABLE ONLY ethereum.transactions
 -- Table is based on eth_getLogs from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.logs (
   address text NOT NULL PRIMARY KEY,
-  network ethereum.networks NOT NULL, -- column unbound to RPC-API
   block_hash text NOT NULL,
   block_number text NOT NULL,
   data text NOT NULL,
