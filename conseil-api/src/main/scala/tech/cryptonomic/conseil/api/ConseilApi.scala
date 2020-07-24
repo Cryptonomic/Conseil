@@ -10,6 +10,7 @@ import akka.stream.ActorMaterializer
 import cats.effect.{ContextShift, IO}
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives.cors
 import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.api.ConseilApi.NoNetworkEnabledError
 import tech.cryptonomic.conseil.api.config.ConseilAppConfig.CombinedConfiguration
 import tech.cryptonomic.conseil.api.directives.{EnableCORSDirectives, RecordingDirectives, ValidatingDirectives}
 import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
@@ -30,6 +31,11 @@ import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
 object ConseilApi {
+
+  /** Exception, which is thrown when no network is enabled in configuration */
+  case class NoNetworkEnabledError(message: String) extends Exception(message)
+
+  /** Creates Conseil API based on a given configuration */
   def create(config: CombinedConfiguration)(implicit system: ActorSystem): ConseilApi = new ConseilApi(config)
 }
 
@@ -155,6 +161,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
 
     /**
       * Map, that contains list of available `ApiDataRoutes` accessed by platform name.
+      *
       * @see `tech.cryptonomic.conseil.common.config.Platforms` to get list of possible platforms.
       */
     lazy val cachedDataEndpoints: Map[String, ApiDataRoutes] =
@@ -183,14 +190,24 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
       network <- transformation.overrideNetworks(platform.path, config.platforms.getNetworks(platform.name))
     } yield platform -> network
 
-    cachedDiscoveryOperations.init(visibleNetworks).onComplete {
-      case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
-      case Success(_) => logger.info("Pre-caching successful!")
-    }
+    if (visibleNetworks.nonEmpty) { // At least one blockchain is enabled
+      cachedDiscoveryOperations.init(visibleNetworks).onComplete {
+        case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
+        case Success(_) => logger.info("Pre-caching successful!")
+      }
 
-    cachedDiscoveryOperations.initAttributesCache(visibleNetworks).onComplete {
-      case Failure(exception) => logger.error("Pre-caching attributes failed", exception)
-      case Success(_) => logger.info("Pre-caching attributes successful!")
+      cachedDiscoveryOperations.initAttributesCache(visibleNetworks).onComplete {
+        case Failure(exception) => logger.error("Pre-caching attributes failed", exception)
+        case Success(_) => logger.info("Pre-caching attributes successful!")
+      }
+    } else {
+      throw NoNetworkEnabledError(
+        """|Pre-caching can't be done, because there is no enabled block-chain defined.
+           | This probably means the application is NOT properly configured.
+           | The API needs a platform section to be defined, which lists at least one enabled chain and network.
+           | Please double-check the configuration file and start the API service again.
+           |""".stripMargin
+      )
     }
   }
 

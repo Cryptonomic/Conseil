@@ -7,6 +7,7 @@ import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import tech.cryptonomic.conseil.api.config.{ConseilAppConfig, ConseilConfiguration}
 import tech.cryptonomic.conseil.api.util.Retry.retry
+import tech.cryptonomic.conseil.api.util.RetryStrategy.retryGiveUpStrategy
 import tech.cryptonomic.conseil.common.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.common.config._
 
@@ -28,7 +29,11 @@ object Conseil extends App with LazyLogging with ConseilAppConfig with FailFastC
       val retries = if (config.failFast.on) Some(0) else None
 
       val serverBinding =
-        retry(maxRetry = retries, deadline = Some(config.server.startupDeadline fromNow))(ConseilApi.create(config)).andThen {
+        retry(
+          maxRetry = retries,
+          deadline = Some(config.server.startupDeadline fromNow),
+          giveUpOnThrowable = retryGiveUpStrategy
+        )(ConseilApi.create(config)).andThen {
           case Failure(error) =>
             logger.error(
               "The server was not started correctly, I failed to create the required Metadata service",
