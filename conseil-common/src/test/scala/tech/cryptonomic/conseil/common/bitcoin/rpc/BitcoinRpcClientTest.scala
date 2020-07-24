@@ -2,16 +2,14 @@ package tech.cryptonomic.conseil.common.bitcoin.rpc
 
 import scala.concurrent.ExecutionContext
 
-import cats.effect._
-import org.http4s._
-import org.http4s.client.Client
+import cats.effect.{ContextShift, IO}
 import fs2.Stream
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
-import tech.cryptonomic.conseil.common.rpc.RpcClient
-import tech.cryptonomic.conseil.common.bitcoin.BitcoinFixtures
+import tech.cryptonomic.conseil.common.bitcoin.{BitcoinFixtures, BitcoinStubs}
 
-class BitcoinRpcClientTest extends WordSpec with Matchers with BitcoinFixtures {
+class BitcoinRpcClientTest extends AnyWordSpec with Matchers with BitcoinFixtures with BitcoinStubs {
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
@@ -49,29 +47,5 @@ class BitcoinRpcClientTest extends WordSpec with Matchers with BitcoinFixtures {
       }
 
     }
-
-  /**
-    * Stubs that can help to provide tests for the [[BitcoinClient]].
-    *
-    * Usage example:
-    *
-    * {{{
-    *   "test name" in new BitcoinClientStubs {
-    *     // bitcoinClientStub is available in the current scope
-    *   }
-    * }}}
-    */
-  trait BitcoinClientStubs {
-
-    def bitcoinClientStub(jsonResponse: String): BitcoinClient[IO] = {
-      val response = Response[IO](
-        Status.Ok,
-        body = Stream(jsonResponse).through(fs2.text.utf8Encode)
-      )
-      val rpcClient =
-        new RpcClient[IO]("https://api-endpoint.com", 1, Client.fromHttpApp(HttpApp.liftF(IO.pure(response))))
-      new BitcoinClient(rpcClient)
-    }
-  }
 
 }
