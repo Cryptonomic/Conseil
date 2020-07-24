@@ -875,7 +875,7 @@ CREATE SCHEMA ethereum;
 -- Table is based on eth_getBlockByHash from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.blocks (
   hash text NOT NULL PRIMARY KEY,
-  number text NOT NULL,
+  number integer NOT NULL,
   difficulty text NOT NULL,
   extra_data text NOT NULL,
   gas_limit text NOT NULL,
@@ -899,7 +899,7 @@ CREATE TABLE ethereum.blocks (
 CREATE TABLE ethereum.transactions (
   hash text NOT NULL PRIMARY KEY,
   block_hash text NOT NULL,
-  block_number text NOT NULL,
+  block_number integer NOT NULL,
   "from" text NOT NULL,
   gas text NOT NULL,
   gas_price text NOT NULL,
@@ -920,7 +920,7 @@ ALTER TABLE ONLY ethereum.transactions
 CREATE TABLE ethereum.logs (
   address text NOT NULL PRIMARY KEY,
   block_hash text NOT NULL,
-  block_number text NOT NULL,
+  block_number integer NOT NULL,
   data text NOT NULL,
   log_index text NOT NULL,
   removed boolean NOT NULL,
@@ -938,7 +938,7 @@ CREATE SCHEMA quorum;
 -- Table is based on eth_getBlockByHash from https://eth.wiki/json-rpc/API
 CREATE TABLE quorum.blocks (
   hash text NOT NULL PRIMARY KEY,
-  number text NOT NULL,
+  number integer NOT NULL,
   difficulty text NOT NULL,
   extra_data text NOT NULL,
   gas_limit text NOT NULL,
@@ -962,7 +962,7 @@ CREATE TABLE quorum.blocks (
 CREATE TABLE quorum.transactions (
   hash text NOT NULL PRIMARY KEY,
   block_hash text NOT NULL,
-  block_number text NOT NULL,
+  block_number integer NOT NULL,
   "from" text NOT NULL,
   gas text NOT NULL,
   gas_price text NOT NULL,
@@ -983,7 +983,7 @@ ALTER TABLE ONLY quorum.transactions
 CREATE TABLE quorum.logs (
   address text NOT NULL PRIMARY KEY,
   block_hash text NOT NULL,
-  block_number text NOT NULL,
+  block_number integer NOT NULL,
   data text NOT NULL,
   log_index text NOT NULL,
   removed boolean NOT NULL,

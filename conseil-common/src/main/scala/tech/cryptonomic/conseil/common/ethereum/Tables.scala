@@ -20,7 +20,7 @@ trait Tables {
 
   /** Entity class storing rows of table Blocks
     *  @param hash Database column hash SqlType(text), PrimaryKey
-    *  @param number Database column number SqlType(text)
+    *  @param number Database column number SqlType(int4)
     *  @param difficulty Database column difficulty SqlType(text)
     *  @param extraData Database column extra_data SqlType(text)
     *  @param gasLimit Database column gas_limit SqlType(text)
@@ -40,7 +40,7 @@ trait Tables {
     *  @param timestamp Database column timestamp SqlType(timestamp) */
   case class BlocksRow(
       hash: String,
-      number: String,
+      number: Int,
       difficulty: String,
       extraData: String,
       gasLimit: String,
@@ -63,14 +63,15 @@ trait Tables {
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
   implicit def GetResultBlocksRow(
       implicit e0: GR[String],
-      e1: GR[Option[String]],
-      e2: GR[java.sql.Timestamp]
+      e1: GR[Int],
+      e2: GR[Option[String]],
+      e3: GR[java.sql.Timestamp]
   ): GR[BlocksRow] = GR { prs =>
     import prs._
     BlocksRow.tupled(
       (
         <<[String],
-        <<[String],
+        <<[Int],
         <<[String],
         <<[String],
         <<[String],
@@ -177,8 +178,8 @@ trait Tables {
     /** Database column hash SqlType(text), PrimaryKey */
     val hash: Rep[String] = column[String]("hash", O.PrimaryKey)
 
-    /** Database column number SqlType(text) */
-    val number: Rep[String] = column[String]("number")
+    /** Database column number SqlType(int4) */
+    val number: Rep[Int] = column[Int]("number")
 
     /** Database column difficulty SqlType(text) */
     val difficulty: Rep[String] = column[String]("difficulty")
@@ -238,7 +239,7 @@ trait Tables {
   /** Entity class storing rows of table Logs
     *  @param address Database column address SqlType(text), PrimaryKey
     *  @param blockHash Database column block_hash SqlType(text)
-    *  @param blockNumber Database column block_number SqlType(text)
+    *  @param blockNumber Database column block_number SqlType(int4)
     *  @param data Database column data SqlType(text)
     *  @param logIndex Database column log_index SqlType(text)
     *  @param removed Database column removed SqlType(bool)
@@ -248,7 +249,7 @@ trait Tables {
   case class LogsRow(
       address: String,
       blockHash: String,
-      blockNumber: String,
+      blockNumber: Int,
       data: String,
       logIndex: String,
       removed: Boolean,
@@ -258,10 +259,10 @@ trait Tables {
   )
 
   /** GetResult implicit for fetching LogsRow objects using plain SQL queries */
-  implicit def GetResultLogsRow(implicit e0: GR[String], e1: GR[Boolean]): GR[LogsRow] = GR { prs =>
+  implicit def GetResultLogsRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Boolean]): GR[LogsRow] = GR { prs =>
     import prs._
     LogsRow.tupled(
-      (<<[String], <<[String], <<[String], <<[String], <<[String], <<[Boolean], <<[String], <<[String], <<[String])
+      (<<[String], <<[String], <<[Int], <<[String], <<[String], <<[Boolean], <<[String], <<[String], <<[String])
     )
   }
 
@@ -298,8 +299,8 @@ trait Tables {
     /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
 
-    /** Database column block_number SqlType(text) */
-    val blockNumber: Rep[String] = column[String]("block_number")
+    /** Database column block_number SqlType(int4) */
+    val blockNumber: Rep[Int] = column[Int]("block_number")
 
     /** Database column data SqlType(text) */
     val data: Rep[String] = column[String]("data")
@@ -333,7 +334,7 @@ trait Tables {
   /** Entity class storing rows of table Transactions
     *  @param hash Database column hash SqlType(text), PrimaryKey
     *  @param blockHash Database column block_hash SqlType(text)
-    *  @param blockNumber Database column block_number SqlType(text)
+    *  @param blockNumber Database column block_number SqlType(int4)
     *  @param from Database column from SqlType(text)
     *  @param gas Database column gas SqlType(text)
     *  @param gasPrice Database column gas_price SqlType(text)
@@ -348,7 +349,7 @@ trait Tables {
   case class TransactionsRow(
       hash: String,
       blockHash: String,
-      blockNumber: String,
+      blockNumber: Int,
       from: String,
       gas: String,
       gasPrice: String,
@@ -363,13 +364,13 @@ trait Tables {
   )
 
   /** GetResult implicit for fetching TransactionsRow objects using plain SQL queries */
-  implicit def GetResultTransactionsRow(implicit e0: GR[String]): GR[TransactionsRow] = GR { prs =>
+  implicit def GetResultTransactionsRow(implicit e0: GR[String], e1: GR[Int]): GR[TransactionsRow] = GR { prs =>
     import prs._
     TransactionsRow.tupled(
       (
         <<[String],
         <<[String],
-        <<[String],
+        <<[Int],
         <<[String],
         <<[String],
         <<[String],
@@ -444,8 +445,8 @@ trait Tables {
     /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
 
-    /** Database column block_number SqlType(text) */
-    val blockNumber: Rep[String] = column[String]("block_number")
+    /** Database column block_number SqlType(int4) */
+    val blockNumber: Rep[Int] = column[Int]("block_number")
 
     /** Database column from SqlType(text) */
     val from: Rep[String] = column[String]("from")
