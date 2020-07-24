@@ -932,7 +932,9 @@ CREATE TABLE ethereum.logs (
 ALTER TABLE ONLY ethereum.logs
   ADD CONSTRAINT ethereum_logs_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES ethereum.blocks(hash);
 
--- The schema for Quorum is duplicated from Ethereum
+-- The schema for Quorum is duplicated from Ethereum.
+-- TODO: This is a temporary solution, in the future we intend to generate the schema automatically to avoid duplication, 
+--       but it requires changes to the whole Conseil project.
 CREATE SCHEMA quorum;
 
 -- Table is based on eth_getBlockByHash from https://eth.wiki/json-rpc/API
