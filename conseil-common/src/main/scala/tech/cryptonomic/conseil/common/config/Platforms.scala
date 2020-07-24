@@ -27,6 +27,11 @@ object Platforms {
     val name: String = "ethereum"
   }
 
+  /** Represents blockchain platform for Quorum */
+  case object Quorum extends BlockchainPlatform {
+    val name: String = "quorum"
+  }
+
   object BlockchainPlatform {
 
     /** maps a generic string to a typed BlockchainPlatform */
@@ -36,6 +41,7 @@ object Platforms {
       case Tezos.name => Tezos
       case Bitcoin.name => Bitcoin
       case Ethereum.name => Ethereum
+      case Quorum.name => Quorum
     }
   }
 
@@ -137,6 +143,14 @@ object Platforms {
       enabled: Boolean
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Ethereum
+  }
+
+  /** collects all config related to a quorum network */
+  final case class QuorumConfiguration(
+      network: String,
+      enabled: Boolean
+  ) extends PlatformConfiguration {
+    override val platform: BlockchainPlatform = Quorum
   }
 
 }

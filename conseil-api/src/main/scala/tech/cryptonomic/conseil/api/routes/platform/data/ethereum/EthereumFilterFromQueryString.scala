@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.ethereum
 
-import cats.Functor
 import cats.syntax.functor._
 import endpoints.algebra.JsonEntities
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiFilter.Sorting
@@ -9,9 +8,6 @@ import tech.cryptonomic.conseil.common.util.TupleFlattenUtil.FlattenHigh._
 import tech.cryptonomic.conseil.common.util.TupleFlattenUtil._
 
 private[ethereum] trait EthereumFilterFromQueryString extends ApiFilterQueryString { self: JsonEntities =>
-
-  /** Query string functor adding map operation */
-  implicit def qsFunctor: Functor[QueryString]
 
   /** Query params type alias */
   type EthereumQueryParams = (

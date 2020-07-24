@@ -73,14 +73,14 @@ class EthereumDataOperationsTest
         }
       }
 
-      "return proper transaction by id" in {
+      "return proper transaction by hash" in {
         // given
         dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchTransactionById("1")) { result =>
+        whenReady(sut.fetchTransactionByHash("hash1")) { result =>
           result.value should contain key "hash"
-          result.value("txid") shouldBe Some("1")
+          result.value("hash") shouldBe Some("hash1")
         }
       }
 

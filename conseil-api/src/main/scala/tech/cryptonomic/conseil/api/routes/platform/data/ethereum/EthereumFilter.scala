@@ -9,7 +9,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OperationType, P
   *
   * @param limit                  How many records to return
   * @param blockIds               Block IDs
-  * @param transactionIDs         Transaction IDs
+  * @param transactionHashes      Transaction IDs
   * @param sortBy                 Database column name to sort by
   * @param order                  Sort items ascending or descending
   */
@@ -17,7 +17,7 @@ case class EthereumFilter(
     limit: Option[Int] = Some(defaultLimit),
     blockIds: Set[String] = Set.empty,
     blockHashes: Set[String] = Set.empty,
-    transactionIDs: Set[String] = Set.empty,
+    transactionHashes: Set[String] = Set.empty,
     sortBy: Option[String] = None,
     order: Option[Sorting] = Some(DescendingSort)
 ) {
@@ -33,9 +33,9 @@ case class EthereumFilter(
           set = blockIds.toList
         ),
         Predicate( // to find specific transaction with id
-          field = "txid",
+          field = "hash",
           operation = OperationType.in,
-          set = transactionIDs.toList
+          set = transactionHashes.toList
         ),
         Predicate( // to find transactions by specific block_hash
           field = "blockhash",

@@ -9,12 +9,12 @@ import tech.cryptonomic.conseil.common.tezos.Tables.BlocksRow
 /** Trait containing endpoints definition */
 trait TezosDataEndpoints extends ApiDataEndpoints with TezosDataJsonSchemas with TezosFilterFromQueryString {
 
-  private val tezosPath = path / "v2" / "data" / "tezos" / segment[String](name = "network")
+  private val root = path / "v2" / "data" / "tezos" / segment[String](name = "network")
 
   /** V2 Blocks endpoint definition */
   def tezosBlocksEndpoint: Endpoint[((String, TezosFilter), Option[String]), Option[List[QueryResponse]]] =
     endpoint(
-      request = get(url = tezosPath / "blocks" /? tezosQsFilter, headers = optHeader("apiKey")),
+      request = get(url = root / "blocks" /? tezosQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("blocks"),
       tags = List("Blocks")
     )
@@ -22,7 +22,7 @@ trait TezosDataEndpoints extends ApiDataEndpoints with TezosDataJsonSchemas with
   /** V2 Blocks head endpoint definition */
   def tezosBlocksHeadEndpoint: Endpoint[(String, Option[String]), Option[Tables.BlocksRow]] =
     endpoint(
-      request = get(url = tezosPath / "blocks" / "head", headers = optHeader("apiKey")),
+      request = get(url = root / "blocks" / "head", headers = optHeader("apiKey")),
       response = compatibilityQuery[BlocksRow]("blocks head"),
       tags = List("Blocks")
     )
@@ -30,7 +30,7 @@ trait TezosDataEndpoints extends ApiDataEndpoints with TezosDataJsonSchemas with
   /** V2 Blocks by hash endpoint definition */
   def tezosBlockByHashEndpoint: Endpoint[((String, String), Option[String]), Option[BlockResult]] =
     endpoint(
-      request = get(url = tezosPath / "blocks" / segment[String](name = "hash"), headers = optHeader("apiKey")),
+      request = get(url = root / "blocks" / segment[String](name = "hash"), headers = optHeader("apiKey")),
       response = compatibilityQuery[BlockResult]("block by hash"),
       tags = List("Blocks")
     )
@@ -38,7 +38,7 @@ trait TezosDataEndpoints extends ApiDataEndpoints with TezosDataJsonSchemas with
   /** V2 Accounts endpoint definition */
   def tezosAccountsEndpoint: Endpoint[((String, TezosFilter), Option[String]), Option[List[QueryResponse]]] =
     endpoint(
-      request = get(url = tezosPath / "accounts" /? tezosQsFilter, headers = optHeader("apiKey")),
+      request = get(url = root / "accounts" /? tezosQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("accounts"),
       tags = List("Accounts")
     )
@@ -47,7 +47,7 @@ trait TezosDataEndpoints extends ApiDataEndpoints with TezosDataJsonSchemas with
   def tezosAccountByIdEndpoint: Endpoint[((String, String), Option[String]), Option[AccountResult]] =
     endpoint(
       request = get(
-        url = tezosPath / "accounts" / segment[String](name = "accountId"),
+        url = root / "accounts" / segment[String](name = "accountId"),
         headers = optHeader("apiKey")
       ),
       response = compatibilityQuery[AccountResult]("account"),
@@ -57,7 +57,7 @@ trait TezosDataEndpoints extends ApiDataEndpoints with TezosDataJsonSchemas with
   /** V2 Operation groups endpoint definition */
   def tezosOperationGroupsEndpoint: Endpoint[((String, TezosFilter), Option[String]), Option[List[QueryResponse]]] =
     endpoint(
-      request = get(url = tezosPath / "operation_groups" /? tezosQsFilter, headers = optHeader("apiKey")),
+      request = get(url = root / "operation_groups" /? tezosQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("operation groups"),
       tags = List("Operation groups")
     )
@@ -66,7 +66,7 @@ trait TezosDataEndpoints extends ApiDataEndpoints with TezosDataJsonSchemas with
   def tezosOperationGroupByIdEndpoint: Endpoint[((String, String), Option[String]), Option[OperationGroupResult]] =
     endpoint(
       request = get(
-        url = tezosPath / "operation_groups" / segment[String](name = "operationGroupId"),
+        url = root / "operation_groups" / segment[String](name = "operationGroupId"),
         headers = optHeader("apiKey")
       ),
       response = compatibilityQuery[OperationGroupResult]("operation group"),
@@ -76,7 +76,7 @@ trait TezosDataEndpoints extends ApiDataEndpoints with TezosDataJsonSchemas with
   /** V2 average fees endpoint definition */
   def tezosAvgFeesEndpoint: Endpoint[((String, TezosFilter), Option[String]), Option[QueryResponse]] =
     endpoint(
-      request = get(url = tezosPath / "operations" / "avgFees" /? tezosQsFilter, headers = optHeader("apiKey")),
+      request = get(url = root / "operations" / "avgFees" /? tezosQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("average fees"),
       tags = List("Fees")
     )
@@ -84,7 +84,7 @@ trait TezosDataEndpoints extends ApiDataEndpoints with TezosDataJsonSchemas with
   /** V2 Operations endpoint definition */
   def tezosOperationsEndpoint: Endpoint[((String, TezosFilter), Option[String]), Option[List[QueryResponse]]] =
     endpoint(
-      request = get(url = tezosPath / "operations" /? tezosQsFilter, headers = optHeader("apiKey")),
+      request = get(url = root / "operations" /? tezosQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("operations"),
       tags = List("Operations")
     )

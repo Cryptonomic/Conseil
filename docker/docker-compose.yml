@@ -15,8 +15,24 @@ services:
       # CONSEIL_XTZ_NODE_PORT:???         # (default 8732)
       # CONSEIL_XTZ_NODE_PATH_PREFIX:???  # (default tezos/zeronet/)
 
-      # CONSEIL_BTC_NETWORK:??? # (default mainnet)
-      # CONSEIL_BTC_ENABLED:??? # (default false)
+      # CONSEIL_BTC_NETWORK:???                           # (default mainnet)
+      # CONSEIL_BTC_ENABLED:???                           # (default false)
+      # CONSEIL_BTC_NODE_PROTOCOL:???                     # (default https)
+      # CONSEIL_BTC_NODE_HOSTNAME:???                     # (default localhost)
+      # CONSEIL_BTC_NODE_PORT:???                         # (default 8332)
+      # CONSEIL_BTC_NODE_USERNAME:???                     # (default bitcoin)
+      # CONSEIL_BTC_NODE_PASSWORD:???                     # (default sP9PV88xtbGwLMAEi2rVlZ7jIFfJbpOmTUCsBBBRN9I=)
+      # CONSEIL_BTC_BATCHING_INDEXER_THREADS_COUNT:???    # (default 8)
+      # CONSEIL_BTC_BATCHING_HTTP_FETCH_THREADS_COUNT:??? # (default 8)
+      # CONSEIL_BTC_BATCHING_HASH_BATCH_SIZE:???          # (default 2000)
+      # CONSEIL_BTC_BATCHING_BLOCKS_BATCH_SIZE:???        # (default 500)
+      # CONSEIL_BTC_BATCHING_TRANSACTIONS_BATCH_SIZE:???  # (default 500)
+
+      # CONSEIL_ETH_NETWORK # (default mainnet)
+      # CONSEIL_ETH_ENABLED # (default false)
+
+      # CONSEIL_QUO_NETWORK # (default mainnet)
+      # CONSEIL_QUO_ENABLED # (default false)
 
       # CONSEIL_API_DB_NAME:???     # (default conseil)
       # CONSEIL_API_DB_USER:???     # (default foo)
