@@ -30,14 +30,14 @@ trait EthereumFixtures {
     */
   object JsonFixtures {
 
-    // Jsom result for the: eth_blockNumber
+    // Json result for the: eth_blockNumber
     val ethBlockNumberResponse =
       """[{
       |  "result": "0x4b7",
       |  "id": "requestId"
       |}]""".stripMargin
 
-    // Jsom result for the: eth_getBlockByNumber
+    // Json result for the: eth_getBlockByNumber
     val getBlockResponse =
       """[{
       |  "result": {
@@ -67,7 +67,7 @@ trait EthereumFixtures {
       |  "id": "requestId"
       |}]""".stripMargin
 
-    // Jsom result for the: eth_getTransactionByHash
+    // Json result for the: eth_getTransactionByHash
     val getTransactionByHashResponse =
       """[{
       |  "result": {
