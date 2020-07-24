@@ -28,6 +28,7 @@ lazy val common = (project in file("conseil-common"))
           "<empty>",
           "tech.cryptonomic.conseil.common.io.*",
           "tech.cryptonomic.conseil.common.bitcoin.Tables",
+          "tech.cryptonomic.conseil.common.ethereum.Tables",
           "tech.cryptonomic.conseil.common.tezos.Tables",
           "tech.cryptonomic.conseil.common.tezos.TezosDataGeneration"
         ).mkString(";")
