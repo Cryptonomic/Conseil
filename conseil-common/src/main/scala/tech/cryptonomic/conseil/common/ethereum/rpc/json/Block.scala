@@ -7,7 +7,7 @@ package tech.cryptonomic.conseil.common.ethereum.rpc.json
 case class Block(
     number: String,
     hash: String,
-    parentHash: String,
+    parentHash: Option[String],
     nonce: String,
     sha3Uncles: String,
     logsBloom: String,
@@ -15,6 +15,7 @@ case class Block(
     stateRoot: String,
     receiptsRoot: String,
     miner: String,
+    mixHash: String,
     difficulty: String,
     totalDifficulty: String,
     extraData: String,

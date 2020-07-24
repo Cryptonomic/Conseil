@@ -30,7 +30,7 @@ class EthereumRpcClientTest extends AnyWordSpec with Matchers with EthereumFixtu
           .unsafeRunSync() shouldBe List(RpcFixtures.blockResult)
       }
 
-      "return a transactions (with imputs and outputs) for the given block" in new EthereumClientStubs {
+      "return a transactions for the given block" in new EthereumClientStubs {
         Stream(RpcFixtures.blockResult)
           .through(
             ethereumClientStub(JsonFixtures.getTransactionByHashResponse).getBlockWithTransactions(batchSize = 1)

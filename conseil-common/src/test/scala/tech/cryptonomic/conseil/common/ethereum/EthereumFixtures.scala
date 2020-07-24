@@ -109,7 +109,7 @@ trait EthereumFixtures {
     val blockResult = Block(
       number = "0x18e70",
       hash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      parentHash = "0xd7a6cfddb3615bf35206461b08cca260f1514b4352e899fa3cf723b6d84f02b3",
+      parentHash = Some("0xd7a6cfddb3615bf35206461b08cca260f1514b4352e899fa3cf723b6d84f02b3"),
       nonce = "0xee4105b65d161083",
       sha3Uncles = "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
       logsBloom =
@@ -118,6 +118,7 @@ trait EthereumFixtures {
       stateRoot = "0x8f60c479b2a111e26e31689e8c3405c7e822df1562de6bd8e53c4a8e344447f4",
       receiptsRoot = "0x28a7d7fd6bf741b28dee4232e7189675ce34af4c331c989637a337fab15a817a",
       miner = "0xe6a7a1d47ff21b6321162aea7c6cb457d5476bca",
+      mixHash = "0x4a681d95af6bbfc6b36cf2d2f231b396ece03f602ffacde518e67bf919527f57",
       difficulty = "0x390cd208cb4",
       totalDifficulty = "0x275495634ba8c02",
       extraData = "0x476574682f76312e302e312d38326566323666362f6c696e75782f676f312e34",
@@ -153,8 +154,7 @@ trait EthereumFixtures {
   object DbFixtures {
     val blockRow = Tables.BlocksRow(
       hash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      network = "ethereum",
-      number = "0x18e70",
+      number = 102000,
       difficulty = "0x390cd208cb4",
       extraData = "0x476574682f76312e302e312d38326566323666362f6c696e75782f676f312e34",
       gasLimit = "0x2fefd8",
@@ -172,14 +172,13 @@ trait EthereumFixtures {
       totalDifficulty = "0x275495634ba8c02",
       transactionsRoot = "0x537ffda8486bb3e00e1b73dc129f2cc4dd2b224725645f2983480dfb368064fe",
       uncles = None,
-      timestamp = Timestamp.from(Instant.parse("2015-08-17T19:06:00.00Z"))
+      timestamp = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))
     )
 
     val transactionRow = Tables.TransactionsRow(
-      hash = "String",
-      network = "String",
+      hash = "0x3cfcdc56f1ecf4aef8b95dddc9f5b727593b56238bfad7b1932efdfdf9e49fcd",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      blockNumber = "0x18e70",
+      blockNumber = 102000,
       from = "0xd9666150a9da92d9108198a4072970805a8b3428",
       gas = "0x5208",
       gasPrice = "0xce52b27b5",
