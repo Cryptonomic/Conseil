@@ -23,15 +23,10 @@ case class EthereumFilter(
 ) {
 
   /** Transforms Filter into a Query with a set of predicates */
-  def toQuery(network: String): DataTypes.Query =
+  def toQuery: DataTypes.Query =
     Query(
       fields = List.empty,
       predicates = List(
-        Predicate( // to limit result only for specific network
-          field = "network",
-          operation = OperationType.eq,
-          set = List(network)
-        ),
         Predicate( // to find specific block with hash
           field = "hash",
           operation = OperationType.in,

@@ -12,7 +12,7 @@ import tech.cryptonomic.conseil.api.EthereumInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.ethereum.EthereumTypes.EthereumBlockHash
 import tech.cryptonomic.conseil.common.ethereum.Tables
 import tech.cryptonomic.conseil.common.ethereum.Tables._
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OperationType, Predicate, Query}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.Query
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -43,61 +43,23 @@ class EthereumDataOperationsTest
         }
       }
 
-      "return proper blocks, while fetching them for certain network" in {
+      "return proper head block" in {
         // given
         dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchBlocks(queryA)) { result =>
-          result.value.size shouldBe 2
-        }
-      }
-
-      "return proper head block for given network A" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchBlocksHead(networkA)) { result =>
-          result.value should contain key "hash"
-          result.value("hash") shouldBe Some("hash2")
-        }
-      }
-
-      "return proper head block for given network B" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchBlocksHead(networkB)) { result =>
+        whenReady(sut.fetchBlocksHead()) { result =>
           result.value should contain key "hash"
           result.value("hash") shouldBe Some("hash3")
         }
       }
 
-      "return proper block by hash for given network A" in {
+      "return proper block by hash" in {
         // given
         dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchBlockByHash(networkA, EthereumBlockHash("hash2"))) { result =>
+        whenReady(sut.fetchBlockByHash(EthereumBlockHash("hash2"))) { result =>
           result.value should contain key "hash"
           result.value("hash") shouldBe Some("hash2")
-        }
-      }
-
-      "return proper block by hash for given network B" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchBlockByHash(networkB, EthereumBlockHash("hash3"))) { result =>
-          result.value should contain key "hash"
-          result.value("hash") shouldBe Some("hash3")
-        }
-      }
-
-      "return None, when block hash is correct but belongs to different network" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchBlockByHash(networkB, EthereumBlockHash("hash2"))) { result =>
-          result shouldBe empty
         }
       }
 
@@ -111,33 +73,12 @@ class EthereumDataOperationsTest
         }
       }
 
-      "return proper transactions, while fetching them for certain network" in {
+      "return proper transaction by id" in {
         // given
         dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchTransactions(queryA)) { result =>
-          result.value.size shouldBe 3
-        }
-      }
-
-      "return proper transaction by id and network A" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchTransactionById(networkA, "1")) { result =>
-          result.value should contain key "hash"
-          result.value("txid") shouldBe Some("1")
-        }
-      }
-
-      "return proper transaction by id and network B" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchTransactionById(networkB, "1")) { result =>
+        whenReady(sut.fetchTransactionById("1")) { result =>
           result.value should contain key "hash"
           result.value("txid") shouldBe Some("1")
         }
@@ -153,33 +94,16 @@ class EthereumDataOperationsTest
           result.value.size shouldBe 3
         }
       }
-
-      "return proper logs, while fetching them for certain network" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Logs ++= logs).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchLogs(queryB)) { result =>
-          result.value.size shouldBe 3
-        }
-      }
     }
 }
 
 object EthereumDataOperationsTest {
   trait Fixtures {
 
-    val networkA = "ethereum"
-    val networkB = "quorum"
-
-    val queryA: Query = Query(predicates = List(Predicate("network", OperationType.eq, List(networkA))))
-    val queryB: Query = Query(predicates = List(Predicate("network", OperationType.eq, List(networkB))))
-
     val block1: BlocksRow = BlocksRow(
       hash = "hash1",
       number = 1,
-      network = networkA,
+      network = "",
       difficulty = 1,
       extraData = "extra1",
       gasLimit = 1,
@@ -201,7 +125,7 @@ object EthereumDataOperationsTest {
     val block2: BlocksRow = BlocksRow(
       hash = "hash2",
       number = 2,
-      network = networkA,
+      network = "",
       difficulty = 3,
       extraData = "extra1",
       gasLimit = 3,
@@ -223,7 +147,7 @@ object EthereumDataOperationsTest {
     val block3: BlocksRow = BlocksRow(
       hash = "hash3",
       number = 3,
-      network = networkB,
+      network = "",
       difficulty = 5,
       extraData = "extra1",
       gasLimit = 3,

@@ -16,17 +16,15 @@ class EthereumDataOperations extends ApiDataOperations {
     queryWithPredicates("ethereum", "blocks", query).map(Option(_))
 
   /** Fetches the latest block, ordered by time */
-  def fetchBlocksHead(network: String)(implicit ex: ExecutionContext): Future[Option[QueryResponse]] = {
+  def fetchBlocksHead()(implicit ex: ExecutionContext): Future[Option[QueryResponse]] = {
     val filter = EthereumFilter(limit = Some(1), sortBy = Some("timestamp"))
-    queryWithPredicates("ethereum", "blocks", filter.toQuery(network)).map(_.headOption)
+    queryWithPredicates("ethereum", "blocks", filter.toQuery).map(_.headOption)
   }
 
   /** Fetches the block by specific hash */
-  def fetchBlockByHash(network: String, hash: EthereumBlockHash)(
-      implicit ex: ExecutionContext
-  ): Future[Option[QueryResponse]] = {
+  def fetchBlockByHash(hash: EthereumBlockHash)(implicit ex: ExecutionContext): Future[Option[QueryResponse]] = {
     val filter = EthereumFilter(blockIds = Set(hash.value))
-    queryWithPredicates("ethereum", "blocks", filter.toQuery(network)).map(_.headOption)
+    queryWithPredicates("ethereum", "blocks", filter.toQuery).map(_.headOption)
   }
 
   /** Fetches the list of transactions for given query */
@@ -34,11 +32,9 @@ class EthereumDataOperations extends ApiDataOperations {
     queryWithPredicates("ethereum", "transactions", query).map(Some(_))
 
   /** Fetches the transaction by specific id (different from hash) */
-  def fetchTransactionById(network: String, id: String)(
-      implicit ex: ExecutionContext
-  ): Future[Option[QueryResponse]] = {
+  def fetchTransactionById(id: String)(implicit ex: ExecutionContext): Future[Option[QueryResponse]] = {
     val filter = EthereumFilter(transactionIDs = Set(id))
-    queryWithPredicates("ethereum", "transactions", filter.toQuery(network)).map(_.headOption)
+    queryWithPredicates("ethereum", "transactions", filter.toQuery).map(_.headOption)
   }
 
   /** Fetches the list of logs for given query */

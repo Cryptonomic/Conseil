@@ -8,10 +8,9 @@ import cats.syntax.bitraverse._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.metadata.MetadataService
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
-import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataTypes.ApiQuery
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.ethereum.EthereumTypes.EthereumBlockHash
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{ApiPredicate, OperationType, QueryResponseWithOutput}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.common.metadata
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
 
@@ -36,7 +35,6 @@ case class EthereumDataRoutes(
       val path = EntityPath(entity, NetworkPath(network, PlatformPath(platform)))
       pathValidation(path) {
         apiQuery
-          .withNetwork(network) // We need to add network here, cause we are going to support multiple networks in the same schema
           .validate(path, metadataService, metadataConfiguration)
           .flatMap { validationResult =>
             validationResult.map { validQuery =>
@@ -54,7 +52,7 @@ case class EthereumDataRoutes(
   private val blocksRoute: Route = ethereumBlocksEndpoint.implementedByAsync {
     case ((network, filter), _) =>
       platformNetworkValidation(network) {
-        operations.fetchBlocks(filter.toQuery(network).withLimitCap(maxQueryResultSize))
+        operations.fetchBlocks(filter.toQuery.withLimitCap(maxQueryResultSize))
       }
   }
 
@@ -62,7 +60,7 @@ case class EthereumDataRoutes(
   private val blocksHeadRoute: Route = ethereumBlocksHeadEndpoint.implementedByAsync {
     case (network, _) =>
       platformNetworkValidation(network) {
-        operations.fetchBlocksHead(network)
+        operations.fetchBlocksHead()
       }
   }
 
@@ -70,7 +68,7 @@ case class EthereumDataRoutes(
   private val blockByHashRoute: Route = ethereumBlockByHashEndpoint.implementedByAsync {
     case ((network, hash), _) =>
       platformNetworkValidation(network) {
-        operations.fetchBlockByHash(network, EthereumBlockHash(hash))
+        operations.fetchBlockByHash(EthereumBlockHash(hash))
       }
   }
 
@@ -78,7 +76,7 @@ case class EthereumDataRoutes(
   private val transactionsRoute: Route = ethereumTransactionsEndpoint.implementedByAsync {
     case ((network, filter), _) =>
       platformNetworkValidation(network) {
-        operations.fetchTransactions(filter.toQuery(network).withLimitCap(maxQueryResultSize))
+        operations.fetchTransactions(filter.toQuery.withLimitCap(maxQueryResultSize))
       }
   }
 
@@ -86,7 +84,7 @@ case class EthereumDataRoutes(
   private val transactionByIdRoute: Route = ethereumTransactionByIdEndpoint.implementedByAsync {
     case ((network, id), _) =>
       platformNetworkValidation(network) {
-        operations.fetchTransactionById(network, id)
+        operations.fetchTransactionById(id)
       }
   }
 
@@ -113,14 +111,5 @@ case class EthereumDataRoutes(
       operation
     else
       Future.successful(None)
-
-  //TODO Can this be done better?
-  implicit private class ApiQueryOps(q: ApiQuery) {
-    def withNetwork(network: String): ApiQuery = {
-      val predicate = ApiPredicate("network", OperationType.eq, Some(List(network)))
-      q.copy(predicates = Some(q.predicates.getOrElse(List.empty) :+ predicate))
-    }
-
-  }
 
 }
