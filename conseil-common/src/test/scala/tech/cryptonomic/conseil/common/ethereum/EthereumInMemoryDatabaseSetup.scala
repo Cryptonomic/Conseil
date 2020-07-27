@@ -8,8 +8,8 @@ trait EthereumInMemoryDatabaseSetup extends InMemoryDatabaseSetup {
   registerSchema(
     "ethereum",
     Seq(
-      Fixture(Tables.Blocks),
-      Fixture(Tables.Transactions)
+      Fixture.table(Tables.Blocks),
+      Fixture.table(Tables.Transactions)
     )
   )
 }
