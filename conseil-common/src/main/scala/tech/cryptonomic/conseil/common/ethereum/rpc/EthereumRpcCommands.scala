@@ -71,7 +71,7 @@ object EthereumRpcCommands {
         topics: Seq[String]
     )
     def request(fromBlock: String, toBlock: String, topics: Seq[String]) =
-      RpcRequest("2.0", rpcMethod, Params(fromBlock, toBlock, topics), s"egtbh_${fromBlock}_$toBlock")
+      RpcRequest("2.0", rpcMethod, Params(fromBlock, toBlock, topics), s"egl_${fromBlock}_$toBlock")
 
     implicit val encodeParams: Encoder[Params] = new Encoder[Params] {
       final def apply(params: Params): Json = Json.arr(

@@ -24,7 +24,7 @@ import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Transaction}
   *   val ethereumClient = new EthereumClient[IO](rpcClient)
   *
   *   // To call [[fs2.Pipe]] methods use:
-  *   Stream("0x1", "0x2").through(ethereumClient.getBlockByNumber(batchSize = 10)).compile.toList
+  *   Stream(1, 2).through(ethereumClient.getBlockByNumber(batchSize = 10)).compile.toList
   *   // The result will be:
   *   val res0: List[Block] = List(block1, block2)
   * }}}

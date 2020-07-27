@@ -10,7 +10,7 @@ import slick.jdbc.PostgresProfile.api._
 
 import tech.cryptonomic.conseil.common.util.Conversion
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
-import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Transaction}
+import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction}
 import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence._
 
 /**
@@ -109,6 +109,27 @@ object EthereumPersistence {
           v = from.v,
           r = from.r,
           s = from.s
+        )
+    }
+
+  /**
+    * Convert form [[Log]] to [[Tables.LogsRow]]
+    * TODO: This conversion should be done with the Chimney,
+    *       but it's blocked due to the https://github.com/scala/bug/issues/11157
+    */
+  implicit val logToLogsRow: Conversion[Id, Log, Tables.LogsRow] =
+    new Conversion[Id, Log, Tables.LogsRow] {
+      override def convert(from: Log) =
+        Tables.LogsRow(
+          address = from.address,
+          blockHash = from.blockHash,
+          blockNumber = Integer.decode(from.blockNumber),
+          data = from.data,
+          logIndex = from.logIndex,
+          removed = from.removed,
+          topics = from.topics.mkString(","),
+          transactionHash = from.transactionHash,
+          transactionIndex = from.transactionIndex
         )
     }
 

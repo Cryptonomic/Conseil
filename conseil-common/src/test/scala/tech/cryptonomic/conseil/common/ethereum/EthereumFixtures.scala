@@ -146,6 +146,22 @@ trait EthereumFixtures {
       r = "0xec5b17e102048e5e52ab779f4ab757634c5aa009dd595aa9575bd55e8d2b7d87",
       s = "0x7021d4517c8a5f92872a7b24d59d47631a5dfa2f5fe340708fc50abf2c817345"
     )
+
+    val logResult = Log(
+      address = "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = "0x18e70",
+      data = "0x000000000000000000000000000000000000000000000000000000003b9aca00",
+      logIndex = "0x0",
+      removed = false,
+      topics = List(
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+        "0x000000000000000000000000fdb16996831753d5331ff813c29a93c76834a0ad",
+        "0x0000000000000000000000000f4a253ee5a63bb4b23a360ad52d69c86bc9fe97"
+      ),
+      transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
+      transactionIndex = "0x3"
+    )
   }
 
   /**
@@ -190,6 +206,19 @@ trait EthereumFixtures {
       v = "0x1b",
       r = "0xec5b17e102048e5e52ab779f4ab757634c5aa009dd595aa9575bd55e8d2b7d87",
       s = "0x7021d4517c8a5f92872a7b24d59d47631a5dfa2f5fe340708fc50abf2c817345"
+    )
+
+    val logRow = Tables.LogsRow(
+      address = "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = 102000,
+      data = "0x000000000000000000000000000000000000000000000000000000003b9aca00",
+      logIndex = "0x0",
+      removed = false,
+      topics =
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef,0x000000000000000000000000fdb16996831753d5331ff813c29a93c76834a0ad,0x0000000000000000000000000f4a253ee5a63bb4b23a360ad52d69c86bc9fe97",
+      transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
+      transactionIndex = "0x3"
     )
   }
 }

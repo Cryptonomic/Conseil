@@ -38,6 +38,15 @@ class EthereumPersistenceTest
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.transactionRow)
       }
 
+      "save log from the JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {
+        (for {
+          // we have to have block row to save the transaction (due to the foreign key)
+          _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
+          _ <- tx.transact(Tables.Logs += RpcFixtures.logResult.convertTo[Tables.LogsRow])
+          result <- tx.transact(Tables.Logs.result)
+        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.logRow)
+      }
+
       "save block with transactions using persistence (integration test)" in new EthereumPersistenceStubs(dbHandler) {
         (for {
           // run
