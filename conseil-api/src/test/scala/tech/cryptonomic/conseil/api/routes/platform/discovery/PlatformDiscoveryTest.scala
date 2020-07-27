@@ -3,13 +3,10 @@ package tech.cryptonomic.conseil.api.routes.platform.discovery
 import akka.http.scaladsl.model.{ContentTypes, StatusCodes}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
-import tech.cryptonomic.conseil.common.config.Platforms.{
-  PlatformsConfiguration,
-  TezosConfiguration,
-  TezosNodeConfiguration
-}
+import tech.cryptonomic.conseil.common.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.common.config.Types.PlatformName
 import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.DataType.Int
@@ -18,7 +15,7 @@ import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Att
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
 import tech.cryptonomic.conseil.common.util.JsonUtil.toListOfMaps
 
-class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTest with MockFactory {
+class PlatformDiscoveryTest extends AnyWordSpec with Matchers with ScalatestRouteTest with MockFactory {
 
   "The platform discovery route" should {
 

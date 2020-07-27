@@ -2,7 +2,9 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.OptionValues
+import org.scalatest.matchers.should.Matchers
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
@@ -11,7 +13,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 
 class TezosIndexedDataOperationsTest
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup

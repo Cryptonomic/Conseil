@@ -3,10 +3,11 @@ package tech.cryptonomic.conseil.api.routes.info
 import akka.http.scaladsl.model.{ContentTypes, StatusCodes}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.util.JsonUtil._
 
-class AppInfoRouteTest extends WordSpec with Matchers with ScalatestRouteTest {
+class AppInfoRouteTest extends AnyWordSpec with Matchers with ScalatestRouteTest {
 
   "The application info route" should {
 

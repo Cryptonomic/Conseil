@@ -2,26 +2,22 @@ package tech.cryptonomic.conseil.indexer.tezos.bigmaps
 
 import java.sql.Timestamp
 
-import org.scalatest.{Matchers, WordSpec}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
-import tech.cryptonomic.conseil.common.tezos.Tables.{
-  BigMapContentsRow,
-  BigMapsRow,
-  OriginatedAccountMapsRow,
-  TokenBalancesRow
-}
+import tech.cryptonomic.conseil.common.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow, TokenBalancesRow}
 import tech.cryptonomic.conseil.common.tezos.{Tables, TezosTypes}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperationsTestFixtures, TezosInMemoryDatabaseSetup}
 import com.softwaremill.diffx.scalatest.DiffMatcher._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 class BigMapsOperationsTest
-    extends WordSpec
+    extends AnyWordSpec
     with TezosDatabaseOperationsTestFixtures
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup

@@ -1,8 +1,9 @@
 package tech.cryptonomic.conseil.common.util
 
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class MathUtilTest extends FlatSpec with Matchers {
+class MathUtilTest extends AnyFlatSpec with Matchers {
 
   "MathUtilTest" should "correctly calculate the mean of a sequence" in {
       val dataset = List(1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d)

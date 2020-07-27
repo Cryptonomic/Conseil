@@ -1,9 +1,10 @@
 package tech.cryptonomic.conseil.common.util
 
-import org.scalatest.{FlatSpec, Matchers}
 import cats.implicits._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class CryptoUtilTest extends FlatSpec with Matchers {
+class CryptoUtilTest extends AnyFlatSpec with Matchers {
 
   "CryptoUtil" should "correctly decode and encode a Tezos account ID as bytes" in {
       val accountID = "tz1Z5pFi5Sy99Kcz36XA5WtKW7Z6NVG9LdA4"

@@ -1,12 +1,14 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
 import com.github.ghik.silencer.silent
-import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.{EitherValues, OptionValues}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.JsonUtil.adaptManagerPubkeyField
 
 @silent("local val derivationConf")
-class TezosJsonDecodersTest extends WordSpec with Matchers with EitherValues with OptionValues {
+class TezosJsonDecodersTest extends AnyWordSpec with Matchers with EitherValues with OptionValues {
 
   import TezosJsonDecoders.Circe.Accounts._
   import TezosJsonDecoders.Circe.Numbers._

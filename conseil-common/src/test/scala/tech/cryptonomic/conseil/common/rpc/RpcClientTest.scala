@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.common.rpc
 
 import scala.concurrent.ExecutionContext
-
 import cats.effect._
 import org.http4s._
 import org.http4s.client.Client
@@ -9,11 +8,11 @@ import fs2.Stream
 import io.circe.generic.auto._
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.circe.CirceEntityEncoder._
-import org.scalatest.{Matchers, WordSpec}
-
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.rpc.RpcClient._
 
-class RpcClientTest extends WordSpec with Matchers {
+class RpcClientTest extends AnyWordSpec with Matchers {
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 

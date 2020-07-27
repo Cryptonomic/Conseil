@@ -1,8 +1,9 @@
 package tech.cryptonomic.conseil.api.routes.platform
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class SanitizerTest extends WordSpec with Matchers {
+class SanitizerTest extends AnyWordSpec with Matchers {
 
   "Sanitizer" should {
       "sanitizeForSql alphanumeric string" in {

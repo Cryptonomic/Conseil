@@ -1,13 +1,14 @@
 package tech.cryptonomic.conseil.common.util
 
-import org.scalatest.{Matchers, WordSpec}
 import org.scalatest.Inspectors._
 import JsonUtil._
 import com.stephenn.scalatest.jsonassert.JsonMatchers
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 case class TestObject(field: String = "")
 
-class JsonUtilTest extends WordSpec with Matchers with JsonMatchers {
+class JsonUtilTest extends AnyWordSpec with Matchers with JsonMatchers {
 
   "JsonUtil" should {
 
