@@ -109,7 +109,7 @@ case class BitcoinDataRoutes(
   private val accountsRoute: Route = bitcoinAccountsEndpoint.implementedByAsync {
     case ((network, filter), _) =>
       platformNetworkValidation(network) {
-        dataQueries.fetchAccounts(filter.toQuery.withLimitCap(maxQueryResultSize))
+        operations.fetchAccounts(filter.toQuery.withLimitCap(maxQueryResultSize))
       }
   }
 
@@ -117,7 +117,7 @@ case class BitcoinDataRoutes(
   private val accountsByAddressRoute: Route = bitcoinAccountByAddressEndpoint.implementedByAsync {
     case ((network, address), _) =>
       platformNetworkValidation(network) {
-        dataQueries.fetchAccountByAddress(address)
+        operations.fetchAccountByAddress(address)
       }
   }
 

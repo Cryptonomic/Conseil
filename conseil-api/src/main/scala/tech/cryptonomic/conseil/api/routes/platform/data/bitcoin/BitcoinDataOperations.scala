@@ -44,4 +44,14 @@ class BitcoinDataOperations extends ApiDataOperations {
   /** Fetches the list of outputs for given query */
   def fetchOutputs(query: Query)(implicit ex: ExecutionContext): Future[Option[List[QueryResponse]]] =
     queryWithPredicates("bitcoin", "outputs", query).map(Some(_))
+
+  /** Fetches the list of accounts for given query */
+  def fetchAccounts(query: Query)(implicit ex: ExecutionContext): Future[Option[List[QueryResponse]]] =
+    queryWithPredicates("bitcoin", "accounts", query).map(Some(_))
+
+  /** Fetches the account by specific address (different from hash and id) */
+  def fetchAccountByAddress(address: String)(implicit ex: ExecutionContext): Future[Option[QueryResponse]] = {
+    val filter = BitcoinFilter(accountAddresses = Set(address))
+    queryWithPredicates("bitcoin", "accounts", filter.toQuery).map(_.headOption)
+  }
 }

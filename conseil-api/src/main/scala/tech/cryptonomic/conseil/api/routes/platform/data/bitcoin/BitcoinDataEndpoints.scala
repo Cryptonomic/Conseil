@@ -67,7 +67,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with
   /** V2 Accounts endpoint definition */
   def bitcoinAccountsEndpoint: Endpoint[((String, BitcoinFilter), Option[String]), Option[List[QueryResponse]]] =
     endpoint(
-      request = get(url = bitcoinPath / "accounts" /? bitcoinQsFilter, headers = optHeader("apiKey")),
+      request = get(url = root / "accounts" /? bitcoinQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("accounts"),
       tags = List("Accounts")
     )
@@ -75,7 +75,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with
   /** V2 Accounts by address endpoint definition */
   def bitcoinAccountByAddressEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
     endpoint(
-      request = get(url = bitcoinPath / "accounts" / segment[String](name = "address"), headers = optHeader("apiKey")),
+      request = get(url = root / "accounts" / segment[String](name = "address"), headers = optHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("account by address"),
       tags = List("Accounts")
     )
