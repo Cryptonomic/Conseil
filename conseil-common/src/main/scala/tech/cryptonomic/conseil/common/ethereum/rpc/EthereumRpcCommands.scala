@@ -35,12 +35,11 @@ object EthereumRpcCommands {
     case class Params(number: String, verbosity: Boolean)
     def request(number: String) = RpcRequest("2.0", rpcMethod, Params(number, false), s"egbbn_$number")
 
-    implicit val encodeParams: Encoder[Params] = new Encoder[Params] {
-      final def apply(params: Params): Json = Json.arr(
+    implicit val encodeParams: Encoder[Params] = (params: Params) =>
+      Json.arr(
         Json.fromString(params.number),
         Json.fromBoolean(params.verbosity)
       )
-    }
   }
 
   /**
@@ -52,11 +51,10 @@ object EthereumRpcCommands {
     case class Params(hash: String)
     def request(hash: String) = RpcRequest("2.0", rpcMethod, Params(hash), s"egtbh_$hash")
 
-    implicit val encodeParams: Encoder[Params] = new Encoder[Params] {
-      final def apply(params: Params): Json = Json.arr(
+    implicit val encodeParams: Encoder[Params] = (params: Params) =>
+      Json.arr(
         Json.fromString(params.hash)
       )
-    }
   }
 
   /**
@@ -73,14 +71,13 @@ object EthereumRpcCommands {
     def request(fromBlock: String, toBlock: String, topics: Seq[String]) =
       RpcRequest("2.0", rpcMethod, Params(fromBlock, toBlock, topics), s"egl_${fromBlock}_$toBlock")
 
-    implicit val encodeParams: Encoder[Params] = new Encoder[Params] {
-      final def apply(params: Params): Json = Json.arr(
+    implicit val encodeParams: Encoder[Params] = (params: Params) =>
+      Json.arr(
         Json.obj(
           "fromBlock" -> Json.fromString(params.fromBlock),
           "toBlock" -> Json.fromString(params.toBlock),
           "topics" -> params.topics.asJson
         )
       )
-    }
   }
 }
