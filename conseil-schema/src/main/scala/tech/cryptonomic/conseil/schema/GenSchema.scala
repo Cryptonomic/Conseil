@@ -3,14 +3,14 @@ package tech.cryptonomic.conseil.schema
 import java.net.URI
 import java.nio.file.Paths
 
+import scala.concurrent.ExecutionContext
+
+import cats.effect._
 import cats.implicits._
 import slick.codegen.SourceCodeGenerator
 import slick.basic.DatabaseConfig
 import slick.jdbc.PostgresProfile
 import slick.model.{Model, Table}
-import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
-import cats.effect._
 
 /**
   * Uses Slick's code-generation capabilities to infer code from Conseil database schema.

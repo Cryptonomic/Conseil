@@ -48,12 +48,11 @@ object BitcoinRpcCommands {
     case class Params(hash: String, verbosity: Int)
     def request(hash: String) = RpcRequest("1.0", rpcMethod, Params(hash, 1), s"gb_$hash")
 
-    implicit val encodeParams: Encoder[Params] = new Encoder[Params] {
-      final def apply(params: Params): Json = Json.arr(
+    implicit val encodeParams: Encoder[Params] = (params: Params) =>
+      Json.arr(
         Json.fromString(params.hash),
         Json.fromInt(params.verbosity)
       )
-    }
   }
 
   /**
@@ -67,11 +66,10 @@ object BitcoinRpcCommands {
     case class Params(txid: String, verbose: Boolean)
     def request(txid: String) = RpcRequest("1.0", rpcMethod, Params(txid, true), s"grt_$txid")
 
-    implicit val encodeParams: Encoder[Params] = new Encoder[Params] {
-      final def apply(params: Params): Json = Json.arr(
+    implicit val encodeParams: Encoder[Params] = (params: Params) =>
+      Json.arr(
         Json.fromString(params.txid),
         Json.fromBoolean(params.verbose)
       )
-    }
   }
 }
