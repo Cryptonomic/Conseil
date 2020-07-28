@@ -78,7 +78,7 @@ class EthereumPersistenceTest
         } yield result).unsafeRunSync() shouldBe Vector(1, 2)
       }
 
-      "return the latest block" in new EthereumPersistenceStubs(dbHandler) {
+      "return the latest block in a height range" in new EthereumPersistenceStubs(dbHandler) {
         (for {
           // create blocks
           _ <- tx.transact(

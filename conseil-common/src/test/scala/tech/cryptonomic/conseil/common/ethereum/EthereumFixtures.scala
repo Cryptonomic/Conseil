@@ -6,7 +6,7 @@ import java.sql.Timestamp
 import tech.cryptonomic.conseil.common.ethereum.rpc.json._
 
 /**
-  * Fixtures for Ethereum based on block at height 0x18E70 with hash 0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214
+  * Fixtures for Ethereum based on MainNet block at height 0x18E70 with hash 0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214
   */
 trait EthereumFixtures {
 

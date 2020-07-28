@@ -28,7 +28,8 @@ object EthereumRpcCommands {
   /**
     * `eth_getBlockByNumber` Ethereum JSON-RPC api method.
     * If verbosity is true it returns the full transaction objects,
-    * if false only the hashes of the transactions.
+    * if false only the hashes of the transactions. 
+    * We only use verbosity=false in Lorre.
     */
   object EthGetBlockByNumber extends EthereumRpcMethod {
     val rpcMethod = "eth_getBlockByNumber"
