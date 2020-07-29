@@ -733,7 +733,7 @@ object TezosDatabaseOperations extends LazyLogging {
     DBIO.sequence {
       hashes.map { hash =>
         Tables.Bakers
-          .filter(_.pkh === hash.value)
+          .filter(_.blockId === hash.value)
           .result
           .map(hash -> _.map(delegate => BakerRolls(PublicKeyHash(delegate.pkh), delegate.rolls)).toList)
       }
