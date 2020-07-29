@@ -46,7 +46,7 @@ object Dependencies {
     val libsodiumJna = "1.0.4"
     val jna = "5.5.0"
 
-    val chimney = "0.3.1"
+    val chimney = "0.5.3"
     val bitcoin = "0.9.18-SNAPSHOT"
     val scrypto = "2.1.7"
     val scorex = "0.1.6"

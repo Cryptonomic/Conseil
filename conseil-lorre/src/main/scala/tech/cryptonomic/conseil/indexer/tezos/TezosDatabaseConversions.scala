@@ -76,16 +76,10 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
     override def convert(from: AverageFees) =
-      Tables.FeesRow(
-        low = from.low,
-        medium = from.medium,
-        high = from.high,
-        timestamp = from.timestamp,
-        kind = from.kind,
-        cycle = from.cycle,
-        level = Some(from.level),
-        forkId = Fork.mainForkId
-      )
+      from
+        .into[Tables.FeesRow]
+        .withFieldConst(_.forkId, Fork.mainForkId)
+        .transform
   }
 
   implicit val blockAccountsToAccountRows =
