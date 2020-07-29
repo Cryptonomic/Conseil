@@ -186,8 +186,8 @@ object TezosDataGenerationKit extends RandomGenerationKit {
        */
       for {
         totallyArbitrary <- arbitrary[OperationsRow]
-        arbitraryScript <- Gen.alphaNumStr
-        arbitraryStorage <- Gen.alphaNumStr
+        arbitraryScript <- Gen.option(Gen.alphaNumStr)
+        arbitraryStorage <- Gen.option(Gen.alphaNumStr)
         arbitraryBigDecimals <- Gen.infiniteStream(Gen.option(databaseFriendlyBigDecimalGenerator))
         arbitraryTimestamp <- timestampGenerator
         arbitraryDatetime = Instant.ofEpochMilli(arbitraryTimestamp.getTime).atOffset(ZoneOffset.UTC)
@@ -209,6 +209,8 @@ object TezosDataGenerationKit extends RandomGenerationKit {
             paidStorageSizeDiff = arbitraryBigDecimals(8),
             ballot = arbitraryBallot.map(_.value),
             kind = arbitraryKind,
+            script = arbitraryScript,
+            storage = arbitraryStorage,
             timestamp = arbitraryTimestamp,
             utcYear = arbitraryDatetime.getYear(),
             utcMonth = arbitraryDatetime.getMonth().getValue(),
