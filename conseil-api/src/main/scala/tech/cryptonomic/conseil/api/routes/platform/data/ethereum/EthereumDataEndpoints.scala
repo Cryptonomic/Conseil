@@ -5,49 +5,49 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 /** Represents list of endpoints exposed for Ethereum Blockchain */
 trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
 
-  private val root = path / "v2" / "data" / "ethereum" / segment[String](name = "network")
+  private val platform: String = "ethereum"
 
   def ethereumBlocksEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
-    blocksEndpoint(root)
+    blocksEndpoint(platform)
 
   def ethereumBlocksHeadEndpoint: Endpoint[(String, Option[String]), Option[QueryResponse]] =
-    blocksHeadEndpoint(root)
+    blocksHeadEndpoint(platform)
 
   def ethereumBlockByHashEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
-    blockByHashEndpoint(root)
+    blockByHashEndpoint(platform)
 
   def ethereumTransactionsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
-    transactionsEndpoint(root)
+    transactionsEndpoint(platform)
 
   def ethereumTransactionByHashEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
-    transactionByHashEndpoint(root)
+    transactionByHashEndpoint(platform)
 
   def ethereumLogsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
-    logsEndpoint(root)
+    logsEndpoint(platform)
 
 }
 
 /** Represents list of endpoints exposed for Quorum Blockchain (based on Ethereum) */
 trait QuorumDataEndpoints extends EthereumDataEndpointsCreator {
 
-  private val root = path / "v2" / "data" / "quorum" / segment[String](name = "network")
+  private val platform: String = "quorum"
 
   def quorumBlocksEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
-    blocksEndpoint(root)
+    blocksEndpoint(platform)
 
   def quorumBlocksHeadEndpoint: Endpoint[(String, Option[String]), Option[QueryResponse]] =
-    blocksHeadEndpoint(root)
+    blocksHeadEndpoint(platform)
 
   def quorumBlockByHashEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
-    blockByHashEndpoint(root)
+    blockByHashEndpoint(platform)
 
   def quorumTransactionsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
-    transactionsEndpoint(root)
+    transactionsEndpoint(platform)
 
   def quorumTransactionByHashEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
-    transactionByHashEndpoint(root)
+    transactionByHashEndpoint(platform)
 
   def quorumLogsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
-    logsEndpoint(root)
+    logsEndpoint(platform)
 
 }

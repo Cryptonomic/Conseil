@@ -7,57 +7,62 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 trait EthereumDataEndpointsCreator extends ApiDataEndpoints with ApiDataJsonSchemas with EthereumFilterFromQueryString {
 
   /** V2 Blocks endpoint definition */
-  private[ethereum] def blocksEndpoint(root: Path[String]) : Endpoint[((String, EthereumFilter), Option[String]), Option[
+  private[ethereum] def blocksEndpoint(platform: String) : Endpoint[((String, EthereumFilter), Option[String]), Option[
     List[QueryResponse]
   ]] =
     endpoint(
-      request = get(url = root / "blocks" /? ethereumQsFilter, headers = optHeader("apiKey")),
+      request = get(url = createPath(platform) / "blocks" /? ethereumQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("blocks"),
-      tags = List("Blocks")
+      tags = createTags(platform, "Blocks")
     )
 
   /** V2 Blocks head endpoint definition */
-  private[ethereum] def blocksHeadEndpoint(root: Path[String]): Endpoint[(String, Option[String]), Option[QueryResponse]] =
+  private[ethereum] def blocksHeadEndpoint(platform: String): Endpoint[(String, Option[String]), Option[QueryResponse]] =
     endpoint(
-      request = get(url = root / "blocks" / "head", headers = optHeader("apiKey")),
+      request = get(url = createPath(platform) / "blocks" / "head", headers = optHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("blocks head"),
-      tags = List("Blocks")
+      tags = createTags(platform, "Blocks")
     )
 
   /** V2 Blocks by hash endpoint definition */
-  private[ethereum] def blockByHashEndpoint(root: Path[String]): Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
+  private[ethereum] def blockByHashEndpoint(platform: String): Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
     endpoint(
-      request = get(url = root / "blocks" / segment[String](name = "hash"), headers = optHeader("apiKey")),
+      request = get(url = createPath(platform) / "blocks" / segment[String](name = "hash"), headers = optHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("block by hash"),
-      tags = List("Blocks")
+      tags = createTags(platform, "Blocks")
     )
 
   /** V2 Transactions endpoint definition */
-  private[ethereum] def transactionsEndpoint(root: Path[String]): Endpoint[((String, EthereumFilter), Option[String]), Option[
+  private[ethereum] def transactionsEndpoint(platform: String): Endpoint[((String, EthereumFilter), Option[String]), Option[
     List[QueryResponse]
   ]] =
     endpoint(
-      request = get(url = root / "transactions" /? ethereumQsFilter, headers = optHeader("apiKey")),
+      request = get(url = createPath(platform) / "transactions" /? ethereumQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("transactions"),
-      tags = List("Transactions")
+      tags = createTags(platform, "Transactions")
     )
 
   /** V2 Transaction by id endpoint definition */
-  private[ethereum] def transactionByHashEndpoint(root: Path[String]): Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
+  private[ethereum] def transactionByHashEndpoint(platform: String): Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
     endpoint(
-      request = get(url = root / "transactions" / segment[String](name = "hash"), headers = optHeader("apiKey")),
+      request = get(url = createPath(platform) / "transactions" / segment[String](name = "hash"), headers = optHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("transaction by hash"),
-      tags = List("Transactions")
+      tags = createTags(platform, "Transactions")
     )
 
   /** V2 Logs endpoint definition */
-  private[ethereum] def logsEndpoint(root: Path[String]): Endpoint[((String, EthereumFilter), Option[String]), Option[
+  private[ethereum] def logsEndpoint(platform: String): Endpoint[((String, EthereumFilter), Option[String]), Option[
     QueryResponse
   ]] =
     endpoint(
-      request = get(url = root / "logs" /? ethereumQsFilter, headers = optHeader("apiKey")),
+      request = get(url = createPath(platform) / "logs" /? ethereumQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("logs"),
-      tags = List("Logs")
+      tags = createTags(platform, "Logs")
     )
+
+  private def createPath(platform: String): Path[String] =
+    path / "v2" / "data" / platform / segment[String](name = "network")
+
+  private def createTags(platform: String, tag: String): List[String] = List(s"$platform $tag")
 
 }

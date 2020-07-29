@@ -13,7 +13,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with
     endpoint(
       request = get(url = root / "blocks" /? bitcoinQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("blocks"),
-      tags = List("Blocks")
+      tags = createTags("Blocks")
     )
 
   /** V2 Blocks head endpoint definition */
@@ -21,7 +21,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with
     endpoint(
       request = get(url = root / "blocks" / "head", headers = optHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("blocks head"),
-      tags = List("Blocks")
+      tags = createTags("Blocks")
     )
 
   /** V2 Blocks by hash endpoint definition */
@@ -29,7 +29,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with
     endpoint(
       request = get(url = root / "blocks" / segment[String](name = "hash"), headers = optHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("block by hash"),
-      tags = List("Blocks")
+      tags = createTags("Blocks")
     )
 
   /** V2 Transactions endpoint definition */
@@ -37,7 +37,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with
     endpoint(
       request = get(url = root / "transactions" /? bitcoinQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("transactions"),
-      tags = List("Transactions")
+      tags = createTags("Transactions")
     )
 
   /** V2 Transaction by id endpoint definition */
@@ -45,7 +45,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with
     endpoint(
       request = get(url = root / "transactions" / segment[String](name = "id"), headers = optHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("transaction by id"),
-      tags = List("Transactions")
+      tags = createTags("Transactions")
     )
 
   /** V2 Inputs for transactions endpoint definition */
@@ -53,7 +53,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with
     endpoint(
       request = get(url = root / "inputs" /? bitcoinQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("inputs for transactions"),
-      tags = List("Inputs")
+      tags = createTags("Inputs")
     )
 
   /** V2 Outputs for transactions endpoint definition */
@@ -61,7 +61,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with
     endpoint(
       request = get(url = root / "outputs" /? bitcoinQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("outputs for transactions"),
-      tags = List("Outputs")
+      tags = createTags("Outputs")
     )
 
   /** V2 Accounts endpoint definition */
@@ -69,7 +69,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with
     endpoint(
       request = get(url = root / "accounts" /? bitcoinQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("accounts"),
-      tags = List("Accounts")
+      tags = createTags("Accounts")
     )
 
   /** V2 Accounts by address endpoint definition */
@@ -77,7 +77,9 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with
     endpoint(
       request = get(url = root / "accounts" / segment[String](name = "address"), headers = optHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("account by address"),
-      tags = List("Accounts")
+      tags = createTags("Accounts")
     )
+
+  private def createTags(entity: String): List[String] = List(s"Bitcoin $entity")
 
 }
