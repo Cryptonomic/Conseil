@@ -8,6 +8,7 @@ import org.scalacheck.Arbitrary.arbitrary
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
+import tech.cryptonomic.conseil.common.testkit.util.DBSafe
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, Voting}
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.{
@@ -444,9 +445,11 @@ class TezosForkDatabaseOperationsTest
          * We want the invalidated history to remain there unchanged as evidence of what happened.
          */
 
-        val ForkValid(block) = arbitrary[ForkValid[Block]].map {
-          case ForkValid(block @ Block(data, operations, votes)) =>
-            ForkValid(block.copy(data = data.copy(hash = TezosBlockHash(invalidRow.blockId))))
+        val block = arbitrary[DBSafe[Block]].map {
+          case DBSafe(block @ Block(data, operations, votes)) =>
+            block.copy(
+              data = data.copy(hash = TezosBlockHash(invalidRow.blockId))
+            )
         }.sample.value
 
         /* Test the results */
@@ -498,9 +501,9 @@ class TezosForkDatabaseOperationsTest
          * We want the invalidated history to remain there unchanged as evidence of what happened.
          */
 
-        val ForkValid(block) = arbitrary[ForkValid[Block]].map {
-          case ForkValid(block @ Block(data, operations, votes)) =>
-            ForkValid(block.copy(data = data.copy(hash = TezosBlockHash(invalidRow.blockId))))
+        val block = arbitrary[DBSafe[Block]].map {
+          case DBSafe(block @ Block(data, operations, votes)) =>
+            block.copy(data = data.copy(hash = TezosBlockHash(invalidRow.blockId)))
         }.sample.value
 
         /* Test the results */

@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
-import tech.cryptonomic.conseil.common.testkit.util.RandomGenerationKit
+import tech.cryptonomic.conseil.common.testkit.util.{DBSafe, RandomGenerationKit}
 import tech.cryptonomic.conseil.common.tezos.Fork
 import tech.cryptonomic.conseil.common.tezos.Tables.{
   AccountsHistoryRow,
@@ -13,10 +13,14 @@ import tech.cryptonomic.conseil.common.tezos.Tables.{
   OperationGroupsRow,
   OperationsRow
 }
+import tech.cryptonomic.conseil.common.tezos.TezosTypes
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   Block,
   BlockData,
   BlockHeaderMetadata,
+  OperationHash,
+  OperationsGroup,
+  PositiveDecimal,
   PublicKeyHash,
   TezosBlockHash,
   Voting,
@@ -28,10 +32,9 @@ import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.ScalacheckShapeless._
 import java.time._
 import java.time.format.DateTimeFormatter
-import tech.cryptonomic.conseil.common.tezos.TezosTypes
 
 /** A facility to get random generators of tezos entities for unit and property tests. */
-object TezosDataGenerationKit extends RandomGenerationKit {
+object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseCompatibilityVerification {
 
   /** A typed wrapper that will testify that data which could be
     * fork-invalidated is actually not.
@@ -62,19 +65,34 @@ object TezosDataGenerationKit extends RandomGenerationKit {
     */
   object DomainModelGeneration {
     /* Locally provide simpler data generators which more complex generators depends upon */
-    implicit private val zdtInstance = Arbitrary(utcZoneDateTimeGen)
+    implicit val zdtInstance = Arbitrary(utcZoneDateTimeGen)
 
-    implicit val blockHashGenerator = arbitraryBase52CheckString.map(TezosBlockHash)
+    implicit val blockHashGenerator = Arbitrary(arbitraryBase52CheckString.map(TezosBlockHash))
 
-    private val blockDataGen =
+    private val blockDataGenerator: Gen[BlockData] =
       for {
-        hash <- blockHashGenerator
-        data <- arbitrary[BlockData]
-        metadata <- arbitrary[BlockHeaderMetadata]
+        data <- arbitrary[BlockData].retryUntil(canBeWrittenToDb)
+        hash <- blockHashGenerator.arbitrary
+        metadata <- arbitrary[BlockHeaderMetadata].retryUntil(canBeWrittenToDb)
+        gasConsumption <- databaseFriendlyBigDecimalGenerator.map { case DBSafe(num) => PositiveDecimal(num) }
       } yield
         data.copy(
           hash = hash,
-          metadata = metadata
+          metadata = metadata.copy(
+            consumed_gas = gasConsumption
+          )
+        )
+
+    private val emptyOperationsGroupGenerator =
+      for {
+        group <- arbitrary[OperationsGroup]
+        hash <- arbitraryBase52CheckString.map(OperationHash)
+        blockHash <- blockHashGenerator.arbitrary
+      } yield
+        group.copy(
+          hash = hash,
+          branch = blockHash,
+          contents = List.empty
         )
 
     /** This instance in scope allows to obtain random [[VotingPeriod.Kind]] */
@@ -95,19 +113,15 @@ object TezosDataGenerationKit extends RandomGenerationKit {
     )
 
     /** This instance in scope allows to obtain [wildly] random [[Block]] */
-    implicit val validBlockInstance: Arbitrary[ForkValid[Block]] = Arbitrary(
+    implicit val validBlockInstance: Arbitrary[DBSafe[Block]] = Arbitrary(
       /* we modify the completely random instance provided by scalacheck shapeless
        * to provide our customized version
        */
       for {
         totallyArbitrary <- arbitrary[Block]
-        data <- blockDataGen
-      } yield
-        ForkValid(
-          totallyArbitrary.copy(
-            data = data
-          )
-        )
+        data <- blockDataGenerator
+        group <- emptyOperationsGroupGenerator
+      } yield DBSafe(totallyArbitrary.copy(data = data, operationGroups = List(group)))
     )
   }
 
@@ -156,7 +170,7 @@ object TezosDataGenerationKit extends RandomGenerationKit {
         totallyArbitrary <- arbitrary[BlocksRow]
         arbitraryB52C <- Gen.infiniteStream(arbitraryBase52CheckString)
         arbitraryTimestamp <- timestampGenerator
-        arbitraryGas <- Gen.option(databaseFriendlyBigDecimalGenerator)
+        arbitraryGas <- Gen.option(databaseFriendlyBigDecimalGenerator.map(_.value))
         arbitraryDatetime = Instant.ofEpochMilli(arbitraryTimestamp.getTime).atOffset(ZoneOffset.UTC)
       } yield
         ForkValid(
@@ -188,7 +202,7 @@ object TezosDataGenerationKit extends RandomGenerationKit {
         totallyArbitrary <- arbitrary[OperationsRow]
         arbitraryScript <- Gen.option(Gen.alphaNumStr)
         arbitraryStorage <- Gen.option(Gen.alphaNumStr)
-        arbitraryBigDecimals <- Gen.infiniteStream(Gen.option(databaseFriendlyBigDecimalGenerator))
+        arbitraryBigDecimals <- Gen.infiniteStream(Gen.option(databaseFriendlyBigDecimalGenerator.map(_.value)))
         arbitraryTimestamp <- timestampGenerator
         arbitraryDatetime = Instant.ofEpochMilli(arbitraryTimestamp.getTime).atOffset(ZoneOffset.UTC)
         arbitraryProposalHashes <- Gen.option(Gen.listOf(arbitraryBase52CheckString))
@@ -234,7 +248,7 @@ object TezosDataGenerationKit extends RandomGenerationKit {
       for {
         totallyArbitrary <- arbitrary[AccountsRow]
         arbitraryBase52Check <- arbitraryBase52CheckString
-        arbitraryBalance <- databaseFriendlyBigDecimalGenerator
+        DBSafe(arbitraryBalance) <- databaseFriendlyBigDecimalGenerator
       } yield
         ForkValid(
           totallyArbitrary.copy(
@@ -257,7 +271,7 @@ object TezosDataGenerationKit extends RandomGenerationKit {
       for {
         totallyArbitrary <- arbitrary[AccountsHistoryRow]
         arbitraryBase52Check <- arbitraryBase52CheckString
-        arbitraryBalance <- databaseFriendlyBigDecimalGenerator
+        DBSafe(arbitraryBalance) <- databaseFriendlyBigDecimalGenerator
       } yield
         ForkValid(
           totallyArbitrary.copy(
@@ -280,7 +294,7 @@ object TezosDataGenerationKit extends RandomGenerationKit {
       for {
         totallyArbitrary <- arbitrary[BakersRow]
         arbitraryBase52Check <- arbitraryBase52CheckString
-        arbitraryBalances <- Gen.infiniteStream(Gen.option(databaseFriendlyBigDecimalGenerator))
+        arbitraryBalances <- Gen.infiniteStream(Gen.option(databaseFriendlyBigDecimalGenerator.map(_.value)))
       } yield
         ForkValid(
           totallyArbitrary.copy(
@@ -368,7 +382,7 @@ object TezosDataGenerationKit extends RandomGenerationKit {
         totallyArbitrary <- arbitrary[GovernanceRow]
         arbitraryHash <- arbitraryBase52CheckString
         arbitraryProposal <- arbitraryBase52CheckString
-        arbitraryRolls <- Gen.infiniteStream(Gen.option(databaseFriendlyBigDecimalGenerator))
+        arbitraryRolls <- Gen.infiniteStream(Gen.option(databaseFriendlyBigDecimalGenerator.map(_.value)))
         arbitraryPeriodKind <- DomainModelGeneration.votingPeriodInstance.arbitrary
       } yield
         ForkValid(

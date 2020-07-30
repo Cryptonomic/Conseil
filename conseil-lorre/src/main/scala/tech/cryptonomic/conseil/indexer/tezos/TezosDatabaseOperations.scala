@@ -458,9 +458,9 @@ object TezosDatabaseOperations extends LazyLogging {
     import CustomProfileExtension.api._
     logger.info("Writing endorsing rights to the DB...")
     val transformationResult = for {
-      (blockHashWithCycleAndGovernancePeriod, endorsingRightsList) <- endorsingRightsMap
+      (fetchRights, endorsingRightsList) <- endorsingRightsMap
       endorsingRights <- endorsingRightsList
-    } yield (blockHashWithCycleAndGovernancePeriod, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
+    } yield (fetchRights, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
 
     Tables.EndorsingRights.insertOrUpdateAll(transformationResult.flatten)
   }

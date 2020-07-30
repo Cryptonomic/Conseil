@@ -61,6 +61,12 @@ object TezosTypes {
   /** a conventional value to get the latest block in the chain */
   final lazy val blockHeadHash = TezosBlockHash("head")
 
+  final case class Block(
+      data: BlockData,
+      operationGroups: List[OperationsGroup],
+      votes: CurrentVotes
+  )
+
   final case class BlockData(
       protocol: String,
       chain_id: Option[String],
@@ -546,12 +552,6 @@ object TezosTypes {
   final object CurrentVotes {
     val empty = CurrentVotes(quorum = None, active = None)
   }
-
-  final case class Block(
-      data: BlockData,
-      operationGroups: List[OperationsGroup],
-      votes: CurrentVotes
-  )
 
   final case class ManagerKey(
       manager: String,

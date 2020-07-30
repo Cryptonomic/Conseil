@@ -13,6 +13,14 @@ case class RandomSeed(seed: Long) extends AnyVal with Product with Serializable 
   def +(extra: Long): RandomSeed = RandomSeed(seed + extra)
 }
 
+/** A marker type for values that will not raise errors when stored inside a database.
+  * Use this for arbitrary generators with proper built-in constraints that will prevent
+  * db errors.
+  *
+  * @param value the actual value
+  */
+case class DBSafe[T](value: T) extends AnyVal
+
 /** Common and generally useful random generation primitives, designed to be used for
   * test data creation.
   * We integrate this with [[org.scalacheck]] generation facilities, i.e. [[Gen]].
@@ -20,6 +28,8 @@ case class RandomSeed(seed: Long) extends AnyVal with Product with Serializable 
   * generators from simpler ones.
   */
 trait RandomGenerationKit {
+
+  private val nullUTF_8 = '\u0000'
 
   //a stable date time reference if needed
   lazy val testReferenceDateTime = LocalDate.of(2018, 1, 1).atStartOfDay(ZoneOffset.UTC)
@@ -31,11 +41,11 @@ trait RandomGenerationKit {
   //creates pseudo-random strings of given length, based on an existing [[Random]] generator
   val alphaNumericGenerator = (random: Random) => random.alphanumeric.take(_: Int).mkString
 
-  /** Generates random timestamps */
-  lazy val timestampGenerator: Gen[Timestamp] = Gen.posNum[Long].map(new Timestamp(_))
+  /** Generates random timestamps roughly between years 2015 and 2070 */
+  lazy val timestampGenerator: Gen[Timestamp] = Gen.chooseNum[Long](1420115278L, 3155804811L).map(new Timestamp(_))
 
-  /** Creates random instants */
-  lazy val instantGenerator: Gen[Instant] = Gen.calendar.map(cal => Instant.ofEpochMilli(cal.getTimeInMillis()))
+  /** Creates random instants roughly between years 2015 and 2070 */
+  lazy val instantGenerator: Gen[Instant] = Gen.chooseNum[Long](1420115278L, 3155804811L).map(Instant.ofEpochMilli)
 
   /** Creates random date times with UTC Zone */
   lazy val utcZoneDateTimeGen: Gen[ZonedDateTime] = instantGenerator.map(
@@ -56,6 +66,10 @@ trait RandomGenerationKit {
   def boundedAlphabetStringGenerator(alphabet: String): Gen[String] =
     Gen.someOf(alphabet.toSet).map(_.mkString)
 
+  /** Generator for strings that can be safely used as column values in a db */
+  val databaseFriendlyStringGenerator: Gen[DBSafe[String]] =
+    arbitrary[String].map(string => DBSafe(string.filterNot(_ == nullUTF_8)))
+
   /** Use this to avoid generating BigDecimal values over a reasonable
     * precision to be stored as a database row entry.
     *
@@ -65,7 +79,19 @@ trait RandomGenerationKit {
     * It might also be related to a JVM issue on the MathContext, as reported here:
     * https://stackoverflow.com/questions/27434061/mathcontexts-in-bigdecimals-scalacheck-generator-creates-bigdecimals-which-can
     */
-  val databaseFriendlyBigDecimalGenerator: Gen[BigDecimal] =
-    arbitrary[Float].map(BigDecimal.decimal).retryUntil(_.abs < 1e18)
+  val databaseFriendlyBigDecimalGenerator: Gen[DBSafe[BigDecimal]] =
+    arbitrary[Float]
+      .map(BigDecimal.decimal)
+      .retryUntil(canBeWrittenToDb)
+      .map(DBSafe(_))
 
+  /** Can the string be safely stored as a database column?
+    * This depends on the database type definitions.
+    */
+  def canBeWrittenToDb(string: String): Boolean = !string.contains(nullUTF_8)
+
+  /** Can the number be safely stored as a database column?
+    * This depends on the database type definitions.
+    */
+  def canBeWrittenToDb(num: BigDecimal): Boolean = num.abs < 1e18
 }
