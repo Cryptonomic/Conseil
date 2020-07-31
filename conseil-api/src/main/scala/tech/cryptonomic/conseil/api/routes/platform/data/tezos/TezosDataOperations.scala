@@ -30,7 +30,10 @@ class TezosDataOperations extends ApiDataOperations {
      * combine them with an OR, thus nullifying the effect of adding only one predicate overall
      */
     val groups = userQueryPredicates.map(_.group).distinct
-    groups.map(predicateGroup => nonInvalidatedPredicate.copy(group = predicateGroup))
+    if (groups.nonEmpty)
+      groups.map(predicateGroup => nonInvalidatedPredicate.copy(group = predicateGroup))
+    else
+      nonInvalidatedPredicate :: Nil
   }
 
   override lazy val dbReadHandle: Database = DatabaseUtil.conseilDb
@@ -51,8 +54,8 @@ class TezosDataOperations extends ApiDataOperations {
     */
   def fetchBlock(hash: TezosBlockHash)(implicit ec: ExecutionContext): Future[Option[BlockResult]] = {
     val joins = for {
-      groups <- Tables.OperationGroups if groups.blockId === hash.value
-      block <- Tables.Blocks if block.hash === hash.value
+      groups <- Tables.OperationGroups if groups.blockId === hash.value && groups.invalidatedAsof.isEmpty
+      block <- Tables.Blocks if block.hash === hash.value && block.invalidatedAsof.isEmpty
     } yield (block, groups)
 
     runQuery(joins.result).map { paired =>
@@ -104,8 +107,8 @@ class TezosDataOperations extends ApiDataOperations {
       groupHash: String
   )(implicit ec: ExecutionContext): DBIO[Option[(Tables.OperationGroupsRow, Seq[Tables.OperationsRow])]] =
     (for {
-      operation <- Tables.Operations if operation.operationGroupHash === groupHash
-      group <- Tables.OperationGroups if group.hash === groupHash
+      operation <- Tables.Operations if operation.operationGroupHash === groupHash && operation.invalidatedAsof.isEmpty
+      group <- Tables.OperationGroups if group.hash === groupHash && group.invalidatedAsof.isEmpty
     } yield (group, operation)).result.map { pairs =>
       /*
        * we first collect all de-normalized pairs under the common group and then extract the
@@ -125,7 +128,7 @@ class TezosDataOperations extends ApiDataOperations {
   def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Option[AccountResult]] = {
     val fetchOperation =
       Tables.Accounts
-        .filter(row => row.accountId === account_id.id)
+        .filter(row => row.accountId === account_id.id && row.invalidatedAsof.isEmpty)
         .take(1)
         .result
 
@@ -142,7 +145,7 @@ class TezosDataOperations extends ApiDataOperations {
     fetchMaxBlockLevel.flatMap(
       maxLevel =>
         Tables.Blocks
-          .filter(_.level === maxLevel)
+          .filter(row => row.level === maxLevel && row.invalidatedAsof.isEmpty)
           .take(1)
           .result
           .headOption
@@ -154,6 +157,7 @@ class TezosDataOperations extends ApiDataOperations {
   /** Computes the max level of blocks or [[defaultBlockLevel]] if no block exists */
   private[tezos] def fetchMaxBlockLevel: DBIO[BlockLevel] =
     Tables.Blocks
+      .filter(_.invalidatedAsof.isEmpty)
       .map(_.level)
       .max
       .getOrElse(defaultBlockLevel)

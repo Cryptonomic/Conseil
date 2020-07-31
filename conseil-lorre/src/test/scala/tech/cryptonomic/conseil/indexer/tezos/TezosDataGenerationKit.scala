@@ -199,7 +199,7 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
        * to provide our customized version
        */
       for {
-        totallyArbitrary <- arbitrary[OperationsRow]
+        totallyArbitrary <- arbitrary[OperationsRow].retryUntil(canBeWrittenToDb)
         arbitraryScript <- Gen.option(Gen.alphaNumStr)
         arbitraryStorage <- Gen.option(Gen.alphaNumStr)
         arbitraryBigDecimals <- Gen.infiniteStream(Gen.option(databaseFriendlyBigDecimalGenerator.map(_.value)))

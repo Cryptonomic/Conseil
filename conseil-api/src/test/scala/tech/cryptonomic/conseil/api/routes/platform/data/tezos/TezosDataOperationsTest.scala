@@ -1719,7 +1719,7 @@ class TezosDataOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-        result shouldBe List(
+        result should contain theSameElementsAs List(
           Map("high" -> Some(8), "count_medium" -> Some(1), "low" -> Some(0)),
           Map("high" -> Some(4), "count_medium" -> Some(2), "low" -> Some(0))
         )
@@ -1754,7 +1754,7 @@ class TezosDataOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-        result shouldBe List(
+        result should contain theSameElementsAs List(
           Map("high" -> Some(8), "max_medium" -> Some(4), "low" -> Some(0)),
           Map("high" -> Some(4), "max_medium" -> Some(3), "low" -> Some(0))
         )
@@ -1789,7 +1789,7 @@ class TezosDataOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-        result shouldBe List(
+        result should contain theSameElementsAs List(
           Map("high" -> Some(8), "min_medium" -> Some(4), "low" -> Some(0)),
           Map("high" -> Some(4), "min_medium" -> Some(2), "low" -> Some(0))
         )
@@ -1824,7 +1824,7 @@ class TezosDataOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-        result shouldBe List(
+        result should contain theSameElementsAs List(
           Map("high" -> Some(8), "sum_medium" -> Some(4), "low" -> Some(0)),
           Map("high" -> Some(4), "sum_medium" -> Some(5), "low" -> Some(0))
         )
@@ -1859,7 +1859,7 @@ class TezosDataOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-        result shouldBe List(
+        result should contain theSameElementsAs List(
           Map("high" -> Some(4), "sum_medium" -> Some(5), "low" -> Some(0)),
           Map("high" -> Some(8), "sum_medium" -> Some(4), "low" -> Some(0))
         )
