@@ -13,6 +13,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
 }
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 
+/** Provides default, real validation method and everything what is related to validation */
 object ApiValidation {
 
   /** Function validating request for the query endpoint */

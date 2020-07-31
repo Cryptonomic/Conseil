@@ -4,6 +4,7 @@ import endpoints.generic
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataTypes.ApiQuery
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 
+/** Default json schemas for API handling */
 trait ApiDataJsonSchemas extends generic.JsonSchemas {
 
   /** API field schema */

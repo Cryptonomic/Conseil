@@ -5,6 +5,7 @@ import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataTypes.ApiQuery
 import tech.cryptonomic.conseil.api.routes.validation.Validation
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{QueryResponseWithOutput, QueryValidationError}
 
+/** Trait, which provides default query endpoint and methods used while creating endpoints */
 trait ApiDataEndpoints extends algebra.JsonSchemaEntities with Validation {
   self: ApiDataJsonSchemas =>
 

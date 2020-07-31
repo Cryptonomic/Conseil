@@ -7,11 +7,8 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.cryptonomic.conseil.api.metadata.{
-  AttributeValuesCacheConfiguration,
-  MetadataService,
-  TransparentUnitTransformation
-}
+import com.stephenn.scalatest.jsonassert.JsonMatchers
+import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, TransparentUnitTransformation}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms.{EthereumConfiguration, PlatformsConfiguration}
@@ -26,6 +23,7 @@ class EthereumDataRoutesTest
     with Matchers
     with ScalatestRouteTest
     with ScalaFutures
+    with JsonMatchers
     with MockFactory
     with BeforeAndAfterEach
     with EthereumDataRoutesTest.Fixtures {
@@ -72,12 +70,12 @@ class EthereumDataRoutesTest
 
       postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
         val resp = entityAs[String]
-        resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
+        resp should matchJson(jsonStringResponse)
         status shouldBe StatusCodes.OK
       }
     }
 
-    "return 404 NotFound status code for request for the not supported platform with POST" in {
+    "return 404 NotFound status code for request for the unsupported platform with POST" in {
 
       val postRequest = HttpRequest(
         HttpMethods.POST,
@@ -89,7 +87,7 @@ class EthereumDataRoutesTest
       }
     }
 
-    "return 404 NotFound status code for request for the not supported network with POST" in {
+    "return 404 NotFound status code for request for the unsupported network with POST" in {
 
       val postRequest = HttpRequest(
         HttpMethods.POST,
@@ -106,13 +104,13 @@ class EthereumDataRoutesTest
 
       getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
         val resp = entityAs[String]
-        resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
+        resp should matchJson(jsonStringResponse)
         status shouldBe StatusCodes.OK
       }
     }
   }
 
-  "not handle request for the not supported platform with GET" in {
+  "not handle request for the unsupported platform with GET" in {
     // Due to the fact that platforms are hardcoded in path (not dynamic),
     // request won't be handled for unsupported platforms and pushed down to the default rejection handler.
     val getRequest = HttpRequest(
@@ -124,7 +122,7 @@ class EthereumDataRoutesTest
     }
   }
 
-  "return 404 NotFound status code for request for the not supported network with GET" in {
+  "return 404 NotFound status code for request for the unsupported network with GET" in {
     val getRequest = HttpRequest(
       HttpMethods.GET,
       uri = "/v2/data/ethereum/notSupportedNetwork/blocks"

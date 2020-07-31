@@ -13,7 +13,7 @@ import tech.cryptonomic.conseil.api.routes.platform.data.{
 }
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryValidationError
 
-/** Represents helper for Data Endpoints that can be used to implement custom encoder for Bitcoin specific types */
+/** Represents helper for Data Endpoints that can be used to implement custom encoder for Ethereum specific types */
 private[ethereum] class EthereumDataHelpers
     extends ApiDataEndpoints
     with ApiDataJsonSchemas

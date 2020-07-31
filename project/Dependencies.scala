@@ -220,6 +220,7 @@ object Dependencies {
       akkaHttpCors,
       silencer,
       scalaMock,
+      scalaTestJson,
       diffX,
       endpoints
     )

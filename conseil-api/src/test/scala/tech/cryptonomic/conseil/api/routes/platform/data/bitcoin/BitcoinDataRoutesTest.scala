@@ -2,24 +2,16 @@ package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import com.stephenn.scalatest.jsonassert.JsonMatchers
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.cryptonomic.conseil.api.metadata.{
-  AttributeValuesCacheConfiguration,
-  MetadataService,
-  TransparentUnitTransformation
-}
+import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, TransparentUnitTransformation}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
-import tech.cryptonomic.conseil.common.config.Platforms.{
-  BitcoinBatchFetchConfiguration,
-  BitcoinConfiguration,
-  BitcoinNodeConfiguration,
-  PlatformsConfiguration
-}
+import tech.cryptonomic.conseil.common.config.Platforms.{BitcoinBatchFetchConfiguration, BitcoinConfiguration, BitcoinNodeConfiguration, PlatformsConfiguration}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
@@ -32,6 +24,7 @@ class BitcoinDataRoutesTest
     with ScalatestRouteTest
     with ScalaFutures
     with MockFactory
+    with JsonMatchers
     with BeforeAndAfterEach
     with BitcoinDataRoutesTest.Fixtures {
 
@@ -79,12 +72,12 @@ class BitcoinDataRoutesTest
 
         postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
           val resp = entityAs[String]
-          resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
+          resp should matchJson(jsonStringResponse)
           status shouldBe StatusCodes.OK
         }
       }
 
-      "return 404 NotFound status code for request for the not supported platform with POST" in {
+      "return 404 NotFound status code for request for the unsupported platform with POST" in {
 
         val postRequest = HttpRequest(
           HttpMethods.POST,
@@ -96,7 +89,7 @@ class BitcoinDataRoutesTest
         }
       }
 
-      "return 404 NotFound status code for request for the not supported network with POST" in {
+      "return 404 NotFound status code for request for the unsupported network with POST" in {
 
         val postRequest = HttpRequest(
           HttpMethods.POST,
@@ -113,13 +106,13 @@ class BitcoinDataRoutesTest
 
         getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
           val resp = entityAs[String]
-          resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
+          resp should matchJson(jsonStringResponse)
           status shouldBe StatusCodes.OK
         }
       }
     }
 
-  "not handle request for the not supported platform with GET" in {
+  "not handle request for the unsupported platform with GET" in {
       // Due to the fact that platforms are hardcoded in path (not dynamic),
       // request won't be handled for unsupported platforms and pushed down to the default rejection handler.
       val getRequest = HttpRequest(
@@ -131,7 +124,7 @@ class BitcoinDataRoutesTest
       }
     }
 
-  "return 404 NotFound status code for request for the not supported network with GET" in {
+  "return 404 NotFound status code for request for the unsupported network with GET" in {
       val getRequest = HttpRequest(
         HttpMethods.GET,
         uri = "/v2/data/bitcoin/notSupportedNetwork/blocks"
