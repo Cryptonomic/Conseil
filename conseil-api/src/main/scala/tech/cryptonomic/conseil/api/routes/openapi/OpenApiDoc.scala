@@ -6,6 +6,7 @@ import endpoints.openapi
 import endpoints.openapi.model.{Info, MediaType, OpenApi, Schema}
 import tech.cryptonomic.conseil.api.routes.info.AppInfoEndpoint
 import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.BitcoinDataEndpoints
+import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{EthereumDataEndpoints, QuorumDataEndpoints}
 import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosDataEndpoints
 import tech.cryptonomic.conseil.api.routes.platform.discovery.PlatformDiscoveryEndpoints
 
@@ -13,6 +14,8 @@ import tech.cryptonomic.conseil.api.routes.platform.discovery.PlatformDiscoveryE
 object OpenApiDoc
     extends TezosDataEndpoints
     with BitcoinDataEndpoints
+    with EthereumDataEndpoints
+    with QuorumDataEndpoints
     with PlatformDiscoveryEndpoints
     with AppInfoEndpoint
     with openapi.model.OpenApiSchemas
@@ -40,6 +43,18 @@ object OpenApiDoc
     bitcoinOutputsEndpoint,
     bitcoinAccountsEndpoint,
     bitcoinAccountByAddressEndpoint,
+    ethereumBlocksEndpoint,
+    ethereumBlocksHeadEndpoint,
+    ethereumBlockByHashEndpoint,
+    ethereumTransactionsEndpoint,
+    ethereumTransactionByHashEndpoint,
+    ethereumLogsEndpoint,
+    quorumBlocksEndpoint,
+    quorumBlocksHeadEndpoint,
+    quorumBlockByHashEndpoint,
+    quorumTransactionsEndpoint,
+    quorumTransactionByHashEndpoint,
+    quorumLogsEndpoint,
     platformsEndpoint,
     networksEndpoint,
     entitiesEndpoint,
@@ -53,16 +68,16 @@ object OpenApiDoc
     * In this case if query fails to validate it will return 400 Bad Request.
     * */
   override def validated[A](
-      response: List[OpenApiDoc.DocumentedResponse],
+      response: List[DocumentedResponse],
       invalidDocs: Documentation
-  ): List[OpenApiDoc.DocumentedResponse] =
-    response :+ OpenApiDoc.DocumentedResponse(
+  ): List[DocumentedResponse] =
+    response :+ DocumentedResponse(
           status = 400,
           documentation = invalidDocs.getOrElse(""),
           content = Map(
             "application/json" -> MediaType(schema = Some(Schema.Array(Schema.simpleString, None)))
           )
-        ) :+ OpenApiDoc.DocumentedResponse(
+        ) :+ DocumentedResponse(
           status = 200,
           documentation = invalidDocs.getOrElse(""),
           content = Map(
@@ -88,10 +103,10 @@ object OpenApiDoc
     DocumentedJsonSchema.Primitive("Any - not yet supported")
 
   override def validatedAttributes[A](
-      response: List[OpenApiDoc.DocumentedResponse],
+      response: List[DocumentedResponse],
       invalidDocs: Documentation
-  ): List[OpenApiDoc.DocumentedResponse] =
-    response :+ OpenApiDoc.DocumentedResponse(
+  ): List[DocumentedResponse] =
+    response :+ DocumentedResponse(
           status = 400,
           documentation = invalidDocs.getOrElse(""),
           content = Map(

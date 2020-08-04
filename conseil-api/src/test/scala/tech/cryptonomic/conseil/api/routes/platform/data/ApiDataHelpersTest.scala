@@ -11,7 +11,7 @@ class ApiDataHelpersTest extends AnyWordSpec with Matchers {
 
   private case class TestEntity(value: String)
 
-  private val sut = new ApiDataHelpers {
+  private val sut = new ApiCirceJsonSchema {
     override protected def customAnyEncoder: PartialFunction[Any, Json] = {
       case x: TestEntity => Json.fromString(x.value)
     }

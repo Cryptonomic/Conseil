@@ -5,12 +5,13 @@ import cats.Functor
 import endpoints.algebra.Documentation
 import io.circe._
 import io.circe.syntax._
-import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataHelpers
+import tech.cryptonomic.conseil.api.routes.platform.data.ApiCirceJsonSchema
+import tech.cryptonomic.conseil.api.routes.platform.data.ApiValidation.defaultValidated
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryValidationError
 import tech.cryptonomic.conseil.common.tezos.Tables
 
 /** Trait with helpers needed for data routes */
-private[tezos] class TezosDataHelpers extends TezosDataEndpoints with ApiDataHelpers {
+private[tezos] class TezosDataHelpers extends TezosDataEndpoints with ApiCirceJsonSchema {
 
   /** Method for validating query request */
   override def validated[A](

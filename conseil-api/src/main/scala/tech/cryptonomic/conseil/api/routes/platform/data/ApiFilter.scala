@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.api.routes.platform.data
 
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OrderDirection, QueryOrdering}
 
+/** Trait which provides common elements for creating filters in API */
 trait ApiFilter {
 
   /** Define sorting order for api queries */
@@ -18,11 +19,18 @@ trait ApiFilter {
       case "desc" => Some(DescendingSort)
       case _ => None
     }
+
+    /** Read an input [[ApiFilter.Sorting]] and converts to [[String]] */
+    def asString(s: Sorting): String = s match {
+      case AscendingSort => "asc"
+      case DescendingSort => "desc"
+    }
   }
 
   // default limit on output results, if not available as call input
   val defaultLimit = 10
 
+  /** Converts `sortBy` and `order` parameters into `QueryOrdering`. Note that both needs to be present */
   def toQueryOrdering(sortBy: Option[String], order: Option[Sorting]): Option[QueryOrdering] =
     sortBy.map { field =>
       val direction = order match {

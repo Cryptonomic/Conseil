@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import com.stephenn.scalatest.jsonassert.JsonMatchers
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.BeforeAndAfterEach
@@ -22,6 +23,7 @@ class TezosDataRoutesTest
     with Matchers
     with ScalatestRouteTest
     with ScalaFutures
+    with JsonMatchers
     with MockFactory
     with BeforeAndAfterEach
     with TezosDataRoutesTest.Fixtures {
@@ -33,7 +35,7 @@ class TezosDataRoutesTest
       Future.successful(responseAsMap)
   }
 
-  val cfg = PlatformsConfiguration(
+  private val cfg = PlatformsConfiguration(
     List(
       TezosConfiguration(
         "alphanet",
@@ -44,17 +46,16 @@ class TezosDataRoutesTest
     )
   )
 
-  val testEntity = Entity("accounts", "Test Entity", 0)
-  val testNetworkPath = NetworkPath("alphanet", PlatformPath("tezos"))
-  val testEntityPath = EntityPath("accounts", testNetworkPath)
-
-  val platformDiscoveryOperations = new TestPlatformDiscoveryOperations
+  private val testEntity = Entity("accounts", "Test Entity", 0)
+  private val testNetworkPath = NetworkPath("alphanet", PlatformPath("tezos"))
+  private val testEntityPath = EntityPath("accounts", testNetworkPath)
+  private val platformDiscoveryOperations = new TestPlatformDiscoveryOperations
   platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
   accountAttributes.foreach(platformDiscoveryOperations.addAttribute(testEntityPath, _))
 
-  val cacheOverrides = stub[AttributeValuesCacheConfiguration]
+  private val cacheOverrides = stub[AttributeValuesCacheConfiguration]
 
-  val metadataConf = MetadataConfiguration(Map.empty)
+  private val metadataConf = MetadataConfiguration(Map.empty)
 
   val metadataService =
     new MetadataService(
@@ -82,12 +83,12 @@ class TezosDataRoutesTest
 
         postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
           val resp = entityAs[String]
-          resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
+          resp should matchJson(jsonStringResponse)
           status shouldBe StatusCodes.OK
         }
       }
 
-      "return 404 NotFound status code for request for the not supported platform with POST" in {
+      "return 404 NotFound status code for request for the unsupported platform with POST" in {
 
         val postRequest = HttpRequest(
           HttpMethods.POST,
@@ -99,7 +100,7 @@ class TezosDataRoutesTest
         }
       }
 
-      "return 404 NotFound status code for request for the not supported network with POST" in {
+      "return 404 NotFound status code for request for the unsupported network with POST" in {
 
         val postRequest = HttpRequest(
           HttpMethods.POST,
@@ -119,12 +120,12 @@ class TezosDataRoutesTest
 
         getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
           val resp = entityAs[String]
-          resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
+          resp should matchJson(jsonStringResponse)
           status shouldBe StatusCodes.OK
         }
       }
 
-      "not handle request for the not supported platform with GET" in {
+      "not handle request for the unsupported platform with GET" in {
         // Due to the fact that platforms are hardcoded in path (not dynamic),
         // request won't be handled for unsupported platforms and pushed down to the default rejection handler.
         val getRequest = HttpRequest(
@@ -136,7 +137,7 @@ class TezosDataRoutesTest
         }
       }
 
-      "return 404 NotFound status code for request for the not supported network with GET" in {
+      "return 404 NotFound status code for request for the unsupported network with GET" in {
         val getRequest = HttpRequest(
           HttpMethods.GET,
           uri = "/v2/data/tezos/notSupportedNetwork/accounts"

@@ -22,6 +22,16 @@ object Platforms {
     val name = "bitcoin"
   }
 
+  /** Represents blockchain platform for Ethereum */
+  case object Ethereum extends BlockchainPlatform {
+    val name: String = "ethereum"
+  }
+
+  /** Represents blockchain platform for Quorum */
+  case object Quorum extends BlockchainPlatform {
+    val name: String = "quorum"
+  }
+
   object BlockchainPlatform {
 
     /** maps a generic string to a typed BlockchainPlatform */
@@ -30,6 +40,8 @@ object Platforms {
       // due to the fact that unknown platforms will be handled at configuration reading level
       case Tezos.name => Tezos
       case Bitcoin.name => Bitcoin
+      case Ethereum.name => Ethereum
+      case Quorum.name => Quorum
     }
   }
 
@@ -123,6 +135,22 @@ object Platforms {
       batching: BitcoinBatchFetchConfiguration
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Bitcoin
+  }
+
+  /** collects all config related to a ethereum network */
+  final case class EthereumConfiguration(
+      network: String,
+      enabled: Boolean
+  ) extends PlatformConfiguration {
+    override val platform: BlockchainPlatform = Ethereum
+  }
+
+  /** collects all config related to a quorum network */
+  final case class QuorumConfiguration(
+      network: String,
+      enabled: Boolean
+  ) extends PlatformConfiguration {
+    override val platform: BlockchainPlatform = Quorum
   }
 
 }

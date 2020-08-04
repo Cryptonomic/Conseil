@@ -5,7 +5,7 @@ import endpoints.akkahttp
 import tech.cryptonomic.conseil.BuildInfo
 
 /** defines endpoints to expose the currently deployed application information (e.g version, ...) */
-object AppInfo extends AppInfoEndpoint with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
+object AppInfo extends AppInfoEndpoint with akkahttp.server.Endpoints with akkahttp.server.circe.JsonSchemaEntities {
 
   /** data type collecting relevant information to expose */
   case class Info(application: String, version: String, git: GitInfo)

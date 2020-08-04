@@ -1,15 +1,24 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
+package tech.cryptonomic.conseil.api.routes.platform.data.ethereum
 
 import akka.http.scaladsl.server.Route
 import cats.Functor
 import endpoints.algebra.Documentation
 import io.circe._
-import tech.cryptonomic.conseil.api.routes.platform.data.ApiCirceJsonSchema
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryValidationError
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiValidation.defaultValidated
+import tech.cryptonomic.conseil.api.routes.platform.data.{
+  ApiCirceJsonSchema,
+  ApiDataEndpoints,
+  ApiDataJsonSchemas,
+  ApiFilterQueryString
+}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryValidationError
 
-/** Represents helper for Data Endpoints that can be used to implement custom encoder for Bitcoin specific types */
-private[bitcoin] class BitcoinDataHelpers extends BitcoinDataEndpoints with ApiCirceJsonSchema {
+/** Represents helper for Data Endpoints that can be used to implement custom encoder for Ethereum specific types */
+private[ethereum] class EthereumDataHelpers
+    extends ApiDataEndpoints
+    with ApiDataJsonSchemas
+    with ApiFilterQueryString
+    with ApiCirceJsonSchema {
 
   /** Method for validating query request */
   override def validated[A](

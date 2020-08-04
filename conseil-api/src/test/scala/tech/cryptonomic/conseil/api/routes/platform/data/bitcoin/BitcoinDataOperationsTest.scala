@@ -3,13 +3,12 @@ package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 import java.sql.Timestamp
 
 import com.typesafe.scalalogging.LazyLogging
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.OptionValues
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.BitcoinInMemoryDatabaseSetup
-import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataOperations
 import tech.cryptonomic.conseil.common.bitcoin.BitcoinTypes.BitcoinBlockHash
 import tech.cryptonomic.conseil.common.bitcoin.Tables
 import tech.cryptonomic.conseil.common.bitcoin.Tables._
@@ -19,7 +18,7 @@ import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
-class BitcoinDataQueriesTest
+class BitcoinDataOperationsTest
     extends AnyWordSpec
     with Matchers
     with InMemoryDatabase
@@ -28,12 +27,12 @@ class BitcoinDataQueriesTest
     with OptionValues
     with LazyLogging
     with IntegrationPatience
-    with BitcoinDataQueriesTest.Fixtures {
+    with BitcoinDataOperationsTest.Fixtures {
 
-  "BitcoinDataQueries" should {
-      val sut = new BitcoinDataQueries(new ApiDataOperations {
+  "BitcoinDataOperations" should {
+      val sut = new BitcoinDataOperations {
         override lazy val dbReadHandle = dbHandler
-      })
+      }
 
       "return proper number of blocks, while fetching all blocks" in {
         // given
@@ -69,7 +68,7 @@ class BitcoinDataQueriesTest
         dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchBlocks(Query.empty)) { result =>
+        whenReady(sut.fetchTransactions(Query.empty)) { result =>
           result.value.size shouldBe 3
         }
       }
@@ -141,7 +140,7 @@ class BitcoinDataQueriesTest
     }
 }
 
-object BitcoinDataQueriesTest {
+object BitcoinDataOperationsTest {
   trait Fixtures {
     val block1: BlocksRow = BlocksRow(
       hash = "hash1",
