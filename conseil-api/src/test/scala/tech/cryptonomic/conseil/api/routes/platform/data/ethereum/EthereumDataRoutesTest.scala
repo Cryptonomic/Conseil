@@ -8,10 +8,19 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import com.stephenn.scalatest.jsonassert.JsonMatchers
-import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, TransparentUnitTransformation}
+import tech.cryptonomic.conseil.api.metadata.{
+  AttributeValuesCacheConfiguration,
+  MetadataService,
+  TransparentUnitTransformation
+}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
-import tech.cryptonomic.conseil.common.config.Platforms.{EthereumConfiguration, PlatformsConfiguration}
+import tech.cryptonomic.conseil.common.config.Platforms.{
+  EthereumBatchFetchConfiguration,
+  EthereumConfiguration,
+  EthereumNodeConfiguration,
+  PlatformsConfiguration
+}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
@@ -48,7 +57,9 @@ class EthereumDataRoutesTest
         List(
           EthereumConfiguration(
             "mainnet",
-            enabled = true
+            enabled = true,
+            EthereumNodeConfiguration("host", 0, "protocol"),
+            EthereumBatchFetchConfiguration(1, 1, 1, 1)
           )
         )
       ),
@@ -60,77 +71,77 @@ class EthereumDataRoutesTest
     EthereumDataRoutes(metadataService, MetadataConfiguration(Map.empty), conseilOps, 1000)
 
   "Query protocol" should {
-    "return a correct response with OK status code with POST" in {
+      "return a correct response with OK status code with POST" in {
 
-      val postRequest = HttpRequest(
-        HttpMethods.POST,
-        uri = "/v2/data/ethereum/mainnet/blocks",
-        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
-      )
+        val postRequest = HttpRequest(
+          HttpMethods.POST,
+          uri = "/v2/data/ethereum/mainnet/blocks",
+          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+        )
 
-      postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
-        val resp = entityAs[String]
-        resp should matchJson(jsonStringResponse)
-        status shouldBe StatusCodes.OK
+        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
+          val resp = entityAs[String]
+          resp should matchJson(jsonStringResponse)
+          status shouldBe StatusCodes.OK
+        }
+      }
+
+      "return 404 NotFound status code for request for the unsupported platform with POST" in {
+
+        val postRequest = HttpRequest(
+          HttpMethods.POST,
+          uri = "/v2/data/notSupportedPlatform/mainnet/blocks",
+          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+        )
+        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
+          status shouldBe StatusCodes.NotFound
+        }
+      }
+
+      "return 404 NotFound status code for request for the unsupported network with POST" in {
+
+        val postRequest = HttpRequest(
+          HttpMethods.POST,
+          uri = "/v2/data/ethereum/notSupportedNetwork/blocks",
+          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+        )
+        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
+          status shouldBe StatusCodes.NotFound
+        }
+      }
+
+      "return a correct response with OK status code with GET" in {
+        val getRequest = HttpRequest(HttpMethods.GET, uri = "/v2/data/ethereum/mainnet/blocks")
+
+        getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
+          val resp = entityAs[String]
+          resp should matchJson(jsonStringResponse)
+          status shouldBe StatusCodes.OK
+        }
       }
     }
-
-    "return 404 NotFound status code for request for the unsupported platform with POST" in {
-
-      val postRequest = HttpRequest(
-        HttpMethods.POST,
-        uri = "/v2/data/notSupportedPlatform/mainnet/blocks",
-        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
-      )
-      postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
-        status shouldBe StatusCodes.NotFound
-      }
-    }
-
-    "return 404 NotFound status code for request for the unsupported network with POST" in {
-
-      val postRequest = HttpRequest(
-        HttpMethods.POST,
-        uri = "/v2/data/ethereum/notSupportedNetwork/blocks",
-        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
-      )
-      postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
-        status shouldBe StatusCodes.NotFound
-      }
-    }
-
-    "return a correct response with OK status code with GET" in {
-      val getRequest = HttpRequest(HttpMethods.GET, uri = "/v2/data/ethereum/mainnet/blocks")
-
-      getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
-        val resp = entityAs[String]
-        resp should matchJson(jsonStringResponse)
-        status shouldBe StatusCodes.OK
-      }
-    }
-  }
 
   "not handle request for the unsupported platform with GET" in {
-    // Due to the fact that platforms are hardcoded in path (not dynamic),
-    // request won't be handled for unsupported platforms and pushed down to the default rejection handler.
-    val getRequest = HttpRequest(
-      HttpMethods.GET,
-      uri = "/v2/data/notSupportedPlatform/mainnet/blocks"
-    )
-    getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
-      handled shouldBe false
+      // Due to the fact that platforms are hardcoded in path (not dynamic),
+      // request won't be handled for unsupported platforms and pushed down to the default rejection handler.
+      val getRequest = HttpRequest(
+        HttpMethods.GET,
+        uri = "/v2/data/notSupportedPlatform/mainnet/blocks"
+      )
+      getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
+        handled shouldBe false
+      }
     }
-  }
 
   "return 404 NotFound status code for request for the unsupported network with GET" in {
-    val getRequest = HttpRequest(
-      HttpMethods.GET,
-      uri = "/v2/data/ethereum/notSupportedNetwork/blocks"
-    )
-    getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
-      status shouldBe StatusCodes.NotFound
+      val getRequest = HttpRequest(
+        HttpMethods.GET,
+        uri = "/v2/data/ethereum/notSupportedNetwork/blocks"
+      )
+      getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
+        status shouldBe StatusCodes.NotFound
+      }
     }
-  }
 
 }
 

@@ -10,6 +10,9 @@ import tech.cryptonomic.conseil.indexer.bitcoin.BitcoinIndexer
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import tech.cryptonomic.conseil.common.config.Platforms.EthereumConfiguration
+import tech.cryptonomic.conseil.indexer.ethereum.EthereumIndexer
+import tech.cryptonomic.conseil.common.config.Platforms.QuorumConfiguration
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -39,6 +42,12 @@ object Lorre extends App with LazyLogging with LorreAppConfig with LorreInfoLogg
 
   //creates the indexer based on the given configuration, which is picked based on platform and network from argument variables
   val indexer = platformConf match {
+    case conf: QuorumConfiguration =>
+      logger.info("Initializing indexer for Quorum Blockchain.")
+      EthereumIndexer.fromConfig(lorreConf, conf.toEthereumConfiguration)
+    case conf: EthereumConfiguration =>
+      logger.info("Initializing indexer for Ethereum Blockchain.")
+      EthereumIndexer.fromConfig(lorreConf, conf)
     case conf: TezosConfiguration =>
       logger.info("Initializing indexer for Tezos Blockchain.")
       TezosIndexer.fromConfig(lorreConf, conf, callsConf, streamingClientConf, batchingConf)

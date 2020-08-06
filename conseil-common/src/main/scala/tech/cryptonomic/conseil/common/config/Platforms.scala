@@ -137,10 +137,29 @@ object Platforms {
     override val platform: BlockchainPlatform = Bitcoin
   }
 
+  /** configurations to describe a ethereum node */
+  final case class EthereumNodeConfiguration(
+      hostname: String,
+      port: Int,
+      protocol: String
+  ) {
+    val url = s"$protocol://$hostname:$port"
+  }
+
+  /** configurations to describe a ethereum batch fetch */
+  final case class EthereumBatchFetchConfiguration(
+      indexerThreadsCount: Int,
+      httpFetchThreadsCount: Int,
+      blocksBatchSize: Int,
+      transactionsBatchSize: Int
+  )
+
   /** collects all config related to a ethereum network */
   final case class EthereumConfiguration(
       network: String,
-      enabled: Boolean
+      enabled: Boolean,
+      node: EthereumNodeConfiguration,
+      batching: EthereumBatchFetchConfiguration
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Ethereum
   }
@@ -148,9 +167,13 @@ object Platforms {
   /** collects all config related to a quorum network */
   final case class QuorumConfiguration(
       network: String,
-      enabled: Boolean
+      enabled: Boolean,
+      node: EthereumNodeConfiguration,
+      batching: EthereumBatchFetchConfiguration
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Quorum
+
+    lazy val toEthereumConfiguration = EthereumConfiguration(network, enabled, node, batching)
   }
 
 }
