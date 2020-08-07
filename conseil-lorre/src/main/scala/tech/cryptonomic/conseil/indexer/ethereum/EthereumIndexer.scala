@@ -94,7 +94,7 @@ class EthereumIndexer(
               * handle multiple computations.
               */
             IO.delay(logger.info(s"Start Lorre for Ethereum")) *>
-              ethereumOperations.loadBlocks(lorreConf.depth).compile.drain
+              ethereumOperations.loadBlocksAndLogs(lorreConf.depth).compile.drain
           }
       )
       .unsafeRunSync()

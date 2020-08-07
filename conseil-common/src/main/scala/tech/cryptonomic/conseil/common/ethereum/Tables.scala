@@ -237,7 +237,7 @@ trait Tables {
   lazy val Blocks = new TableQuery(tag => new Blocks(tag))
 
   /** Entity class storing rows of table Logs
-    *  @param address Database column address SqlType(text), PrimaryKey
+    *  @param address Database column address SqlType(text)
     *  @param blockHash Database column block_hash SqlType(text)
     *  @param blockNumber Database column block_number SqlType(int4)
     *  @param data Database column data SqlType(text)
@@ -293,8 +293,8 @@ trait Tables {
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
 
-    /** Database column address SqlType(text), PrimaryKey */
-    val address: Rep[String] = column[String]("address", O.PrimaryKey)
+    /** Database column address SqlType(text) */
+    val address: Rep[String] = column[String]("address")
 
     /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
@@ -340,7 +340,7 @@ trait Tables {
     *  @param gasPrice Database column gas_price SqlType(text)
     *  @param input Database column input SqlType(text)
     *  @param nonce Database column nonce SqlType(text)
-    *  @param to Database column to SqlType(text)
+    *  @param to Database column to SqlType(text), Default(None)
     *  @param transactionIndex Database column transaction_index SqlType(text)
     *  @param value Database column value SqlType(text)
     *  @param v Database column v SqlType(text)
@@ -355,7 +355,7 @@ trait Tables {
       gasPrice: String,
       input: String,
       nonce: String,
-      to: String,
+      to: Option[String] = None,
       transactionIndex: String,
       value: String,
       v: String,
@@ -364,7 +364,11 @@ trait Tables {
   )
 
   /** GetResult implicit for fetching TransactionsRow objects using plain SQL queries */
-  implicit def GetResultTransactionsRow(implicit e0: GR[String], e1: GR[Int]): GR[TransactionsRow] = GR { prs =>
+  implicit def GetResultTransactionsRow(
+      implicit e0: GR[String],
+      e1: GR[Int],
+      e2: GR[Option[String]]
+  ): GR[TransactionsRow] = GR { prs =>
     import prs._
     TransactionsRow.tupled(
       (
@@ -376,7 +380,7 @@ trait Tables {
         <<[String],
         <<[String],
         <<[String],
-        <<[String],
+        <<?[String],
         <<[String],
         <<[String],
         <<[String],
@@ -404,7 +408,7 @@ trait Tables {
           Rep.Some(gasPrice),
           Rep.Some(input),
           Rep.Some(nonce),
-          Rep.Some(to),
+          to,
           Rep.Some(transactionIndex),
           Rep.Some(value),
           Rep.Some(v),
@@ -426,7 +430,7 @@ trait Tables {
                   _6.get,
                   _7.get,
                   _8.get,
-                  _9.get,
+                  _9,
                   _10.get,
                   _11.get,
                   _12.get,
@@ -463,8 +467,8 @@ trait Tables {
     /** Database column nonce SqlType(text) */
     val nonce: Rep[String] = column[String]("nonce")
 
-    /** Database column to SqlType(text) */
-    val to: Rep[String] = column[String]("to")
+    /** Database column to SqlType(text), Default(None) */
+    val to: Rep[Option[String]] = column[Option[String]]("to", O.Default(None))
 
     /** Database column transaction_index SqlType(text) */
     val transactionIndex: Rep[String] = column[String]("transaction_index")

@@ -13,7 +13,7 @@ case class Transaction(
     hash: String,
     input: String,
     nonce: String,
-    to: String,
+    to: Option[String],
     transactionIndex: String,
     value: String,
     v: String,

@@ -31,21 +31,26 @@ class EthereumOperations[F[_]: Concurrent](
     *
     * @param depth Can be: Newest, Everything or Custom
     */
-  def loadBlocks(depth: Depth): Stream[F, Unit] =
+  def loadBlocksAndLogs(depth: Depth): Stream[F, Unit] =
     Stream
       .eval(tx.transact(persistence.getLatestIndexedBlock))
       .zip(ethereumClient.getMostRecentBlockNumber.map(Integer.decode))
       .flatMap {
         case (block, mostRecentBlockNumber) =>
-          depth match {
-            case Newest => loadBlocksWithTransactions(block.map(_.number + 1).getOrElse(1) to mostRecentBlockNumber)
-            case Everything => loadBlocksWithTransactions(1 to mostRecentBlockNumber)
-            case Custom(depth) => loadBlocksWithTransactions((mostRecentBlockNumber - depth) to mostRecentBlockNumber)
+          val range = depth match {
+            case Newest => block.map(_.number + 1).getOrElse(1) to mostRecentBlockNumber
+            case Everything => 1 to mostRecentBlockNumber
+            case Custom(depth) => (mostRecentBlockNumber - depth) to mostRecentBlockNumber
           }
+
+          for {
+            _ <- loadBlocksWithTransactions(range)
+            _ <- loadLogs(range)
+          } yield ()
       }
 
   /**
-    * Get Blocks from Ethereum node through Ethereum client and save them into the database using Slick.
+    * Get blocks from Ethereum node through Ethereum client and save them into the database using Slick.
     * In the beginning, the current list of blocks is obtained from the database and removed from the computation.
     *
     * @param range Inclusive range of the block's height
@@ -70,6 +75,22 @@ class EthereumOperations[F[_]: Concurrent](
             .evalMap(tx.transact)
             .drain
       )
+
+  /**
+    * Get transaction logs from Ethereum node through Ethereum client and save them into the database using Slick.
+    *
+    * @param range Inclusive range of the block's height
+    */
+  def loadLogs(range: Range.Inclusive): Stream[F, Unit] =
+    Stream
+      .range(range.start, range.end)
+      .map(n => s"0x${n.toHexString}")
+      .through(ethereumClient.getLogs(10))
+      .chunkN(10)
+      .evalTap(logs => Concurrent[F].delay(logger.info(s"Save logs in batch of: ${logs.size}")))
+      .map(logs => persistence.createLogs(logs.toList))
+      .evalMap(tx.transact)
+      .drain
 
 }
 

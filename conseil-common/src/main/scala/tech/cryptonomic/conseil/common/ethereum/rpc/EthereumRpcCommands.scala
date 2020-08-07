@@ -22,7 +22,10 @@ object EthereumRpcCommands {
     */
   object EthBlockNumber extends EthereumRpcMethod {
     val rpcMethod = "eth_blockNumber"
-    def request = RpcRequest("2.0", rpcMethod, Nil, "bn")
+    case object Params
+    def request = RpcRequest("2.0", rpcMethod, Params, "bn")
+
+    implicit val encodeParams: Encoder[Params.type] = (_) => Json.arr()
   }
 
   /**

@@ -33,6 +33,11 @@ class EthereumPersistence[F[_]: Concurrent] extends LazyLogging {
       Tables.Transactions ++= transactions.map(_.convertTo[Tables.TransactionsRow])
     )
 
+  def createLogs(logs: List[Log]) =
+    DBIO.seq(
+      Tables.Logs ++= logs.map(_.convertTo[Tables.LogsRow])
+    )
+
   /**
     * Get sequence of existing blocks heights from the database.
     *

@@ -141,9 +141,10 @@ object Platforms {
   final case class EthereumNodeConfiguration(
       hostname: String,
       port: Int,
-      protocol: String
+      protocol: String,
+      path: String
   ) {
-    val url = s"$protocol://$hostname:$port"
+    val url = s"$protocol://$hostname:$port$path"
   }
 
   /** configurations to describe a ethereum batch fetch */

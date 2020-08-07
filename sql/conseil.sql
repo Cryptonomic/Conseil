@@ -905,7 +905,7 @@ CREATE TABLE ethereum.transactions (
   gas_price text NOT NULL,
   input text NOT NULL,
   nonce text NOT NULL,
-  "to" text NOT NULL,
+  "to" text,
   transaction_index text NOT NULL,
   value text NOT NULL,
   v text NOT NULL,
@@ -918,7 +918,7 @@ ALTER TABLE ONLY ethereum.transactions
 
 -- Table is based on eth_getLogs from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.logs (
-  address text NOT NULL PRIMARY KEY,
+  address text NOT NULL,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
   data text NOT NULL,
@@ -970,7 +970,7 @@ CREATE TABLE quorum.transactions (
   gas_price text NOT NULL,
   input text NOT NULL,
   nonce text NOT NULL,
-  "to" text NOT NULL,
+  "to" text,
   transaction_index text NOT NULL,
   value text NOT NULL,
   v text NOT NULL,
@@ -983,7 +983,7 @@ ALTER TABLE ONLY quorum.transactions
 
 -- Table is based on eth_getLogs from https://eth.wiki/json-rpc/API
 CREATE TABLE quorum.logs (
-  address text NOT NULL PRIMARY KEY,
+  address text NOT NULL,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
   data text NOT NULL,

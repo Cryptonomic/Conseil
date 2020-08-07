@@ -10,6 +10,7 @@ import org.http4s.circe.CirceEntityEncoder._
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumRpcCommands._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Transaction}
+import tech.cryptonomic.conseil.common.ethereum.rpc.json.Log
 
 /**
   * Ethereum JSON-RPC client according to the specification at https://eth.wiki/json-rpc/API
@@ -38,7 +39,7 @@ class EthereumClient[F[_]: Concurrent](
     */
   def getMostRecentBlockNumber: Stream[F, String] =
     Stream(EthBlockNumber.request)
-      .through(client.stream[Nil.type, String](batchSize = 1))
+      .through(client.stream[EthBlockNumber.Params.type, String](batchSize = 1))
 
   /**
     * Get Block by number.
@@ -56,14 +57,37 @@ class EthereumClient[F[_]: Concurrent](
     */
   def getBlockWithTransactions(batchSize: Int): Pipe[F, Block, (Block, List[Transaction])] =
     stream =>
-      for {
-        block <- stream // get each Block from the stream
-        transactions <- Stream
-          .emits(block.transactions)
-          .map(EthGetTransactionByHash.request)
-          .through(client.stream[EthGetTransactionByHash.Params, Transaction](batchSize))
-          .chunkN(block.transactions.size)
-      } yield (block, transactions.toList)
+      stream.flatMap {
+        case block if block.transactions.size > 0 =>
+          Stream
+            .emits(block.transactions)
+            .map(EthGetTransactionByHash.request)
+            .through(client.stream[EthGetTransactionByHash.Params, Transaction](batchSize))
+            .chunkN(block.transactions.size)
+            .map(chunks => (block, chunks.toList))
+        case block => Stream.emit((block, Nil))
+      }
+
+  /**
+    * Get transaction logs. Call JSON-RPC in batches.
+    *
+    * @param batchSize The size of the batched request in single HTTP call
+    */
+  def getLogs(batchSize: Int): Pipe[F, String, Log] =
+    stream =>
+      stream
+        .chunkN(batchSize)
+        .map { chunk =>
+          for {
+            head <- chunk.head
+            last <- chunk.last
+          } yield EthGetLogs.request(head, last, topics = Nil)
+        }
+        .collect {
+          case Some(request) => request
+        }
+        .through(client.stream[EthGetLogs.Params, Seq[Log]](batchSize))
+        .flatMap(Stream.emits)
 
 }
 
