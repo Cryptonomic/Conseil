@@ -26,7 +26,8 @@ trait TezosInMemoryDatabaseSetup extends InMemoryDatabaseSetup {
       Fixture.table(Tables.TokenBalances),
       Fixture.table(Tables.BakingRights),
       Fixture.table(Tables.EndorsingRights),
-      Fixture.table(Tables.Governance)
+      Fixture.table(Tables.Governance),
+      Fixture.table(Tables.Forks)
     )
   )
 }

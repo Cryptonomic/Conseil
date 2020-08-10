@@ -520,6 +520,13 @@ CREATE TABLE tezos.originated_account_maps (
 
 CREATE INDEX accounts_maps_idx ON tezos.originated_account_maps USING btree (account_id);
 
+CREATE TABLE tezos.forks (
+    fork_id character varying PRIMARY KEY,
+    fork_level bigint NOT NULL,
+    fork_hash character varying NOT NULL,
+    head_level bigint NOT NULL,
+    "timestamp" timestamp without time zone NOT NULL
+);
 --
 -- Name: balance_updates id; Type: DEFAULT; Schema: tezos; Owner: -
 --

@@ -8,6 +8,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.OptionValues
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalacheck.Arbitrary.arbitrary
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
@@ -37,6 +38,9 @@ class TezosDatabaseOperationsTest
       import scala.concurrent.ExecutionContext.Implicits.global
       implicit val noTokenContracts = TokenContracts.fromConfig(List.empty)
       implicit val noTNSContracts = TNSContract.noContract
+
+      //generate random data, via org.scalacheck.Arbitrary operations
+      import TezosDataGenerationKit.DomainModelGeneration._
 
       val sut = TezosDatabaseOperations
       val feesToConsider = 1000
@@ -1143,6 +1147,38 @@ class TezosDatabaseOperationsTest
             instantOpt.value shouldEqual block.timestamp.toInstant
             cycleOpt shouldEqual block.metaCycle
         }
+      }
+
+      "write fork data" in {
+        //given
+        val (forkLevel, forkHash, headLevel, timestamp) = {
+          val gen =
+            for {
+              levels <- arbitrary[(Long, Long)]
+              hash <- blockHashGenerator.arbitrary
+              instant <- instantGenerator
+            } yield (levels._1, hash, levels._2, instant)
+
+          gen.sample.value
+        }
+
+        //when
+        val writeAndReadback = for {
+          forkId <- sut.writeForkEntry(
+            forkLevel = forkLevel,
+            forkHash = forkHash,
+            indexedHeadLevel = headLevel,
+            detectionTime = timestamp
+          )
+          load <- Tables.Forks.result
+        } yield (forkId, load)
+
+        val (id, forks) = dbHandler.run(writeAndReadback).futureValue
+
+        //then
+        forks should not be empty
+        forks.find(_.forkId == id).size shouldBe 1
+
       }
 
     }
