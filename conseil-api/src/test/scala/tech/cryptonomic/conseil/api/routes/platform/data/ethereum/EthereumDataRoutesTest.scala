@@ -58,8 +58,8 @@ class EthereumDataRoutesTest
           EthereumConfiguration(
             "mainnet",
             enabled = true,
-            EthereumNodeConfiguration("host", 0, "protocol"),
-            EthereumBatchFetchConfiguration(1, 1, 1, 1)
+            EthereumNodeConfiguration("host", 0, "protocol", ""),
+            EthereumBatchFetchConfiguration(1, 1, 1, 1, 1)
           )
         )
       ),
