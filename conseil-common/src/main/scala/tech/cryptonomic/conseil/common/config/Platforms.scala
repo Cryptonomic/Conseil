@@ -147,15 +147,24 @@ object Platforms {
     val url = s"$protocol://$hostname:$port$path"
   }
 
-  /** configurations to describe a ethereum batch fetch */
+  /**
+    * Configurations to describe a Ethereum batch fetch.
+    *
+    * @param indexerThreadsCount The number of threads used by the Lorre process
+    * @param httpFetchThreadsCount The number of theread used by the http4s
+    * @param blocksBatchSize The number of the blocks batched into one JSON-RPC request
+    * @param transactionsBatchSize The number of the transactions batched into one JSON-RPC request
+    * @param logsBatchSize The number of the log batched into one JSON-RPC request
+    */
   final case class EthereumBatchFetchConfiguration(
       indexerThreadsCount: Int,
       httpFetchThreadsCount: Int,
       blocksBatchSize: Int,
-      transactionsBatchSize: Int
+      transactionsBatchSize: Int,
+      logsBatchSize: Int
   )
 
-  /** collects all config related to a ethereum network */
+  /** collects all config related to a Ethereum network */
   final case class EthereumConfiguration(
       network: String,
       enabled: Boolean,
@@ -165,7 +174,7 @@ object Platforms {
     override val platform: BlockchainPlatform = Ethereum
   }
 
-  /** collects all config related to a quorum network */
+  /** collects all config related to a Quorum network */
   final case class QuorumConfiguration(
       network: String,
       enabled: Boolean,

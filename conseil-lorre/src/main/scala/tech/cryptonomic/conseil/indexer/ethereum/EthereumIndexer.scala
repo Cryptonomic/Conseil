@@ -76,11 +76,11 @@ class EthereumIndexer(
       * @param interval finite duration interval
       * @param f [[cats.IO]] to repeat
       */
-    def repeatEvery[A](interval: FiniteDuration)(f: IO[A]): IO[Unit] =
+    def repeatEvery[A](interval: FiniteDuration)(operations: IO[A]): IO[Unit] =
       for {
-        _ <- f
+        _ <- operations
         _ <- IO.sleep(interval)
-        _ <- repeatEvery(interval)(f)
+        _ <- repeatEvery(interval)(operations)
       } yield ()
 
     indexer
@@ -101,11 +101,11 @@ class EthereumIndexer(
   }
 
   override def stop(): Future[LorreIndexer.ShutdownComplete] =
-    Future {
+    IO.delay {
       indexerExecutor.shutdown()
       httpExecutor.shutdown()
       LorreIndexer.ShutdownComplete
-    }(ExecutionContext.global)
+    }.unsafeToFuture()
 
   /**
     * Lorre indexer for the Ethereum. This method creates all the dependencies and wraps it into the [[cats.Resource]].
@@ -117,7 +117,7 @@ class EthereumIndexer(
       rpcClient <- RpcClient.resource(
         ethereumConf.node.url,
         maxConcurrent = ethereumConf.batching.indexerThreadsCount,
-        httpClient, // TODO: wrap it into retry and logger middleware
+        httpClient // TODO: wrap it into retry and logger middleware
       )
 
       tx <- Transactor

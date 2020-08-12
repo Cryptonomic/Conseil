@@ -14,10 +14,10 @@ import tech.cryptonomic.conseil.indexer.config.{Custom, Depth, Everything, Newes
 /**
   * Ethereum operations for Lorre.
   *
-  * @param ethereumClient Ethereum client instance
-  * @param persistence Ethereum persistence instance
+  * @param ethereumClient JSON-RPC client to communicate with the Ethereum node
+  * @param persistence DB persistence methods for the Ethereum blockchain
   * @param tx [[slickeffect.Transactor]] to perform a Slick operations on the database
-  * @param batchConf Batch processing configuration
+  * @param batchConf Configuration containing batch fetch values
   */
 class EthereumOperations[F[_]: Concurrent](
     ethereumClient: EthereumClient[F],
@@ -36,10 +36,11 @@ class EthereumOperations[F[_]: Concurrent](
       .eval(tx.transact(persistence.getLatestIndexedBlock))
       .zip(ethereumClient.getMostRecentBlockNumber.map(Integer.decode))
       .flatMap {
-        case (block, mostRecentBlockNumber) =>
+        case (latestIndexedBlock, mostRecentBlockNumber) =>
           val range = depth match {
-            case Newest => block.map(_.number + 1).getOrElse(1) to mostRecentBlockNumber
+            case Newest => latestIndexedBlock.map(_.number + 1).getOrElse(1) to mostRecentBlockNumber
             case Everything => 1 to mostRecentBlockNumber
+            case Custom(depth) if depth > mostRecentBlockNumber => (mostRecentBlockNumber - 1) to mostRecentBlockNumber
             case Custom(depth) => (mostRecentBlockNumber - depth) to mostRecentBlockNumber
           }
 
@@ -85,8 +86,8 @@ class EthereumOperations[F[_]: Concurrent](
     Stream
       .range(range.start, range.end)
       .map(n => s"0x${n.toHexString}")
-      .through(ethereumClient.getLogs(10))
-      .chunkN(10)
+      .through(ethereumClient.getLogs(batchConf.logsBatchSize))
+      .chunkN(batchConf.logsBatchSize)
       .evalTap(logs => Concurrent[F].delay(logger.info(s"Save logs in batch of: ${logs.size}")))
       .map(logs => persistence.createLogs(logs.toList))
       .evalMap(tx.transact)
@@ -99,9 +100,9 @@ object EthereumOperations {
   /**
     * Create [[cats.Resource]] with [[EthereumOperations]].
     *
-    * @param rpcClient JSON-RPC client instance
+    * @param rpcClient JSON-RPC client to communicate with the Ethereum node
     * @param tx [[slickeffect.Transactor]] to perform a Slick operations on the database
-    * @param batchConf Batch processing configuration
+    * @param batchConf Configuration containing batch fetch values
     */
   def resource[F[_]: Concurrent](
       rpcClient: RpcClient[F],
