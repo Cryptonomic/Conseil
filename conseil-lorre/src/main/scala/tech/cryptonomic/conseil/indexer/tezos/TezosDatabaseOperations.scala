@@ -915,6 +915,15 @@ object TezosDatabaseOperations extends LazyLogging {
     ) += ForksRow(forkId, forkLevel, forkHash.value, indexedHeadLevel, ts)
   }
 
+  /** Temporarily lift statement constraints on foreign keys
+    * We need to defer any such contraints until the transaction commits
+    * when we want to update fork references in blocks and all related
+    * db entities, lifting the constraint checks until everything is updated
+    * and consistent.
+    */
+  def deferForkConstraints(): DBIO[Int] =
+    sqlu"SET CONSTRAINTS ALL DEFERRED;"
+
   /** Marks all relevant entities as invalidated (i.e. by a forking event), by
     * specifying the block level at which the chain showed divergence from the local data.
     *

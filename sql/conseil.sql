@@ -41,6 +41,19 @@ BEGIN
 END;
 $$;
 
+-- CREATE PROCEDURE tezos.defer_fork_constraints()
+--     AS $$
+-- BEGIN
+--     SET CONSTRAINTS ALL DEFERRED;
+--     -- tezos.accounts_block_id_fkey,
+--     -- tezos.block,
+--     -- tezos.bakers_block_id_fkey,
+--     -- tezos.bake_rights_block_fkey,
+--     -- tezos.endorse_rights_block_fkey,
+--     -- tezos.fk_blockhashes,
+--     -- tezos.fk_opgroups DEFERRED;
+-- END;
+-- $$ LANGUAGE plpgsql;
 
 SET default_tablespace = '';
 
@@ -693,7 +706,10 @@ CREATE INDEX ix_balance_updates_block_level ON tezos.balance_updates USING btree
 --
 
 ALTER TABLE ONLY tezos.accounts
-    ADD CONSTRAINT accounts_block_id_fkey FOREIGN KEY (block_id, fork_id) REFERENCES tezos.blocks(hash, fork_id);
+    ADD CONSTRAINT accounts_block_id_fkey
+    FOREIGN KEY (block_id, fork_id)
+    REFERENCES tezos.blocks(hash, fork_id)
+    DEFERRABLE INITIALLY IMMEDIATE;
 
 
 --
@@ -701,14 +717,20 @@ ALTER TABLE ONLY tezos.accounts
 --
 
 ALTER TABLE ONLY tezos.operation_groups
-    ADD CONSTRAINT block FOREIGN KEY (block_id, fork_id) REFERENCES tezos.blocks(hash, fork_id);
+    ADD CONSTRAINT block
+    FOREIGN KEY (block_id, fork_id)
+    REFERENCES tezos.blocks(hash, fork_id)
+    DEFERRABLE INITIALLY IMMEDIATE;
 
 --
 -- Name: delegates delegates_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
 --
 
 ALTER TABLE ONLY tezos.bakers
-    ADD CONSTRAINT bakers_block_id_fkey FOREIGN KEY (block_id, fork_id) REFERENCES tezos.blocks(hash, fork_id);
+    ADD CONSTRAINT bakers_block_id_fkey
+    FOREIGN KEY (block_id, fork_id)
+    REFERENCES tezos.blocks(hash, fork_id)
+    DEFERRABLE INITIALLY IMMEDIATE;
 
 
 --
@@ -716,7 +738,11 @@ ALTER TABLE ONLY tezos.bakers
 --
 
 ALTER TABLE ONLY tezos.baking_rights
-    ADD CONSTRAINT fk_block_hash FOREIGN KEY (block_hash, fork_id) REFERENCES tezos.blocks(hash, fork_id) NOT VALID;
+    ADD CONSTRAINT bake_rights_block_fkey
+    FOREIGN KEY (block_hash, fork_id)
+    REFERENCES tezos.blocks(hash, fork_id)
+    NOT VALID
+    DEFERRABLE INITIALLY IMMEDIATE;
 
 
 --
@@ -724,7 +750,11 @@ ALTER TABLE ONLY tezos.baking_rights
 --
 
 ALTER TABLE ONLY tezos.endorsing_rights
-    ADD CONSTRAINT fk_block_hash FOREIGN KEY (block_hash, fork_id) REFERENCES tezos.blocks(hash, fork_id) NOT VALID;
+    ADD CONSTRAINT endorse_rights_block_fkey
+    FOREIGN KEY (block_hash, fork_id)
+    REFERENCES tezos.blocks(hash, fork_id)
+    NOT VALID
+    DEFERRABLE INITIALLY IMMEDIATE;
 
 
 --
@@ -732,7 +762,10 @@ ALTER TABLE ONLY tezos.endorsing_rights
 --
 
 ALTER TABLE ONLY tezos.operations
-    ADD CONSTRAINT fk_blockhashes FOREIGN KEY (block_hash, fork_id) REFERENCES tezos.blocks(hash, fork_id);
+    ADD CONSTRAINT fk_blockhashes
+    FOREIGN KEY (block_hash, fork_id)
+    REFERENCES tezos.blocks(hash, fork_id)
+    DEFERRABLE INITIALLY IMMEDIATE;
 
 
 --
@@ -740,7 +773,10 @@ ALTER TABLE ONLY tezos.operations
 --
 
 ALTER TABLE ONLY tezos.operations
-    ADD CONSTRAINT fk_opgroups FOREIGN KEY (operation_group_hash, block_hash, fork_id) REFERENCES tezos.operation_groups(hash, block_id, fork_id);
+    ADD CONSTRAINT fk_opgroups
+    FOREIGN KEY (operation_group_hash, block_hash, fork_id)
+    REFERENCES tezos.operation_groups(hash, block_id, fork_id)
+    DEFERRABLE INITIALLY IMMEDIATE;
 
 --
 -- PostgreSQL database dump complete

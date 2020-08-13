@@ -5,13 +5,17 @@ import tech.cryptonomic.conseil.common.tezos.Fork
 import tech.cryptonomic.conseil.common.tezos.Tables.{
   AccountsHistoryRow,
   AccountsRow,
+  BakersHistoryRow,
   BakersRow,
   BakingRightsRow,
   BlocksRow,
   EndorsingRightsRow,
+  FeesRow,
   GovernanceRow,
   OperationGroupsRow,
-  OperationsRow
+  OperationsRow,
+  ProcessedChainEventsRow,
+  TokenBalancesRow
 }
 import tech.cryptonomic.conseil.common.tezos.TezosTypes
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
@@ -171,6 +175,10 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
         totallyArbitrary <- arbitrary[BlocksRow]
         arbitraryB52C <- Gen.infiniteStream(arbitraryBase58CheckString)
         arbitraryTimestamp <- timestampGenerator
+        arbitraryFit <- databaseFriendlyStringGenerator
+        arbitraryCtx <- Gen.option(databaseFriendlyStringGenerator)
+        arbitrarySig <- Gen.option(databaseFriendlyStringGenerator)
+        arbitraryProposal <- Gen.option(arbitraryBase58CheckString)
         arbitraryGas <- Gen.option(databaseFriendlyBigDecimalGenerator.map(_.value))
         arbitraryDatetime = Instant.ofEpochMilli(arbitraryTimestamp.getTime).atOffset(ZoneOffset.UTC)
       } yield
@@ -179,6 +187,10 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
             predecessor = arbitraryB52C(0),
             protocol = arbitraryB52C(1),
             hash = arbitraryB52C(2),
+            activeProposal = arbitraryProposal,
+            fitness = arbitraryFit.value,
+            context = arbitraryCtx.map(_.value),
+            signature = arbitrarySig.map(_.value),
             consumedGas = arbitraryGas,
             timestamp = arbitraryTimestamp,
             utcYear = arbitraryDatetime.getYear(),
@@ -249,12 +261,19 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
       for {
         totallyArbitrary <- arbitrary[AccountsRow]
         arbitraryBase58Check <- arbitraryBase58CheckString
+        arbitraryB52C <- Gen.infiniteStream(Gen.option(arbitraryBase58CheckString))
         DBSafe(arbitraryBalance) <- databaseFriendlyBigDecimalGenerator
+        arbitraryScript <- Gen.option(databaseFriendlyStringGenerator)
+        arbitraryStorage <- Gen.option(databaseFriendlyStringGenerator)
       } yield
         ForkValid(
           totallyArbitrary.copy(
             accountId = arbitraryBase58Check,
             balance = arbitraryBalance,
+            script = arbitraryScript.map(_.value),
+            storage = arbitraryStorage.map(_.value),
+            manager = arbitraryB52C(0),
+            delegateValue = arbitraryB52C(1),
             invalidatedAsof = None,
             forkId = Fork.mainForkId
           )
@@ -294,6 +313,32 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
        */
       for {
         totallyArbitrary <- arbitrary[BakersRow]
+        arbitraryBase58Check <- arbitraryBase58CheckString
+        arbitraryBalances <- Gen.infiniteStream(Gen.option(databaseFriendlyBigDecimalGenerator.map(_.value)))
+      } yield
+        ForkValid(
+          totallyArbitrary.copy(
+            pkh = arbitraryBase58Check,
+            balance = arbitraryBalances(0),
+            frozenBalance = arbitraryBalances(1),
+            stakingBalance = arbitraryBalances(2),
+            delegatedBalance = arbitraryBalances(3),
+            invalidatedAsof = None,
+            forkId = Fork.mainForkId
+          )
+        )
+    )
+
+    /** This instance in scope allows to obtain random [[BakersHistoryRow]]
+      *
+      * **Notice** that the generated rows are **not invalidated**
+      */
+    implicit val validBakersHistoryRowGenerator: Arbitrary[ForkValid[BakersHistoryRow]] = Arbitrary(
+      /* we modify the completely random instance provided by scalacheck shapeless
+       * to provide our customized version
+       */
+      for {
+        totallyArbitrary <- arbitrary[BakersHistoryRow]
         arbitraryBase58Check <- arbitraryBase58CheckString
         arbitraryBalances <- Gen.infiniteStream(Gen.option(databaseFriendlyBigDecimalGenerator.map(_.value)))
       } yield
@@ -374,7 +419,6 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
     )
 
     /** This instance in scope allows to obtain random [[GovernanceRow]]
-      * The rows will have no count or rolls field defined.
       *
       * **Notice** that the generated rows are **not invalidated**
       */
@@ -401,6 +445,61 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
             invalidatedAsof = None,
             forkId = Fork.mainForkId
           )
+        )
+    )
+
+    /** This instance in scope allows to obtain random [[TokenBalancesRow]]
+      *
+      * **Notice** that the generated rows are **not invalidated**
+      */
+    implicit val validTokenBalancesRowGenerator: Arbitrary[ForkValid[TokenBalancesRow]] = Arbitrary(
+      for {
+        totallyArbitrary <- arbitrary[TokenBalancesRow]
+        arbitraryHash <- arbitraryBase58CheckString
+        arbitraryAddress <- arbitraryBase58CheckString
+        arbitraryTimestamp <- timestampGenerator
+        DBSafe(arbitraryBalance) <- databaseFriendlyBigDecimalGenerator
+      } yield
+        ForkValid(
+          totallyArbitrary.copy(
+            blockId = arbitraryHash,
+            address = arbitraryAddress,
+            asof = arbitraryTimestamp,
+            balance = arbitraryBalance,
+            invalidatedAsof = None,
+            forkId = Fork.mainForkId
+          )
+        )
+    )
+
+    /** This instance in scope allows to obtain random [[FeesRow]]
+      *
+      * **Notice** that the generated rows are **not invalidated**
+      */
+    implicit val validFeesRowGenerator: Arbitrary[ForkValid[FeesRow]] = Arbitrary(
+      for {
+        totallyArbitrary <- arbitrary[FeesRow]
+        arbitraryTimestamp <- timestampGenerator
+        arbitraryKind <- DomainModelGeneration.operationKindGenerator
+      } yield
+        ForkValid(
+          totallyArbitrary.copy(
+            kind = arbitraryKind,
+            timestamp = arbitraryTimestamp,
+            invalidatedAsof = None,
+            forkId = Fork.mainForkId
+          )
+        )
+    )
+
+    /** This instance in scope allows to obtain random [[ProcessedChainEventsRow]] */
+    implicit val processedEventsRowGenerator: Arbitrary[DBSafe[ProcessedChainEventsRow]] = Arbitrary(
+      for {
+        totallyArbitrary <- arbitrary[ProcessedChainEventsRow]
+        DBSafe(arbitraryEventType) <- databaseFriendlyStringGenerator
+      } yield
+        DBSafe(
+          totallyArbitrary.copy(eventType = arbitraryEventType)
         )
     )
   }

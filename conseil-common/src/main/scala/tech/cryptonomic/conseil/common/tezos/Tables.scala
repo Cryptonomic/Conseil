@@ -1234,8 +1234,8 @@ trait Tables {
     /** Primary key of BakingRights (database name baking_rights_pkey) */
     val pk = primaryKey("baking_rights_pkey", (blockLevel, delegate, forkId))
 
-    /** Foreign key referencing Blocks (database name fk_block_hash) */
-    lazy val blocksFk = foreignKey("fk_block_hash", (blockHash, forkId), Blocks)(
+    /** Foreign key referencing Blocks (database name bake_rights_block_fkey) */
+    lazy val blocksFk = foreignKey("bake_rights_block_fkey", (blockHash, forkId), Blocks)(
       r => (Rep.Some(r.hash), r.forkId),
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
@@ -1925,8 +1925,8 @@ trait Tables {
     /** Primary key of EndorsingRights (database name endorsing_rights_pkey) */
     val pk = primaryKey("endorsing_rights_pkey", (blockLevel, delegate, slot, forkId))
 
-    /** Foreign key referencing Blocks (database name fk_block_hash) */
-    lazy val blocksFk = foreignKey("fk_block_hash", (blockHash, forkId), Blocks)(
+    /** Foreign key referencing Blocks (database name endorse_rights_block_fkey) */
+    lazy val blocksFk = foreignKey("endorse_rights_block_fkey", (blockHash, forkId), Blocks)(
       r => (Rep.Some(r.hash), r.forkId),
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
