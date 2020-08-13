@@ -18,7 +18,6 @@ import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms.{
   EthereumBatchFetchConfiguration,
   EthereumConfiguration,
-  EthereumNodeConfiguration,
   PlatformsConfiguration
 }
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse}
@@ -26,6 +25,8 @@ import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Att
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
 
 import scala.concurrent.{ExecutionContext, Future}
+
+import java.net.URL
 
 class EthereumDataRoutesTest
     extends AnyWordSpec
@@ -58,7 +59,7 @@ class EthereumDataRoutesTest
           EthereumConfiguration(
             "mainnet",
             enabled = true,
-            EthereumNodeConfiguration("host", 0, "protocol", ""),
+            new URL("http://localhost"),
             EthereumBatchFetchConfiguration(1, 1, 1, 1, 1)
           )
         )

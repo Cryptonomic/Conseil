@@ -115,7 +115,7 @@ class EthereumIndexer(
       httpClient <- BlazeClientBuilder[IO](httpEC).resource
 
       rpcClient <- RpcClient.resource(
-        ethereumConf.node.url,
+        ethereumConf.node.toString,
         maxConcurrent = ethereumConf.batching.indexerThreadsCount,
         httpClient // TODO: wrap it into retry and logger middleware
       )

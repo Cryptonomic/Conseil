@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.common.config
 
+import java.net.URL
+
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
 
 /** defines configuration types for conseil available platforms */
@@ -137,16 +139,6 @@ object Platforms {
     override val platform: BlockchainPlatform = Bitcoin
   }
 
-  /** configurations to describe a ethereum node */
-  final case class EthereumNodeConfiguration(
-      hostname: String,
-      port: Int,
-      protocol: String,
-      path: String
-  ) {
-    val url = s"$protocol://$hostname:$port$path"
-  }
-
   /**
     * Configurations to describe a Ethereum batch fetch.
     *
@@ -168,7 +160,7 @@ object Platforms {
   final case class EthereumConfiguration(
       network: String,
       enabled: Boolean,
-      node: EthereumNodeConfiguration,
+      node: URL,
       batching: EthereumBatchFetchConfiguration
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Ethereum
@@ -178,7 +170,7 @@ object Platforms {
   final case class QuorumConfiguration(
       network: String,
       enabled: Boolean,
-      node: EthereumNodeConfiguration,
+      node: URL,
       batching: EthereumBatchFetchConfiguration
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Quorum
