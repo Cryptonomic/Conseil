@@ -2,12 +2,13 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BlockLevel, TezosBlockHash}
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperations => DBOps}
+import tech.cryptonomic.conseil.indexer.ForkAmender
 import java.time.Instant
 import scala.concurrent.ExecutionContext
 import slick.dbio.DBIO
+import slick.jdbc.PostgresProfile.api._
 import cats.implicits._
 import slickeffect.implicits._
-import tech.cryptonomic.conseil.indexer.ForkAmender
 
 /** Provides static utilities */
 object TezosForkInvalidatingAmender {
@@ -23,21 +24,31 @@ object TezosForkInvalidatingAmender {
   */
 class TezosForkInvalidatingAmender(implicit ec: ExecutionContext) extends ForkAmender[DBIO, TezosBlockHash] {
 
+  /* Note that we need to defer constraint checks manually with postgres
+   * policies on consistency levels.
+   * Since we need to break constraints between different tables referring
+   * to the blocks being invalidated, until all entries are invalidated consistently,
+   * we tell the db to wait until the transaction session commits before running any verification.
+   */
+
   override def amendFork(
       forkLevel: BlockLevel,
       forkedBlockId: TezosBlockHash,
       indexedHeadLevel: BlockLevel,
       detectionTime: Instant
   ): DBIO[(String, Int)] =
-    for {
-      forkId <- DBOps.writeForkEntry(
-        forkLevel,
-        forkedBlockId,
-        indexedHeadLevel,
-        detectionTime
-      )
-      invalidated <- invalidateData(forkLevel, detectionTime, forkId)
-    } yield (forkId, invalidated)
+    (
+      for {
+        forkId <- DBOps.writeForkEntry(
+          forkLevel,
+          forkedBlockId,
+          indexedHeadLevel,
+          detectionTime
+        )
+        _ <- DBOps.deferForkConstraints()
+        invalidated <- invalidateData(forkLevel, detectionTime, forkId)
+      } yield (forkId, invalidated)
+    ).transactionally
 
   /* run invalidation on db accross all impacted tables
    * The powerful combinator foldA uses the fact that

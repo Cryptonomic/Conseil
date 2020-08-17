@@ -1616,7 +1616,7 @@ class TezosForkDatabaseOperationsTest
   /* This is a "structural" type which collects what is necessary to be considered a data type
    * which might be invalidated.
    * This kind of definitions incurs runtime checks and as such tends to be avoided in production
-   * code, and it's usage is enabled only behind a specific language import.
+   * code, and its usage is enabled only behind a specific language import.
    * We restrict its use to tests for this very reason.
    */
   type CanBeInvalidated = { def invalidatedAsof: Option[Timestamp]; def forkId: String }

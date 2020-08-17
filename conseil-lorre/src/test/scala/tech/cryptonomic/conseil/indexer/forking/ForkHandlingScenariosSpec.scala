@@ -30,7 +30,7 @@ class ForkHandlingScenariosSpec extends AnyFlatSpec with Checkers with Matchers 
   * The spec defines how to create the SUT and how to apply commands that changes its state.
   * Since the SUT cannot be directly inspected, the spec will define a simplified version of
   * the expected state, which is also updated with each command, following some defined rules.
-  * Matchins the simplified state evolution with the result of applying each command to the
+  * Matching the simplified state evolution with the result of applying each command to the
   * real SUT proves the correctness of the logic for the latter.
   *
   * In our case we define the following:
@@ -44,7 +44,8 @@ class ForkHandlingScenariosSpec extends AnyFlatSpec with Checkers with Matchers 
   * The SimulationState keeps track of the state of the indexed chain, and its evolution tracks the expected one
   * for the real SUT.
   *
-  * The Commands simulates how the chain on the remote node bakes new blocks along different forks each time.
+  * The Commands simulates how the chain on the remote node bakes new blocks along different forks each time,
+  * with a random command being generated at each step.
   * Each command will then activate the fork-handler logic after each progress, and eventually update the SUT
   * state to simulate the indexer syncing along the new block sequence.
   *
@@ -61,7 +62,6 @@ object ForkHandlingScenariosSpec extends Commands {
     *
     * @param currentlyOnFork the index identifying which fork the system is indexing
     * @param indexedChain the blocks (i.e. ids) indexed up till now
-    * @param invalidated the level ranges being invalidated during each fork handling
     */
   case class SimulationState(
       currentlyOnFork: Int,
@@ -118,9 +118,9 @@ object ForkHandlingScenariosSpec extends Commands {
     1 -> availableForks(2)
   )
 
-  /* This will avoid starting a new scenario in parallel with the others based on
+  /* This check allows avoid starting a new scenario in parallel with others, based on
    * the current running Suts and initial states used to generate them.
-   * We should have no issue running multople parallel scenarios concurrently
+   * We should have no issue running multiple parallel scenarios concurrently.
    */
   override def canCreateNewSut(
       newState: State,
@@ -130,7 +130,7 @@ object ForkHandlingScenariosSpec extends Commands {
 
   /* Builds a real system based on a simplified initial state,
    * We take the current sequence of blocks on the state and assume
-   * that both the local indexer and tne remote node start aligned on that
+   * that both the local indexer and the remote node start aligned on that
    */
   override def newSut(state: State): Sut = {
     val sut = new VirtualIndexer(state.indexedChain)
@@ -140,13 +140,15 @@ object ForkHandlingScenariosSpec extends Commands {
     sut
   }
 
-  /* Nothng to clean here */
+  /* Nothing to clean here, we depend on no external resources */
   override def destroySut(sut: Sut): Unit = ()
 
   /* The precondition for the initial state, when no commands yet have
    *  run. This is used by ScalaCheck when command sequences are shrinked
    *  and the first state might differ from what is returned from
    *  [[genInitialState]].
+   * Otherwise we might have an inconsistent initial state for the
+   * shrinked (i.e. simplified steps) scenario.
    */
   override def initialPreCondition(state: State): Boolean =
     state.indexedChain.size == initialBlocks
@@ -163,10 +165,11 @@ object ForkHandlingScenariosSpec extends Commands {
         )
     )
 
-  /* At each step a new command will be run on the system
-   * and will update the State.
-   * The command knows how to check pre-conditions and
-   * post-conditions to verify the system acts as expected.
+  /* At each step a new command will be run on the system and will update the State.
+   * The command knows how to check pre-conditions and* post-conditions to verify
+   * the system acts as expected.
+   * Each step increments the chain by a random number of levels in range [1..10],
+   * with higher chances for bounds and customly chosen values (i.e. 3, 5)
    */
   override def genCommand(state: State): Gen[Command] =
     for {
@@ -201,7 +204,6 @@ object ForkHandlingScenariosSpec extends Commands {
      */
     override def run(sut: Sut): Result = {
       val newHeadLevel = sut.indexHead + plusLevels
-      //is there a better way to render the ongoing scenarios?
       println(
         s"Fork-scenario-${sut.uuid.toString().take(6)} >> proceeding on fork number ${selectedFork.id}, advancing $plusLevels levels to $newHeadLevel."
       )
@@ -249,8 +251,9 @@ object ForkHandlingScenariosSpec extends Commands {
 
   }
 
-  /** Will make the first length blocks the same for all the forks */
+  /** Will make the first "length" blocks the same for all the forks */
   private def makeCommonBaseLine(ofLength: Int, fromForks: List[ChainFork]): List[ChainFork] = {
+    assume(fromForks.nonEmpty, "The spec cannot align different forks' baseline if no fork is given")
     val baseline = fromForks.head.blocks.take(ofLength)
     fromForks.map(
       fork =>

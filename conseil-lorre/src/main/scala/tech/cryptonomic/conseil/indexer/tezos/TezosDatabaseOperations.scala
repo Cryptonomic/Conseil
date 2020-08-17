@@ -1168,7 +1168,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * Due to a fork, those events will need be processed again over the new fork
     * data.
     * Notice that we have to be careful here and make sure that events' processing is
-    * an operation that can be executed mutliple times with on downsides
+    * an operation that can be executed mutliple times with no downsides
     * (a.k.a. idempotent)
     *
     * @param fromLevel the lower level, included, for which data doesn't match the node

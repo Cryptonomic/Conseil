@@ -38,10 +38,9 @@ trait TezosInMemoryDatabaseSetup extends InMemoryDatabaseSetup {
 
   /* We use this to restore the missing db structure that
    * slick-generated definitions have lost.
-   * Specifically we need this to be able to relax FK
-   * constraints per session, when running forks handling.
-   * We introduce a missing procedure and correct the
-   * incorrect defaults used from postgres with
+   * Specifically we need this to be able to relax FK constraints per session,
+   * when running forks handling.
+   * We correct the incorrect defaults used from postgres regarding
    * deferrable FKs.
    */
   val customConstraintsScript = new InitScript("", "") {

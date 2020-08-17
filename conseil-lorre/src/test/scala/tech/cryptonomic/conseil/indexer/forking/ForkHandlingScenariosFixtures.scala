@@ -47,6 +47,34 @@ object ForkHandlingScenariosFixtures {
 
   }
 
+  /** This mock will keep track locally of invalidations/amendments.
+    * We keep the values inspectable for the tests.
+    * We use the same effect type as [[MockSearch]] to keep them compatible.
+    */
+  class MockAmender() extends ForkAmender[TestEffect, TestBlockId] {
+
+    /** Tracks the invalidated levels */
+    var invalidated: Map[ForkId, NumericRange.Inclusive[Long]] = Map.empty
+
+    override def amendFork(
+        forkLevel: Long,
+        forkedBlockId: TestBlockId,
+        indexedHeadLevel: Long,
+        detectionTime: Instant
+    ): Either[Throwable, ForkAmender.Results] = {
+      //genearate the amendment data
+      val amendedLevels = Range.Long.inclusive(forkLevel, indexedHeadLevel, step = 1L)
+      val forkId = ju.UUID.randomUUID().toString
+
+      //update the invalidation map
+      invalidated += forkId -> amendedLevels
+
+      //expected return values
+      (forkId, amendedLevels.size).asRight
+    }
+
+  }
+
   /** This is the bare-bone system we're going to test.
     * The internal Fork handler implementation is faithful
     * to a real one, and is essentially his behaviour that we're
@@ -74,10 +102,10 @@ object ForkHandlingScenariosFixtures {
     val forkHandler = new BasicForkHandler(indexer, node, amender)
 
     /** the current head level of the indexer */
-    def indexHead = indexer.chain.map(_._1).max
+    def indexHead: Long = indexer.chain.map(_._1).max
 
     /** tracks all the invalidated levels with each detected fork */
-    def forks = amender.invalidated
+    def forks: Map[ForkId, NumericRange.Inclusive[Long]] = amender.invalidated
   }
 
   /** Represents one of the possible forks, identified by a numeric index.
@@ -101,36 +129,8 @@ object ForkHandlingScenariosFixtures {
     } yield ChainFork(id, levels zip hashes)
   }
 
-  /** randomly creats n distinct simulated chain forks */
+  /** randomly creates a number of distinct simulated chain forks */
   def randomForks(howMany: Int): List[ChainFork] =
     (1 to howMany).map(chainForkGen).map(_.sample.get).toList
-
-  /** This mock will keep track locally of invalidations/amendments.
-    * We keep the values inspectable for the tests.
-    * We use the [[Either]] effect to make it compatible with the [[MockIndexer]]
-    */
-  class MockAmender() extends ForkAmender[TestEffect, TestBlockId] {
-
-    /** Tracks the invalidated levels */
-    var invalidated: Map[ForkId, NumericRange.Inclusive[Long]] = Map.empty
-
-    override def amendFork(
-        forkLevel: Long,
-        forkedBlockId: TestBlockId,
-        indexedHeadLevel: Long,
-        detectionTime: Instant
-    ): Either[Throwable, ForkAmender.Results] = {
-      //genearate the amendment data
-      val amendedLevels = Range.Long.inclusive(forkLevel, indexedHeadLevel, 1L)
-      val forkId = ju.UUID.randomUUID().toString
-
-      //update the invalidation map
-      invalidated += forkId -> amendedLevels
-
-      //expected return values
-      (forkId, amendedLevels.size).asRight
-    }
-
-  }
 
 }

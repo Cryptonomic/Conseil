@@ -41,20 +41,6 @@ BEGIN
 END;
 $$;
 
--- CREATE PROCEDURE tezos.defer_fork_constraints()
---     AS $$
--- BEGIN
---     SET CONSTRAINTS ALL DEFERRED;
---     -- tezos.accounts_block_id_fkey,
---     -- tezos.block,
---     -- tezos.bakers_block_id_fkey,
---     -- tezos.bake_rights_block_fkey,
---     -- tezos.endorse_rights_block_fkey,
---     -- tezos.fk_blockhashes,
---     -- tezos.fk_opgroups DEFERRED;
--- END;
--- $$ LANGUAGE plpgsql;
-
 SET default_tablespace = '';
 
 SET default_with_oids = false;
