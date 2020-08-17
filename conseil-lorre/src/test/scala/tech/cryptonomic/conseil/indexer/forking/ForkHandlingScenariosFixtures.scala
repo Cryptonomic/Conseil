@@ -74,6 +74,34 @@ object ForkHandlingScenariosFixtures {
 
   }
 
+  /** This mock will keep track locally of invalidations/amendments.
+    * We keep the values inspectable for the tests.
+    * We use the same effect type as [[MockSearch]] to keep them compatible.
+    */
+  class MockAmender() extends ForkAmender[TestEffect, TestBlockId] {
+
+    /** Tracks the invalidated levels */
+    var invalidated: Map[ForkId, NumericRange.Inclusive[Long]] = Map.empty
+
+    override def amendFork(
+        forkLevel: Long,
+        forkedBlockId: TestBlockId,
+        indexedHeadLevel: Long,
+        detectionTime: Instant
+    ): Either[Throwable, ForkAmender.Results] = {
+      //genearate the amendment data
+      val amendedLevels = Range.Long.inclusive(forkLevel, indexedHeadLevel, step = 1L)
+      val forkId = ju.UUID.randomUUID().toString
+
+      //update the invalidation map
+      invalidated += forkId -> amendedLevels
+
+      //expected return values
+      (forkId, amendedLevels.size).asRight
+    }
+
+  }
+
   /** This is the bare-bone system we're going to test.
     * The internal Fork handler implementation is faithful
     * to a real one, and is essentially his behaviour that we're
