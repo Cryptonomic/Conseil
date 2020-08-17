@@ -41,7 +41,7 @@ class ForkHandlingScenariosSpec extends AnyFlatSpec with Checkers with Matchers 
   * wouldn't require connecting to a real tezos node and a local db. This might change in the future with
   * partial rewrites and refactors to modularize the system more.
   *
-  * The SimState keeps track of the state of the indexed chain, and its evolution tracks the expected one
+  * The SimulationState keeps track of the state of the indexed chain, and its evolution tracks the expected one
   * for the real SUT.
   *
   * The Commands simulates how the chain on the remote node bakes new blocks along different forks each time.
@@ -63,7 +63,7 @@ object ForkHandlingScenariosSpec extends Commands {
     * @param indexedChain the blocks (i.e. ids) indexed up till now
     * @param invalidated the level ranges being invalidated during each fork handling
     */
-  case class SimState(
+  case class SimulationState(
       currentlyOnFork: Int,
       indexedChain: PartialChain
   ) {
@@ -75,7 +75,7 @@ object ForkHandlingScenariosSpec extends Commands {
   /* this is the real system we're testing, which has internal
    * state not visible to the outside, and changes at each step
    */
-  type Sut = SimplifiedIndexer
+  type Sut = VirtualIndexer
 
   /* this is a simplified version of the system state that keeps
    * track of how it should evolve, and will be used to compare the
@@ -83,7 +83,7 @@ object ForkHandlingScenariosSpec extends Commands {
    * It act as an explicit and observable version of the hidden system
    * state machine.
    */
-  type State = SimState
+  type State = SimulationState
 
   /* Every new scenario will begin with the indexer and node having this number of blocks
    * Take care that this is NOT the initial head level: N blocks => head = N-1
@@ -133,7 +133,7 @@ object ForkHandlingScenariosSpec extends Commands {
    * that both the local indexer and tne remote node start aligned on that
    */
   override def newSut(state: State): Sut = {
-    val sut = new SimplifiedIndexer(state.indexedChain)
+    val sut = new VirtualIndexer(state.indexedChain)
     println(
       s"Fork-scenario-${sut.uuid.toString().take(6)} >> start on fork number ${state.currentlyOnFork}, current level is ${sut.indexHead}."
     )
@@ -157,7 +157,7 @@ object ForkHandlingScenariosSpec extends Commands {
   override def genInitialState: Gen[State] =
     forkSelector.map(
       fork =>
-        SimState(
+        SimulationState(
           currentlyOnFork = fork.id,
           indexedChain = fork.blocks.take(initialBlocks).toSeq
         )
@@ -214,7 +214,7 @@ object ForkHandlingScenariosSpec extends Commands {
     }
 
     /* We generate the next expected state */
-    override def nextState(state: SimState): SimState = {
+    override def nextState(state: State): State = {
       /* Here we update the state internal indexer based on the new fork data up to
        * the level reached
        */
@@ -228,10 +228,10 @@ object ForkHandlingScenariosSpec extends Commands {
     }
 
     /* Here we would check if the state is valid for the command: we have no conditions to meet */
-    override def preCondition(state: SimState): Boolean = true
+    override def preCondition(state: State): Boolean = true
 
     /* Here we check the results are consistent with the given initial state */
-    override def postCondition(state: SimState, result: TestEffect[Option[(String, Int)]]): Prop =
+    override def postCondition(state: State, result: TestEffect[Option[(String, Int)]]): Prop =
       result match {
         case Left(error: Throwable) =>
           Prop.falsified :| s"Unexpected response from the fork handler: ${error.getMessage}"

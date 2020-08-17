@@ -54,7 +54,7 @@ object ForkHandlingScenariosFixtures {
     * The other data structures are exposed to allow the test-harness
     * to simulate the evolution of the system during the test.
     */
-  class SimplifiedIndexer(initialChain: PartialChain) {
+  class VirtualIndexer(initialChain: PartialChain) {
 
     /** This id allows to track each individual indexer evolution during
       * the test simulations
