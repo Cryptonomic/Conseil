@@ -1099,6 +1099,8 @@ class TezosForkDatabaseOperationsTest
 
         info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* Save everything and run the invalidation process, fetch everything back */
         val invalidateAndFetch =
           for {
@@ -1239,6 +1241,8 @@ class TezosForkDatabaseOperationsTest
 
         info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* Save everything and run the invalidation process, fetch everything back */
         val invalidateAndFetch =
           for {
@@ -1290,6 +1294,8 @@ class TezosForkDatabaseOperationsTest
 
         info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* Save everything and run the invalidation process, fetch everything back */
         val invalidateAndFetch =
           for {
@@ -1338,6 +1344,8 @@ class TezosForkDatabaseOperationsTest
             }
             .sample
             .value
+
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
 
         info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
 
