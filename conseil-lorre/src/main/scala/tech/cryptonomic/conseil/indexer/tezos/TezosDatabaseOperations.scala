@@ -31,7 +31,6 @@ import scala.math.{ceil, max}
 import scala.util.{Failure, Success}
 import tech.cryptonomic.conseil.indexer.tezos.TezosGovernanceOperations.GovernanceAggregate
 import java.{util => ju}
-import tech.cryptonomic.conseil.common.tezos.Tables.ForksRow
 
 /**
   * Functions for writing Tezos data to a database.
@@ -912,7 +911,7 @@ object TezosDatabaseOperations extends LazyLogging {
     val ts = new Timestamp(detectionTime.getEpochSecond())
     Tables.Forks.returning(
       Tables.Forks.map(_.forkId)
-    ) += ForksRow(forkId, forkLevel, forkHash.value, indexedHeadLevel, ts)
+    ) += Tables.ForksRow(forkId, forkLevel, forkHash.value, indexedHeadLevel, ts)
   }
 
   /** Temporarily lift statement constraints on foreign keys
@@ -921,262 +920,78 @@ object TezosDatabaseOperations extends LazyLogging {
     * db entities, lifting the constraint checks until everything is updated
     * and consistent.
     */
-  def deferForkConstraints(): DBIO[Int] =
+  def deferConstraints(): DBIO[Int] =
     sqlu"SET CONSTRAINTS ALL DEFERRED;"
 
-  /** Marks all relevant entities as invalidated (i.e. by a forking event), by
-    * specifying the block level at which the chain showed divergence from the local data.
-    *
-    * Such invalidated entries should not appear anymore as results from queries against the
-    * main fork of the chain. They will thereafter need to be specifically requested.
-    *
-    * @param fromLevel the lower level, included, for which data doesn't match the node
-    * @param asOf a time-stamp of the invalidation operation
-    * @param forkId a unique identifier of the fork on which the entities were found
-    * @return the number of impacted rows
-    */
-  def invalidateBlocks(fromLevel: BlockLevel, asOf: Instant, forkId: String): DBIO[Int] = {
-    assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
-    val asOfTimestamp = Timestamp.from(asOf)
-    Tables.Blocks
-      .filter(_.level >= fromLevel)
-      .map(t => (t.invalidatedAsof, t.forkId))
-      .update(asOfTimestamp.some, forkId)
-  }
+  /** Operations related to data invalidation due to forks on the chain */
+  object ForkInvalidation {
+    import Tables._
 
-  /** Marks all relevant entities as invalidated (i.e. by a forking event), by
-    * specifying the block level at which the chain showed divergence from the local data.
-    *
-    * Such invalidated entries should not appear anymore as results from queries against the
-    * main fork of the chain. They will thereafter need to be specifically requested.
-    *
-    * @param fromLevel the lower level, included, for which data doesn't match the node
-    * @param asOf a time-stamp of the invalidation operation
-    * @param forkId a unique identifier of the fork on which the entities were found
-    * @return the number of impacted rows
-    */
-  def invalidateOperationGroups(fromLevel: BlockLevel, asOf: Instant, forkId: String): DBIO[Int] = {
-    assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
-    val asOfTimestamp = Timestamp.from(asOf)
-    Tables.OperationGroups
-      .filter(_.blockLevel >= fromLevel)
-      .map(t => (t.invalidatedAsof, t.forkId))
-      .update(asOfTimestamp.some, forkId)
-  }
+    /** Collects custom data to identify how to invalidate data
+      * on a specific table when a fork is detected
+      *
+      * @param query a query that reads the entity rows
+      * @param toLevel reads the column where the referencing block level is stored
+      * @param toInvalidationTime reads the column that tracks invalidation time
+      * @param toForkId reads the column that reference the current fork
+      * @tparam E the slick specific table type
+      */
+    case class EntityTableInvalidator[E <: AbstractTable[_]](query: TableQuery[E])(
+        toLevel: E => Rep[BlockLevel],
+        toInvalidationTime: E => Rep[Option[Timestamp]],
+        toForkId: E => Rep[String]
+    ) {
 
-  /** Marks all relevant entities as invalidated (i.e. by a forking event), by
-    * specifying the block level at which the chain showed divergence from the local data.
-    *
-    * Such invalidated entries should not appear anymore as results from queries against the
-    * main fork of the chain. They will thereafter need to be specifically requested.
-    *
-    * @param fromLevel the lower level, included, for which data doesn't match the node
-    * @param asOf a time-stamp of the invalidation operation
-    * @param forkId a unique identifier of the fork on which the entities were found
-    * @return the number of impacted rows
-    */
-  def invalidateOperations(fromLevel: BlockLevel, asOf: Instant, forkId: String): DBIO[Int] = {
-    assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
-    val asOfTimestamp = Timestamp.from(asOf)
-    Tables.Operations
-      .filter(_.blockLevel >= fromLevel)
-      .map(t => (t.invalidatedAsof, t.forkId))
-      .update(asOfTimestamp.some, forkId)
-  }
+      /** Marks all relevant entities as invalidated (i.e. by a forking event), by
+        * specifying the block level at which the chain showed divergence from the local data.
+        *
+        * Such invalidated entries should not appear anymore as results from queries against the
+        * main fork of the chain. They will thereafter need to be specifically requested.
+        *
+        * @param fromLevel the lower level, included, for which data doesn't match the node
+        * @param asOf a time-stamp of the invalidation operation
+        * @param forkId a unique identifier of the fork on which the entities were found
+        * @return the number of impacted rows
+        */
+      def invalidate(fromLevel: BlockLevel, asOf: Instant, forkId: String): DBIO[Int] = {
+        assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
+        val asOfTimestamp = Timestamp.from(asOf)
+        query
+          .filter(toLevel(_) >= fromLevel)
+          .map(e => (toInvalidationTime(e), toForkId(e)))
+          .update(asOfTimestamp.some, forkId)
+      }
 
-  /** Marks all relevant entities as invalidated (i.e. by a forking event), by
-    * specifying the block level at which the chain showed divergence from the local data.
-    *
-    * Such invalidated entries should not appear anymore as results from queries against the
-    * main fork of the chain. They will thereafter need to be specifically requested.
-    *
-    * @param fromLevel the lower level, included, for which data doesn't match the node
-    * @param asOf a time-stamp of the invalidation operation
-    * @param forkId a unique identifier of the fork on which the entities were found
-    * @return the number of impacted rows
-    */
-  def invalidateAccounts(fromLevel: BlockLevel, asOf: Instant, forkId: String): DBIO[Int] = {
-    assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
-    val asOfTimestamp = Timestamp.from(asOf)
-    Tables.Accounts
-      .filter(_.blockLevel >= fromLevel)
-      .map(t => (t.invalidatedAsof, t.forkId))
-      .update(asOfTimestamp.some, forkId)
-  }
+    }
 
-  /** Marks all relevant entities as invalidated (i.e. by a forking event), by
-    * specifying the block level at which the chain showed divergence from the local data.
-    *
-    * Such invalidated entries should not appear anymore as results from queries against the
-    * main fork of the chain. They will thereafter need to be specifically requested.
-    *
-    * @param fromLevel the lower level, included, for which data doesn't match the node
-    * @param asOf a time-stamp of the invalidation operation
-    * @param forkId a unique identifier of the fork on which the entities were found
-    * @return the number of impacted rows
-    */
-  def invalidateBakers(fromLevel: BlockLevel, asOf: Instant, forkId: String): DBIO[Int] = {
-    assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
-    val asOfTimestamp = Timestamp.from(asOf)
-    Tables.Bakers
-      .filter(_.blockLevel >= fromLevel)
-      .map(t => (t.invalidatedAsof, t.forkId))
-      .update(asOfTimestamp.some, forkId)
-  }
+    lazy val blocks = EntityTableInvalidator(Blocks)(_.level, _.invalidatedAsof, _.forkId)
+    lazy val operationGroups = EntityTableInvalidator(OperationGroups)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val operations = EntityTableInvalidator(Operations)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val accounts = EntityTableInvalidator(Accounts)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val accountsHistory = EntityTableInvalidator(AccountsHistory)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val bakers = EntityTableInvalidator(Bakers)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val bakersHistory = EntityTableInvalidator(BakersHistory)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val bakingRights = EntityTableInvalidator(BakingRights)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val endorsingRights = EntityTableInvalidator(EndorsingRights)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val tokenBalances = EntityTableInvalidator(TokenBalances)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val governance = EntityTableInvalidator(Governance)(_.level.ifNull(-1L), _.invalidatedAsof, _.forkId)
+    lazy val fees = EntityTableInvalidator(Fees)(_.level.ifNull(-1L), _.invalidatedAsof, _.forkId)
 
-  /** Marks all relevant entities as invalidated (i.e. by a forking event), by
-    * specifying the block level at which the chain showed divergence from the local data.
-    *
-    * Such invalidated entries should not appear anymore as results from queries against the
-    * main fork of the chain. They will thereafter need to be specifically requested.
-    *
-    * @param fromLevel the lower level, included, for which data doesn't match the node
-    * @param asOf a time-stamp of the invalidation operation
-    * @param forkId a unique identifier of the fork on which the entities were found
-    * @return the number of impacted rows
-    */
-  def invalidateAccountsHistory(fromLevel: BlockLevel, asOf: Instant, forkId: String): DBIO[Int] = {
-    assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
-    val asOfTimestamp = Timestamp.from(asOf)
-    Tables.AccountsHistory
-      .filter(_.blockLevel >= fromLevel)
-      .map(t => (t.invalidatedAsof, t.forkId))
-      .update(asOfTimestamp.some, forkId)
-  }
+    /** Deletes entries for the registry of processed chain events.
+      * Due to a fork, those events will need be processed again over the new fork
+      * data.
+      * Notice that we have to be careful here and make sure that events' processing is
+      * an operation that can be executed mutliple times with no downsides
+      * (a.k.a. idempotent)
+      *
+      * @param fromLevel the lower level, included, for which data doesn't match the node
+      * @return the number of impacted rows (deleted)
+      */
+    def deleteProcessedEvents(fromLevel: BlockLevel): DBIO[Int] = {
+      assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
+      Tables.ProcessedChainEvents.filter(_.eventLevel >= fromLevel).delete
+    }
 
-  /** Marks all relevant entities as invalidated (i.e. by a forking event), by
-    * specifying the block level at which the chain showed divergence from the local data.
-    *
-    * Such invalidated entries should not appear anymore as results from queries against the
-    * main fork of the chain. They will thereafter need to be specifically requested.
-    *
-    * @param fromLevel the lower level, included, for which data doesn't match the node
-    * @param asOf a time-stamp of the invalidation operation
-    * @param forkId a unique identifier of the fork on which the entities were found
-    * @return the number of impacted rows
-    */
-  def invalidateBakersHistory(fromLevel: BlockLevel, asOf: Instant, forkId: String): DBIO[Int] = {
-    assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
-    val asOfTimestamp = Timestamp.from(asOf)
-    Tables.BakersHistory
-      .filter(_.blockLevel >= fromLevel)
-      .map(t => (t.invalidatedAsof, t.forkId))
-      .update(asOfTimestamp.some, forkId)
-  }
-
-  /** Marks all relevant entities as invalidated (i.e. by a forking event), by
-    * specifying the block level at which the chain showed divergence from the local data.
-    *
-    * Such invalidated entries should not appear anymore as results from queries against the
-    * main fork of the chain. They will thereafter need to be specifically requested.
-    *
-    * @param fromLevel the lower level, included, for which data doesn't match the node
-    * @param asOf a time-stamp of the invalidation operation
-    * @param forkId a unique identifier of the fork on which the entities were found
-    * @return the number of impacted rows
-    */
-  def invalidateGovernance(fromLevel: BlockLevel, asOf: Instant, forkId: String): DBIO[Int] = {
-    assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
-    val asOfTimestamp = Timestamp.from(asOf)
-    Tables.Governance
-      .filter(row => row.level.ifNull(-1L) >= fromLevel)
-      .map(t => (t.invalidatedAsof, t.forkId))
-      .update(asOfTimestamp.some, forkId)
-  }
-
-  /** Marks all relevant entities as invalidated (i.e. by a forking event), by
-    * specifying the block level at which the chain showed divergence from the local data.
-    *
-    * Such invalidated entries should not appear anymore as results from queries against the
-    * main fork of the chain. They will thereafter need to be specifically requested.
-    *
-    * @param fromLevel the lower level, included, for which data doesn't match the node
-    * @param asOf a time-stamp of the invalidation operation
-    * @param forkId a unique identifier of the fork on which the entities were found
-    * @return the number of impacted rows
-    */
-  def invalidateTokenBalances(fromLevel: BlockLevel, asOf: Instant, forkId: String): DBIO[Int] = {
-    assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
-    val asOfTimestamp = Timestamp.from(asOf)
-    Tables.TokenBalances
-      .filter(_.blockLevel >= fromLevel)
-      .map(t => (t.invalidatedAsof, t.forkId))
-      .update(asOfTimestamp.some, forkId)
-  }
-
-  /** Marks all relevant entities as invalidated (i.e. by a forking event), by
-    * specifying the block level at which the chain showed divergence from the local data.
-    *
-    * Such invalidated entries should not appear anymore as results from queries against the
-    * main fork of the chain. They will thereafter need to be specifically requested.
-    *
-    * @param fromLevel the lower level, included, for which data doesn't match the node
-    * @param asOf a time-stamp of the invalidation operation
-    * @param forkId a unique identifier of the fork on which the entities were found
-    * @return the number of impacted rows
-    */
-  def invalidateBakingRights(fromLevel: BlockLevel, asOf: Instant, forkId: String): DBIO[Int] = {
-    assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
-    val asOfTimestamp = Timestamp.from(asOf)
-    Tables.BakingRights
-      .filter(_.blockLevel >= fromLevel)
-      .map(t => (t.invalidatedAsof, t.forkId))
-      .update(asOfTimestamp.some, forkId)
-  }
-
-  /** Marks all relevant entities as invalidated (i.e. by a forking event), by
-    * specifying the block level at which the chain showed divergence from the local data.
-    *
-    * Such invalidated entries should not appear anymore as results from queries against the
-    * main fork of the chain. They will thereafter need to be specifically requested.
-    *
-    * @param fromLevel the lower level, included, for which data doesn't match the node
-    * @param asOf a time-stamp of the invalidation operation
-    * @param forkId a unique identifier of the fork on which the entities were found
-    * @return the number of impacted rows
-    */
-  def invalidateEndorsingRights(fromLevel: BlockLevel, asOf: Instant, forkId: String): DBIO[Int] = {
-    assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
-    val asOfTimestamp = Timestamp.from(asOf)
-    Tables.EndorsingRights
-      .filter(_.blockLevel >= fromLevel)
-      .map(t => (t.invalidatedAsof, t.forkId))
-      .update(asOfTimestamp.some, forkId)
-  }
-
-  /** Marks all relevant entities as invalidated (i.e. by a forking event), by
-    * specifying the block level at which the chain showed divergence from the local data.
-    *
-    * Such invalidated entries should not appear anymore as results from queries against the
-    * main fork of the chain. They will thereafter need to be specifically requested.
-    *
-    * @param fromLevel the lower level, included, for which data doesn't match the node
-    * @param asOf a time-stamp of the invalidation operation
-    * @param forkId a unique identifier of the fork on which the entities were found
-    * @return the number of impacted rows
-    */
-  def invalidateFees(fromLevel: BlockLevel, asOf: Instant, forkId: String): DBIO[Int] = {
-    assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
-    val asOfTimestamp = Timestamp.from(asOf)
-    Tables.Fees
-      .filter(_.level.ifNull(-1L) >= fromLevel)
-      .map(t => (t.invalidatedAsof, t.forkId))
-      .update(asOfTimestamp.some, forkId)
-  }
-
-  /** Deletes entries for the registry of processed chain events.
-    * Due to a fork, those events will need be processed again over the new fork
-    * data.
-    * Notice that we have to be careful here and make sure that events' processing is
-    * an operation that can be executed mutliple times with no downsides
-    * (a.k.a. idempotent)
-    *
-    * @param fromLevel the lower level, included, for which data doesn't match the node
-    * @return the number of impacted rows (deleted)
-    */
-  def invalidateProcessedEvents(fromLevel: BlockLevel): DBIO[Int] = {
-    assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
-    Tables.ProcessedChainEvents.filter(_.eventLevel >= fromLevel).delete
   }
 
 }

@@ -45,7 +45,7 @@ class TezosForkInvalidatingAmender(implicit ec: ExecutionContext) extends ForkAm
           indexedHeadLevel,
           detectionTime
         )
-        _ <- DBOps.deferForkConstraints()
+        _ <- DBOps.deferConstraints()
         invalidated <- invalidateData(forkLevel, detectionTime, forkId)
       } yield (forkId, invalidated)
     ).transactionally
@@ -61,22 +61,22 @@ class TezosForkInvalidatingAmender(implicit ec: ExecutionContext) extends ForkAm
    *   inside the DBIO wrapper to result in a single value.
    * This means we're able to immediately convert a List[DBIO[Int]] => DBIO[Int]
    */
-  private def invalidateData(level: BlockLevel, asOf: Instant, forkId: String)(
+  private def invalidateData(forkLevel: BlockLevel, asOf: Instant, forkId: String)(
       implicit ec: ExecutionContext
   ): DBIO[Int] =
     List(
-      DBOps.invalidateBlocks(level, asOf, forkId),
-      DBOps.invalidateOperationGroups(level, asOf, forkId),
-      DBOps.invalidateOperations(level, asOf, forkId),
-      DBOps.invalidateAccounts(level, asOf, forkId),
-      DBOps.invalidateAccountsHistory(level, asOf, forkId),
-      DBOps.invalidateBakers(level, asOf, forkId),
-      DBOps.invalidateBakersHistory(level, asOf, forkId),
-      DBOps.invalidateBakingRights(level, asOf, forkId),
-      DBOps.invalidateEndorsingRights(level, asOf, forkId),
-      DBOps.invalidateFees(level, asOf, forkId),
-      DBOps.invalidateGovernance(level, asOf, forkId),
-      DBOps.invalidateTokenBalances(level, asOf, forkId),
-      DBOps.invalidateProcessedEvents(level)
+      DBOps.ForkInvalidation.blocks.invalidate(forkLevel, asOf, forkId),
+      DBOps.ForkInvalidation.operationGroups.invalidate(forkLevel, asOf, forkId),
+      DBOps.ForkInvalidation.operations.invalidate(forkLevel, asOf, forkId),
+      DBOps.ForkInvalidation.accounts.invalidate(forkLevel, asOf, forkId),
+      DBOps.ForkInvalidation.accountsHistory.invalidate(forkLevel, asOf, forkId),
+      DBOps.ForkInvalidation.bakers.invalidate(forkLevel, asOf, forkId),
+      DBOps.ForkInvalidation.bakersHistory.invalidate(forkLevel, asOf, forkId),
+      DBOps.ForkInvalidation.bakingRights.invalidate(forkLevel, asOf, forkId),
+      DBOps.ForkInvalidation.endorsingRights.invalidate(forkLevel, asOf, forkId),
+      DBOps.ForkInvalidation.fees.invalidate(forkLevel, asOf, forkId),
+      DBOps.ForkInvalidation.governance.invalidate(forkLevel, asOf, forkId),
+      DBOps.ForkInvalidation.tokenBalances.invalidate(forkLevel, asOf, forkId),
+      DBOps.ForkInvalidation.deleteProcessedEvents(forkLevel)
     ).foldA
 }

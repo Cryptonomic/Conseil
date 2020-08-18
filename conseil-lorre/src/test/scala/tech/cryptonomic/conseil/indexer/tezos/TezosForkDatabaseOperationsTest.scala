@@ -770,10 +770,12 @@ class TezosForkDatabaseOperationsTest
             .sample
             .value
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* Save everything and run the invalidation process, fetch everything back */
         val populateAndInvalidate = for {
           _ <- Tables.Blocks ++= validRows.map(_.data)
-          invalidated <- sut.invalidateBlocks(
+          invalidated <- sut.ForkInvalidation.blocks.invalidate(
             fromLevel = forkLevel,
             asOf = invalidation,
             forkId = fork.toString
@@ -786,12 +788,17 @@ class TezosForkDatabaseOperationsTest
         /* we expect to have some invalidation and that the fork level will discriminate */
         invalidCount shouldBe >(0)
 
+        /* we also want non-empty results to verify */
+        loaded should not be empty
+
         /* Split the sorted results into pre-fork-level and post-fork-level */
         val (preFork, postFork) = loaded.span(_.level < forkLevel)
 
         allValid(preFork) shouldBe true
 
         allInvalidated(asof = invalidation, forkId = fork.toString)(postFork) shouldBe true
+
+        info(s"resulting in ${preFork.size} elements before the fork and ${postFork.size} elements invalidated")
       }
 
       "invalidate operation groups" in {
@@ -826,6 +833,8 @@ class TezosForkDatabaseOperationsTest
 
         }
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* basic trick to periodically concatenate a finite list into an infinite stream */
         lazy val cyclicRefs: Stream[BlocksRow] = validReferencedBlocks.map(_.data).toStream #::: cyclicRefs
 
@@ -854,13 +863,13 @@ class TezosForkDatabaseOperationsTest
 
         val invalidateAndFetch =
           for {
-            _ <- sut.deferForkConstraints()
-            _ <- sut.invalidateBlocks(
+            _ <- sut.deferConstraints()
+            _ <- sut.ForkInvalidation.blocks.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
             )
-            invalidated <- sut.invalidateOperationGroups(
+            invalidated <- sut.ForkInvalidation.operationGroups.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
@@ -873,12 +882,18 @@ class TezosForkDatabaseOperationsTest
         /* we expect to have some invalidation and that the fork level will discriminate */
         invalidCount shouldBe >(0)
 
+        /* we also want non-empty results to verify */
+        loaded should not be empty
+
         /* Split the sorted results into pre-fork-level and post-fork-level */
         val (preFork, postFork) = loaded.span(_.blockLevel < forkLevel)
 
         allValid(preFork) shouldBe true
 
         allInvalidated(asof = invalidation, forkId = fork.toString)(postFork) shouldBe true
+
+        info(s"resulting in ${preFork.size} elements before the fork and ${postFork.size} elements invalidated")
+
       }
 
       "invalidate operations" in {
@@ -918,6 +933,8 @@ class TezosForkDatabaseOperationsTest
 
         }
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* basic trick to periodically concatenate a finite list into an infinite stream */
         lazy val cyclicRefs: Stream[BlocksRow] = validReferencedBlocks.map(_.data).toStream #::: cyclicRefs
 
@@ -953,18 +970,18 @@ class TezosForkDatabaseOperationsTest
 
         val invalidateAndFetch =
           for {
-            _ <- sut.deferForkConstraints()
-            _ <- sut.invalidateBlocks(
+            _ <- sut.deferConstraints()
+            _ <- sut.ForkInvalidation.blocks.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
             )
-            _ <- sut.invalidateOperationGroups(
+            _ <- sut.ForkInvalidation.operationGroups.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
             )
-            invalidated <- sut.invalidateOperations(
+            invalidated <- sut.ForkInvalidation.operations.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
@@ -977,12 +994,18 @@ class TezosForkDatabaseOperationsTest
         /* we expect to have some invalidation and that the fork level will discriminate */
         invalidCount shouldBe >(0)
 
+        /* we also want non-empty results to verify */
+        loaded should not be empty
+
         /* Split the sorted results into pre-fork-level and post-fork-level */
         val (preFork, postFork) = loaded.span(_.blockLevel < forkLevel)
 
         allValid(preFork) shouldBe true
 
         allInvalidated(asof = invalidation, forkId = fork.toString)(postFork) shouldBe true
+
+        info(s"resulting in ${preFork.size} elements before the fork and ${postFork.size} elements invalidated")
+
       }
 
       "invalidate accounts" in {
@@ -1016,6 +1039,8 @@ class TezosForkDatabaseOperationsTest
 
         }
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* basic trick to periodically concatenate a finite list into an infinite stream */
         lazy val cyclicRefs: Stream[BlocksRow] = validReferencedBlocks.map(_.data).toStream #::: cyclicRefs
 
@@ -1044,13 +1069,13 @@ class TezosForkDatabaseOperationsTest
 
         val invalidateAndFetch =
           for {
-            _ <- sut.deferForkConstraints()
-            _ <- sut.invalidateBlocks(
+            _ <- sut.deferConstraints()
+            _ <- sut.ForkInvalidation.blocks.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
             )
-            invalidated <- sut.invalidateAccounts(
+            invalidated <- sut.ForkInvalidation.accounts.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
@@ -1063,12 +1088,18 @@ class TezosForkDatabaseOperationsTest
         /* we expect to have some invalidation and that the fork level will discriminate */
         invalidCount shouldBe >(0)
 
+        /* we also want non-empty results to verify */
+        loaded should not be empty
+
         /* Split the sorted results into pre-fork-level and post-fork-level */
         val (preFork, postFork) = loaded.span(_.blockLevel < forkLevel)
 
         allValid(preFork) shouldBe true
 
         allInvalidated(asof = invalidation, forkId = fork.toString)(postFork) shouldBe true
+
+        info(s"resulting in ${preFork.size} elements before the fork and ${postFork.size} elements invalidated")
+
       }
 
       "invalidate account history" in {
@@ -1091,11 +1122,13 @@ class TezosForkDatabaseOperationsTest
 
         }
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* Save everything and run the invalidation process, fetch everything back */
         val invalidateAndFetch =
           for {
             _ <- Tables.AccountsHistory ++= validRows.map(_.data)
-            invalidated <- sut.invalidateAccountsHistory(
+            invalidated <- sut.ForkInvalidation.accountsHistory.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
@@ -1108,12 +1141,18 @@ class TezosForkDatabaseOperationsTest
         /* we expect to have some invalidation and that the fork level will discriminate */
         invalidCount shouldBe >(0)
 
+        /* we also want non-empty results to verify */
+        loaded should not be empty
+
         /* Split the sorted results into pre-fork-level and post-fork-level */
         val (preFork, postFork) = loaded.span(_.blockLevel < forkLevel)
 
         allValid(preFork) shouldBe true
 
         allInvalidated(asof = invalidation, forkId = fork.toString)(postFork) shouldBe true
+
+        info(s"resulting in ${preFork.size} elements before the fork and ${postFork.size} elements invalidated")
+
       }
 
       "invalidate bakers" in {
@@ -1147,6 +1186,8 @@ class TezosForkDatabaseOperationsTest
 
         }
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* basic trick to periodically concatenate a finite list into an infinite stream */
         lazy val cyclicRefs: Stream[BlocksRow] = validReferencedBlocks.map(_.data).toStream #::: cyclicRefs
 
@@ -1175,13 +1216,13 @@ class TezosForkDatabaseOperationsTest
 
         val invalidateAndFetch =
           for {
-            _ <- sut.deferForkConstraints()
-            _ <- sut.invalidateBlocks(
+            _ <- sut.deferConstraints()
+            _ <- sut.ForkInvalidation.blocks.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
             )
-            invalidated <- sut.invalidateBakers(
+            invalidated <- sut.ForkInvalidation.bakers.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
@@ -1194,12 +1235,18 @@ class TezosForkDatabaseOperationsTest
         /* we expect to have some invalidation and that the fork level will discriminate */
         invalidCount shouldBe >(0)
 
+        /* we also want non-empty results to verify */
+        loaded should not be empty
+
         /* Split the sorted results into pre-fork-level and post-fork-level */
         val (preFork, postFork) = loaded.span(_.blockLevel < forkLevel)
 
         allValid(preFork) shouldBe true
 
         allInvalidated(asof = invalidation, forkId = fork.toString)(postFork) shouldBe true
+
+        info(s"resulting in ${preFork.size} elements before the fork and ${postFork.size} elements invalidated")
+
       }
 
       "invalidate baker history" in {
@@ -1222,11 +1269,13 @@ class TezosForkDatabaseOperationsTest
 
         }
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* Save everything and run the invalidation process, fetch everything back */
         val invalidateAndFetch =
           for {
             _ <- Tables.BakersHistory ++= validRows.map(_.data)
-            invalidated <- sut.invalidateBakersHistory(
+            invalidated <- sut.ForkInvalidation.bakersHistory.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
@@ -1239,12 +1288,17 @@ class TezosForkDatabaseOperationsTest
         /* we expect to have some invalidation and that the fork level will discriminate */
         invalidCount shouldBe >(0)
 
+        /* we also want non-empty results to verify */
+        loaded should not be empty
+
         /* Split the sorted results into pre-fork-level and post-fork-level */
         val (preFork, postFork) = loaded.span(_.blockLevel < forkLevel)
 
         allValid(preFork) shouldBe true
 
         allInvalidated(asof = invalidation, forkId = fork.toString)(postFork) shouldBe true
+
+        info(s"resulting in ${preFork.size} elements before the fork and ${postFork.size} elements invalidated")
 
       }
 
@@ -1270,11 +1324,13 @@ class TezosForkDatabaseOperationsTest
 
         }
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* Save everything and run the invalidation process, fetch everything back */
         val invalidateAndFetch =
           for {
             _ <- Tables.Governance ++= validRows.map(_.data)
-            invalidated <- sut.invalidateGovernance(
+            invalidated <- sut.ForkInvalidation.governance.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
@@ -1287,12 +1343,17 @@ class TezosForkDatabaseOperationsTest
         /* we expect to have some invalidation and that the fork level will discriminate */
         invalidCount shouldBe >(0)
 
+        /* we also want non-empty results to verify */
+        loaded should not be empty
+
         /* Split the sorted results into pre-fork-level and post-fork-level */
         val (preFork, postFork) = loaded.span(_.level.forall(_ < forkLevel))
 
         allValid(preFork) shouldBe true
 
         allInvalidated(asof = invalidation, forkId = fork.toString)(postFork) shouldBe true
+
+        info(s"resulting in ${preFork.size} elements before the fork and ${postFork.size} elements invalidated")
 
       }
 
@@ -1316,11 +1377,13 @@ class TezosForkDatabaseOperationsTest
 
         }
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* Save everything and run the invalidation process, fetch everything back */
         val invalidateAndFetch =
           for {
             _ <- Tables.TokenBalances ++= validRows.map(_.data)
-            invalidated <- sut.invalidateTokenBalances(
+            invalidated <- sut.ForkInvalidation.tokenBalances.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
@@ -1333,12 +1396,17 @@ class TezosForkDatabaseOperationsTest
         /* we expect to have some invalidation and that the fork level will discriminate */
         invalidCount shouldBe >(0)
 
+        /* we also want non-empty results to verify */
+        loaded should not be empty
+
         /* Split the sorted results into pre-fork-level and post-fork-level */
         val (preFork, postFork) = loaded.span(_.blockLevel < forkLevel)
 
         allValid(preFork) shouldBe true
 
         allInvalidated(asof = invalidation, forkId = fork.toString)(postFork) shouldBe true
+
+        info(s"resulting in ${preFork.size} elements before the fork and ${postFork.size} elements invalidated")
 
       }
 
@@ -1373,6 +1441,8 @@ class TezosForkDatabaseOperationsTest
 
         }
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* basic trick to periodically concatenate a finite list into an infinite stream */
         lazy val cyclicRefs: Stream[BlocksRow] = validReferencedBlocks.map(_.data).toStream #::: cyclicRefs
 
@@ -1401,13 +1471,13 @@ class TezosForkDatabaseOperationsTest
 
         val invalidateAndFetch =
           for {
-            _ <- sut.deferForkConstraints()
-            _ <- sut.invalidateBlocks(
+            _ <- sut.deferConstraints()
+            _ <- sut.ForkInvalidation.blocks.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
             )
-            invalidated <- sut.invalidateBakingRights(
+            invalidated <- sut.ForkInvalidation.bakingRights.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
@@ -1420,12 +1490,17 @@ class TezosForkDatabaseOperationsTest
         /* we expect to have some invalidation and that the fork level will discriminate */
         invalidCount shouldBe >(0)
 
+        /* we also want non-empty results to verify */
+        loaded should not be empty
+
         /* Split the sorted results into pre-fork-level and post-fork-level */
         val (preFork, postFork) = loaded.span(_.blockLevel < forkLevel)
 
         allValid(preFork) shouldBe true
 
         allInvalidated(asof = invalidation, forkId = fork.toString)(postFork) shouldBe true
+
+        info(s"resulting in ${preFork.size} elements before the fork and ${postFork.size} elements invalidated")
 
       }
 
@@ -1460,6 +1535,8 @@ class TezosForkDatabaseOperationsTest
 
         }
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* basic trick to periodically concatenate a finite list into an infinite stream */
         lazy val cyclicRefs: Stream[BlocksRow] = validReferencedBlocks.map(_.data).toStream #::: cyclicRefs
 
@@ -1488,18 +1565,18 @@ class TezosForkDatabaseOperationsTest
 
         val invalidateAndFetch =
           for {
-            _ <- sut.deferForkConstraints()
-            _ <- sut.invalidateBlocks(
+            _ <- sut.deferConstraints()
+            _ <- sut.ForkInvalidation.blocks.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
             )
-            invalidated <- sut.invalidateEndorsingRights(
+            invalidated <- sut.ForkInvalidation.endorsingRights.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
             )
-            loaded <- Tables.BakingRights.sortBy(_.blockLevel.asc).result
+            loaded <- Tables.EndorsingRights.sortBy(_.blockLevel.asc).result
           } yield (invalidated, loaded)
 
         val (invalidCount, loaded) = dbHandler.run(invalidateAndFetch.transactionally).futureValue
@@ -1507,12 +1584,17 @@ class TezosForkDatabaseOperationsTest
         /* we expect to have some invalidation and that the fork level will discriminate */
         invalidCount shouldBe >(0)
 
+        /* we also want non-empty results to verify */
+        loaded should not be empty
+
         /* Split the sorted results into pre-fork-level and post-fork-level */
         val (preFork, postFork) = loaded.span(_.blockLevel < forkLevel)
 
         allValid(preFork) shouldBe true
 
         allInvalidated(asof = invalidation, forkId = fork.toString)(postFork) shouldBe true
+
+        info(s"resulting in ${preFork.size} elements before the fork and ${postFork.size} elements invalidated")
 
       }
 
@@ -1535,11 +1617,13 @@ class TezosForkDatabaseOperationsTest
 
         }
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* Save everything and run the invalidation process, fetch everything back */
         val invalidateAndFetch =
           for {
             _ <- Tables.Fees ++= validRows.map(_.data)
-            invalidated <- sut.invalidateFees(
+            invalidated <- sut.ForkInvalidation.fees.invalidate(
               fromLevel = forkLevel,
               asOf = invalidation,
               forkId = fork.toString
@@ -1552,12 +1636,17 @@ class TezosForkDatabaseOperationsTest
         /* we expect to have some invalidation and that the fork level will discriminate */
         invalidCount shouldBe >(0)
 
+        /* we also want non-empty results to verify */
+        loaded should not be empty
+
         /* Split the sorted results into pre-fork-level and post-fork-level */
         val (preFork, postFork) = loaded.span(_.level.forall(_ < forkLevel))
 
         allValid(preFork) shouldBe true
 
         allInvalidated(asof = invalidation, forkId = fork.toString)(postFork) shouldBe true
+
+        info(s"resulting in ${preFork.size} elements before the fork and ${postFork.size} elements invalidated")
 
       }
 
@@ -1580,11 +1669,13 @@ class TezosForkDatabaseOperationsTest
 
         }
 
+        info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
+
         /* Save everything and run the invalidation process, fetch everything back */
         val invalidateAndFetch =
           for {
             _ <- Tables.ProcessedChainEvents ++= validRows.map(_.value)
-            invalidated <- sut.invalidateProcessedEvents(fromLevel = forkLevel)
+            invalidated <- sut.ForkInvalidation.deleteProcessedEvents(fromLevel = forkLevel)
             loaded <- Tables.ProcessedChainEvents.result
           } yield (invalidated, loaded)
 
@@ -1593,9 +1684,13 @@ class TezosForkDatabaseOperationsTest
         /* we expect to have some invalidation and that the fork level will discriminate */
         invalidCount shouldBe >(0)
 
+        /* we also want non-empty results to verify */
+        loaded should not be empty
+
         /* we expect no more events after the fork */
         loaded.exists(_.eventLevel >= forkLevel) shouldBe false
 
+        info(s"resulting in ${loaded.size} remaining elements after the invalidation")
       }
     }
 
