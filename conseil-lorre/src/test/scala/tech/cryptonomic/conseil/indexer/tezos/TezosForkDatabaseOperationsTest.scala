@@ -5,7 +5,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.OptionValues
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalacheck.Gen
+import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary.arbitrary
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
@@ -52,6 +52,7 @@ class TezosForkDatabaseOperationsTest
 
   import TezosDataGenerationKit.DataModelGeneration._
   import TezosDataGenerationKit.DomainModelGeneration._
+  import LocalGenerationUtils._
 
   val sut = TezosDatabaseOperations
 
@@ -145,9 +146,10 @@ class TezosForkDatabaseOperationsTest
         val (validRows, validReferencedGroup, validReferencedBlock, invalidation, fork) =
           Gen
             .zip(
-              Gen.nonEmptyListOf(
-                arbitrary[ForkValid[OperationsRow]]
-                  .retryUntil(op => op.data.cycle.isDefined && op.data.ballot.isDefined) //we need to count ballot votes and check by cycle, so it has to be there!
+              nonConflictingArbitrary[ForkValid[OperationsRow]](
+                satisfying = (row: ForkValid[OperationsRow]) =>
+                  //we need to count ballot votes and check by cycle, so it has to be there!
+                  row.data.cycle.isDefined && row.data.ballot.isDefined
               ),
               arbitrary[ForkValid[OperationGroupsRow]],
               arbitrary[ForkValid[BlocksRow]],
@@ -196,9 +198,9 @@ class TezosForkDatabaseOperationsTest
         val (validRows, validReferencedGroup, validReferencedBlock, invalidation, fork) =
           Gen
             .zip(
-              Gen.nonEmptyListOf(
-                arbitrary[ForkValid[OperationsRow]]
-                  .retryUntil(_.data.ballot.isDefined) //we need to count ballot votes, so it has to be there!
+              nonConflictingArbitrary[ForkValid[OperationsRow]](
+                //we need to count ballot votes, so it has to be there!
+                satisfying = (row: ForkValid[OperationsRow]) => row.data.ballot.isDefined
               ),
               arbitrary[ForkValid[OperationGroupsRow]],
               arbitrary[ForkValid[BlocksRow]],
@@ -295,9 +297,7 @@ class TezosForkDatabaseOperationsTest
           Gen
             .zip(
               //duplicate ids will fail to save on the db for violation of the PK uniqueness
-              Gen
-                .nonEmptyListOf(arbitrary[ForkValid[AccountsRow]])
-                .retryUntil(noDuplicates(forKey = _.data.accountId)),
+              nonConflictingArbitrary[ForkValid[AccountsRow]],
               arbitrary[ForkValid[BlocksRow]],
               arbitrary[Timestamp],
               arbitrary[ju.UUID]
@@ -337,9 +337,7 @@ class TezosForkDatabaseOperationsTest
           Gen
             .zip(
               //duplicate ids will fail to save on the db for violation of the PK uniqueness
-              Gen
-                .nonEmptyListOf(arbitrary[ForkValid[BakersRow]])
-                .retryUntil(noDuplicates(forKey = _.data.pkh)),
+              nonConflictingArbitrary[ForkValid[BakersRow]],
               arbitrary[ForkValid[BlocksRow]],
               arbitrary[Timestamp],
               arbitrary[ju.UUID]
@@ -379,9 +377,7 @@ class TezosForkDatabaseOperationsTest
           Gen
             .zip(
               //duplicate ids will fail to save on the db for violation of the PK uniqueness
-              Gen
-                .nonEmptyListOf(arbitrary[ForkValid[AccountsRow]])
-                .retryUntil(noDuplicates(forKey = _.data.accountId)),
+              nonConflictingArbitrary[ForkValid[AccountsRow]],
               arbitrary[ForkValid[BlocksRow]],
               arbitrary[Timestamp],
               arbitrary[ju.UUID]
@@ -618,9 +614,7 @@ class TezosForkDatabaseOperationsTest
           Gen
             .zip(
               //duplicate ids will fail to save on the db for violation of the PK uniqueness
-              Gen
-                .nonEmptyListOf(arbitrary[ForkValid[OperationsRow]])
-                .retryUntil(noDuplicates(forKey = _.data.operationId)),
+              nonConflictingArbitrary[ForkValid[OperationsRow]],
               arbitrary[ForkValid[OperationGroupsRow]],
               arbitrary[ForkValid[BlocksRow]],
               arbitrary[Timestamp],
@@ -699,9 +693,9 @@ class TezosForkDatabaseOperationsTest
         val (validRows, validReferencedGroup, validReferencedBlock, invalidation, fork) =
           Gen
             .zip(
-              Gen.nonEmptyListOf(
-                arbitrary[ForkValid[OperationsRow]]
-                  .retryUntil(_.data.blockLevel > 0) //add a bit more realism
+              nonConflictingArbitrary[ForkValid[OperationsRow]](
+                //add a bit more realism
+                satisfying = (row: ForkValid[OperationsRow]) => row.data.blockLevel > 0
               ),
               arbitrary[ForkValid[OperationGroupsRow]],
               arbitrary[ForkValid[BlocksRow]],
@@ -757,9 +751,7 @@ class TezosForkDatabaseOperationsTest
           Gen
             .zip(
               //duplicate ids will fail to save on the db for violation of the PK uniqueness
-              Gen
-                .nonEmptyListOf(arbitrary[ForkValid[BlocksRow]])
-                .retryUntil(noDuplicates(forKey = _.data.hash)),
+              nonConflictingArbitrary[ForkValid[BlocksRow]],
               Gen.posNum[Long],
               TezosDataGenerationKit.instantGenerator,
               arbitrary[ju.UUID]
@@ -812,13 +804,8 @@ class TezosForkDatabaseOperationsTest
         val (validRows, validReferencedBlocks, forkLevel, invalidation, fork) = {
           val generator = for {
             //duplicate ids will fail to save on the db for violation of the PK uniqueness
-            rows <- Gen
-              .nonEmptyListOf(arbitrary[ForkValid[OperationGroupsRow]])
-              .retryUntil(noDuplicates(forKey = _.data.hash))
-            blocks <- Gen
-              .listOfN(rows.size, arbitrary[ForkValid[BlocksRow]])
-              .suchThat(_.nonEmpty)
-              .retryUntil(noDuplicates(forKey = _.data.hash))
+            rows <- nonConflictingArbitrary[ForkValid[OperationGroupsRow]]
+            blocks <- nonConflictingArbitrary[ForkValid[BlocksRow]](atMost = rows.size)
             level <- Gen.posNum[Long]
             instant <- TezosDataGenerationKit.instantGenerator
             id <- arbitrary[ju.UUID]
@@ -912,13 +899,8 @@ class TezosForkDatabaseOperationsTest
         val (validRows, validReferencedBlocks, forkLevel, invalidation, fork) = {
           val generator = for {
             //duplicate ids will fail to save on the db for violation of the PK uniqueness
-            rows <- Gen
-              .nonEmptyListOf(arbitrary[(ForkValid[OperationsRow], ForkValid[OperationGroupsRow])])
-              .retryUntil(noDuplicates(forKey = _.data.operationId, andKey = _.data.hash))
-            blocks <- Gen
-              .listOfN(rows.size, arbitrary[ForkValid[BlocksRow]])
-              .suchThat(_.nonEmpty)
-              .retryUntil(noDuplicates(forKey = _.data.hash))
+            rows <- nonConflictingArbitrary[ForkValid[OperationsRow], ForkValid[OperationGroupsRow]]
+            blocks <- nonConflictingArbitrary[ForkValid[BlocksRow]](atMost = rows.size)
             instant <- TezosDataGenerationKit.instantGenerator
             id <- arbitrary[ju.UUID]
             level <- Gen.posNum[Long]
@@ -1018,13 +1000,8 @@ class TezosForkDatabaseOperationsTest
         val (validRows, validReferencedBlocks, forkLevel, invalidation, fork) = {
           val generator = for {
             //duplicate ids will fail to save on the db for violation of the PK uniqueness
-            rows <- Gen
-              .nonEmptyListOf(arbitrary[ForkValid[AccountsRow]])
-              .retryUntil(noDuplicates(forKey = _.data.accountId))
-            blocks <- Gen
-              .listOfN(rows.size, arbitrary[ForkValid[BlocksRow]])
-              .suchThat(_.nonEmpty)
-              .retryUntil(noDuplicates(forKey = _.data.hash))
+            rows <- nonConflictingArbitrary[ForkValid[AccountsRow]]
+            blocks <- nonConflictingArbitrary[ForkValid[BlocksRow]](atMost = rows.size)
             level <- Gen.posNum[Long]
             instant <- TezosDataGenerationKit.instantGenerator
             id <- arbitrary[ju.UUID]
@@ -1104,23 +1081,21 @@ class TezosForkDatabaseOperationsTest
 
       "invalidate account history" in {
         /* Generate the data random sample */
-        val (validRows, forkLevel, invalidation, fork) = {
-          val generator = for {
-            //duplicate ids will fail to save on the db for violation of the PK uniqueness
-            rows <- Gen
-              .nonEmptyListOf(arbitrary[ForkValid[AccountsHistoryRow]])
-              .retryUntil(noDuplicates(forKey = _.data.accountId))
-            level <- Gen.posNum[Long]
-            instant <- TezosDataGenerationKit.instantGenerator
-            id <- arbitrary[ju.UUID]
-          } yield (rows, level, instant, id)
-
-          /* We need to have at least a non-empty sample to invalidate */
-          generator.retryUntil {
-            case (rows, level, _, _) => rows.exists(_.data.blockLevel >= level)
-          }.sample.value
-
-        }
+        val (validRows, forkLevel, invalidation, fork) =
+          Gen
+            .zip(
+              //duplicate ids will fail to save on the db for violation of the PK uniqueness
+              nonConflictingArbitrary[ForkValid[AccountsHistoryRow]],
+              Gen.posNum[Long],
+              TezosDataGenerationKit.instantGenerator,
+              arbitrary[ju.UUID]
+            )
+            .retryUntil {
+              /* We need to have at least a non-empty sample to invalidate */
+              case (rows, level, _, _) => rows.exists(_.data.blockLevel >= level)
+            }
+            .sample
+            .value
 
         info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
 
@@ -1165,13 +1140,8 @@ class TezosForkDatabaseOperationsTest
         val (validRows, validReferencedBlocks, forkLevel, invalidation, fork) = {
           val generator = for {
             //duplicate ids will fail to save on the db for violation of the PK uniqueness
-            rows <- Gen
-              .nonEmptyListOf(arbitrary[ForkValid[BakersRow]])
-              .retryUntil(noDuplicates(forKey = _.data.pkh))
-            blocks <- Gen
-              .listOfN(rows.size, arbitrary[ForkValid[BlocksRow]])
-              .suchThat(_.nonEmpty)
-              .retryUntil(noDuplicates(forKey = _.data.hash))
+            rows <- nonConflictingArbitrary[ForkValid[BakersRow]]
+            blocks <- nonConflictingArbitrary[ForkValid[BlocksRow]](atMost = rows.size)
             level <- Gen.posNum[Long]
             instant <- TezosDataGenerationKit.instantGenerator
             id <- arbitrary[ju.UUID]
@@ -1251,23 +1221,21 @@ class TezosForkDatabaseOperationsTest
 
       "invalidate baker history" in {
         /* Generate the data random sample */
-        val (validRows, forkLevel, invalidation, fork) = {
-          val generator = for {
-            //duplicate ids will fail to save on the db for violation of the PK uniqueness
-            rows <- Gen
-              .nonEmptyListOf(arbitrary[ForkValid[BakersHistoryRow]])
-              .retryUntil(noDuplicates(forKey = _.data.pkh))
-            level <- Gen.posNum[Long]
-            instant <- TezosDataGenerationKit.instantGenerator
-            id <- arbitrary[ju.UUID]
-          } yield (rows, level, instant, id)
-
-          /* We need to have at least a non-empty sample to invalidate */
-          generator.retryUntil {
-            case (rows, level, _, _) => rows.exists(_.data.blockLevel >= level)
-          }.sample.value
-
-        }
+        val (validRows, forkLevel, invalidation, fork) =
+          Gen
+            .zip(
+              //duplicate ids will fail to save on the db for violation of the PK uniqueness
+              nonConflictingArbitrary[ForkValid[BakersHistoryRow]],
+              Gen.posNum[Long],
+              TezosDataGenerationKit.instantGenerator,
+              arbitrary[ju.UUID]
+            )
+            .retryUntil {
+              /* We need to have at least a non-empty sample to invalidate */
+              case (rows, level, _, _) => rows.exists(_.data.blockLevel >= level)
+            }
+            .sample
+            .value
 
         info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
 
@@ -1304,25 +1272,21 @@ class TezosForkDatabaseOperationsTest
 
       "invalidate governance" in {
         /* Generate the data random sample */
-        val (validRows, forkLevel, invalidation, fork) = {
-          val generator = for {
-            //duplicate ids will fail to save on the db for violation of the PK uniqueness
-            rows <- Gen
-              .nonEmptyListOf(arbitrary[ForkValid[GovernanceRow]])
-              .retryUntil(noDuplicates {
-                case ForkValid(gov) => (gov.blockHash, gov.proposalHash, gov.votingPeriodKind)
-              })
-            level <- Gen.posNum[Long]
-            instant <- TezosDataGenerationKit.instantGenerator
-            id <- arbitrary[ju.UUID]
-          } yield (rows, level, instant, id)
-
-          /* We need to have at least a non-empty sample to invalidate */
-          generator.retryUntil {
-            case (rows, level, _, _) => rows.exists(_.data.level.exists(_ >= level))
-          }.sample.value
-
-        }
+        val (validRows, forkLevel, invalidation, fork) =
+          Gen
+            .zip(
+              //duplicate ids will fail to save on the db for violation of the PK uniqueness
+              nonConflictingArbitrary[ForkValid[GovernanceRow]],
+              Gen.posNum[Long],
+              TezosDataGenerationKit.instantGenerator,
+              arbitrary[ju.UUID]
+            )
+            .retryUntil {
+              /* We need to have at least a non-empty sample to invalidate */
+              case (rows, level, _, _) => rows.exists(_.data.level.exists(_ >= level))
+            }
+            .sample
+            .value
 
         info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
 
@@ -1359,23 +1323,21 @@ class TezosForkDatabaseOperationsTest
 
       "invalidate token balances" in {
         /* Generate the data random sample */
-        val (validRows, forkLevel, invalidation, fork) = {
-          val generator = for {
-            //duplicate ids will fail to save on the db for violation of the PK uniqueness
-            rows <- Gen
-              .nonEmptyListOf(arbitrary[ForkValid[TokenBalancesRow]])
-              .retryUntil(noDuplicates(forKey = _.data.address))
-            level <- Gen.posNum[Long]
-            instant <- TezosDataGenerationKit.instantGenerator
-            id <- arbitrary[ju.UUID]
-          } yield (rows, level, instant, id)
-
-          /* We need to have at least a non-empty sample to invalidate */
-          generator.retryUntil {
-            case (rows, level, _, _) => rows.exists(_.data.blockLevel >= level)
-          }.sample.value
-
-        }
+        val (validRows, forkLevel, invalidation, fork) =
+          Gen
+            .zip(
+              //duplicate ids will fail to save on the db for violation of the PK uniqueness
+              nonConflictingArbitrary[ForkValid[TokenBalancesRow]],
+              Gen.posNum[Long],
+              TezosDataGenerationKit.instantGenerator,
+              arbitrary[ju.UUID]
+            )
+            .retryUntil {
+              /* We need to have at least a non-empty sample to invalidate */
+              case (rows, level, _, _) => rows.exists(_.data.blockLevel >= level)
+            }
+            .sample
+            .value
 
         info(s"verifying with ${validRows.size} total elements and fork level $forkLevel")
 
@@ -1420,13 +1382,8 @@ class TezosForkDatabaseOperationsTest
         val (validRows, validReferencedBlocks, forkLevel, invalidation, fork) = {
           val generator = for {
             //duplicate ids will fail to save on the db for violation of the PK uniqueness
-            rows <- Gen
-              .nonEmptyListOf(arbitrary[ForkValid[BakingRightsRow]])
-              .retryUntil(noDuplicates(forKey = _.data.delegate))
-            blocks <- Gen
-              .listOfN(rows.size, arbitrary[ForkValid[BlocksRow]])
-              .suchThat(_.nonEmpty)
-              .retryUntil(noDuplicates(forKey = _.data.hash))
+            rows <- nonConflictingArbitrary[ForkValid[BakingRightsRow]]
+            blocks <- nonConflictingArbitrary[ForkValid[BlocksRow]](atMost = rows.size)
             level <- Gen.posNum[Long]
             instant <- TezosDataGenerationKit.instantGenerator
             id <- arbitrary[ju.UUID]
@@ -1514,13 +1471,8 @@ class TezosForkDatabaseOperationsTest
         val (validRows, validReferencedBlocks, forkLevel, invalidation, fork) = {
           val generator = for {
             //duplicate ids will fail to save on the db for violation of the PK uniqueness
-            rows <- Gen
-              .nonEmptyListOf(arbitrary[ForkValid[EndorsingRightsRow]])
-              .retryUntil(noDuplicates(forKey = _.data.delegate))
-            blocks <- Gen
-              .listOfN(rows.size, arbitrary[ForkValid[BlocksRow]])
-              .suchThat(_.nonEmpty)
-              .retryUntil(noDuplicates(forKey = _.data.hash))
+            rows <- nonConflictingArbitrary[ForkValid[EndorsingRightsRow]]
+            blocks <- nonConflictingArbitrary[ForkValid[BlocksRow]](atMost = rows.size)
             level <- Gen.posNum[Long]
             instant <- TezosDataGenerationKit.instantGenerator
             id <- arbitrary[ju.UUID]
@@ -1694,43 +1646,124 @@ class TezosForkDatabaseOperationsTest
       }
     }
 
-  /** True if all entities have a distinct key, where the key is
-    * computed by the passed-in extraction function
-    */
-  private def noDuplicates[T, K](forKey: T => K)(entities: List[T]): Boolean =
-    !entities.groupBy(forKey).exists { case (key, rows) => rows.size > 1 }
+  private object LocalGenerationUtils {
 
-  /** True if all entities have a distinct key in each list, where the keys are
-    * separately computed by the passed-in extraction functions
-    */
-  private def noDuplicates[T, T2, K, K2](forKey: T => K, andKey: T2 => K2)(entities: List[(T, T2)]): Boolean = {
-    val (lefties, righties) = entities.unzip
-    noDuplicates(forKey)(lefties) && noDuplicates(andKey)(righties)
+    /* Common generators should reduce clutter
+     * We have common patterns of dependencies and constraints for
+     * data that needs to be saved on db.
+     * Those are generally FK to block keys, or uniqueness checks on PK.
+     */
+    import Gen.{listOfN, nonEmptyListOf}
+
+    /* Denotes a type that is uniquely identified by a key type PK */
+    trait HasKey[Entity, PK] {
+
+      /** retrieves the unique key value from the entity instance */
+      def getKey(entity: Entity): PK
+
+    }
+
+    /* Here we provide all instances we need in the test cases */
+    object HasKey {
+
+      /* will provide an implicit HasKey for an entity wrapped by ForkValid
+       * we make use of java8 functional interfaces and define the instance as a lambda, which
+       * corresponds to the single method of HasKey, i.e. getKey
+       */
+      implicit def forkValidWithKey[PK, E](implicit hasKey: HasKey[E, PK]): HasKey[ForkValid[E], PK] = {
+        case ForkValid(entity) => implicitly[HasKey[E, PK]].getKey(entity)
+      }
+
+      /* There we provide all the key extractors for known db entites, again using functional interfaces shortcut */
+      implicit val blocksRowHasKey: HasKey[BlocksRow, String] = _.hash
+      implicit val accountsRowHasKey: HasKey[AccountsRow, String] = _.accountId
+      implicit val accountsHistoryRowHasKey: HasKey[AccountsHistoryRow, String] = _.accountId
+      implicit val bakersRowHasKey: HasKey[BakersRow, String] = _.pkh
+      implicit val bakersHistoryRowHasKey: HasKey[BakersHistoryRow, String] = _.pkh
+      implicit val operationGroupsRowHasKey: HasKey[OperationGroupsRow, String] = _.hash
+      implicit val operationsRowHasKey: HasKey[OperationsRow, Int] = _.operationId
+      implicit val bakingRightsRowHasKey: HasKey[BakingRightsRow, String] = _.delegate
+      implicit val endorsingRightsRowHasKey: HasKey[EndorsingRightsRow, String] = _.delegate
+      implicit val tokenBalancesRowHasKey: HasKey[TokenBalancesRow, String] = _.address
+      implicit val governanceRowHasKey: HasKey[GovernanceRow, (String, String, String)] =
+        gov => (gov.blockHash, gov.proposalHash, gov.votingPeriodKind)
+
+    }
+
+    /** Generates a list (non-empty) of Ts with no PK conflict.
+      * The key is provided implicitly by an instance of [[HasKey]] for the
+      * entity T we're trying to generate.
+      */
+    def nonConflictingArbitrary[T: Arbitrary](implicit hasKey: HasKey[T, _]): Gen[List[T]] =
+      nonEmptyListOf(arbitrary[T]).retryUntil(noDuplicates(forKey = hasKey.getKey))
+
+    /** Generates a list (non-empty) of pairs with T1 and T2s, with no PK conflict for the same type.
+      * The key is provided implicitly by an instance of [[HasKey]] for the
+      * entities we're trying to generate.
+      */
+    def nonConflictingArbitrary[T1: Arbitrary, T2: Arbitrary](
+        implicit
+        hasKey1: HasKey[T1, _],
+        hasKey2: HasKey[T2, _]
+    ): Gen[List[(T1, T2)]] =
+      nonEmptyListOf(arbitrary[(T1, T2)])
+        .retryUntil(noDuplicates(forKey = hasKey1.getKey, andKey = hasKey2.getKey))
+
+    /** generates a list (non-empty) of Ts with no PK conflict and at most n elements.
+      * The key is provided implicitly by an instance of [[HasKey]] for the
+      * entity T we're trying to generate.
+      */
+    def nonConflictingArbitrary[T: Arbitrary](atMost: Int)(implicit hasKey: HasKey[T, _]): Gen[List[T]] =
+      listOfN(atMost, arbitrary[T])
+        .suchThat(_.nonEmpty)
+        .retryUntil(noDuplicates(forKey = hasKey.getKey))
+
+    /** generates a list (non-empty) of Ts with no PK conflict.
+      * Additionally, each element should satisfy a specific property.
+      * The key is provided implicitly by an instance of [[HasKey]] for the
+      * entity T we're trying to generate.
+      */
+    def nonConflictingArbitrary[T: Arbitrary](satisfying: T => Boolean)(implicit hasKey: HasKey[T, _]): Gen[List[T]] =
+      nonEmptyListOf(arbitrary[T].retryUntil(satisfying)).retryUntil(noDuplicates(forKey = hasKey.getKey))
+
+    /** True if all entities have a distinct key, where the key is
+      * computed by the passed-in extraction function
+      */
+    private def noDuplicates[T, K](forKey: T => K)(entities: List[T]): Boolean =
+      !entities.groupBy(forKey).exists { case (key, rows) => rows.size > 1 }
+
+    /** True if all entities have a distinct key in each list, where the keys are
+      * separately computed by the passed-in extraction functions
+      */
+    private def noDuplicates[T, T2, K, K2](forKey: T => K, andKey: T2 => K2)(entities: List[(T, T2)]): Boolean = {
+      val (lefties, righties) = entities.unzip
+      noDuplicates(forKey)(lefties) && noDuplicates(andKey)(righties)
+    }
+
+    /* This is a "structural" type which collects what is necessary to be considered a data type
+     * which might be invalidated.
+     * This kind of definitions incurs runtime checks and as such tends to be avoided in production
+     * code, and its usage is enabled only behind a specific language import.
+     * We restrict its use to tests for this very reason.
+     */
+    type CanBeInvalidated = { def invalidatedAsof: Option[Timestamp]; def forkId: String }
+
+    /* import flag used to enable reflection calls for the following verification methods */
+    import language.reflectiveCalls
+
+    /** return true if all the entities in the sequence have not been invalidated by a fork */
+    def allValid[T <: CanBeInvalidated](valid: Seq[T]): Boolean =
+      valid.forall(it => it.invalidatedAsof.isEmpty && it.forkId == Fork.mainForkId)
+
+    /** return true if all the entities in the sequence result in having been invalidated by a fork
+      * with the given id and at the specific time
+      */
+    def allInvalidated[T <: CanBeInvalidated](asof: Instant, forkId: String)(invalidated: Seq[T]): Boolean =
+      invalidated.forall(
+        it =>
+          it.invalidatedAsof == Some(Timestamp.from(asof)) &&
+            it.forkId == forkId
+      )
+
   }
-
-  /* This is a "structural" type which collects what is necessary to be considered a data type
-   * which might be invalidated.
-   * This kind of definitions incurs runtime checks and as such tends to be avoided in production
-   * code, and its usage is enabled only behind a specific language import.
-   * We restrict its use to tests for this very reason.
-   */
-  type CanBeInvalidated = { def invalidatedAsof: Option[Timestamp]; def forkId: String }
-
-  /* import flag used to enable reflection calls for the following verification methods */
-  import language.reflectiveCalls
-
-  /** return true if all the entities in the sequence have not been invalidated by a fork */
-  private def allValid[T <: CanBeInvalidated](valid: Seq[T]): Boolean =
-    valid.forall(it => it.invalidatedAsof.isEmpty && it.forkId == Fork.mainForkId)
-
-  /** return true if all the entities in the sequence result in having been invalidated by a fork
-    * with the given id and at the specific time
-    */
-  private def allInvalidated[T <: CanBeInvalidated](asof: Instant, forkId: String)(invalidated: Seq[T]): Boolean =
-    invalidated.forall(
-      it =>
-        it.invalidatedAsof == Some(Timestamp.from(asof)) &&
-          it.forkId == forkId
-    )
-
 }
