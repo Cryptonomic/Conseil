@@ -20,12 +20,9 @@ class ConsistentForkDetectorSpec extends AnyPropSpec with ScalaCheckDrivenProper
   import Fixtures._
   import TezosDataGenerationKit.DomainModelGeneration._
 
-  /* Each property call will generate a hundred test values and verify the assertion on each of them,
-   * unless a different acceptance threshold is defined, using
+  /* Each property call will generate a hundred test values and verify the assertion on each of them.
    *
-   * forAll(minSuccessful(<runs>)) {...}
-   *
-   * Similarly we can establish how many discarded values (by a `whenever(predicate)` block) are
+   * We can establish how many discarded values (by a `whenever(predicate)` block) are
    * acceptable, as a multiplier of the overall successes.
    * E.g. forAll(maxDiscardedFactor(3.0)) means that for 100 successful runs, no more than 300
    * test values should've been discarded by using `whenever`.
@@ -52,19 +49,19 @@ class ConsistentForkDetectorSpec extends AnyPropSpec with ScalaCheckDrivenProper
   }
 
   property("The fork detection level check should return consistent results below the forking point") {
-    forAll(maxDiscardedFactor(3.0)) { (range: ForkDetectionRange, level: Long) =>
-      whenever(level < range.fork) {
+    forAll { (range: ForkDetectionRange, level: PreFork) =>
+      whenever(level.toLong < range.fork) {
         val sut = detector(forkingPoint = range.fork, withDataSearch = consistentBlockSearch)
-        sut.checkOnLevel(level) shouldBe ForkDetector.SameId
+        sut.checkOnLevel(level.toLong) shouldBe ForkDetector.SameId
       }
     }
   }
 
   property("The fork detection level check should return consistent results above the forking point") {
-    forAll(maxDiscardedFactor(3.0)) { (range: ForkDetectionRange, level: Long) =>
-      whenever(level >= range.fork) {
+    forAll { (range: ForkDetectionRange, level: PostFork) =>
+      whenever(level.toLong >= range.fork) {
         val sut = detector(forkingPoint = range.fork, withDataSearch = consistentBlockSearch)
-        sut.checkOnLevel(level) shouldBe ForkDetector.ForkedId
+        sut.checkOnLevel(level.toLong) shouldBe ForkDetector.ForkedId
       }
     }
   }
@@ -134,7 +131,13 @@ class ConsistentForkDetectorSpec extends AnyPropSpec with ScalaCheckDrivenProper
       * the internal forking level in-between.
       * This class captures our intent
       */
-    case class ForkDetectionRange(low: Long, fork: Long, high: Long)
+    case class ForkDetectionRange(
+        low: Long,
+        fork: Long,
+        high: Long,
+        preFork: Long = 0,
+        postFork: Long = 1000000
+    )
 
     /** this arbitrary instance will generate ranges of positive numbers
       * up to a cap (1e6 for this test) with a value in between, representing
@@ -149,6 +152,32 @@ class ConsistentForkDetectorSpec extends AnyPropSpec with ScalaCheckDrivenProper
         high <- Gen.choose(low + 2, low + 1000000) //arbitrary number in a range
         fork <- Gen.choose(low + 1, high - 1) //arbitrary number in-between
       } yield ForkDetectionRange(low, fork, high)
+    )
+
+    /* A typed wrapper to identify a level which is lower than a fork */
+    case class PreFork(toLong: Long)
+
+    /* A typed wrapper to identify a level which is higher than a fork */
+    case class PostFork(toLong: Long)
+
+    /** will generate a detection range and a random value that is
+      * guaranteed to be below the fork level generated
+      */
+    implicit val rangeWithPreForkLevels: Arbitrary[(ForkDetectionRange, PreFork)] = Arbitrary(
+      for {
+        range <- arbitrary[ForkDetectionRange]
+        level <- Gen.choose(range.low, range.fork - 1)
+      } yield (range, PreFork(level))
+    )
+
+    /** will generate a detection range and a random value that is
+      * guaranteed to be above the fork level generated
+      */
+    implicit val rangeWithPostForkLevels: Arbitrary[(ForkDetectionRange, PostFork)] = Arbitrary(
+      for {
+        range <- arbitrary[ForkDetectionRange]
+        level <- Gen.choose(range.fork, range.high)
+      } yield (range, PostFork(level))
     )
 
   }
