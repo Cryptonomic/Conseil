@@ -1,13 +1,13 @@
-package tech.cryptonomic.conseil.indexer.tezos
+package tech.cryptonomic.conseil.indexer.tezos.forks
 
 import cats._
 import cats.implicits._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.indexer.ForkDetector
-import tech.cryptonomic.conseil.indexer.ForkDetector.SearchBlockId
+import tech.cryptonomic.conseil.indexer.forks.ForkDetector
+import tech.cryptonomic.conseil.indexer.forks.ForkDetector.SearchBlockId
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BlockData, TezosBlockHash}
 import tech.cryptonomic.conseil.common.tezos.TezosTypesInstances._
-import tech.cryptonomic.conseil.indexer.tezos.ConsistentForkDetector.ConsistentDetectionRepeatingFailure
+import ConsistentForkDetector.ConsistentDetectionRepeatingFailure
 
 /* Common types and utils */
 object ConsistentForkDetector {
@@ -96,15 +96,15 @@ class ConsistentForkDetector[Eff[_]: Monad](
       case false =>
         logger
           .error(
-            s"Verification of the potential fork by matching remote block predecessor with the locally indexed block failed, for level $candidateForkLevel"
+            s"I failed the verification of the potential fork by matching remote block predecessor with the locally-indexed block, for level $candidateForkLevel"
           )
           .pure[Eff]
     }
 
 }
 
-/** Analog to the [[SearchBlockId]] but provides back
-  * the whole [[BlockData]] for a given search level.
+/** Analog to the [[SearchBlockId]] which returns the whole [[BlockData]]
+  * for a given search level.
   */
 trait SearchBlockData[Eff[_]] {
   def searchForLevel(level: Long): Eff[BlockData]

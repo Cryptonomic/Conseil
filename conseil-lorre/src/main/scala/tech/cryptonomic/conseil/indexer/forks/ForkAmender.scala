@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.indexer
+package tech.cryptonomic.conseil.indexer.forks
 
 import java.time.Instant
 

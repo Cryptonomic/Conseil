@@ -1,6 +1,5 @@
-package tech.cryptonomic.conseil.indexer.forking
+package tech.cryptonomic.conseil.indexer.forks
 
-import tech.cryptonomic.conseil.indexer.ForkAmender
 import cats.implicits._
 import org.scalacheck._
 import org.scalacheck.commands.Commands
@@ -60,11 +59,11 @@ object ForkHandlingScenariosSpec extends Commands {
 
   /** Tracks the ongoing system state as the test evolves.
     *
-    * @param currentlyOnFork the index identifying which fork the system is indexing
+    * @param currentlyOnBranch the index identifying which forked branch the system is indexing
     * @param indexedChain the blocks (i.e. ids) indexed up till now
     */
   case class SimulationState(
-      currentlyOnFork: Int,
+      currentlyOnBranch: Int,
       indexedChain: PartialChain
   ) {
 
@@ -93,29 +92,29 @@ object ForkHandlingScenariosSpec extends Commands {
   /* We want to test scenarios where the system jumps between distinct forks.
    * The forks' blocks are completely random, but we want to start from a common baseline
    * to pinpoint a deterministic fork point, therefore we fix the first n levels to match
-   * between all forks.
+   * between all branches.
    * We choose the initial matching length such that initially the state will include at
-   * least one level which differs between forks.
+   * least one level which differs between branches.
    */
-  val availableForks = makeCommonBaseLine(
+  val availableBranches = makeCommonBaseLine(
     ofLength = initialBlocks - 1,
-    fromForks = randomForks(howMany = 3)
+    fromBranches = randomBranches(howMany = 3)
   )
 
-  /* We base the fork level on the initial number of blocks shared bewteen forks.
-   * We know that forks are equal for the first initialBlocks - 1, therefore the fork level
+  /* We base the fork level on the initial number of blocks shared bewteen branches.
+   * We know that branches are equal for the first initialBlocks - 1, therefore the fork level
    * is exactly the initial tip of the chain, corresponding to block numbers minus 1
    * (accounting for the fact that levels starts from 0)
    */
   val forkLevel = initialBlocks.toLong - 1
 
-  /* a generator that randomly chooses between the existing generated forks,
+  /* a generator that randomly chooses between the existing generated branches,
    * favouring more the first one
    */
-  def forkSelector = Gen.frequency(
-    3 -> availableForks(0),
-    1 -> availableForks(1),
-    1 -> availableForks(2)
+  def branchSelector = Gen.frequency(
+    3 -> availableBranches(0),
+    1 -> availableBranches(1),
+    1 -> availableBranches(2)
   )
 
   /* This check allows avoid starting a new scenario in parallel with others, based on
@@ -135,7 +134,7 @@ object ForkHandlingScenariosSpec extends Commands {
   override def newSut(state: State): Sut = {
     val sut = new VirtualIndexer(state.indexedChain)
     println(
-      s"Fork-scenario-${sut.uuid.toString().take(6)} >> start on fork number ${state.currentlyOnFork}, current level is ${sut.indexHead}."
+      s"Fork-scenario-${sut.uuid.toString().take(6)} >> start on branch number ${state.currentlyOnBranch}, current level is ${sut.indexHead}."
     )
     sut
   }
@@ -153,15 +152,15 @@ object ForkHandlingScenariosSpec extends Commands {
   override def initialPreCondition(state: State): Boolean =
     state.indexedChain.size == initialBlocks
 
-  /* Picks a starting fork to generate the state, which begins
+  /* Picks a starting branch to generate the state, which begins
    * with a fixed number of blocks
    */
   override def genInitialState: Gen[State] =
-    forkSelector.map(
-      fork =>
+    branchSelector.map(
+      branch =>
         SimulationState(
-          currentlyOnFork = fork.id,
-          indexedChain = fork.blocks.take(initialBlocks)
+          currentlyOnBranch = branch.id,
+          indexedChain = branch.blocks.take(initialBlocks)
         )
     )
 
@@ -173,9 +172,9 @@ object ForkHandlingScenariosSpec extends Commands {
    */
   override def genCommand(state: State): Gen[Command] =
     for {
-      selectedFork <- forkSelector
+      selectedBranch <- branchSelector
       levelIncrement <- Gen.chooseNum[Int](1, 10, 3, 5)
-    } yield AdvanceOnFork(selectedFork, levelIncrement)
+    } yield AdvanceOnBranch(selectedBranch, levelIncrement)
 
   /* Hereby we define the commands that will advance the test simulation
    * The test toolkit will run for a random number of rounds by applying a
@@ -184,11 +183,11 @@ object ForkHandlingScenariosSpec extends Commands {
    * simplified test state, do pre and post conditions checks to test
    * the correctness of the system.
    * Our command simulates the block-chain evolution for a given number of levels,
-   * based on a specific, randomly selected, fork.
-   * This captures many different scenarios: same fork advance, jumping to a new fork and then
-   * back to the original, jumping between three forks multiple times
+   * based on a specific, randomly selected, branch.
+   * This captures many different scenarios: same branch advance, jumping to a new branch and then
+   * back to the original, jumping between three branches multiple times
    */
-  case class AdvanceOnFork(selectedFork: ChainFork, plusLevels: Int) extends SuccessCommand {
+  case class AdvanceOnBranch(selectedBranch: ChainBranch, plusLevels: Int) extends SuccessCommand {
 
     /* The type corresponding to the result of the system operation being tested */
     type Result = TestEffect[Option[ForkAmender.Results]]
@@ -196,18 +195,18 @@ object ForkHandlingScenariosSpec extends Commands {
     /* Each step will need to
      * - pick the current level on the sut node
      * - update the node such that the resulting chain will be on the designated
-     *   fork, and have moved on for the given number of levels
+     *   branch, and have moved on for the given number of levels
      * - run the fork handler and record the results
      * - rewrite the sut indexed data to simulate the indexer syncing to the new
-     *   fork
+     *   branch
      * - return the fork handling outcome
      */
     override def run(sut: Sut): Result = {
       val newHeadLevel = sut.indexHead + plusLevels
       println(
-        s"Fork-scenario-${sut.uuid.toString().take(6)} >> proceeding on fork number ${selectedFork.id}, advancing $plusLevels levels to $newHeadLevel."
+        s"Fork-scenario-${sut.uuid.toString().take(6)} >> proceeding on branch number ${selectedBranch.id}, advancing $plusLevels levels to $newHeadLevel."
       )
-      val newNodeChain = selectedFork.blocks.take(sut.node.chain.size + plusLevels)
+      val newNodeChain = selectedBranch.blocks.take(sut.node.chain.size + plusLevels)
       sut.node.chain = newNodeChain
 
       val outcome = sut.forkHandler.handleFork(sut.indexHead)
@@ -217,13 +216,13 @@ object ForkHandlingScenariosSpec extends Commands {
 
     /* We generate the next expected state */
     override def nextState(state: State): State = {
-      /* Here we update the state internal indexer based on the new fork data up to
+      /* Here we update the state internal indexer based on the new branch data up to
        * the level reached
        */
-      val indexed = selectedFork.blocks.take(state.indexedChain.size + plusLevels)
+      val indexed = selectedBranch.blocks.take(state.indexedChain.size + plusLevels)
 
       state.copy(
-        currentlyOnFork = selectedFork.id,
+        currentlyOnBranch = selectedBranch.id,
         indexedChain = indexed
       )
 
@@ -238,12 +237,12 @@ object ForkHandlingScenariosSpec extends Commands {
         case Left(error: Throwable) =>
           Prop.falsified :| s"Unexpected response from the fork handler: ${error.getMessage}"
         case Right(None) =>
-          Prop(state.currentlyOnFork == selectedFork.id) :| "No amendment only if on the same fork"
+          Prop(state.currentlyOnBranch == selectedBranch.id) :| "No amendment only if on the same branch"
         case Right(Some((forkId, amendedLevels))) if amendedLevels > 0 =>
           //compute expected level invalidations
           val invalidated = state.currentHead - forkLevel + 1
           Prop(state.currentHead >= forkLevel) :| "Fork level reached" &&
-          Prop(state.currentlyOnFork != selectedFork.id) :| "Current fork should change" &&
+          Prop(state.currentlyOnBranch != selectedBranch.id) :| "Current branch should change" &&
           Prop(amendedLevels == invalidated.toInt) :| "Expected number of corrections"
         case _ =>
           Prop.falsified :| "Amendment result with no actual amendment is unexpected"
@@ -251,14 +250,14 @@ object ForkHandlingScenariosSpec extends Commands {
 
   }
 
-  /** Will make the first "length" blocks the same for all the forks */
-  private def makeCommonBaseLine(ofLength: Int, fromForks: List[ChainFork]): List[ChainFork] = {
-    assume(fromForks.nonEmpty, "The spec cannot align different forks' baseline if no fork is given")
-    val baseline = fromForks.head.blocks.take(ofLength)
-    fromForks.map(
-      fork =>
-        fork.copy(
-          blocks = baseline #::: fork.blocks.drop(ofLength)
+  /** Will make the first "length" blocks the same for all the branches */
+  private def makeCommonBaseLine(ofLength: Int, fromBranches: List[ChainBranch]): List[ChainBranch] = {
+    assume(fromBranches.nonEmpty, "The spec cannot align different branches' baseline if no branch is given")
+    val baseline = fromBranches.head.blocks.take(ofLength)
+    fromBranches.map(
+      branch =>
+        branch.copy(
+          blocks = baseline #::: branch.blocks.drop(ofLength)
         )
     )
   }

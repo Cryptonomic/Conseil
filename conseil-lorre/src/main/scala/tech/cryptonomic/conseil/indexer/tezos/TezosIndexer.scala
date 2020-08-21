@@ -6,20 +6,22 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
 import com.typesafe.scalalogging.LazyLogging
 import mouse.any._
+import cats.instances.future._
 import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, TezosConfiguration}
 import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
-import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.ContractId
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
+import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
 import tech.cryptonomic.conseil.indexer.LorreIndexer
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.indexer.config._
+import tech.cryptonomic.conseil.indexer.forks.ForkHandler
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors._
+import tech.cryptonomic.conseil.indexer.tezos.forks.TezosForkInvalidatingAmender
 import tech.cryptonomic.conseil.indexer.tezos.processing._
 import tech.cryptonomic.conseil.indexer.tezos.processing.AccountsResetHandler.{AccountResetEvents, UnhandledResetEvents}
 
@@ -27,6 +29,7 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
+import tech.cryptonomic.conseil.indexer.tezos.forks.TezosForkSearchEngine
 
 /** Class responsible for indexing data for Tezos BlockChain
   * @param ignoreProcessFailures `true` if non-critical errors while fetchign data should simply resume the indexer logic and retry
@@ -48,6 +51,7 @@ class TezosIndexer private (
     bakersProcessor: BakersProcessor,
     rightsProcessor: BakingAndEndorsingRightsProcessor,
     accountsResetHandler: AccountsResetHandler,
+    forkHandler: ForkHandler[Future, TezosBlockHash],
     terminationSequence: () => Future[ShutdownComplete]
 )(
     implicit
@@ -325,6 +329,26 @@ object TezosIndexer extends LazyLogging {
       bakersProcessor
     )
 
+    /* A single component will provide all required search functions for the fork-handler */
+    val forkSearchEngine = new TezosForkSearchEngine(
+      nodeOps = nodeOperator,
+      indexedOps = indexedData
+    )
+
+    /* Handles almost every detail of the process when a fork happens,
+     * apart from the detail of updating the global chain events to
+     * be processed.
+     * Those are kept by TezosIndexer in memory, therefore they need to
+     * be refreshed from persistent storage after the invalidation.
+     */
+    val forkHandler: ForkHandler[Future, TezosBlockHash] =
+      new ForksProcessor(
+        nodeSearch = forkSearchEngine.idsNodeSearch,
+        nodeDataSearch = forkSearchEngine.blocksNodeSearch,
+        indexerSearch = forkSearchEngine.idsIndexerSearch,
+        amender = TezosForkInvalidatingAmender(db)
+      )
+
     /* the shutdown sequence to free resources */
     val gracefulTermination = () =>
       for {
@@ -342,6 +366,7 @@ object TezosIndexer extends LazyLogging {
       bakersProcessor,
       rightsProcessor,
       accountsResetHandler,
+      forkHandler,
       gracefulTermination
     )
   }
