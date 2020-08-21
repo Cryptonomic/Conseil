@@ -12,6 +12,7 @@ import tech.cryptonomic.conseil.common.util.Conversion
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction}
 import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence._
+import tech.cryptonomic.conseil.common.ethereum.rpc.json.TransactionRecipt
 
 /**
   * Ethereum persistence into the database using Slick.
@@ -26,11 +27,14 @@ class EthereumPersistence[F[_]: Concurrent] extends LazyLogging {
     */
   def createBlock(
       block: Block,
-      transactions: List[Transaction]
+      transactions: List[Transaction],
+      recipts: List[TransactionRecipt]
   ): DBIOAction[Unit, NoStream, Effect.Write] =
     DBIO.seq(
       Tables.Blocks += block.convertTo[Tables.BlocksRow],
-      Tables.Transactions ++= transactions.map(_.convertTo[Tables.TransactionsRow])
+      Tables.Transactions ++= transactions.map(_.convertTo[Tables.TransactionsRow]),
+      Tables.Recipts ++= recipts.map(_.convertTo[Tables.ReciptsRow]),
+      Tables.Logs ++= recipts.flatMap(_.logs).map(_.convertTo[Tables.LogsRow])
     )
 
   def createLogs(logs: List[Log]) =
@@ -51,6 +55,15 @@ class EthereumPersistence[F[_]: Concurrent] extends LazyLogging {
     */
   def getLatestIndexedBlock: DBIO[Option[Tables.BlocksRow]] =
     Tables.Blocks.sortBy(_.number.desc).take(1).result.headOption
+
+  /**
+    * Get a list of contract addresses from the recipts.
+    */
+  def getContractAddresses(range: Range.Inclusive): DBIO[Seq[Tables.ReciptsRow]] =
+    Tables.Recipts
+      .filter(_.blockNumber between (range.start, range.end))
+      .filter(_.contractAddress.isDefined)
+      .result
 }
 
 object EthereumPersistence {
@@ -114,6 +127,28 @@ object EthereumPersistence {
           v = from.v,
           r = from.r,
           s = from.s
+        )
+    }
+
+  /**
+    * Convert form [[TransactionRecipt]] to [[Tables.ReciptsRow]]
+    * TODO: This conversion should be done with the Chimney,
+    *       but it's blocked due to the https://github.com/scala/bug/issues/11157
+    */
+  implicit val transactionReciptToReciptsRow: Conversion[Id, TransactionRecipt, Tables.ReciptsRow] =
+    new Conversion[Id, TransactionRecipt, Tables.ReciptsRow] {
+      override def convert(from: TransactionRecipt) =
+        Tables.ReciptsRow(
+          blockHash = from.blockHash,
+          blockNumber = Integer.decode(from.blockNumber),
+          transactionHash = from.transactionHash,
+          transactionIndex = from.transactionIndex,
+          contractAddress = from.contractAddress,
+          cumulativeGasUsed = from.cumulativeGasUsed,
+          gasUsed = from.gasUsed,
+          logsBloom = from.logsBloom,
+          status = from.status,
+          root = from.root
         )
     }
 

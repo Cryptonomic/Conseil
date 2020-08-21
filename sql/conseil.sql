@@ -916,6 +916,20 @@ CREATE TABLE ethereum.transactions (
 ALTER TABLE ONLY ethereum.transactions
   ADD CONSTRAINT ethereum_transactions_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES ethereum.blocks(hash);
 
+-- Table is based on eth_getTransactionReceipt from https://eth.wiki/json-rpc/API
+CREATE TABLE ethereum.recipts (
+  transaction_hash text NOT NULL,
+  transaction_index text NOT NULL,
+  block_hash text NOT NULL,
+  block_number integer NOT NULL,
+  contract_address text,
+  cumulative_gas_used text NOT NULL,
+  gas_used text NOT NULL,
+  logs_bloom text NOT NULL,
+  status text,
+  root text
+);
+
 -- Table is based on eth_getLogs from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.logs (
   address text NOT NULL,

@@ -14,7 +14,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Blocks.schema ++ Logs.schema ++ Transactions.schema
+  lazy val schema: profile.SchemaDescription = Blocks.schema ++ Logs.schema ++ Recipts.schema ++ Transactions.schema
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -330,6 +330,123 @@ trait Tables {
 
   /** Collection-like TableQuery object for table Logs */
   lazy val Logs = new TableQuery(tag => new Logs(tag))
+
+  /** Entity class storing rows of table Recipts
+    *  @param transactionHash Database column transaction_hash SqlType(text)
+    *  @param transactionIndex Database column transaction_index SqlType(text)
+    *  @param blockHash Database column block_hash SqlType(text)
+    *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param contractAddress Database column contract_address SqlType(text), Default(None)
+    *  @param cumulativeGasUsed Database column cumulative_gas_used SqlType(text)
+    *  @param gasUsed Database column gas_used SqlType(text)
+    *  @param logsBloom Database column logs_bloom SqlType(text)
+    *  @param status Database column status SqlType(text), Default(None)
+    *  @param root Database column root SqlType(text), Default(None) */
+  case class ReciptsRow(
+      transactionHash: String,
+      transactionIndex: String,
+      blockHash: String,
+      blockNumber: Int,
+      contractAddress: Option[String] = None,
+      cumulativeGasUsed: String,
+      gasUsed: String,
+      logsBloom: String,
+      status: Option[String] = None,
+      root: Option[String] = None
+  )
+
+  /** GetResult implicit for fetching ReciptsRow objects using plain SQL queries */
+  implicit def GetResultReciptsRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Option[String]]): GR[ReciptsRow] = GR {
+    prs =>
+      import prs._
+      ReciptsRow.tupled(
+        (
+          <<[String],
+          <<[String],
+          <<[String],
+          <<[Int],
+          <<?[String],
+          <<[String],
+          <<[String],
+          <<[String],
+          <<?[String],
+          <<?[String]
+        )
+      )
+  }
+
+  /** Table description of table recipts. Objects of this class serve as prototypes for rows in queries. */
+  class Recipts(_tableTag: Tag) extends profile.api.Table[ReciptsRow](_tableTag, Some("ethereum"), "recipts") {
+    def * =
+      (
+        transactionHash,
+        transactionIndex,
+        blockHash,
+        blockNumber,
+        contractAddress,
+        cumulativeGasUsed,
+        gasUsed,
+        logsBloom,
+        status,
+        root
+      ) <> (ReciptsRow.tupled, ReciptsRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      (
+        (
+          Rep.Some(transactionHash),
+          Rep.Some(transactionIndex),
+          Rep.Some(blockHash),
+          Rep.Some(blockNumber),
+          contractAddress,
+          Rep.Some(cumulativeGasUsed),
+          Rep.Some(gasUsed),
+          Rep.Some(logsBloom),
+          status,
+          root
+        )
+      ).shaped.<>(
+        { r =>
+          import r._;
+          _1.map(_ => ReciptsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5, _6.get, _7.get, _8.get, _9, _10)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    /** Database column transaction_hash SqlType(text) */
+    val transactionHash: Rep[String] = column[String]("transaction_hash")
+
+    /** Database column transaction_index SqlType(text) */
+    val transactionIndex: Rep[String] = column[String]("transaction_index")
+
+    /** Database column block_hash SqlType(text) */
+    val blockHash: Rep[String] = column[String]("block_hash")
+
+    /** Database column block_number SqlType(int4) */
+    val blockNumber: Rep[Int] = column[Int]("block_number")
+
+    /** Database column contract_address SqlType(text), Default(None) */
+    val contractAddress: Rep[Option[String]] = column[Option[String]]("contract_address", O.Default(None))
+
+    /** Database column cumulative_gas_used SqlType(text) */
+    val cumulativeGasUsed: Rep[String] = column[String]("cumulative_gas_used")
+
+    /** Database column gas_used SqlType(text) */
+    val gasUsed: Rep[String] = column[String]("gas_used")
+
+    /** Database column logs_bloom SqlType(text) */
+    val logsBloom: Rep[String] = column[String]("logs_bloom")
+
+    /** Database column status SqlType(text), Default(None) */
+    val status: Rep[Option[String]] = column[Option[String]]("status", O.Default(None))
+
+    /** Database column root SqlType(text), Default(None) */
+    val root: Rep[Option[String]] = column[Option[String]]("root", O.Default(None))
+  }
+
+  /** Collection-like TableQuery object for table Recipts */
+  lazy val Recipts = new TableQuery(tag => new Recipts(tag))
 
   /** Entity class storing rows of table Transactions
     *  @param hash Database column hash SqlType(text), PrimaryKey

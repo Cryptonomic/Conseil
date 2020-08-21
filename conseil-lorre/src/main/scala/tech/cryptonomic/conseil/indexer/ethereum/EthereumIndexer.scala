@@ -3,11 +3,13 @@ package tech.cryptonomic.conseil.indexer.ethereum
 import java.util.concurrent.Executors
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.FiniteDuration
+// import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 import cats.effect.{IO, Resource}
 import com.typesafe.scalalogging.LazyLogging
 import org.http4s.client.blaze.BlazeClientBuilder
+import org.http4s.Status._
 import slick.jdbc.PostgresProfile.api._
 import slickeffect.Transactor
 import slickeffect.transactor.{config => transactorConfig}
@@ -19,6 +21,9 @@ import tech.cryptonomic.conseil.common.config.Platforms.EthereumConfiguration
 import tech.cryptonomic.conseil.indexer.LorreIndexer
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.common.rpc.RpcClient
+import org.http4s.client.middleware.RetryPolicy
+import org.http4s.client.middleware.Retry
+import org.http4s.client.WaitQueueTimeoutException
 
 /**
   * Class responsible for indexing data for Ethereum Blockchain.
@@ -80,7 +85,7 @@ class EthereumIndexer(
       for {
         _ <- operations
         _ <- IO.sleep(interval)
-        _ <- repeatEvery(interval)(operations)
+        // _ <- repeatEvery(interval)(operations)
       } yield ()
 
     indexer
@@ -114,10 +119,30 @@ class EthereumIndexer(
     for {
       httpClient <- BlazeClientBuilder[IO](httpEC).resource
 
+      retriableStatuses = Set(
+        RequestTimeout,
+        // TODO Leaving PayloadTooLarge out until we model Retry-After
+        InternalServerError,
+        ServiceUnavailable,
+        BadGateway,
+        GatewayTimeout,
+        TooManyRequests
+      )
+
+      retryPolicy = RetryPolicy[IO](
+        RetryPolicy.exponentialBackoff(2.seconds, 5),
+        (_, result) =>
+          result match {
+            case Right(resp) => retriableStatuses(resp.status)
+            case Left(WaitQueueTimeoutException) => false
+            case _ => true
+          }
+      )
+
       rpcClient <- RpcClient.resource(
         ethereumConf.node.toString,
         maxConcurrent = ethereumConf.batching.indexerThreadsCount,
-        httpClient // TODO: wrap it into retry and logger middleware
+        Retry(retryPolicy)(httpClient) // TODO: wrap it into retry and logger middleware
       )
 
       tx <- Transactor

@@ -7,10 +7,10 @@ import io.circe.generic.auto._
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.circe.CirceEntityEncoder._
 
+import tech.cryptonomic.conseil.common.ethereum.domain.Bytecode
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumRpcCommands._
-import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Transaction}
-import tech.cryptonomic.conseil.common.ethereum.rpc.json.Log
+import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction, TransactionRecipt}
 
 /**
   * Ethereum JSON-RPC client according to the specification at https://eth.wiki/json-rpc/API
@@ -55,7 +55,7 @@ class EthereumClient[F[_]: Concurrent](
     *
     * @param batchSize The size of the batched request in single HTTP call
     */
-  def getBlockWithTransactions(batchSize: Int): Pipe[F, Block, (Block, List[Transaction])] =
+  def getBlockWithTransactions(batchSize: Int): Pipe[F, Block, (Block, List[Transaction], List[Log])] =
     stream =>
       stream.flatMap {
         case block if block.transactions.size > 0 =>
@@ -64,9 +64,36 @@ class EthereumClient[F[_]: Concurrent](
             .map(EthGetTransactionByHash.request)
             .through(client.stream[EthGetTransactionByHash.Params, Transaction](batchSize))
             .chunkN(block.transactions.size)
-            .map(chunks => (block, chunks.toList))
-        case block => Stream.emit((block, Nil))
+            .map(chunks => (block, chunks.toList, Nil))
+        case block => Stream.emit((block, Nil, Nil))
       }
+
+  def getBlockWithTransactions2(batchSize: Int): Pipe[F, Block, Transaction] =
+    stream =>
+      stream
+        .map(_.transactions)
+        .flatMap(Stream.emits)
+        .map(EthGetTransactionByHash.request)
+        .through(client.stream[EthGetTransactionByHash.Params, Transaction](batchSize))
+
+  def getTransactionRecipt: Pipe[F, Transaction, TransactionRecipt] =
+    stream =>
+      stream
+        .map(_.hash)
+        .map(EthGetTransactionReceipt.request)
+        .through(client.stream[EthGetTransactionReceipt.Params, TransactionRecipt](batchSize = 1))
+
+  /**
+    * Get Block by number.
+    *
+    * @param batchSize The size of the batched request in single HTTP call
+    */
+  def getCode(batchSize: Int): Pipe[F, TransactionRecipt, Bytecode] =
+    stream =>
+      stream.collect {
+        case recipt if recipt.contractAddress.isDefined =>
+          EthGetCode.request(recipt.contractAddress.get, recipt.blockNumber)
+      }.through(client.stream[EthGetCode.Params, Bytecode](batchSize))
 
   /**
     * Get transaction logs. Call JSON-RPC in batches.

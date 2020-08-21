@@ -52,7 +52,7 @@ class EthereumPersistenceTest
           // run
           _ <- tx.transact(
             ethereumPersistenceStub
-              .createBlock(RpcFixtures.blockResult, List(RpcFixtures.transactionResult))
+              .createBlock(RpcFixtures.blockResult, List(RpcFixtures.transactionResult), Nil)
           )
           // test results
           block <- tx.transact(Tables.Blocks.result)
