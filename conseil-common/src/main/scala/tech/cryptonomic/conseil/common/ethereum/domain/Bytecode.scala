@@ -19,12 +19,13 @@ case class Bytecode(bytecode: String) {
   lazy val opcodes: Seq[Opcode] =
     bytecode
       .grouped(2)
+      .map(Integer.valueOf(_, 16))
       .zipWithIndex
       .foldLeft((0, Seq.empty[Opcode])) {
         case (opcodes, (bytes, offset)) =>
           opcodes match {
             case (0, opcodes) =>
-              Instructions.registry.find(_.opcode == Integer.valueOf(bytes, 16)) match {
+              Instructions.registry.find(_.opcode == bytes) match {
                 case Some(instruction) if instruction.args > 0 =>
                   (
                     instruction.args,
