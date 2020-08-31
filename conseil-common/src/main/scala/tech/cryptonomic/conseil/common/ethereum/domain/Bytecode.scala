@@ -7,7 +7,12 @@ import tech.cryptonomic.conseil.common.ethereum.Utils
   * It allows to chech if given contract is ERC20 or ERC721.
   * The code is based on https://github.com/ethereum/evmdasm
   */
-case class Bytecode(bytecode: String) {
+case class Bytecode(value: String) {
+
+  /**
+    * Bytecode without "0x" prefix.
+    */
+  lazy val normalized = Utils.remove0x(value)
 
   /**
     * To turn the compiled bytecode into a list of operations,
@@ -17,7 +22,7 @@ case class Bytecode(bytecode: String) {
     * Push operations require to take next n elements to compute given function parameters.
     */
   lazy val opcodes: Seq[Opcode] =
-    bytecode
+    normalized
       .grouped(2)
       .map(Integer.valueOf(_, 16))
       .zipWithIndex
@@ -33,9 +38,9 @@ case class Bytecode(bytecode: String) {
                           offset,
                           instruction,
                           BigInt(
-                            bytecode.substring(
+                            normalized.substring(
                               offset * 2 + 2,
-                              Integer.min(offset * 2 + 2 + instruction.args * 2, bytecode.size)
+                              Integer.min(offset * 2 + 2 + instruction.args * 2, normalized.size)
                             ),
                             16
                           )
@@ -52,10 +57,20 @@ case class Bytecode(bytecode: String) {
 
   /**
     * Check if bytecode implements a particular function.
+    * Every function call is represented in the bytecode 
+    * by PUSH4 command with 4 bytes sigsignature.
+    * 
+    * example:
+    * ...
+    * DUP1
+    * PUSH4 4-byte-function-signature
+    * STOP
+    * ...
+    * }}}
     */
   def implements(function: String): Boolean =
     opcodes.exists(
-      o => o.instruction.name == "PUSH4" && o.parameters == Utils.functionSignatureTo4byteHexSelector(function)
+      o => o.instruction.name == "PUSH4" && o.parameters == BigInt(Utils.keccak(function), 16)
     )
 
   // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md

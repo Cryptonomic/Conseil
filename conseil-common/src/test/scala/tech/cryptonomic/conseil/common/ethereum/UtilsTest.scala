@@ -5,9 +5,21 @@ import org.scalatest.matchers.should.Matchers
 
 class UtilsTest extends AnyWordSpec with Matchers {
   "Utils" should {
-      "convert function signature to 4 byte hex selector" in {
-        Utils.functionSignatureTo4byteHexSelector("totalSupply()") shouldBe 0x18160ddd
-        Utils.functionSignatureTo4byteHexSelector("totalSupply ()") shouldBe 0x18160ddd
+      "remove 0x prefix from string" in {
+        Utils.remove0x("0x0") shouldBe "0"
+        Utils.remove0x("0") shouldBe "0"
+      }
+
+      "decode hex string" in {
+        Utils.hexToString("0x313233") shouldBe "123"
+      }
+
+      "create sha-3 signature for string value" in {
+        Utils.keccak("totalSupply()") shouldBe "18160DDD"
+      }
+
+      "convert hex string to big decimal" in {
+        Utils.hexStringToBigDecimal("0x1") shouldBe 0x1
       }
     }
 }
