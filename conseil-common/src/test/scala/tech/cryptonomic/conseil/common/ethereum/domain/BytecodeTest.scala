@@ -27,10 +27,12 @@ class BytecodeTest extends AnyWordSpec with Matchers with EthereumFixtures {
 
       "check if bytecode is a erc20 contract" in {
         Bytecode(BytecodeFixtures.erc20).isErc20 shouldBe true
+        Bytecode(BytecodeFixtures.contract).isErc20 shouldBe false
       }
 
       "check if bytecode is a erc721 contract" in {
         Bytecode(BytecodeFixtures.erc721).isErc721 shouldBe true
+        Bytecode(BytecodeFixtures.contract).isErc721 shouldBe false
       }
     }
 }
