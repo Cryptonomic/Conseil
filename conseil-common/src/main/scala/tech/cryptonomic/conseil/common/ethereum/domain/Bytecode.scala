@@ -90,7 +90,6 @@ case class Bytecode(value: String) {
       implements("approve(address,uint256)") &&
       implements("getApproved(uint256)") &&
       implements("isApprovedForAll(address,address)") &&
-      implements("transferFrom(address,address,uint256)") &&
       implements("safeTransferFrom(address,address,uint256)") &&
       implements("safeTransferFrom(address,address,uint256,bytes)")
 }
