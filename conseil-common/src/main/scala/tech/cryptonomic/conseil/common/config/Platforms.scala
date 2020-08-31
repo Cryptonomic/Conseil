@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.common.config
 import java.net.URL
 
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
+import scala.concurrent.duration.Duration
 
 /** defines configuration types for conseil available platforms */
 object Platforms {
@@ -140,20 +141,33 @@ object Platforms {
   }
 
   /**
+    * Configurations to describe a Ethereum retry policy.
+    *
+    * @param maxWait Max wait time between attempts
+    * @param maxRetry retry count
+    */
+  final case class EthereumRetryConfiguration(
+      maxWait: Duration,
+      maxRetry: Int
+  )
+
+  /**
     * Configurations to describe a Ethereum batch fetch.
     *
     * @param indexerThreadsCount The number of threads used by the Lorre process
     * @param httpFetchThreadsCount The number of theread used by the http4s
     * @param blocksBatchSize The number of the blocks batched into one JSON-RPC request
     * @param transactionsBatchSize The number of the transactions batched into one JSON-RPC request
-    * @param logsBatchSize The number of the log batched into one JSON-RPC request
+    * @param contractsBatchSize The number of the contracts batched into one JSON-RPC request
+    * @param tokensBatchSize The number of the tokens batched into one JSON-RPC request
     */
   final case class EthereumBatchFetchConfiguration(
       indexerThreadsCount: Int,
       httpFetchThreadsCount: Int,
       blocksBatchSize: Int,
       transactionsBatchSize: Int,
-      logsBatchSize: Int
+      contractsBatchSize: Int,
+      tokensBatchSize: Int
   )
 
   /** collects all config related to a Ethereum network */
@@ -161,6 +175,7 @@ object Platforms {
       network: String,
       enabled: Boolean,
       node: URL,
+      retry: EthereumRetryConfiguration,
       batching: EthereumBatchFetchConfiguration
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Ethereum
@@ -171,11 +186,12 @@ object Platforms {
       network: String,
       enabled: Boolean,
       node: URL,
+      retry: EthereumRetryConfiguration,
       batching: EthereumBatchFetchConfiguration
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Quorum
 
-    lazy val toEthereumConfiguration = EthereumConfiguration(network, enabled, node, batching)
+    lazy val toEthereumConfiguration = EthereumConfiguration(network, enabled, node, retry, batching)
   }
 
 }

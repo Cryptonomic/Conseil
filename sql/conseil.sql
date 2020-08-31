@@ -907,7 +907,7 @@ CREATE TABLE ethereum.transactions (
   nonce text NOT NULL,
   "to" text,
   transaction_index text NOT NULL,
-  value text NOT NULL,
+  value numeric NOT NULL, -- value in wei
   v text NOT NULL,
   r text NOT NULL,
   s text NOT NULL
@@ -945,6 +945,42 @@ CREATE TABLE ethereum.logs (
 
 ALTER TABLE ONLY ethereum.logs
   ADD CONSTRAINT ethereum_logs_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES ethereum.blocks(hash);
+
+CREATE TABLE ethereum.contracts (
+  address text NOT NULL,
+  block_hash text NOT NULL,
+  block_number integer NOT NULL,
+  bytecode text NOT NULL,
+  is_erc20 boolean NOT NULL DEFAULT false,
+  is_erc721 boolean NOT NULL DEFAULT false
+);
+
+CREATE TABLE ethereum.tokens (
+  address text NOT NULL,
+  block_hash text NOT NULL,
+  block_number integer NOT NULL,
+  name text NOT NULL,
+  symbol text NOT NULL,
+  decimals text NOT NULL,
+  total_supply text NOT NULL
+);
+
+CREATE TABLE ethereum.token_transfers (
+  block_number integer NOT NULL,
+  transaction_hash text NOT NULL,
+  from_address text NOT NULL,
+  to_address text NOT NULL,
+  value numeric NOT NULL
+);
+
+CREATE OR REPLACE VIEW ethereum.accounts AS
+SELECT
+  "to" AS address,
+  SUM(value) AS value
+FROM
+  ethereum.transactions
+GROUP BY
+  "to";
 
 -- The schema for Quorum is duplicated from Ethereum.
 -- TODO: This is a temporary solution, in the future we intend to generate the schema automatically to avoid duplication,
@@ -986,7 +1022,7 @@ CREATE TABLE quorum.transactions (
   nonce text NOT NULL,
   "to" text,
   transaction_index text NOT NULL,
-  value text NOT NULL,
+  value numeric NOT NULL, -- value in wei
   v text NOT NULL,
   r text NOT NULL,
   s text NOT NULL
@@ -994,6 +1030,20 @@ CREATE TABLE quorum.transactions (
 
 ALTER TABLE ONLY quorum.transactions
   ADD CONSTRAINT quorum_transactions_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES quorum.blocks(hash);
+
+-- Table is based on eth_getTransactionReceipt from https://eth.wiki/json-rpc/API
+CREATE TABLE quorum.recipts (
+  transaction_hash text NOT NULL,
+  transaction_index text NOT NULL,
+  block_hash text NOT NULL,
+  block_number integer NOT NULL,
+  contract_address text,
+  cumulative_gas_used text NOT NULL,
+  gas_used text NOT NULL,
+  logs_bloom text NOT NULL,
+  status text,
+  root text
+);
 
 -- Table is based on eth_getLogs from https://eth.wiki/json-rpc/API
 CREATE TABLE quorum.logs (
@@ -1010,3 +1060,39 @@ CREATE TABLE quorum.logs (
 
 ALTER TABLE ONLY quorum.logs
   ADD CONSTRAINT quorum_logs_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES quorum.blocks(hash);
+
+CREATE TABLE quorum.contracts (
+  address text NOT NULL,
+  block_hash text NOT NULL,
+  block_number integer NOT NULL,
+  bytecode text NOT NULL,
+  is_erc20 boolean NOT NULL DEFAULT false,
+  is_erc721 boolean NOT NULL DEFAULT false
+);
+
+CREATE TABLE quorum.tokens (
+  address text NOT NULL,
+  block_hash text NOT NULL,
+  block_number integer NOT NULL,
+  name text NOT NULL,
+  symbol text NOT NULL,
+  decimals text NOT NULL,
+  total_supply text NOT NULL
+);
+
+CREATE TABLE quorum.token_transfers (
+  block_number integer NOT NULL,
+  transaction_hash text NOT NULL,
+  from_address text NOT NULL,
+  to_address text NOT NULL,
+  value numeric NOT NULL
+);
+
+CREATE OR REPLACE VIEW quorum.accounts AS
+SELECT
+  "to" AS address,
+  SUM(value) AS value
+FROM
+  quorum.transactions
+GROUP BY
+  "to";

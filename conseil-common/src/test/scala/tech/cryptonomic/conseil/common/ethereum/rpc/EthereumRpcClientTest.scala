@@ -33,11 +33,41 @@ class EthereumRpcClientTest extends AnyWordSpec with Matchers with EthereumFixtu
       "return a transactions for the given block" in new EthereumClientStubs {
         Stream(RpcFixtures.blockResult)
           .through(
-            ethereumClientStub(JsonFixtures.getTransactionByHashResponse).getBlockWithTransactions(batchSize = 1)
+            ethereumClientStub(JsonFixtures.getTransactionByHashResponse).getTransactions(batchSize = 1)
           )
           .compile
           .toList
-          .unsafeRunSync() shouldBe List((RpcFixtures.blockResult, List(RpcFixtures.transactionResult)))
+          .unsafeRunSync() shouldBe List(RpcFixtures.transactionResult)
+      }
+
+      "return a transaction recipt for the given transaction" in new EthereumClientStubs {
+        Stream(RpcFixtures.transactionResult)
+          .through(
+            ethereumClientStub(JsonFixtures.getTransactionReciptResponse).getTransactionRecipt
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.transactionReciptResult)
+      }
+
+      "return a contract for the given transaction recipt" in new EthereumClientStubs {
+        Stream(RpcFixtures.transactionReciptResult)
+          .through(
+            ethereumClientStub(JsonFixtures.getCodeResponse).getContract(batchSize = 1)
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.contractResult)
+      }
+
+      "return a token info for the given contract" in new EthereumClientStubs {
+        Stream(RpcFixtures.contractResult)
+          .through(
+            ethereumClientStub(JsonFixtures.callResponse).getTokenInfo
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.tokenResult)
       }
 
     }

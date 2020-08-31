@@ -25,8 +25,10 @@ import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Att
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration._
 
 import java.net.URL
+import tech.cryptonomic.conseil.common.config.Platforms.EthereumRetryConfiguration
 
 class EthereumDataRoutesTest
     extends AnyWordSpec
@@ -60,7 +62,8 @@ class EthereumDataRoutesTest
             "mainnet",
             enabled = true,
             new URL("http://localhost"),
-            EthereumBatchFetchConfiguration(1, 1, 1, 1, 1)
+            EthereumRetryConfiguration(1.second, 1),
+            EthereumBatchFetchConfiguration(1, 1, 1, 1, 1, 1)
           )
         )
       ),

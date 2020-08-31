@@ -4,6 +4,7 @@ import java.time.Instant
 import java.sql.Timestamp
 
 import tech.cryptonomic.conseil.common.ethereum.rpc.json._
+import tech.cryptonomic.conseil.common.ethereum.domain._
 
 /**
   * Fixtures for Ethereum based on MainNet block at height 0x18E70 with hash 0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214
@@ -88,6 +89,40 @@ trait EthereumFixtures {
       |  },
       |  "id": "requestId"
       |}]""".stripMargin
+
+    // Json result for the: eth_getTransactionReceipt
+    val getTransactionReciptResponse =
+      """[{
+      |  "result": {
+      |    "blockHash": "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      |    "blockNumber": "0x18e70",
+      |    "contractAddress": "0x123",
+      |    "cumulativeGasUsed": "0x5208",
+      |    "from": "0xd9666150a9da92d9108198a4072970805a8b3428",
+      |    "gasUsed": "0x5208",
+      |    "logs": [],
+      |    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      |    "root": "0x86bb2ce193e0c440bd7137a860531031af5f40d80ba1281dd3e91093243a1974",
+      |    "to": "0x32be343b94f860124dc4fee278fdcbd38c102d88",
+      |    "transactionHash": "0x3cfcdc56f1ecf4aef8b95dddc9f5b727593b56238bfad7b1932efdfdf9e49fcd",
+      |    "transactionIndex": "0x0"
+      |  },
+      |  "id": "requestId"
+      |}]""".stripMargin
+
+    // Json result for the: eth_getCode
+    val getCodeResponse =
+      """[{
+      |  "result": "0x0",
+      |  "id": "requestId"
+      |}]""".stripMargin
+
+    // Json result for the: eth_call
+    val callResponse =
+      """[{
+      |  "result": "0x0",
+      |  "id": "requestId"
+      |}]""".stripMargin
   }
 
   /**
@@ -162,6 +197,42 @@ trait EthereumFixtures {
       transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
       transactionIndex = "0x3"
     )
+
+    val transactionReciptResult = TransactionRecipt(
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = "0x18e70",
+      contractAddress = Some("0x123"),
+      cumulativeGasUsed = "0x5208",
+      from = "0xd9666150a9da92d9108198a4072970805a8b3428",
+      gasUsed = "0x5208",
+      logs = Nil,
+      logsBloom =
+        "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      status = None,
+      root = Some("0x86bb2ce193e0c440bd7137a860531031af5f40d80ba1281dd3e91093243a1974"),
+      to = Some("0x32be343b94f860124dc4fee278fdcbd38c102d88"),
+      transactionHash = "0x3cfcdc56f1ecf4aef8b95dddc9f5b727593b56238bfad7b1932efdfdf9e49fcd",
+      transactionIndex = "0x0"
+    )
+
+    val contractResult = Contract(
+      address = "0x123",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = "0x18e70",
+      isErc20 = false,
+      isErc721 = false,
+      bytecode = Bytecode("0x0")
+    )
+
+    val tokenResult = Token(
+      address = "0x123",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = "0x18e70",
+      name = "",
+      symbol = "",
+      decimals = "0x0",
+      totalSupply = "0x0"
+    )
   }
 
   /**
@@ -202,7 +273,7 @@ trait EthereumFixtures {
       nonce = "0x36",
       to = Some("0x32be343b94f860124dc4fee278fdcbd38c102d88"),
       transactionIndex = "0x0",
-      value = "0x455f6fb3eec11400",
+      value = BigDecimal("4998836930000000000"),
       v = "0x1b",
       r = "0xec5b17e102048e5e52ab779f4ab757634c5aa009dd595aa9575bd55e8d2b7d87",
       s = "0x7021d4517c8a5f92872a7b24d59d47631a5dfa2f5fe340708fc50abf2c817345"
@@ -219,6 +290,47 @@ trait EthereumFixtures {
         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef,0x000000000000000000000000fdb16996831753d5331ff813c29a93c76834a0ad,0x0000000000000000000000000f4a253ee5a63bb4b23a360ad52d69c86bc9fe97",
       transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
       transactionIndex = "0x3"
+    )
+
+    val transactionReciptRow = Tables.ReciptsRow(
+      transactionHash = "0x3cfcdc56f1ecf4aef8b95dddc9f5b727593b56238bfad7b1932efdfdf9e49fcd",
+      transactionIndex = "0x0",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = 102000,
+      contractAddress = Some("0x123"),
+      cumulativeGasUsed = "0x5208",
+      gasUsed = "0x5208",
+      logsBloom =
+        "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      status = None,
+      root = Some("0x86bb2ce193e0c440bd7137a860531031af5f40d80ba1281dd3e91093243a1974")
+    )
+
+    val tokenTransferRow = Tables.TokenTransfersRow(
+      blockNumber = 102000,
+      transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
+      fromAddress = "0x000000000000000000000000fdb16996831753d5331ff813c29a93c76834a0ad",
+      toAddress = "0x0000000000000000000000000f4a253ee5a63bb4b23a360ad52d69c86bc9fe97",
+      value = BigDecimal("1000000000.0")
+    )
+
+    val contractRow = Tables.ContractsRow(
+      address = "0x123",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = 102000,
+      bytecode = "0x0",
+      isErc20 = false,
+      isErc721 = false
+    )
+
+    val tokenRow = Tables.TokensRow(
+      address = "0x123",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = 102000,
+      name = "",
+      symbol = "",
+      decimals = "0x0",
+      totalSupply = "0x0"
     )
   }
 
@@ -237,7 +349,7 @@ trait EthereumFixtures {
 
     /**
       * Simply contract with folowing code:
-      * 
+      *
       * {{{
       *   pragma solidity >=0.4.22 <0.7.0;
       *   contract TestContract {}

@@ -176,7 +176,7 @@ object EthereumDataOperationsTest {
       nonce = "1",
       to = Some("to1"),
       transactionIndex = "1",
-      value = "100",
+      value = BigDecimal("100"),
       v = "v",
       r = "r",
       s = "s"
@@ -192,7 +192,7 @@ object EthereumDataOperationsTest {
       nonce = "1",
       to = Some("to1"),
       transactionIndex = "2",
-      value = "150",
+      value = BigDecimal("150"),
       v = "v",
       r = "r",
       s = "s"
@@ -208,7 +208,7 @@ object EthereumDataOperationsTest {
       nonce = "1",
       to = Some("to1"),
       transactionIndex = "3",
-      value = "100",
+      value = BigDecimal("100"),
       v = "v",
       r = "r",
       s = "s"

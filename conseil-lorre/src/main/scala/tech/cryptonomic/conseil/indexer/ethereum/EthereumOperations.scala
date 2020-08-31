@@ -10,6 +10,7 @@ import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence
 import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumClient
 import tech.cryptonomic.conseil.indexer.config.{Custom, Depth, Everything, Newest}
+import tech.cryptonomic.conseil.common.ethereum.domain.{Bytecode, Contract}
 
 /**
   * Ethereum operations for Lorre.
@@ -37,19 +38,17 @@ class EthereumOperations[F[_]: Concurrent](
       .zip(ethereumClient.getMostRecentBlockNumber.map(Integer.decode))
       .flatMap {
         case (latestIndexedBlock, mostRecentBlockNumber) =>
-          // val range = depth match {
-          //   case Newest => latestIndexedBlock.map(_.number + 1).getOrElse(1) to mostRecentBlockNumber
-          //   case Everything => 1 to mostRecentBlockNumber
-          //   case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.isEmpty =>
-          //     1 to mostRecentBlockNumber
-          //   case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.nonEmpty =>
-          //     latestIndexedBlock.map(_.number + 1).getOrElse(1) to mostRecentBlockNumber
-          //   case Custom(depth) => (mostRecentBlockNumber - depth) to mostRecentBlockNumber
-          // }
+          val range = depth match {
+            case Newest => latestIndexedBlock.map(_.number + 1).getOrElse(1) to mostRecentBlockNumber
+            case Everything => 1 to mostRecentBlockNumber
+            case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.isEmpty =>
+              1 to mostRecentBlockNumber
+            case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.nonEmpty =>
+              latestIndexedBlock.map(_.number + 1).getOrElse(1) to mostRecentBlockNumber
+            case Custom(depth) => (mostRecentBlockNumber - depth) to mostRecentBlockNumber
+          }
 
-          val range = 4634748 to 4634749
-
-          loadBlocksWithTransactions(range) //++ loadContracts(range)
+          loadBlocksWithTransactions(range) ++ extractTokens(range)
       }
 
   /**
@@ -68,21 +67,23 @@ class EthereumOperations[F[_]: Concurrent](
             .filter(height => !existingBlocks.contains(height))
             .map(n => s"0x${n.toHexString}")
             .through(ethereumClient.getBlockByNumber(batchConf.blocksBatchSize))
-            .flatMap(
-              block =>
+            .flatMap {
+              case block if block.transactions.size > 0 =>
                 Stream
                   .emit(block)
-                  .through(ethereumClient.getBlockWithTransactions2(batchConf.transactionsBatchSize))
+                  .through(ethereumClient.getTransactions(batchConf.transactionsBatchSize))
                   .chunkN(Integer.MAX_VALUE)
                   .map(txs => (block, txs.toList))
-            )
+              case block => Stream.emit((block, Nil))
+            }
             .flatMap {
-              case (block, txs) =>
+              case (block, txs) if block.transactions.size > 0 =>
                 Stream
                   .emits(txs)
                   .through(ethereumClient.getTransactionRecipt)
                   .chunkN(Integer.MAX_VALUE)
                   .map(recipts => (block, txs, recipts.toList))
+              case (block, txs) => Stream.emit((block, Nil, Nil))
             }
             .evalTap { // log every 10 block
               case (block, txs, recipts) if Integer.decode(block.number) % 10 == 0 =>
@@ -98,39 +99,40 @@ class EthereumOperations[F[_]: Concurrent](
                 tx.transact(persistence.createBlock(block, txs, recipts))
             }
             .flatMap {
-              case (block, txs, recipts) => Stream.emits(recipts.filter(_.contractAddress.isDefined))
+              case (block, txs, recipts) =>
+                Stream
+                  .emits(recipts.filter(_.contractAddress.isDefined))
+                  .through(ethereumClient.getContract(batchConf.contractsBatchSize))
+                  .chunkN(Integer.MAX_VALUE)
+                  .evalTap(contracts => tx.transact(persistence.createContracts(contracts.toList)))
             }
-            .through(ethereumClient.getCode(10))
-            .evalTap(contracts => Concurrent[F].delay(logger.info(s"Save contracts: $contracts")))
-            .drain
-      )
+      ) 
+      .drain
 
   /**
-    * Get transaction logs from Ethereum node through Ethereum client and save them into the database using Slick.
+    * Get tokens created in the given block number range.
     *
     * @param range Inclusive range of the block's height
     */
-  def loadLogs(range: Range.Inclusive): Stream[F, Unit] =
+  def extractTokens(range: Range.Inclusive): Stream[F, Unit] =
     Stream
-      .range(range.start, range.end)
-      .map(n => s"0x${n.toHexString}")
-      .through(ethereumClient.getLogs(batchConf.logsBatchSize))
-      .chunkN(batchConf.logsBatchSize)
-      .evalTap(logs => Concurrent[F].delay(logger.info(s"Save logs in batch of: ${logs.size}")))
-      .map(logs => persistence.createLogs(logs.toList))
-      .evalMap(tx.transact)
-      .drain
-
-  def extractTokenTransfers(range: Range.Inclusive): Stream[F, Unit] =
-    Stream
-      .eval(tx.transact(persistence.getContractAddresses(range)))
-      // .flatMap(Stream.emits)
-      // .collect {
-      //   case recipt if recipt.contractAddress.isDefined =>
-      //     EthGetCode.request(recipt.contractAddress.get, recipt.blockNumber)
-      // }
-      // .evalTap(contracts => Concurrent[F].delay(logger.info(s"Save contracts: $contracts")))
-      // .through(ethereumClient.getCode(10))
+      .eval(tx.transact(persistence.getContracts(range)))
+      .flatMap(Stream.emits)
+      .map(
+        row =>
+          Contract(
+            address = row.address,
+            blockHash = row.blockHash,
+            blockNumber = s"0x${row.blockNumber.toHexString}",
+            isErc20 = row.isErc20,
+            isErc721 = row.isErc721,
+            bytecode = Bytecode(row.bytecode)
+          )
+      )
+      .through(ethereumClient.getTokenInfo)
+      .evalTap(token => Concurrent[F].delay(logger.info(s"Save token: ${token.name}")))
+      .chunkN(batchConf.tokensBatchSize)
+      .evalTap(tokens => tx.transact(persistence.createTokens(tokens.toList)))
       .drain
 
 }

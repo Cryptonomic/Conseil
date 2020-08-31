@@ -13,11 +13,17 @@ import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction}
 import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.TransactionRecipt
+import tech.cryptonomic.conseil.common.ethereum.domain.{Contract, Token}
 
 /**
   * Ethereum persistence into the database using Slick.
   */
 class EthereumPersistence[F[_]: Concurrent] extends LazyLogging {
+
+  /**
+    * SHA-3 signature for: Transfer(address,address,uint256)
+    */
+  private val tokenTransferSignature = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
   /**
     * Create [[DBIO]] seq with blocks and transactions that can be wrap into one transaction.
@@ -34,12 +40,35 @@ class EthereumPersistence[F[_]: Concurrent] extends LazyLogging {
       Tables.Blocks += block.convertTo[Tables.BlocksRow],
       Tables.Transactions ++= transactions.map(_.convertTo[Tables.TransactionsRow]),
       Tables.Recipts ++= recipts.map(_.convertTo[Tables.ReciptsRow]),
-      Tables.Logs ++= recipts.flatMap(_.logs).map(_.convertTo[Tables.LogsRow])
+      Tables.Logs ++= recipts.flatMap(_.logs).map(_.convertTo[Tables.LogsRow]),
+      Tables.TokenTransfers ++= recipts
+            .flatMap(_.logs)
+            .filter(
+              log =>
+                log.topics.size == 3 && log.topics
+                    .contains(tokenTransferSignature)
+            )
+            .map(_.convertTo[Tables.TokenTransfersRow])
     )
 
-  def createLogs(logs: List[Log]) =
+  /**
+    * Create [[DBIO]] seq with contracts.
+    *
+    * @param logs JSON_RPC contract
+    */
+  def createContracts(contracts: List[Contract]) =
     DBIO.seq(
-      Tables.Logs ++= logs.map(_.convertTo[Tables.LogsRow])
+      Tables.Contracts ++= contracts.map(_.convertTo[Tables.ContractsRow])
+    )
+
+  /**
+    * Create [[DBIO]] seq with tokens.
+    *
+    * @param logs JSON_RPC token
+    */
+  def createTokens(tokens: List[Token]) =
+    DBIO.seq(
+      Tables.Tokens ++= tokens.map(_.convertTo[Tables.TokensRow])
     )
 
   /**
@@ -57,12 +86,14 @@ class EthereumPersistence[F[_]: Concurrent] extends LazyLogging {
     Tables.Blocks.sortBy(_.number.desc).take(1).result.headOption
 
   /**
-    * Get a list of contract addresses from the recipts.
+    * Get a list of contract in a given block number range.
+    *
+    * @param range Inclusive range of the block's height
     */
-  def getContractAddresses(range: Range.Inclusive): DBIO[Seq[Tables.ReciptsRow]] =
-    Tables.Recipts
+  def getContracts(range: Range.Inclusive): DBIO[Seq[Tables.ContractsRow]] =
+    Tables.Contracts
       .filter(_.blockNumber between (range.start, range.end))
-      .filter(_.contractAddress.isDefined)
+      .filter(c => c.isErc20 || c.isErc721)
       .result
 }
 
@@ -123,7 +154,7 @@ object EthereumPersistence {
           nonce = from.nonce,
           to = from.to,
           transactionIndex = from.transactionIndex,
-          value = from.value,
+          value = Utils.hexStringToBigDecimal(from.value),
           v = from.v,
           r = from.r,
           s = from.s
@@ -170,6 +201,60 @@ object EthereumPersistence {
           topics = from.topics.mkString(","),
           transactionHash = from.transactionHash,
           transactionIndex = from.transactionIndex
+        )
+    }
+
+  /**
+    * Convert form [[Contract]] to [[Tables.ContractsRow]]
+    * TODO: This conversion should be done with the Chimney,
+    *       but it's blocked due to the https://github.com/scala/bug/issues/11157
+    */
+  implicit val contractToContractsRow: Conversion[Id, Contract, Tables.ContractsRow] =
+    new Conversion[Id, Contract, Tables.ContractsRow] {
+      override def convert(from: Contract) =
+        Tables.ContractsRow(
+          address = from.address,
+          blockHash = from.blockHash,
+          blockNumber = Integer.decode(from.blockNumber),
+          bytecode = from.bytecode.value,
+          isErc20 = from.bytecode.isErc20,
+          isErc721 = from.bytecode.isErc721
+        )
+    }
+
+  /**
+    * Convert form [[Log]] to [[Tables.TokenTransfersRow]]
+    * TODO: This conversion should be done with the Chimney,
+    *       but it's blocked due to the https://github.com/scala/bug/issues/11157
+    */
+  implicit val logToTokenTransfersRow: Conversion[Id, Log, Tables.TokenTransfersRow] =
+    new Conversion[Id, Log, Tables.TokenTransfersRow] {
+      override def convert(from: Log) =
+        Tables.TokenTransfersRow(
+          blockNumber = Integer.decode(from.blockNumber),
+          transactionHash = from.transactionHash,
+          fromAddress = from.topics(1),
+          toAddress = from.topics(2),
+          value = Utils.hexStringToBigDecimal(from.data)
+        )
+    }
+
+  /**
+    * Convert form [[Token]] to [[Tables.TokensRow]]
+    * TODO: This conversion should be done with the Chimney,
+    *       but it's blocked due to the https://github.com/scala/bug/issues/11157
+    */
+  implicit val tokenToTokensRow: Conversion[Id, Token, Tables.TokensRow] =
+    new Conversion[Id, Token, Tables.TokensRow] {
+      override def convert(from: Token) =
+        Tables.TokensRow(
+          address = from.address,
+          blockHash = from.blockHash,
+          blockNumber = Integer.decode(from.blockNumber),
+          name = from.name,
+          symbol = from.symbol,
+          decimals = from.decimals,
+          totalSupply = from.totalSupply
         )
     }
 

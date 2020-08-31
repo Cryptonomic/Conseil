@@ -14,7 +14,15 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Blocks.schema ++ Logs.schema ++ Recipts.schema ++ Transactions.schema
+  lazy val schema: profile.SchemaDescription = Array(
+    Blocks.schema,
+    Contracts.schema,
+    Logs.schema,
+    Recipts.schema,
+    Tokens.schema,
+    TokenTransfers.schema,
+    Transactions.schema
+  ).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -236,6 +244,74 @@ trait Tables {
   /** Collection-like TableQuery object for table Blocks */
   lazy val Blocks = new TableQuery(tag => new Blocks(tag))
 
+  /** Entity class storing rows of table Contracts
+    *  @param address Database column address SqlType(text)
+    *  @param blockHash Database column block_hash SqlType(text)
+    *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param bytecode Database column bytecode SqlType(text)
+    *  @param isErc20 Database column is_erc20 SqlType(bool), Default(false)
+    *  @param isErc721 Database column is_erc721 SqlType(bool), Default(false) */
+  case class ContractsRow(
+      address: String,
+      blockHash: String,
+      blockNumber: Int,
+      bytecode: String,
+      isErc20: Boolean = false,
+      isErc721: Boolean = false
+  )
+
+  /** GetResult implicit for fetching ContractsRow objects using plain SQL queries */
+  implicit def GetResultContractsRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Boolean]): GR[ContractsRow] = GR {
+    prs =>
+      import prs._
+      ContractsRow.tupled((<<[String], <<[String], <<[Int], <<[String], <<[Boolean], <<[Boolean]))
+  }
+
+  /** Table description of table contracts. Objects of this class serve as prototypes for rows in queries. */
+  class Contracts(_tableTag: Tag) extends profile.api.Table[ContractsRow](_tableTag, Some("ethereum"), "contracts") {
+    def * =
+      (address, blockHash, blockNumber, bytecode, isErc20, isErc721) <> (ContractsRow.tupled, ContractsRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      (
+        (
+          Rep.Some(address),
+          Rep.Some(blockHash),
+          Rep.Some(blockNumber),
+          Rep.Some(bytecode),
+          Rep.Some(isErc20),
+          Rep.Some(isErc721)
+        )
+      ).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => ContractsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    /** Database column address SqlType(text) */
+    val address: Rep[String] = column[String]("address")
+
+    /** Database column block_hash SqlType(text) */
+    val blockHash: Rep[String] = column[String]("block_hash")
+
+    /** Database column block_number SqlType(int4) */
+    val blockNumber: Rep[Int] = column[Int]("block_number")
+
+    /** Database column bytecode SqlType(text) */
+    val bytecode: Rep[String] = column[String]("bytecode")
+
+    /** Database column is_erc20 SqlType(bool), Default(false) */
+    val isErc20: Rep[Boolean] = column[Boolean]("is_erc20", O.Default(false))
+
+    /** Database column is_erc721 SqlType(bool), Default(false) */
+    val isErc721: Rep[Boolean] = column[Boolean]("is_erc721", O.Default(false))
+  }
+
+  /** Collection-like TableQuery object for table Contracts */
+  lazy val Contracts = new TableQuery(tag => new Contracts(tag))
+
   /** Entity class storing rows of table Logs
     *  @param address Database column address SqlType(text)
     *  @param blockHash Database column block_hash SqlType(text)
@@ -448,6 +524,138 @@ trait Tables {
   /** Collection-like TableQuery object for table Recipts */
   lazy val Recipts = new TableQuery(tag => new Recipts(tag))
 
+  /** Entity class storing rows of table Tokens
+    *  @param address Database column address SqlType(text)
+    *  @param blockHash Database column block_hash SqlType(text)
+    *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param name Database column name SqlType(text)
+    *  @param symbol Database column symbol SqlType(text)
+    *  @param decimals Database column decimals SqlType(text)
+    *  @param totalSupply Database column total_supply SqlType(text) */
+  case class TokensRow(
+      address: String,
+      blockHash: String,
+      blockNumber: Int,
+      name: String,
+      symbol: String,
+      decimals: String,
+      totalSupply: String
+  )
+
+  /** GetResult implicit for fetching TokensRow objects using plain SQL queries */
+  implicit def GetResultTokensRow(implicit e0: GR[String], e1: GR[Int]): GR[TokensRow] = GR { prs =>
+    import prs._
+    TokensRow.tupled((<<[String], <<[String], <<[Int], <<[String], <<[String], <<[String], <<[String]))
+  }
+
+  /** Table description of table tokens. Objects of this class serve as prototypes for rows in queries. */
+  class Tokens(_tableTag: Tag) extends profile.api.Table[TokensRow](_tableTag, Some("ethereum"), "tokens") {
+    def * =
+      (address, blockHash, blockNumber, name, symbol, decimals, totalSupply) <> (TokensRow.tupled, TokensRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      (
+        (
+          Rep.Some(address),
+          Rep.Some(blockHash),
+          Rep.Some(blockNumber),
+          Rep.Some(name),
+          Rep.Some(symbol),
+          Rep.Some(decimals),
+          Rep.Some(totalSupply)
+        )
+      ).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => TokensRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    /** Database column address SqlType(text) */
+    val address: Rep[String] = column[String]("address")
+
+    /** Database column block_hash SqlType(text) */
+    val blockHash: Rep[String] = column[String]("block_hash")
+
+    /** Database column block_number SqlType(int4) */
+    val blockNumber: Rep[Int] = column[Int]("block_number")
+
+    /** Database column name SqlType(text) */
+    val name: Rep[String] = column[String]("name")
+
+    /** Database column symbol SqlType(text) */
+    val symbol: Rep[String] = column[String]("symbol")
+
+    /** Database column decimals SqlType(text) */
+    val decimals: Rep[String] = column[String]("decimals")
+
+    /** Database column total_supply SqlType(text) */
+    val totalSupply: Rep[String] = column[String]("total_supply")
+  }
+
+  /** Collection-like TableQuery object for table Tokens */
+  lazy val Tokens = new TableQuery(tag => new Tokens(tag))
+
+  /** Entity class storing rows of table TokenTransfers
+    *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param transactionHash Database column transaction_hash SqlType(text)
+    *  @param fromAddress Database column from_address SqlType(text)
+    *  @param toAddress Database column to_address SqlType(text)
+    *  @param value Database column value SqlType(numeric) */
+  case class TokenTransfersRow(
+      blockNumber: Int,
+      transactionHash: String,
+      fromAddress: String,
+      toAddress: String,
+      value: scala.math.BigDecimal
+  )
+
+  /** GetResult implicit for fetching TokenTransfersRow objects using plain SQL queries */
+  implicit def GetResultTokenTransfersRow(
+      implicit e0: GR[Int],
+      e1: GR[String],
+      e2: GR[scala.math.BigDecimal]
+  ): GR[TokenTransfersRow] = GR { prs =>
+    import prs._
+    TokenTransfersRow.tupled((<<[Int], <<[String], <<[String], <<[String], <<[scala.math.BigDecimal]))
+  }
+
+  /** Table description of table token_transfers. Objects of this class serve as prototypes for rows in queries. */
+  class TokenTransfers(_tableTag: Tag)
+      extends profile.api.Table[TokenTransfersRow](_tableTag, Some("ethereum"), "token_transfers") {
+    def * =
+      (blockNumber, transactionHash, fromAddress, toAddress, value) <> (TokenTransfersRow.tupled, TokenTransfersRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      ((Rep.Some(blockNumber), Rep.Some(transactionHash), Rep.Some(fromAddress), Rep.Some(toAddress), Rep.Some(value))).shaped
+        .<>(
+          { r =>
+            import r._; _1.map(_ => TokenTransfersRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))
+          },
+          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        )
+
+    /** Database column block_number SqlType(int4) */
+    val blockNumber: Rep[Int] = column[Int]("block_number")
+
+    /** Database column transaction_hash SqlType(text) */
+    val transactionHash: Rep[String] = column[String]("transaction_hash")
+
+    /** Database column from_address SqlType(text) */
+    val fromAddress: Rep[String] = column[String]("from_address")
+
+    /** Database column to_address SqlType(text) */
+    val toAddress: Rep[String] = column[String]("to_address")
+
+    /** Database column value SqlType(numeric) */
+    val value: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("value")
+  }
+
+  /** Collection-like TableQuery object for table TokenTransfers */
+  lazy val TokenTransfers = new TableQuery(tag => new TokenTransfers(tag))
+
   /** Entity class storing rows of table Transactions
     *  @param hash Database column hash SqlType(text), PrimaryKey
     *  @param blockHash Database column block_hash SqlType(text)
@@ -459,7 +667,7 @@ trait Tables {
     *  @param nonce Database column nonce SqlType(text)
     *  @param to Database column to SqlType(text), Default(None)
     *  @param transactionIndex Database column transaction_index SqlType(text)
-    *  @param value Database column value SqlType(text)
+    *  @param value Database column value SqlType(numeric)
     *  @param v Database column v SqlType(text)
     *  @param r Database column r SqlType(text)
     *  @param s Database column s SqlType(text) */
@@ -474,7 +682,7 @@ trait Tables {
       nonce: String,
       to: Option[String] = None,
       transactionIndex: String,
-      value: String,
+      value: scala.math.BigDecimal,
       v: String,
       r: String,
       s: String
@@ -484,7 +692,8 @@ trait Tables {
   implicit def GetResultTransactionsRow(
       implicit e0: GR[String],
       e1: GR[Int],
-      e2: GR[Option[String]]
+      e2: GR[Option[String]],
+      e3: GR[scala.math.BigDecimal]
   ): GR[TransactionsRow] = GR { prs =>
     import prs._
     TransactionsRow.tupled(
@@ -499,7 +708,7 @@ trait Tables {
         <<[String],
         <<?[String],
         <<[String],
-        <<[String],
+        <<[scala.math.BigDecimal],
         <<[String],
         <<[String],
         <<[String]
@@ -590,8 +799,8 @@ trait Tables {
     /** Database column transaction_index SqlType(text) */
     val transactionIndex: Rep[String] = column[String]("transaction_index")
 
-    /** Database column value SqlType(text) */
-    val value: Rep[String] = column[String]("value")
+    /** Database column value SqlType(numeric) */
+    val value: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("value")
 
     /** Database column v SqlType(text) */
     val v: Rep[String] = column[String]("v")

@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.common.ethereum.rpc
 
 import io.circe.{Decoder, Encoder, HCursor, Json}
-import io.circe.syntax._
 
 import tech.cryptonomic.conseil.common.ethereum.domain.Bytecode
 import tech.cryptonomic.conseil.common.rpc.RpcClient.RpcRequest
@@ -95,30 +94,30 @@ object EthereumRpcCommands {
   }
 
   /**
-    * `eth_getLogs` Ethereum JSON-RPC api method.
-    * Returns an array of all logs matching a given filter.
+    * `eth_call` Ethereum JSON-RPC api method.
+    * Executes a new message call immediately without creating a transaction on the block chain.
     */
-  object EthGetLogs extends EthereumRpcMethod {
-    val rpcMethod = "eth_getLogs"
+  object EthCall extends EthereumRpcMethod {
+    val rpcMethod = "eth_call"
     case class Params(
-        fromBlock: String,
-        toBlock: String,
-        topics: Seq[String]
+        blockNumber: String,
+        from: String,
+        data: String
     )
-    def request(fromBlock: String, toBlock: String, topics: Seq[String]) =
-      RpcRequest("2.0", rpcMethod, Params(fromBlock, toBlock, topics), s"egl_${fromBlock}_$toBlock")
+    def request(blockNumber: String, from: String, data: String) =
+      RpcRequest("2.0", rpcMethod, Params(blockNumber, from, data), s"ec_$from")
 
     implicit val encodeParams: Encoder[Params] = (params: Params) =>
       Json.arr(
         Json.obj(
-          "fromBlock" -> Json.fromString(params.fromBlock),
-          "toBlock" -> Json.fromString(params.toBlock),
-          "topics" -> params.topics.asJson
-        )
+          "to" -> Json.fromString(params.from),
+          "data" -> Json.fromString(params.data)
+        ),
+        Json.fromString(params.blockNumber)
       )
   }
 
-  // Decoders for the Ethereum domain
+  // Decoders for the Ethereum domain case classes.
   implicit val decodeBytecode: Decoder[Bytecode] = (c: HCursor) =>
     for {
       bytecode <- c.as[String]
