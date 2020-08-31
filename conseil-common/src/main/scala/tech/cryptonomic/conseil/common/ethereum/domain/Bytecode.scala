@@ -58,7 +58,7 @@ case class Bytecode(value: String) {
   /**
     * Check if bytecode implements a particular function.
     * Every function call is represented in the bytecode 
-    * by PUSH4 command with 4 bytes sigsignature.
+    * by PUSH4 command with 4 bytes signature.
     * 
     * example:
     * ...
