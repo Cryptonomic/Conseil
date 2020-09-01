@@ -10,15 +10,10 @@ import scorex.crypto.hash.Keccak256
 object Utils {
 
   /**
-    * Normalize hex string by removing 0x prefix.
-    */
-  def remove0x(value: String): String = value.stripPrefix("0x")
-
-  /**
     * Decode hex string.
     */
   def hexToString(value: String): String =
-    remove0x(value).grouped(2).toArray.map(Integer.parseInt(_, 16).toChar).mkString.trim
+    value.stripPrefix("0x").grouped(2).toArray.map(Integer.parseInt(_, 16).toChar).mkString.trim
 
   /**
     * Create SHA-3 signature from the first 4 bytes of the given string.
@@ -30,6 +25,6 @@ object Utils {
     * Convert hex string to [[BigDecimal]]
     */
   def hexStringToBigDecimal(value: String): BigDecimal =
-    BigDecimal(Try(BigInt(remove0x(value), 16)).getOrElse(BigInt(0)))
+    BigDecimal(Try(BigInt(value.stripPrefix("0x"), 16)).getOrElse(BigInt(0)))
 
 }

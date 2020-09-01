@@ -12,7 +12,7 @@ case class Bytecode(value: String) {
   /**
     * Bytecode without "0x" prefix.
     */
-  lazy val normalized = Utils.remove0x(value)
+  lazy val normalized = value.stripPrefix("0x")
 
   /**
     * To turn the compiled bytecode into a list of operations,

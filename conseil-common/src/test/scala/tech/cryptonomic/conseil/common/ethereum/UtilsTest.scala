@@ -5,11 +5,6 @@ import org.scalatest.matchers.should.Matchers
 
 class UtilsTest extends AnyWordSpec with Matchers {
   "Utils" should {
-      "remove 0x prefix from string" in {
-        Utils.remove0x("0x0") shouldBe "0"
-        Utils.remove0x("0") shouldBe "0"
-      }
-
       "decode hex string" in {
         Utils.hexToString("0x313233") shouldBe "123"
       }
