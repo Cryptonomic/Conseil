@@ -12,11 +12,7 @@ object Utils {
   /**
     * Normalize hex string by removing 0x prefix.
     */
-  def remove0x(value: String): String =
-    value match {
-      case value if value.startsWith("0x") => value.substring(2)
-      case _ => value
-    }
+  def remove0x(value: String): String = value.stripPrefix("0x")
 
   /**
     * Decode hex string.
