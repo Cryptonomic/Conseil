@@ -50,8 +50,7 @@ private[tezos] object TezosNodeOperator {
 private[tezos] class TezosNodeOperator(
     val node: TezosRPCInterface,
     val network: String,
-    batchConf: BatchFetchConfiguration,
-    indexedDataOperations: TezosIndexedDataOperations
+    batchConf: BatchFetchConfiguration
 )(
     implicit val fetchFutureContext: ExecutionContext
 ) extends LazyLogging
@@ -585,30 +584,31 @@ private[tezos] class TezosNodeOperator(
 
   /**
     * Gets all blocks from the head down to the oldest block not already in the database.
+    *
+    * @param maxIndexedLevel the highest block level already indexed
     * @return Blocks and Account hashes involved
     */
-  def getBlocksNotInDatabase(): Future[PaginatedBlocksResults] =
+  def getBlocksNotInDatabase(maxIndexedLevel: BlockLevel): Future[PaginatedBlocksResults] =
     for {
-      maxLevel <- indexedDataOperations.fetchMaxLevel
       blockHead <- getBlockHead()
       headLevel = blockHead.data.header.level
       headHash = blockHead.data.hash
     } yield {
-      val bootstrapping = maxLevel == -1
-      if (maxLevel < headLevel) {
+      val bootstrapping = maxIndexedLevel == -1
+      if (maxIndexedLevel < headLevel) {
         //got something to load
         if (bootstrapping) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
         else
           logger.info(
             "I found the new block head at level {}, the currently stored max is {}. I'll fetch the missing {} blocks.",
             headLevel,
-            maxLevel,
-            headLevel - maxLevel
+            maxIndexedLevel,
+            headLevel - maxIndexedLevel
           )
-        val paginatedResults = partitionLevelsRange((maxLevel + 1) to headLevel).map(
+        val paginatedResults = partitionLevelsRange((maxIndexedLevel + 1) to headLevel).map(
           page => getBlocks((headHash, headLevel), page)
         )
-        val minLevel = if (bootstrapping) 1L else maxLevel
+        val minLevel = if (bootstrapping) 1L else maxIndexedLevel
         (paginatedResults, headLevel - minLevel)
       } else {
         logger.info("No new blocks to fetch from the network")
@@ -752,10 +752,9 @@ class TezosNodeSenderOperator(
     override val node: TezosRPCInterface,
     network: String,
     batchConf: BatchFetchConfiguration,
-    sodiumConf: SodiumConfiguration,
-    indexedDataOperations: TezosIndexedDataOperations
+    sodiumConf: SodiumConfiguration
 )(implicit executionContext: ExecutionContext)
-    extends TezosNodeOperator(node, network, batchConf, indexedDataOperations)
+    extends TezosNodeOperator(node, network, batchConf)
     with LazyLogging {
   import TezosNodeOperator._
   import TezosJsonDecoders.Circe.Operations._

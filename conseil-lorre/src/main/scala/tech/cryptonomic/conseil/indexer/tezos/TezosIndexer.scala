@@ -46,6 +46,7 @@ class TezosIndexer private (
     ignoreProcessFailures: Boolean,
     lorreConf: LorreConfiguration,
     nodeOperator: TezosNodeOperator,
+    indexedData: TezosIndexedDataOperations,
     blocksProcessor: BlocksProcessor,
     accountsProcessor: AccountsProcessor,
     bakersProcessor: BakersProcessor,
@@ -89,8 +90,12 @@ class TezosIndexer private (
   ): Unit = {
     val noOp = Future.successful(())
     val processing = for {
-      unhandled <- accountsResetHandler.applyUnhandledAccountsResets(accountResetEvents)
-      _ <- processTezosBlocks()
+      maxLevel <- indexedData.fetchMaxLevel
+      reloadedAccountEvents <- processFork(maxLevel)
+      unhandled <- accountsResetHandler.applyUnhandledAccountsResets(
+        reloadedAccountEvents.getOrElse(accountResetEvents)
+      )
+      _ <- processTezosBlocks(maxLevel)
       _ <- if (iteration % lorreConf.feeUpdateInterval == 0)
         TezosFeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
       else
@@ -129,18 +134,46 @@ class TezosIndexer private (
     }
   }
 
+  /** Search for any possible forks happened between the last sync cycle and now.
+    * If a fork is detected, corrections will be applied.
+    *
+    * @param maxIndexedLevel how far has the indexer gone
+    * @return the actual AccountResetEvents still to be processed, if a fork happened, else no meaningful value
+    */
+  private def processFork(maxIndexedLevel: BlockLevel): Future[Option[AccountResetEvents]] = {
+    lazy val emptyOutcome = Future.successful(Option.empty)
+    //nothing to check if no block was indexed yet
+    if (maxIndexedLevel != indexedData.defaultBlockLevel)
+      forkHandler.handleFork(maxIndexedLevel).flatMap {
+        case None =>
+          logger.debug(s"No fork detected up to $maxIndexedLevel")
+          emptyOutcome
+        case Some((forkId, invalidations)) =>
+          logger.warn(
+            s"A fork was detected somewhere before the currently indexed level $maxIndexedLevel. $invalidations entries were invalidated and connected to fork $forkId"
+          )
+          /* locally processed events were invalidated on db, we need to reload them afresh */
+          accountsResetHandler
+            .unprocessedResetRequestLevels(lorreConf.chainEvents)
+            .map(Some(_))
+
+      } else emptyOutcome
+  }
+
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
     * Additionally stores account references that needs updating, too
+    *
+    * @param maxIndexedLevel the highest level reached locally
     */
-  private def processTezosBlocks(): Future[Done] = {
+  private def processTezosBlocks(maxIndexedLevel: BlockLevel): Future[Done] = {
     import cats.instances.future._
     import cats.syntax.flatMap._
 
     logger.info("Processing Tezos Blocks..")
 
     val blockPagesToSynchronize = lorreConf.depth match {
-      case Newest => nodeOperator.getBlocksNotInDatabase()
+      case Newest => nodeOperator.getBlocksNotInDatabase(maxIndexedLevel)
       case Everything => nodeOperator.getLatestBlocks()
       case Custom(n) => nodeOperator.getLatestBlocks(Some(n), lorreConf.headHash.map(TezosBlockHash))
     }
@@ -227,8 +260,7 @@ object TezosIndexer extends LazyLogging {
     val nodeOperator = new TezosNodeOperator(
       new TezosNodeInterface(conf, callsConf, streamingClientConf),
       selectedNetwork,
-      batchingConf,
-      indexedData
+      batchingConf
     )
 
     /* provides operations to handle rights to bake and endorse blocks */
@@ -361,6 +393,7 @@ object TezosIndexer extends LazyLogging {
       ignoreProcessFailures,
       lorreConf,
       nodeOperator,
+      indexedData,
       blocksProcessor,
       accountsProcessor,
       bakersProcessor,
