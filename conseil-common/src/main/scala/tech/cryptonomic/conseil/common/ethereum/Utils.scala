@@ -18,7 +18,7 @@ object Utils {
     * Decode hex string.
     */
   def hexToString(value: String): String =
-    remove0x(value).sliding(2, 2).toArray.map(Integer.parseInt(_, 16).toChar).mkString.trim
+    remove0x(value).grouped(2).toArray.map(Integer.parseInt(_, 16).toChar).mkString.trim
 
   /**
     * Create SHA-3 signature from the first 4 bytes of the given string.
