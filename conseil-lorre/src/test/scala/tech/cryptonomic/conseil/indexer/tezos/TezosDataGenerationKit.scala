@@ -360,15 +360,26 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
       * **Notice** that the generated rows are **not invalidated**
       */
     implicit val validOperationGroupsRowGenerator = Arbitrary(
-      /* we modify the completely random instance provided by scalacheck shapeless
-       * to provide our customized version
+      /* We build a new instance from individual random values.
+       * No value added here from generating the base object completely randomly,
+       * 'cause all fields might fail to save on db.
        */
       for {
-        totallyArbitrary <- arbitrary[OperationGroupsRow]
+        arbitraryHash <- arbitraryBase58CheckString
+        arbitraryBlockHash <- arbitraryBase58CheckString
+        arbitraryStrings <- Gen.infiniteStream(databaseFriendlyStringGenerator)
+        arbitraryOptionalStrings <- Gen.infiniteStream(Gen.option(databaseFriendlyStringGenerator))
+        arbitraryLevel <- Gen.posNum[Long]
       } yield
         ForkValid(
-          /* we currently generate totally random strings for hash fields, as long as it's ok */
-          totallyArbitrary.copy(
+          OperationGroupsRow(
+            hash = arbitraryHash,
+            protocol = arbitraryStrings(0).value,
+            branch = arbitraryStrings(1).value,
+            chainId = arbitraryOptionalStrings(0).map(_.value),
+            signature = arbitraryOptionalStrings(1).map(_.value),
+            blockId = arbitraryBlockHash,
+            blockLevel = arbitraryLevel,
             invalidatedAsof = None,
             forkId = Fork.mainForkId
           )
