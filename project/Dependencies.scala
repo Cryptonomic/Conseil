@@ -31,7 +31,6 @@ object Dependencies {
 
     val silencer = "1.4.4"
     val kantanCsv = "0.6.0"
-    val jackson = "2.9.6"
     val apacheCommonText = "1.7"
     val radixTree = "0.5.1"
 
@@ -139,11 +138,6 @@ object Dependencies {
     "com.nrinaudo" %% "kantan.csv-java8"   % Versions.kantanCsv
   )
 
-  private val jackson = Seq(
-    "com.fasterxml.jackson.core"   % "jackson-databind"      % Versions.jackson exclude ("com.fasterxml.jackson.core", "jackson-annotations"),
-    "com.fasterxml.jackson.module" %% "jackson-module-scala" % Versions.jackson
-  )
-
   private val scalaTestCompile = Seq(
     "org.scalactic"     %% "scalactic"       % Versions.scalaTest,
     "org.scalatest"     %% "scalatest"       % Versions.scalaTest,
@@ -197,7 +191,6 @@ object Dependencies {
       silencer,
       monocle,
       kantanCsv,
-      jackson,
       scalaTest,
       scalaTestJson,
       scalaMock,

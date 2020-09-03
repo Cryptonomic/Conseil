@@ -273,6 +273,11 @@ private[tezos] object TezosJsonDecoders {
       implicit val operationDecoder: Decoder[Operation] = deriveDecoder
       implicit val operationGroupDecoder: Decoder[OperationsGroup] = deriveDecoder
       implicit val parametersCompatDecoder: Decoder[ParametersCompatibility] = decodeUntaggedEither
+      implicit val injectedOperationDecoder: Decoder[InjectedOperation] = deriveDecoder
+      implicit val appliedOperationBalanceDecoder: Decoder[AppliedOperationBalanceUpdates] = deriveDecoder
+      implicit val appliedOperationErrorDecoder: Decoder[AppliedOperationError] = deriveDecoder
+      implicit val appliedOperationResultDecoder: Decoder[AppliedOperationResult] = deriveDecoder
+      implicit val appliedOperationDecoder: Decoder[AppliedOperation] = deriveDecoder
 
     }
 
@@ -284,6 +289,7 @@ private[tezos] object TezosJsonDecoders {
 
       implicit val delegateProtocol4Decoder: Decoder[Protocol4Delegate] = deriveDecoder
       implicit val accountDecoder: Decoder[Account] = deriveDecoder
+      implicit val managerDecoder: Decoder[ManagerKey] = deriveDecoder
     }
 
     object Rights {

@@ -106,10 +106,13 @@ private[tezos] class TezosNodeOperator(
     * @param accountId  Account ID
     * @return           The account
     */
-  def getAccountForBlock(blockHash: TezosBlockHash, accountId: AccountId): Future[Account] =
+  def getAccountForBlock(blockHash: TezosBlockHash, accountId: AccountId): Future[Account] = {
+    import TezosJsonDecoders.Circe.Accounts._
     node
       .runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountId.id}")
-      .map(fromJson[Account])
+      .flatMap(result => Future.fromTry(fromJson[Account](result)))
+
+  }
 
   /**
     * Fetches baking rights for given block
@@ -171,10 +174,13 @@ private[tezos] class TezosNodeOperator(
     * @param accountId  Account ID
     * @return           The account
     */
-  def getAccountManagerForBlock(blockHash: TezosBlockHash, accountId: AccountId): Future[ManagerKey] =
+  def getAccountManagerForBlock(blockHash: TezosBlockHash, accountId: AccountId): Future[ManagerKey] = {
+    import TezosJsonDecoders.Circe.Accounts._
     node
       .runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountId.id}/manager_key")
-      .map(fromJson[ManagerKey])
+      .flatMap(result => Future.fromTry(fromJson[ManagerKey](result)))
+
+  }
 
   /**
     * Fetches all accounts for a given block.
@@ -184,7 +190,7 @@ private[tezos] class TezosNodeOperator(
   def getAllAccountsForBlock(blockHash: TezosBlockHash): Future[Map[AccountId, Account]] =
     for {
       jsonEncodedAccounts <- node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts")
-      accountIds = fromJson[List[String]](jsonEncodedAccounts).map(AccountId)
+      accountIds <- Future.fromTry(fromJson[List[String]](jsonEncodedAccounts).map(_.map(AccountId)))
       accounts <- getAccountsForBlock(accountIds, blockHash)
     } yield accounts
 
@@ -735,7 +741,7 @@ private[tezos] class TezosNodeOperator(
   def getBigMapContents(hash: TezosBlockHash, mapId: BigDecimal, mapKeyHash: ScriptId): Future[JS] =
     node
       .runAsyncGetQuery(network, s"blocks/${hash.value}/context/big_maps/$mapId/${mapKeyHash.value}")
-      .flatMap(result => Future.fromTry(JS.wrapString(JS.sanitize(result))))
+      .flatMap(result => Future.fromTry(JS.fromString(JS.sanitize(result))))
 
 }
 
@@ -752,28 +758,46 @@ class TezosNodeSenderOperator(
     extends TezosNodeOperator(node, network, batchConf, indexedDataOperations)
     with LazyLogging {
   import TezosNodeOperator._
+  import TezosJsonDecoders.Circe.Operations._
   import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
-
-  /** Type representing Map[String, Any] */
-  type AnyMap = Map[String, Any]
+  /* Check out the wiki page on using shapeless for details on the following types
+   * Short survey
+   * HList is short-hand for Heterogeneus List, a fancy name for a dynamically sized tuple, but
+   * defined as a recursive structure, just like a linked list.
+   * Many type classes and code generation can be based on HList at compile-time, making use
+   * of its recursive definition, and the fact that each element has a known type.
+   * Record is a specific type of HList where each element of the tuple is "labelled" with an extra
+   * type which mirrors a field name. The Record syntax builds a complex HList of Key-Values, where
+   * the key is actually encoded statically in the type.
+   * The ReprObjectEncoder can recursively build a json encoder for any Record type
+   */
+  import shapeless.HList
+  import shapeless.record.Record
+  import io.circe.generic.encoding.ReprObjectEncoder._
 
   //used in subsequent operations using Sodium
   SodiumLibrary.setLibraryPath(sodiumConf.libraryPath)
 
   /**
     * Appends a key reveal operation to an operation group if needed.
+    * The input operations can be built using the [[Record]] syntax, which
+    * generates a specifically structured [[HList]].
     * @param operations The operations being forged as part of this operation group
     * @param managerKey The sending account's manager information
     * @param keyStore   Key pair along with public key hash
     * @return           Operation group enriched with a key reveal if necessary
     */
-  def handleKeyRevealForOperations(operations: List[AnyMap], managerKey: ManagerKey, keyStore: KeyStore): List[AnyMap] =
+  def handleKeyRevealForOperations(
+      operations: List[HList],
+      managerKey: ManagerKey,
+      keyStore: KeyStore
+  ): List[HList] =
     managerKey.key match {
       case Some(_) => operations
       case None =>
-        val revealMap: AnyMap = Map(
-          "kind" -> "reveal",
-          "public_key" -> keyStore.publicKey
+        val revealMap = Record(
+          kind = "reveal",
+          public_key = keyStore.publicKey
         )
         revealMap :: operations
     }
@@ -819,17 +843,18 @@ class TezosNodeSenderOperator(
       forgedOperationGroup: String,
       signedOpGroup: SignedOperationGroup
   ): Future[AppliedOperation] = {
-    val payload: AnyMap = Map(
-      "pred_block" -> blockHead.data.header.predecessor,
-      "operation_hash" -> operationGroupHash,
-      "forged_operation" -> forgedOperationGroup,
-      "signature" -> signedOpGroup.signature
+    val payload = Record(
+      pred_block = blockHead.data.header.predecessor.value,
+      operation_hash = operationGroupHash,
+      forged_operation = forgedOperationGroup,
+      signature = signedOpGroup.signature
     )
-    node.runAsyncPostQuery(network, "/blocks/head/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload))).map {
-      result =>
+    node
+      .runAsyncPostQuery(network, "/blocks/head/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
+      .flatMap { result =>
         logger.debug(s"Result of operation application: $result")
-        JsonUtil.fromJson[AppliedOperation](result)
-    }
+        Future.fromTry(JsonUtil.fromJson[AppliedOperation](result))
+      }
   }
 
   /**
@@ -838,12 +863,11 @@ class TezosNodeSenderOperator(
     * @return               ID of injected operation
     */
   def injectOperation(signedOpGroup: SignedOperationGroup): Future[String] = {
-    val payload: AnyMap = Map(
-      "signedOperationContents" -> signedOpGroup.bytes.map("%02X" format _).mkString
-    )
+    val payload = Record(signedOperationContents = signedOpGroup.bytes.map("%02X" format _).mkString)
     node
       .runAsyncPostQuery(network, "/inject_operation", Some(JsonUtil.toJson(payload)))
-      .map(result => fromJson[InjectedOperation](result).injectedOperation)
+      .flatMap(result => Future.fromTry(fromJson[InjectedOperation](result)))
+      .map(_.injectedOperation)
   }
 
   /**

@@ -1,10 +1,8 @@
 package tech.cryptonomic.conseil.common.util
 
-import com.fasterxml.jackson.core.{JsonParseException, JsonParser}
-import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
-import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import scala.annotation.tailrec
+import io.circe._
+import io.circe.parser.decode
+import io.circe.syntax._
 import scala.util.Try
 
 import scala.util.matching.Regex
@@ -41,6 +39,8 @@ object JsonUtil {
 
   object JsonString {
 
+    case class InvalidJsonString[T <: Throwable](cause: T) extends Throwable
+
     // Note: instead of making it private, it might make sense to verify the input
     // and return the [[JsonString]] within a wrapping effect (e.g. Option, Try, Either)
     private[JsonUtil] def apply(json: String): JsonString = new JsonString(json)
@@ -50,16 +50,13 @@ object JsonUtil {
       * @param s the "stringified" json
       * @return a valid JsonString or a failed [[Try]] with the parsing error
       */
-    def wrapString(s: String): Try[JsonString] =
-      Try {
-        validate(mapper.getFactory.createParser(s))
-      }.map(_ => JsonString(s))
-
-    //verifies if the parser can proceed till the end
-    @tailrec
-    @throws[JsonParseException]("when content is not parseable, especially for not well-formed json")
-    private def validate(parser: JsonParser): Boolean =
-      parser.nextToken == null || validate(parser)
+    def fromString(s: String): Try[JsonString] =
+      io.circe.parser
+        .parse(s)
+        .map(_ => JsonString(s))
+        .left
+        .map(InvalidJsonString(_))
+        .toTry
 
     /** A [[JsonString]] representing a json object with no attributes */
     lazy val emptyObject = JsonString("{}")
@@ -71,24 +68,28 @@ object JsonUtil {
         .replaceAll("""\\(u[a-zA-Z0-9]{1,4})""", "$1")
   }
 
-  private val mapper = new ObjectMapper with ScalaObjectMapper
-  mapper
-    .registerModule(DefaultScalaModule)
-    .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-    .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY)
-    .disable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+  def toJson[T: Encoder](value: T): JsonString =
+    JsonString(value.asJson.pretty(Printer.spaces4))
 
-  def toJson[T](value: T): JsonString =
-    JsonString(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(value))
-
-  def toMap[V](json: String)(implicit m: Manifest[V]): Map[String, V] =
-    fromJson[Map[String, V]](json)
-
-  def toListOfMaps[V](json: String)(implicit m: Manifest[V]): List[Map[String, V]] =
+  def toListOfMaps[V: Decoder](json: String): Try[List[Map[String, V]]] =
     fromJson[List[Map[String, V]]](json)
 
-  def fromJson[T: Manifest](json: String): T =
-    mapper.readValue[T](JsonString sanitize json)
+  def fromJson[T: Decoder](json: String): Try[T] = {
+    val result = decode[T](JsonString sanitize json)
+
+    result.left.foreach {
+      case f @ ParsingFailure(msg, cause) =>
+        println(
+          s"Parsing failed for the following json string: $json. This is the error message $msg and the cause is ${cause.getMessage()}"
+        )
+      case f @ DecodingFailure(msg, history) =>
+        println(
+          s"Decoding to an object failed for the following json string: $json. This is the error message $msg and cursor operations so far: $history"
+        )
+    }
+
+    result.toTry
+  }
 
   /** extractor object to read accountIds from a json string, based on the hash format*/
   object AccountIds {

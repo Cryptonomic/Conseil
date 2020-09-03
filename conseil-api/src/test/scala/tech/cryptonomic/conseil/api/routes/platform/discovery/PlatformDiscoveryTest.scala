@@ -3,10 +3,16 @@ package tech.cryptonomic.conseil.api.routes.platform.discovery
 import akka.http.scaladsl.model.{ContentTypes, StatusCodes}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import io.circe._
 import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
-import tech.cryptonomic.conseil.common.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
+import tech.cryptonomic.conseil.common.config.Platforms.{
+  PlatformsConfiguration,
+  TezosConfiguration,
+  TezosNodeConfiguration
+}
 import tech.cryptonomic.conseil.common.config.Types.PlatformName
 import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.DataType.Int
@@ -15,7 +21,12 @@ import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Att
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
 import tech.cryptonomic.conseil.common.util.JsonUtil.toListOfMaps
 
-class PlatformDiscoveryTest extends AnyWordSpec with Matchers with ScalatestRouteTest with MockFactory {
+class PlatformDiscoveryTest
+    extends AnyWordSpec
+    with Matchers
+    with OptionValues
+    with ScalatestRouteTest
+    with MockFactory {
 
   "The platform discovery route" should {
 
@@ -54,7 +65,7 @@ class PlatformDiscoveryTest extends AnyWordSpec with Matchers with ScalatestRout
           // then
           status shouldEqual StatusCodes.OK
           contentType shouldBe ContentTypes.`application/json`
-          val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String])
+          val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String]).get
           result.head("name") shouldBe "tezos"
           result.head("displayName") shouldBe "Tezos"
         }
@@ -70,7 +81,7 @@ class PlatformDiscoveryTest extends AnyWordSpec with Matchers with ScalatestRout
           // then
           status shouldEqual StatusCodes.OK
           contentType shouldBe ContentTypes.`application/json`
-          val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String])
+          val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String]).get
           result.size shouldBe 0
         }
       }
@@ -86,7 +97,7 @@ class PlatformDiscoveryTest extends AnyWordSpec with Matchers with ScalatestRout
           // then
           status shouldEqual StatusCodes.OK
           contentType shouldBe ContentTypes.`application/json`
-          val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String])
+          val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String]).get
           result.head("displayName") shouldBe "overwritten-name"
           result.head("description") shouldBe "description"
         }
@@ -113,7 +124,7 @@ class PlatformDiscoveryTest extends AnyWordSpec with Matchers with ScalatestRout
           // then
           status shouldEqual StatusCodes.OK
           contentType shouldBe ContentTypes.`application/json`
-          val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String])
+          val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String]).get
           result.head("name") shouldBe "mainnet"
           result.head("displayName") shouldBe "Mainnet"
         }
@@ -150,10 +161,14 @@ class PlatformDiscoveryTest extends AnyWordSpec with Matchers with ScalatestRout
           // then
           status shouldEqual StatusCodes.OK
           contentType shouldBe ContentTypes.`application/json`
-          val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String])
-          result.head("name") shouldBe "entity"
-          result.head("displayName") shouldBe "entity-name"
-          result.head("count") shouldBe "1"
+
+          val parseResult = parser.parse(responseAs[String]).getOrElse(Json.arr())
+          parseResult.isArray shouldBe true
+
+          val headResult = parseResult.asArray.value.head.asObject.value
+          headResult("name").value.asString.value shouldBe "entity"
+          headResult("displayName").value.asString.value shouldBe "entity-name"
+          headResult("count").value shouldBe Json.fromInt(1)
         }
       }
 
@@ -203,7 +218,7 @@ class PlatformDiscoveryTest extends AnyWordSpec with Matchers with ScalatestRout
           // then
           status shouldEqual StatusCodes.OK
           contentType shouldBe ContentTypes.`application/json`
-          val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String])
+          val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String]).get
           result.head("name") shouldBe "attribute"
           result.head("displayName") shouldBe "attribute-name"
         }
@@ -270,20 +285,23 @@ class PlatformDiscoveryTest extends AnyWordSpec with Matchers with ScalatestRout
           status shouldEqual StatusCodes.OK
           contentType shouldBe ContentTypes.`application/json`
 
-          val headResult = toListOfMaps[Any](responseAs[String]).head
-          headResult("name") shouldBe "attribute"
-          headResult("displayName") shouldBe "attribute-name"
-          headResult("description") shouldBe "description"
-          headResult("placeholder") shouldBe "placeholder"
-          headResult("dataFormat") shouldBe "dataFormat"
-          headResult("scale") shouldBe 6
-          headResult("valueMap") shouldBe Map("0" -> "value")
-          headResult("dataType") shouldBe "Hash"
-          headResult("reference") shouldBe Map("0" -> "value")
-          headResult("displayPriority") shouldBe 1
-          headResult("displayOrder") shouldBe 1
-          headResult("currencySymbol") shouldBe "ꜩ"
-          headResult("currencySymbolCode") shouldBe 42793
+          val parseResult = parser.parse(responseAs[String]).getOrElse(Json.arr())
+          parseResult.isArray shouldBe true
+
+          val headResult: JsonObject = parseResult.asArray.value.head.asObject.value
+          headResult("name").value.asString.value shouldBe "attribute"
+          headResult("displayName").value.asString.value shouldBe "attribute-name"
+          headResult("description").value.asString.value shouldBe "description"
+          headResult("placeholder").value.asString.value shouldBe "placeholder"
+          headResult("dataFormat").value.asString.value shouldBe "dataFormat"
+          headResult("scale").value shouldBe Json.fromInt(6)
+          headResult("valueMap").value.asObject.value.toMap shouldBe Map("0" -> Json.fromString("value"))
+          headResult("dataType").value.asString.value shouldBe "Hash"
+          headResult("reference").value.asObject.value.toMap shouldBe Map("0" -> Json.fromString("value"))
+          headResult("displayPriority").value shouldBe Json.fromInt(1)
+          headResult("displayOrder").value shouldBe Json.fromInt(1)
+          headResult("currencySymbol").value.asString.value shouldBe "ꜩ"
+          headResult("currencySymbolCode").value shouldBe Json.fromInt(42793)
         }
       }
 
