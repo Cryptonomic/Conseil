@@ -917,7 +917,7 @@ ALTER TABLE ONLY ethereum.transactions
   ADD CONSTRAINT ethereum_transactions_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES ethereum.blocks(hash);
 
 -- Table is based on eth_getTransactionReceipt from https://eth.wiki/json-rpc/API
-CREATE TABLE ethereum.recipts (
+CREATE TABLE ethereum.receipts (
   transaction_hash text NOT NULL,
   transaction_index text NOT NULL,
   block_hash text NOT NULL,
@@ -1032,7 +1032,7 @@ ALTER TABLE ONLY quorum.transactions
   ADD CONSTRAINT quorum_transactions_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES quorum.blocks(hash);
 
 -- Table is based on eth_getTransactionReceipt from https://eth.wiki/json-rpc/API
-CREATE TABLE quorum.recipts (
+CREATE TABLE quorum.receipts (
   transaction_hash text NOT NULL,
   transaction_index text NOT NULL,
   block_hash text NOT NULL,

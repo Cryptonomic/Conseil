@@ -12,7 +12,7 @@ import tech.cryptonomic.conseil.common.util.Conversion
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction}
 import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence._
-import tech.cryptonomic.conseil.common.ethereum.rpc.json.TransactionRecipt
+import tech.cryptonomic.conseil.common.ethereum.rpc.json.TransactionReceipt
 import tech.cryptonomic.conseil.common.ethereum.domain.{Contract, Token}
 
 /**
@@ -34,14 +34,14 @@ class EthereumPersistence[F[_]: Concurrent] extends LazyLogging {
   def createBlock(
       block: Block,
       transactions: List[Transaction],
-      recipts: List[TransactionRecipt]
+      receipts: List[TransactionReceipt]
   ): DBIOAction[Unit, NoStream, Effect.Write] =
     DBIO.seq(
       Tables.Blocks += block.convertTo[Tables.BlocksRow],
       Tables.Transactions ++= transactions.map(_.convertTo[Tables.TransactionsRow]),
-      Tables.Recipts ++= recipts.map(_.convertTo[Tables.ReciptsRow]),
-      Tables.Logs ++= recipts.flatMap(_.logs).map(_.convertTo[Tables.LogsRow]),
-      Tables.TokenTransfers ++= recipts
+      Tables.Receipts ++= receipts.map(_.convertTo[Tables.ReceiptsRow]),
+      Tables.Logs ++= receipts.flatMap(_.logs).map(_.convertTo[Tables.LogsRow]),
+      Tables.TokenTransfers ++= receipts
             .flatMap(_.logs)
             .filter(
               log =>
@@ -162,14 +162,14 @@ object EthereumPersistence {
     }
 
   /**
-    * Convert form [[TransactionRecipt]] to [[Tables.ReciptsRow]]
+    * Convert form [[TransactionReceipt]] to [[Tables.ReceiptsRow]]
     * TODO: This conversion should be done with the Chimney,
     *       but it's blocked due to the https://github.com/scala/bug/issues/11157
     */
-  implicit val transactionReciptToReciptsRow: Conversion[Id, TransactionRecipt, Tables.ReciptsRow] =
-    new Conversion[Id, TransactionRecipt, Tables.ReciptsRow] {
-      override def convert(from: TransactionRecipt) =
-        Tables.ReciptsRow(
+  implicit val transactionReceiptToReceiptsRow: Conversion[Id, TransactionReceipt, Tables.ReceiptsRow] =
+    new Conversion[Id, TransactionReceipt, Tables.ReceiptsRow] {
+      override def convert(from: TransactionReceipt) =
+        Tables.ReceiptsRow(
           blockHash = from.blockHash,
           blockNumber = Integer.decode(from.blockNumber),
           transactionHash = from.transactionHash,

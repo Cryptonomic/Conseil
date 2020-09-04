@@ -80,28 +80,28 @@ class EthereumOperations[F[_]: Concurrent](
               case (block, txs) if block.transactions.size > 0 =>
                 Stream
                   .emits(txs)
-                  .through(ethereumClient.getTransactionRecipt)
+                  .through(ethereumClient.getTransactionReceipt)
                   .chunkN(Integer.MAX_VALUE)
-                  .map(recipts => (block, txs, recipts.toList))
+                  .map(receipts => (block, txs, receipts.toList))
               case (block, txs) => Stream.emit((block, Nil, Nil))
             }
             .evalTap { // log every 10 block
-              case (block, txs, recipts) if Integer.decode(block.number) % 10 == 0 =>
+              case (block, txs, receipts) if Integer.decode(block.number) % 10 == 0 =>
                 Concurrent[F].delay(
                   logger.info(
-                    s"Save block with height: ${block.number} txs: ${txs.size} logs: ${recipts.map(_.logs.size).sum}"
+                    s"Save block with height: ${block.number} txs: ${txs.size} logs: ${receipts.map(_.logs.size).sum}"
                   )
                 )
               case _ => Concurrent[F].unit
             }
             .evalTap {
-              case (block, txs, recipts) =>
-                tx.transact(persistence.createBlock(block, txs, recipts))
+              case (block, txs, receipts) =>
+                tx.transact(persistence.createBlock(block, txs, receipts))
             }
             .flatMap {
-              case (block, txs, recipts) =>
+              case (block, txs, receipts) =>
                 Stream
-                  .emits(recipts.filter(_.contractAddress.isDefined))
+                  .emits(receipts.filter(_.contractAddress.isDefined))
                   .through(ethereumClient.getContract(batchConf.contractsBatchSize))
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap(contracts => tx.transact(persistence.createContracts(contracts.toList)))

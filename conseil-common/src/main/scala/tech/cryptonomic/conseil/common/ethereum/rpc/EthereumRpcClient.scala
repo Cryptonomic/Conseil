@@ -10,7 +10,7 @@ import org.http4s.circe.CirceEntityEncoder._
 import tech.cryptonomic.conseil.common.ethereum.domain.{Bytecode, Contract, Token}
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumRpcCommands._
-import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Transaction, TransactionRecipt}
+import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Transaction, TransactionReceipt}
 import tech.cryptonomic.conseil.common.ethereum.Utils
 
 /**
@@ -65,33 +65,33 @@ class EthereumClient[F[_]: Concurrent](
         .through(client.stream[EthGetTransactionByHash.Params, Transaction](batchSize))
 
   /**
-    * Get transaction recipt.
+    * Get transaction receipt.
     */
-  def getTransactionRecipt: Pipe[F, Transaction, TransactionRecipt] =
+  def getTransactionReceipt: Pipe[F, Transaction, TransactionReceipt] =
     stream =>
       stream
         .map(_.hash)
         .map(EthGetTransactionReceipt.request)
-        .through(client.stream[EthGetTransactionReceipt.Params, TransactionRecipt](batchSize = 1))
+        .through(client.stream[EthGetTransactionReceipt.Params, TransactionReceipt](batchSize = 1))
 
   /**
-    * Returns contract from a given transaction recipt.
+    * Returns contract from a given transaction receipt.
     *
     * @param batchSize The size of the batched request in single HTTP call.
     */
-  def getContract(batchSize: Int): Pipe[F, TransactionRecipt, Contract] =
+  def getContract(batchSize: Int): Pipe[F, TransactionReceipt, Contract] =
     stream =>
-      stream.flatMap { recipt =>
+      stream.flatMap { receipt =>
         stream.collect {
-          case recipt if recipt.contractAddress.isDefined =>
-            EthGetCode.request(recipt.contractAddress.get, recipt.blockNumber)
+          case receipt if receipt.contractAddress.isDefined =>
+            EthGetCode.request(receipt.contractAddress.get, receipt.blockNumber)
         }.through(client.stream[EthGetCode.Params, Bytecode](batchSize))
           .map(
             bytecode =>
               Contract(
-                address = recipt.contractAddress.get,
-                blockHash = recipt.blockHash,
-                blockNumber = recipt.blockNumber,
+                address = receipt.contractAddress.get,
+                blockHash = receipt.blockHash,
+                blockNumber = receipt.blockNumber,
                 bytecode = bytecode
               )
           )

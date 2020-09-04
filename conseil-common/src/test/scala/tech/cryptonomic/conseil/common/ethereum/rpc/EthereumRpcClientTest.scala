@@ -40,18 +40,18 @@ class EthereumRpcClientTest extends AnyWordSpec with Matchers with EthereumFixtu
           .unsafeRunSync() shouldBe List(RpcFixtures.transactionResult)
       }
 
-      "return a transaction recipt for the given transaction" in new EthereumClientStubs {
+      "return a transaction receipt for the given transaction" in new EthereumClientStubs {
         Stream(RpcFixtures.transactionResult)
           .through(
-            ethereumClientStub(JsonFixtures.getTransactionReciptResponse).getTransactionRecipt
+            ethereumClientStub(JsonFixtures.getTransactionReceiptResponse).getTransactionReceipt
           )
           .compile
           .toList
-          .unsafeRunSync() shouldBe List(RpcFixtures.transactionReciptResult)
+          .unsafeRunSync() shouldBe List(RpcFixtures.transactionReceiptResult)
       }
 
-      "return a contract for the given transaction recipt" in new EthereumClientStubs {
-        Stream(RpcFixtures.transactionReciptResult)
+      "return a contract for the given transaction receipt" in new EthereumClientStubs {
+        Stream(RpcFixtures.transactionReceiptResult)
           .through(
             ethereumClientStub(JsonFixtures.getCodeResponse).getContract(batchSize = 1)
           )

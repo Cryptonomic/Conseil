@@ -18,7 +18,7 @@ trait Tables {
     Blocks.schema,
     Contracts.schema,
     Logs.schema,
-    Recipts.schema,
+    Receipts.schema,
     Tokens.schema,
     TokenTransfers.schema,
     Transactions.schema
@@ -407,7 +407,7 @@ trait Tables {
   /** Collection-like TableQuery object for table Logs */
   lazy val Logs = new TableQuery(tag => new Logs(tag))
 
-  /** Entity class storing rows of table Recipts
+  /** Entity class storing rows of table Receipts
     *  @param transactionHash Database column transaction_hash SqlType(text)
     *  @param transactionIndex Database column transaction_index SqlType(text)
     *  @param blockHash Database column block_hash SqlType(text)
@@ -418,7 +418,7 @@ trait Tables {
     *  @param logsBloom Database column logs_bloom SqlType(text)
     *  @param status Database column status SqlType(text), Default(None)
     *  @param root Database column root SqlType(text), Default(None) */
-  case class ReciptsRow(
+  case class ReceiptsRow(
       transactionHash: String,
       transactionIndex: String,
       blockHash: String,
@@ -431,11 +431,11 @@ trait Tables {
       root: Option[String] = None
   )
 
-  /** GetResult implicit for fetching ReciptsRow objects using plain SQL queries */
-  implicit def GetResultReciptsRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Option[String]]): GR[ReciptsRow] = GR {
+  /** GetResult implicit for fetching ReceiptsRow objects using plain SQL queries */
+  implicit def GetResultReceiptsRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Option[String]]): GR[ReceiptsRow] = GR {
     prs =>
       import prs._
-      ReciptsRow.tupled(
+      ReceiptsRow.tupled(
         (
           <<[String],
           <<[String],
@@ -451,8 +451,8 @@ trait Tables {
       )
   }
 
-  /** Table description of table recipts. Objects of this class serve as prototypes for rows in queries. */
-  class Recipts(_tableTag: Tag) extends profile.api.Table[ReciptsRow](_tableTag, Some("ethereum"), "recipts") {
+  /** Table description of table receipts. Objects of this class serve as prototypes for rows in queries. */
+  class Receipts(_tableTag: Tag) extends profile.api.Table[ReceiptsRow](_tableTag, Some("ethereum"), "receipts") {
     def * =
       (
         transactionHash,
@@ -465,7 +465,7 @@ trait Tables {
         logsBloom,
         status,
         root
-      ) <> (ReciptsRow.tupled, ReciptsRow.unapply)
+      ) <> (ReceiptsRow.tupled, ReceiptsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -485,7 +485,7 @@ trait Tables {
       ).shaped.<>(
         { r =>
           import r._;
-          _1.map(_ => ReciptsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5, _6.get, _7.get, _8.get, _9, _10)))
+          _1.map(_ => ReceiptsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5, _6.get, _7.get, _8.get, _9, _10)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -521,8 +521,8 @@ trait Tables {
     val root: Rep[Option[String]] = column[Option[String]]("root", O.Default(None))
   }
 
-  /** Collection-like TableQuery object for table Recipts */
-  lazy val Recipts = new TableQuery(tag => new Recipts(tag))
+  /** Collection-like TableQuery object for table Receipts */
+  lazy val Receipts = new TableQuery(tag => new Receipts(tag))
 
   /** Entity class storing rows of table Tokens
     *  @param address Database column address SqlType(text)

@@ -91,7 +91,7 @@ trait EthereumFixtures {
       |}]""".stripMargin
 
     // Json result for the: eth_getTransactionReceipt
-    val getTransactionReciptResponse =
+    val getTransactionReceiptResponse =
       """[{
       |  "result": {
       |    "blockHash": "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
@@ -198,7 +198,7 @@ trait EthereumFixtures {
       transactionIndex = "0x3"
     )
 
-    val transactionReciptResult = TransactionRecipt(
+    val transactionReceiptResult = TransactionReceipt(
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
       blockNumber = "0x18e70",
       contractAddress = Some("0x123"),
@@ -292,7 +292,7 @@ trait EthereumFixtures {
       transactionIndex = "0x3"
     )
 
-    val transactionReciptRow = Tables.ReciptsRow(
+    val transactionReceiptRow = Tables.ReceiptsRow(
       transactionHash = "0x3cfcdc56f1ecf4aef8b95dddc9f5b727593b56238bfad7b1932efdfdf9e49fcd",
       transactionIndex = "0x0",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
