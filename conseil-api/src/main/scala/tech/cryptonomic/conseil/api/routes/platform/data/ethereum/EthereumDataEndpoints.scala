@@ -25,8 +25,8 @@ trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
   def ethereumLogsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
     logsEndpoint(platform)
 
-  def ethereumReciptsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
-    reciptsEndpoint(platform)
+  def ethereumReceiptsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
+    receiptsEndpoint(platform)
 
   def ethereumContractsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
     contractsEndpoint(platform)
@@ -68,8 +68,8 @@ trait QuorumDataEndpoints extends EthereumDataEndpointsCreator {
   def quorumLogsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
     logsEndpoint(platform)
 
-  def quorumReciptsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
-    reciptsEndpoint(platform)
+  def quorumReceiptsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
+    receiptsEndpoint(platform)
 
   def quorumContractsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
     contractsEndpoint(platform)

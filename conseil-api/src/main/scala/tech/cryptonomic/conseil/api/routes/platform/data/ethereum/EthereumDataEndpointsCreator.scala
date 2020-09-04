@@ -72,14 +72,14 @@ trait EthereumDataEndpointsCreator extends ApiDataEndpoints with ApiDataJsonSche
       tags = createTags(platform, "Logs")
     )
 
-  /** V2 Recipts endpoint definition */
-  private[ethereum] def reciptsEndpoint(platform: String): Endpoint[((String, EthereumFilter), Option[String]), Option[
+  /** V2 Receipts endpoint definition */
+  private[ethereum] def receiptsEndpoint(platform: String): Endpoint[((String, EthereumFilter), Option[String]), Option[
     List[QueryResponse]
   ]] =
     endpoint(
-      request = get(url = createPath(platform) / "recipts" /? ethereumQsFilter, headers = optHeader("apiKey")),
-      response = compatibilityQuery[List[QueryResponse]]("recipts"),
-      tags = createTags(platform, "Recipts")
+      request = get(url = createPath(platform) / "receipts" /? ethereumQsFilter, headers = optHeader("apiKey")),
+      response = compatibilityQuery[List[QueryResponse]]("receipts"),
+      tags = createTags(platform, "Receipts")
     )
 
   /** V2 Contracts endpoint definition */

@@ -47,8 +47,8 @@ class EthereumDataOperations(prefix: String) extends ApiDataOperations {
     queryWithPredicates(prefix, "logs", query).map(Some(_))
 
   /** Fetches the list of reecipts for given query */
-  def fetchRecipts(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =
-    queryWithPredicates(prefix, "recipts", query).map(Some(_))
+  def fetchReceipts(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =
+    queryWithPredicates(prefix, "receipts", query).map(Some(_))
 
   /** Fetches the list of contracts for given query */
   def fetchContracts(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =

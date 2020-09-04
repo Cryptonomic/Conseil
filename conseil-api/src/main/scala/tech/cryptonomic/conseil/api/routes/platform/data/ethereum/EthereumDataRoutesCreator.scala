@@ -107,11 +107,11 @@ trait EthereumDataRoutesCreator
       }
   }
 
-  /** V2 Route implementation for recipts endpoint */
-  private val reciptsRoute: Route = ethereumReciptsEndpoint.implementedByAsync {
+  /** V2 Route implementation for receipts endpoint */
+  private val receiptsRoute: Route = ethereumReceiptsEndpoint.implementedByAsync {
     case ((network, filter), _) =>
       platformNetworkValidation(network) {
-        operations.fetchRecipts(filter.toQuery.withLimitCap(maxQueryResultSize))
+        operations.fetchReceipts(filter.toQuery.withLimitCap(maxQueryResultSize))
       }
   }
 
@@ -164,7 +164,7 @@ trait EthereumDataRoutesCreator
       transactionsRoute,
       transactionByIdRoute,
       logsRoute,
-      reciptsRoute,
+      receiptsRoute,
       contractsRoute,
       tokensRoute,
       tokenTransfersRoute,

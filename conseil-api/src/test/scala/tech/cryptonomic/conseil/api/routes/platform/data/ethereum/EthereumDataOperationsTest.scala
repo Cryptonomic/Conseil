@@ -95,13 +95,13 @@ class EthereumDataOperationsTest
         }
       }
 
-      "return proper recipts, while fetching all recipts" in {
+      "return proper receipts, while fetching all receipts" in {
         // given
         dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Recipts ++= recipts).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Receipts ++= receipts).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchRecipts(Query.empty)) { result =>
+        whenReady(sut.fetchReceipts(Query.empty)) { result =>
           result.value.size shouldBe 3
         }
       }
@@ -323,7 +323,7 @@ object EthereumDataOperationsTest {
     )
     val logs: Seq[LogsRow] = List(log1, log2, log3)
 
-    val recipt1: ReciptsRow = ReciptsRow(
+    val receipt1: ReceiptsRow = ReceiptsRow(
       transactionHash = transaction1.hash,
       transactionIndex = transaction1.transactionIndex,
       blockHash = block1.hash,
@@ -335,7 +335,7 @@ object EthereumDataOperationsTest {
       status = None,
       root = Some("0x1")
     )
-    val recipt2: ReciptsRow = ReciptsRow(
+    val receipt2: ReceiptsRow = ReceiptsRow(
       transactionHash = transaction2.hash,
       transactionIndex = transaction2.transactionIndex,
       blockHash = block2.hash,
@@ -347,7 +347,7 @@ object EthereumDataOperationsTest {
       status = None,
       root = Some("0x2")
     )
-    val recipt3: ReciptsRow = ReciptsRow(
+    val receipt3: ReceiptsRow = ReceiptsRow(
       transactionHash = transaction3.hash,
       transactionIndex = transaction3.transactionIndex,
       blockHash = block3.hash,
@@ -359,7 +359,7 @@ object EthereumDataOperationsTest {
       status = None,
       root = Some("0x2")
     )
-    val recipts: Seq[ReciptsRow] = List(recipt1, recipt2, recipt3)
+    val receipts: Seq[ReceiptsRow] = List(receipt1, receipt2, receipt3)
 
     val contract1: ContractsRow = ContractsRow(
       address = "0x1",
