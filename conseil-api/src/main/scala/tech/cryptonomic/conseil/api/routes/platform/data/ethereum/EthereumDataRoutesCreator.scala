@@ -18,7 +18,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /** Trait, which contains routes for Ethereum-related block-chains */
 trait EthereumDataRoutesCreator
-  extends EthereumDataHelpers
+    extends EthereumDataHelpers
     with EthereumDataEndpoints
     with ApiDataRoutes
     with LazyLogging {
@@ -99,6 +99,62 @@ trait EthereumDataRoutesCreator
       }
   }
 
+  /** V2 Route implementation for logs endpoint */
+  private val logsRoute: Route = ethereumLogsEndpoint.implementedByAsync {
+    case ((network, filter), _) =>
+      platformNetworkValidation(network) {
+        operations.fetchLogs(filter.toQuery.withLimitCap(maxQueryResultSize))
+      }
+  }
+
+  /** V2 Route implementation for recipts endpoint */
+  private val reciptsRoute: Route = ethereumReciptsEndpoint.implementedByAsync {
+    case ((network, filter), _) =>
+      platformNetworkValidation(network) {
+        operations.fetchRecipts(filter.toQuery.withLimitCap(maxQueryResultSize))
+      }
+  }
+
+  /** V2 Route implementation for contracts endpoint */
+  private val contractsRoute: Route = ethereumContractsEndpoint.implementedByAsync {
+    case ((network, filter), _) =>
+      platformNetworkValidation(network) {
+        operations.fetchContracts(filter.toQuery.withLimitCap(maxQueryResultSize))
+      }
+  }
+
+  /** V2 Route implementation for tokens endpoint */
+  private val tokensRoute: Route = ethereumTokensEndpoint.implementedByAsync {
+    case ((network, filter), _) =>
+      platformNetworkValidation(network) {
+        operations.fetchTokens(filter.toQuery.withLimitCap(maxQueryResultSize))
+      }
+  }
+
+  /** V2 Route implementation for token transfers endpoint */
+  private val tokenTransfersRoute: Route = ethereumTokenTransfersEndpoint.implementedByAsync {
+    case ((network, filter), _) =>
+      platformNetworkValidation(network) {
+        operations.fetchTokenTransfers(filter.toQuery.withLimitCap(maxQueryResultSize))
+      }
+  }
+
+  /** V2 Route implementation for accounts endpoint */
+  private val accountsRoute: Route = ethereumAccountsEndpoint.implementedByAsync {
+    case ((network, filter), _) =>
+      platformNetworkValidation(network) {
+        operations.fetchAccounts(filter.toQuery.withLimitCap(maxQueryResultSize))
+      }
+  }
+
+  /** V2 Route implementation for accounts by address endpoint */
+  private val accountsByAddressRoute: Route = ethereumAccountByAddressEndpoint.implementedByAsync {
+    case ((network, address), _) =>
+      platformNetworkValidation(network) {
+        operations.fetchAccountByAddress(address)
+      }
+  }
+
   /** V2 concatenated routes */
   override val getRoute: Route =
     concat(
@@ -106,7 +162,14 @@ trait EthereumDataRoutesCreator
       blockByHashRoute,
       blocksRoute,
       transactionsRoute,
-      transactionByIdRoute
+      transactionByIdRoute,
+      logsRoute,
+      reciptsRoute,
+      contractsRoute,
+      tokensRoute,
+      tokenTransfersRoute,
+      accountsRoute,
+      accountsByAddressRoute
     )
 
   /** Function for validation of the platform and network with flatten */

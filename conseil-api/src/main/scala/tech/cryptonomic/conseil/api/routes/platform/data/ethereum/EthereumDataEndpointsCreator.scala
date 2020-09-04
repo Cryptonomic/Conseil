@@ -64,21 +64,21 @@ trait EthereumDataEndpointsCreator extends ApiDataEndpoints with ApiDataJsonSche
 
   /** V2 Logs endpoint definition */
   private[ethereum] def logsEndpoint(platform: String): Endpoint[((String, EthereumFilter), Option[String]), Option[
-    QueryResponse
+    List[QueryResponse]
   ]] =
     endpoint(
       request = get(url = createPath(platform) / "logs" /? ethereumQsFilter, headers = optHeader("apiKey")),
-      response = compatibilityQuery[QueryResponse]("logs"),
+      response = compatibilityQuery[List[QueryResponse]]("logs"),
       tags = createTags(platform, "Logs")
     )
 
   /** V2 Recipts endpoint definition */
   private[ethereum] def reciptsEndpoint(platform: String): Endpoint[((String, EthereumFilter), Option[String]), Option[
-    QueryResponse
+    List[QueryResponse]
   ]] =
     endpoint(
       request = get(url = createPath(platform) / "recipts" /? ethereumQsFilter, headers = optHeader("apiKey")),
-      response = compatibilityQuery[QueryResponse]("recipts"),
+      response = compatibilityQuery[List[QueryResponse]]("recipts"),
       tags = createTags(platform, "Recipts")
     )
 
@@ -86,21 +86,21 @@ trait EthereumDataEndpointsCreator extends ApiDataEndpoints with ApiDataJsonSche
   private[ethereum] def contractsEndpoint(
       platform: String
   ): Endpoint[((String, EthereumFilter), Option[String]), Option[
-    QueryResponse
+    List[QueryResponse]
   ]] =
     endpoint(
       request = get(url = createPath(platform) / "contracts" /? ethereumQsFilter, headers = optHeader("apiKey")),
-      response = compatibilityQuery[QueryResponse]("contracts"),
+      response = compatibilityQuery[List[QueryResponse]]("contracts"),
       tags = createTags(platform, "Contracts")
     )
 
   /** V2 Tokens endpoint definition */
   private[ethereum] def tokensEndpoint(platform: String): Endpoint[((String, EthereumFilter), Option[String]), Option[
-    QueryResponse
+    List[QueryResponse]
   ]] =
     endpoint(
       request = get(url = createPath(platform) / "tokens" /? ethereumQsFilter, headers = optHeader("apiKey")),
-      response = compatibilityQuery[QueryResponse]("tokens"),
+      response = compatibilityQuery[List[QueryResponse]]("tokens"),
       tags = createTags(platform, "Tokens")
     )
 
@@ -108,21 +108,21 @@ trait EthereumDataEndpointsCreator extends ApiDataEndpoints with ApiDataJsonSche
   private[ethereum] def tokenTransfersEndpoint(
       platform: String
   ): Endpoint[((String, EthereumFilter), Option[String]), Option[
-    QueryResponse
+    List[QueryResponse]
   ]] =
     endpoint(
       request = get(url = createPath(platform) / "token_transfers" /? ethereumQsFilter, headers = optHeader("apiKey")),
-      response = compatibilityQuery[QueryResponse]("token transfers"),
+      response = compatibilityQuery[List[QueryResponse]]("token transfers"),
       tags = createTags(platform, "Token transfers")
     )
 
   /** V2 Accounts endpoint definition */
   private[ethereum] def accountsEndpoint(platform: String): Endpoint[((String, EthereumFilter), Option[String]), Option[
-    QueryResponse
+    List[QueryResponse]
   ]] =
     endpoint(
       request = get(url = createPath(platform) / "accounts" /? ethereumQsFilter, headers = optHeader("apiKey")),
-      response = compatibilityQuery[QueryResponse]("accounts"),
+      response = compatibilityQuery[List[QueryResponse]]("accounts"),
       tags = createTags(platform, "Accounts")
     )
 
