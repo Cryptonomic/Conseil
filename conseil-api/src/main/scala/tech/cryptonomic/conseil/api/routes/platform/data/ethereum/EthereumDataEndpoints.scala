@@ -68,4 +68,22 @@ trait QuorumDataEndpoints extends EthereumDataEndpointsCreator {
   def quorumLogsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
     logsEndpoint(platform)
 
+  def quorumReciptsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
+    reciptsEndpoint(platform)
+
+  def quorumContractsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
+    contractsEndpoint(platform)
+
+  def quorumTokensEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
+    tokensEndpoint(platform)
+
+  def quorumTokenTransfersEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
+    tokenTransfersEndpoint(platform)
+
+  def quorumAccountsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
+    accountsEndpoint(platform)
+  
+  def quorumAccountByAddressEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
+    accountByAddressEndpoint(platform)
+
 }
