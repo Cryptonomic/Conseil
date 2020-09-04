@@ -18,6 +18,7 @@ case class EthereumFilter(
     blockIds: Set[String] = Set.empty,
     blockHashes: Set[String] = Set.empty,
     transactionHashes: Set[String] = Set.empty,
+    accountAddresses: Set[String] = Set.empty,
     sortBy: Option[String] = None,
     order: Option[Sorting] = Some(DescendingSort)
 ) {
@@ -41,6 +42,11 @@ case class EthereumFilter(
           field = "blockhash",
           operation = OperationType.in,
           set = blockHashes.toList
+        ),
+        Predicate( // to find accounts by specific address
+          field = "address",
+          operation = OperationType.in,
+          set = accountAddresses.toList
         )
       ).filter(_.set.nonEmpty),
       limit = limit.getOrElse(DataTypes.defaultLimitValue),

@@ -45,4 +45,31 @@ class EthereumDataOperations(prefix: String) extends ApiDataOperations {
   /** Fetches the list of logs for given query */
   def fetchLogs(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =
     queryWithPredicates(prefix, "logs", query).map(Some(_))
+
+  /** Fetches the list of reecipts for given query */
+  def fetchRecipts(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =
+    queryWithPredicates(prefix, "recipts", query).map(Some(_))
+
+  /** Fetches the list of contracts for given query */
+  def fetchContracts(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =
+    queryWithPredicates(prefix, "contracts", query).map(Some(_))
+
+  /** Fetches the list of tokens for given query */
+  def fetchTokens(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =
+    queryWithPredicates(prefix, "tokens", query).map(Some(_))
+
+  /** Fetches the list of token transfers for given query */
+  def fetchTokenTransfers(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =
+    queryWithPredicates(prefix, "token_transfers", query).map(Some(_))
+
+  /** Fetches the list of accounts for given query */
+  def fetchAccounts(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =
+    queryWithPredicates(prefix, "accounts", query).map(Some(_))
+
+  /** Fetches the list of accounts for given query */
+  def fetchAccountByAddress(address: String)(implicit ec: ExecutionContext): Future[Option[QueryResponse]] = {
+    val filter = EthereumFilter(accountAddresses = Set(address))
+    queryWithPredicates(prefix, "accounts", filter.toQuery).map(_.headOption)
+  }
+
 }

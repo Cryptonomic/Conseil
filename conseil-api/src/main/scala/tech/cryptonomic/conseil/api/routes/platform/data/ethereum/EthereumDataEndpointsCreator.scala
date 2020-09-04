@@ -7,7 +7,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 trait EthereumDataEndpointsCreator extends ApiDataEndpoints with ApiDataJsonSchemas with EthereumFilterFromQueryString {
 
   /** V2 Blocks endpoint definition */
-  private[ethereum] def blocksEndpoint(platform: String) : Endpoint[((String, EthereumFilter), Option[String]), Option[
+  private[ethereum] def blocksEndpoint(platform: String): Endpoint[((String, EthereumFilter), Option[String]), Option[
     List[QueryResponse]
   ]] =
     endpoint(
@@ -17,7 +17,9 @@ trait EthereumDataEndpointsCreator extends ApiDataEndpoints with ApiDataJsonSche
     )
 
   /** V2 Blocks head endpoint definition */
-  private[ethereum] def blocksHeadEndpoint(platform: String): Endpoint[(String, Option[String]), Option[QueryResponse]] =
+  private[ethereum] def blocksHeadEndpoint(
+      platform: String
+  ): Endpoint[(String, Option[String]), Option[QueryResponse]] =
     endpoint(
       request = get(url = createPath(platform) / "blocks" / "head", headers = optHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("blocks head"),
@@ -25,15 +27,20 @@ trait EthereumDataEndpointsCreator extends ApiDataEndpoints with ApiDataJsonSche
     )
 
   /** V2 Blocks by hash endpoint definition */
-  private[ethereum] def blockByHashEndpoint(platform: String): Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
+  private[ethereum] def blockByHashEndpoint(
+      platform: String
+  ): Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
     endpoint(
-      request = get(url = createPath(platform) / "blocks" / segment[String](name = "hash"), headers = optHeader("apiKey")),
+      request =
+        get(url = createPath(platform) / "blocks" / segment[String](name = "hash"), headers = optHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("block by hash"),
       tags = createTags(platform, "Blocks")
     )
 
   /** V2 Transactions endpoint definition */
-  private[ethereum] def transactionsEndpoint(platform: String): Endpoint[((String, EthereumFilter), Option[String]), Option[
+  private[ethereum] def transactionsEndpoint(
+      platform: String
+  ): Endpoint[((String, EthereumFilter), Option[String]), Option[
     List[QueryResponse]
   ]] =
     endpoint(
@@ -43,9 +50,14 @@ trait EthereumDataEndpointsCreator extends ApiDataEndpoints with ApiDataJsonSche
     )
 
   /** V2 Transaction by id endpoint definition */
-  private[ethereum] def transactionByHashEndpoint(platform: String): Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
+  private[ethereum] def transactionByHashEndpoint(
+      platform: String
+  ): Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
     endpoint(
-      request = get(url = createPath(platform) / "transactions" / segment[String](name = "hash"), headers = optHeader("apiKey")),
+      request = get(
+        url = createPath(platform) / "transactions" / segment[String](name = "hash"),
+        headers = optHeader("apiKey")
+      ),
       response = compatibilityQuery[QueryResponse]("transaction by hash"),
       tags = createTags(platform, "Transactions")
     )
@@ -58,6 +70,71 @@ trait EthereumDataEndpointsCreator extends ApiDataEndpoints with ApiDataJsonSche
       request = get(url = createPath(platform) / "logs" /? ethereumQsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("logs"),
       tags = createTags(platform, "Logs")
+    )
+
+  /** V2 Recipts endpoint definition */
+  private[ethereum] def reciptsEndpoint(platform: String): Endpoint[((String, EthereumFilter), Option[String]), Option[
+    QueryResponse
+  ]] =
+    endpoint(
+      request = get(url = createPath(platform) / "recipts" /? ethereumQsFilter, headers = optHeader("apiKey")),
+      response = compatibilityQuery[QueryResponse]("recipts"),
+      tags = createTags(platform, "Recipts")
+    )
+
+  /** V2 Contracts endpoint definition */
+  private[ethereum] def contractsEndpoint(
+      platform: String
+  ): Endpoint[((String, EthereumFilter), Option[String]), Option[
+    QueryResponse
+  ]] =
+    endpoint(
+      request = get(url = createPath(platform) / "contracts" /? ethereumQsFilter, headers = optHeader("apiKey")),
+      response = compatibilityQuery[QueryResponse]("contracts"),
+      tags = createTags(platform, "Contracts")
+    )
+
+  /** V2 Tokens endpoint definition */
+  private[ethereum] def tokensEndpoint(platform: String): Endpoint[((String, EthereumFilter), Option[String]), Option[
+    QueryResponse
+  ]] =
+    endpoint(
+      request = get(url = createPath(platform) / "tokens" /? ethereumQsFilter, headers = optHeader("apiKey")),
+      response = compatibilityQuery[QueryResponse]("tokens"),
+      tags = createTags(platform, "Tokens")
+    )
+
+  /** V2 Token transfers endpoint definition */
+  private[ethereum] def tokenTransfersEndpoint(
+      platform: String
+  ): Endpoint[((String, EthereumFilter), Option[String]), Option[
+    QueryResponse
+  ]] =
+    endpoint(
+      request = get(url = createPath(platform) / "token_transfers" /? ethereumQsFilter, headers = optHeader("apiKey")),
+      response = compatibilityQuery[QueryResponse]("token transfers"),
+      tags = createTags(platform, "Token transfers")
+    )
+
+  /** V2 Accounts endpoint definition */
+  private[ethereum] def accountsEndpoint(platform: String): Endpoint[((String, EthereumFilter), Option[String]), Option[
+    QueryResponse
+  ]] =
+    endpoint(
+      request = get(url = createPath(platform) / "accounts" /? ethereumQsFilter, headers = optHeader("apiKey")),
+      response = compatibilityQuery[QueryResponse]("accounts"),
+      tags = createTags(platform, "Accounts")
+    )
+
+  /** V2 Accounts by address endpoint definition */
+  private[ethereum] def accountByAddressEndpoint(
+      platform: String
+  ): Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
+    endpoint(
+      request =
+        get(url = createPath(platform) / "accounts" / segment[String](name = "address"), headers = optHeader("apiKey")),
+      response = compatibilityQuery[QueryResponse]("account by address"),
+      tags = createTags(platform, "Accounts")
     )
 
   private def createPath(platform: String): Path[String] =

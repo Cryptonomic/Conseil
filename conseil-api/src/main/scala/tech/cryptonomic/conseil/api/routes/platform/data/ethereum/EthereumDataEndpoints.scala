@@ -25,6 +25,24 @@ trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
   def ethereumLogsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
     logsEndpoint(platform)
 
+  def ethereumReciptsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
+    reciptsEndpoint(platform)
+
+  def ethereumContractsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
+    contractsEndpoint(platform)
+
+  def ethereumTokensEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
+    tokensEndpoint(platform)
+
+  def ethereumTokenTransfersEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
+    tokenTransfersEndpoint(platform)
+
+  def ethereumAccountsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
+    accountsEndpoint(platform)
+  
+  def ethereumAccountByAddressEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
+    accountByAddressEndpoint(platform)
+
 }
 
 /** Represents list of endpoints exposed for Quorum Blockchain (based on Ethereum) */

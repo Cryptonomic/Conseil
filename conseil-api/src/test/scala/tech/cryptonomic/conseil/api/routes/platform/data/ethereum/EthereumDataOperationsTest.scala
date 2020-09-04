@@ -94,6 +94,79 @@ class EthereumDataOperationsTest
           result.value.size shouldBe 3
         }
       }
+
+      "return proper recipts, while fetching all recipts" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Recipts ++= recipts).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchRecipts(Query.empty)) { result =>
+          result.value.size shouldBe 3
+        }
+      }
+
+      "return proper contracts, while fetching all contracts" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Contracts ++= contracts).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchContracts(Query.empty)) { result =>
+          result.value.size shouldBe 3
+        }
+      }
+
+      "return proper tokens, while fetching all tokens" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Tokens ++= tokens).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchTokens(Query.empty)) { result =>
+          result.value.size shouldBe 3
+        }
+      }
+
+      "return proper token transfers, while fetching all token transfers" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Tokens ++= tokens).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchTokenTransfers(Query.empty)) { result =>
+          result.value.size shouldBe 3
+        }
+      }
+
+      "return proper number of accounts, while fetching all of accounts" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchAccounts(Query.empty)) { result =>
+          result.value.size shouldBe 2
+        }
+      }
+
+      "return proper account by address" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchAccountByAddress("to")) { result =>
+          result.value should (contain key "address" and contain value transaction1.to)
+          //TODO Fix test for 'value' field in AccountRow
+          //Issue with the current approach is that type inside case class is from 'scala' while slick is mapping data inside 'QueryResponse' to 'java'.
+          //Additionally BigDecimals are not easy comparable with 'scalatest'.
+          //Once type for 'value' field inside AccountRow will be changed from 'BigDecimal' into something else or
+          //the type returned by 'fetchAccountByAddress' will be different than 'QueryResponse',
+          //assert below should be either uncommented (in case of replacing 'BigDecimal')
+          //or entire test should be updated (in case of changing returned type by 'fetchAccountByAddress').
+          //result.value should (contain key "value" and contain value output2.value)
+        }
+      }
     }
 }
 
@@ -174,7 +247,7 @@ object EthereumDataOperationsTest {
       gasPrice = "1",
       input = "i1",
       nonce = "1",
-      to = Some("to1"),
+      to = Some("to"),
       transactionIndex = "1",
       value = BigDecimal("100"),
       v = "v",
@@ -190,7 +263,7 @@ object EthereumDataOperationsTest {
       gasPrice = "1",
       input = "i1",
       nonce = "1",
-      to = Some("to1"),
+      to = Some("to"),
       transactionIndex = "2",
       value = BigDecimal("150"),
       v = "v",
@@ -206,7 +279,7 @@ object EthereumDataOperationsTest {
       gasPrice = "1",
       input = "i1",
       nonce = "1",
-      to = Some("to1"),
+      to = Some("to3"),
       transactionIndex = "3",
       value = BigDecimal("100"),
       v = "v",
@@ -249,5 +322,121 @@ object EthereumDataOperationsTest {
       transactionIndex = transaction3.transactionIndex
     )
     val logs: Seq[LogsRow] = List(log1, log2, log3)
+
+    val recipt1: ReciptsRow = ReciptsRow(
+      transactionHash = transaction1.hash,
+      transactionIndex = transaction1.transactionIndex,
+      blockHash = block1.hash,
+      blockNumber = block1.number,
+      contractAddress = Some("0x1"),
+      cumulativeGasUsed = "0x1",
+      gasUsed = "0x1",
+      logsBloom = "0x0",
+      status = None,
+      root = Some("0x1")
+    )
+    val recipt2: ReciptsRow = ReciptsRow(
+      transactionHash = transaction2.hash,
+      transactionIndex = transaction2.transactionIndex,
+      blockHash = block2.hash,
+      blockNumber = block2.number,
+      contractAddress = Some("0x2"),
+      cumulativeGasUsed = "0x2",
+      gasUsed = "0x2",
+      logsBloom = "0x0",
+      status = None,
+      root = Some("0x2")
+    )
+    val recipt3: ReciptsRow = ReciptsRow(
+      transactionHash = transaction3.hash,
+      transactionIndex = transaction3.transactionIndex,
+      blockHash = block3.hash,
+      blockNumber = block3.number,
+      contractAddress = Some("0x2"),
+      cumulativeGasUsed = "0x2",
+      gasUsed = "0x2",
+      logsBloom = "0x0",
+      status = None,
+      root = Some("0x2")
+    )
+    val recipts: Seq[ReciptsRow] = List(recipt1, recipt2, recipt3)
+
+    val contract1: ContractsRow = ContractsRow(
+      address = "0x1",
+      blockHash = block1.hash,
+      blockNumber = block1.number,
+      bytecode = "0x0",
+      isErc20 = false,
+      isErc721 = false
+    )
+    val contract2: ContractsRow = ContractsRow(
+      address = "0x2",
+      blockHash = block2.hash,
+      blockNumber = block2.number,
+      bytecode = "0x0",
+      isErc20 = false,
+      isErc721 = false
+    )
+    val contract3: ContractsRow = ContractsRow(
+      address = "0x3",
+      blockHash = block3.hash,
+      blockNumber = block3.number,
+      bytecode = "0x0",
+      isErc20 = false,
+      isErc721 = false
+    )
+    val contracts: Seq[ContractsRow] = List(contract1, contract2, contract3)
+
+    val token1: TokensRow = TokensRow(
+      address = "0x1",
+      blockHash = block1.hash,
+      blockNumber = block1.number,
+      name = "token 1",
+      symbol = "symbol 1",
+      decimals = "0x0",
+      totalSupply = "0x0"
+    )
+    val token2: TokensRow = TokensRow(
+      address = "0x2",
+      blockHash = block2.hash,
+      blockNumber = block2.number,
+      name = "token 1",
+      symbol = "symbol 1",
+      decimals = "0x0",
+      totalSupply = "0x0"
+    )
+    val token3: TokensRow = TokensRow(
+      address = "0x3",
+      blockHash = block3.hash,
+      blockNumber = block3.number,
+      name = "token 1",
+      symbol = "symbol 1",
+      decimals = "0x0",
+      totalSupply = "0x0"
+    )
+    val tokens: Seq[TokensRow] = List(token1, token2, token3)
+
+    val tokenTransfer1: TokenTransfersRow = TokenTransfersRow(
+      blockNumber = block1.number,
+      transactionHash = transaction1.hash,
+      fromAddress = "0x1",
+      toAddress = "0x2",
+      value = 1.0
+    )
+    val tokenTransfer2: TokenTransfersRow = TokenTransfersRow(
+      blockNumber = block2.number,
+      transactionHash = transaction2.hash,
+      fromAddress = "0x3",
+      toAddress = "0x4",
+      value = 1.0
+    )
+    val tokenTransfer3: TokenTransfersRow = TokenTransfersRow(
+      blockNumber = block3.number,
+      transactionHash = transaction3.hash,
+      fromAddress = "0x5",
+      toAddress = "0x6",
+      value = 1.0
+    )
+    val tokenTransfers: Seq[TokenTransfersRow] = List(tokenTransfer1, tokenTransfer2, tokenTransfer3)
   }
 }
