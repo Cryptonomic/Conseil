@@ -968,7 +968,9 @@ class TezosDatabaseOperationsTest
         )
 
         //check
-        val feesCalculation = sut.calculateAverageFees(ops.head.kind, feesToConsider)
+        //we specify when the computation of fees needs be done, to have the test block reference time in range
+        val feesCalculation =
+          sut.calculateAverageFees(ops.head.kind, feesToConsider, asOf = testReferenceDateTime.toInstant())
 
         dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
 
@@ -992,7 +994,9 @@ class TezosDatabaseOperationsTest
         dbHandler.run(populate).futureValue should have size (fees.size)
 
         //check
-        val feesCalculation = sut.calculateAverageFees("undefined", feesToConsider)
+        //we specify when the computation of fees needs be done, to have the test block reference time in range
+        val feesCalculation =
+          sut.calculateAverageFees("undefined", feesToConsider, asOf = testReferenceDateTime.toInstant())
 
         dbHandler.run(feesCalculation).futureValue shouldBe None
 
@@ -1038,7 +1042,9 @@ class TezosDatabaseOperationsTest
           level = 0
         )
         //check
-        val feesCalculation = sut.calculateAverageFees(selection.head.kind, feesToConsider)
+        //we specify when the computation of fees needs be done, to have the test block reference time in range
+        val feesCalculation =
+          sut.calculateAverageFees(selection.head.kind, feesToConsider, asOf = testReferenceDateTime.toInstant())
 
         dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
 
