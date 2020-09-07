@@ -9,6 +9,7 @@ import monocle.std.all._
 import monocle.function.Each._
 import cats.implicits._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.InternalOperationResults.InternalOperationResult
+import tech.cryptonomic.conseil.common.tezos.TezosOptics.Blocks.KeyedOperation
 
 /** Provides [[https://www.optics.dev/Monocle/ monocle]] lenses and additional "optics"
   * for most common access and mutation patterns for Tezos type hierarchies and ADTs
@@ -74,6 +75,8 @@ object TezosOptics {
 
     /* let's keep some operation optics at hand to shorten the code */
     import Operations._
+
+    case class KeyedOperation(key: OperationHash, operation: Either[Operation, InternalOperationResult])
 
     //basic building blocks to reach into the block's structure
     private[TezosOptics] val onData = GenLens[Block](_.data)
@@ -170,9 +173,7 @@ object TezosOptics {
       * the two-level structure to try and preserve the original intended sequence,
       * foregoing the grouping structure
       */
-    def extractOperationsSequence(
-        block: Block
-    ): List[(OperationHash, Either[Operation, InternalOperationResult])] =
+    def extractOperationsSequence(block: Block): List[KeyedOperation] =
       for {
         group <- block.operationGroups
         op <- group.contents
@@ -187,7 +188,7 @@ object TezosOptics {
             Left(op) :: d.metadata.internal_operation_results.toList.flatten.map(Right(_))
           case _ => List(Left(op))
         }
-      } yield group.hash -> all
+      } yield KeyedOperation(group.hash, all)
 
     //Note, cycle 0 starts at the level 2 block
     def extractCycle(block: Block): Option[Int] =
@@ -302,8 +303,8 @@ object TezosOptics {
 
     def extractAppliedOriginationsResults(block: Block): List[(OperationHash, OperationResult.Origination)] = {
       val operationSequence = TezosOptics.Blocks.extractOperationsSequence(block).collect {
-        case (groupHash, Left(op: Origination)) => groupHash -> op.metadata.operation_result
-        case (groupHash, Right(intOp: InternalOrigination)) => groupHash -> intOp.result
+        case KeyedOperation(groupHash, Left(op: Origination)) => groupHash -> op.metadata.operation_result
+        case KeyedOperation(groupHash, Right(intOp: InternalOrigination)) => groupHash -> intOp.result
       }
 
       operationSequence.filter(result => isApplied(result._2.status))
@@ -311,15 +312,15 @@ object TezosOptics {
 
     def extractAppliedTransactionsResults(block: Block): List[(OperationHash, OperationResult.Transaction)] = {
       val operationSequence = TezosOptics.Blocks.extractOperationsSequence(block).collect {
-        case (groupHash, Left(op: Transaction)) => groupHash -> op.metadata.operation_result
-        case (groupHash, Right(intOp: InternalTransaction)) => groupHash -> intOp.result
+        case KeyedOperation(groupHash, Left(op: Transaction)) => groupHash -> op.metadata.operation_result
+        case KeyedOperation(groupHash, Right(intOp: InternalTransaction)) => groupHash -> intOp.result
       }
 
       operationSequence.filter(result => isApplied(result._2.status))
     }
 
     def extractAppliedTransactions(block: Block): List[Either[Transaction, InternalTransaction]] =
-      TezosOptics.Blocks.extractOperationsSequence(block).map(_._2).collect {
+      TezosOptics.Blocks.extractOperationsSequence(block).map(_.operation).collect {
         case Left(op: Transaction) if isApplied(op.metadata.operation_result.status) => Left(op)
         case Right(intOp: InternalTransaction) if isApplied(intOp.result.status) => Right(intOp)
       }
