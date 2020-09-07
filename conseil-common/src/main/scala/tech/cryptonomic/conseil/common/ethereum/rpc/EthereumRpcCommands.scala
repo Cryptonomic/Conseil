@@ -1,8 +1,8 @@
 package tech.cryptonomic.conseil.common.ethereum.rpc
 
-import io.circe.{Encoder, Json}
-import io.circe.syntax._
+import io.circe.{Decoder, Encoder, HCursor, Json}
 
+import tech.cryptonomic.conseil.common.ethereum.domain.Bytecode
 import tech.cryptonomic.conseil.common.rpc.RpcClient.RpcRequest
 
 /**
@@ -22,13 +22,16 @@ object EthereumRpcCommands {
     */
   object EthBlockNumber extends EthereumRpcMethod {
     val rpcMethod = "eth_blockNumber"
-    def request = RpcRequest("2.0", rpcMethod, Nil, "bn")
+    case object Params
+    def request = RpcRequest("2.0", rpcMethod, Params, "bn")
+
+    implicit val encodeParams: Encoder[Params.type] = (_) => Json.arr()
   }
 
   /**
     * `eth_getBlockByNumber` Ethereum JSON-RPC api method.
     * If verbosity is true it returns the full transaction objects,
-    * if false only the hashes of the transactions. 
+    * if false only the hashes of the transactions.
     * We only use verbosity=false in Lorre.
     */
   object EthGetBlockByNumber extends EthereumRpcMethod {
@@ -59,26 +62,65 @@ object EthereumRpcCommands {
   }
 
   /**
-    * `eth_getLogs` Ethereum JSON-RPC api method.
-    * Returns an array of all logs matching a given filter.
+    * `eth_getTransactionReceipt` Ethereum JSON-RPC api method.
+    * Returns the transaction receipt requested.
     */
-  object EthGetLogs extends EthereumRpcMethod {
-    val rpcMethod = "eth_getLogs"
+  object EthGetTransactionReceipt extends EthereumRpcMethod {
+    val rpcMethod = "eth_getTransactionReceipt"
+    case class Params(txHash: String)
+    def request(txHash: String) = RpcRequest("2.0", rpcMethod, Params(txHash), s"egtr_$txHash")
+
+    implicit val encodeParams: Encoder[Params] = (params: Params) =>
+      Json.arr(
+        Json.fromString(params.txHash)
+      )
+  }
+
+  /**
+    * `eth_getCode` Ethereum JSON-RPC api method.
+    * Returns code at a given address.
+    */
+  object EthGetCode extends EthereumRpcMethod {
+    val rpcMethod = "eth_getCode"
+    case class Params(address: String, blockNumber: String)
+    def request(address: String, blockNumber: String) =
+      RpcRequest("2.0", rpcMethod, Params(address, blockNumber), s"egc_$address")
+
+    implicit val encodeParams: Encoder[Params] = (params: Params) =>
+      Json.arr(
+        Json.fromString(params.address),
+        Json.fromString(params.blockNumber)
+      )
+  }
+
+  /**
+    * `eth_call` Ethereum JSON-RPC api method.
+    * Executes a new message call immediately without creating a transaction on the block chain.
+    */
+  object EthCall extends EthereumRpcMethod {
+    val rpcMethod = "eth_call"
     case class Params(
-        fromBlock: String,
-        toBlock: String,
-        topics: Seq[String]
+        blockNumber: String,
+        from: String,
+        data: String
     )
-    def request(fromBlock: String, toBlock: String, topics: Seq[String]) =
-      RpcRequest("2.0", rpcMethod, Params(fromBlock, toBlock, topics), s"egl_${fromBlock}_$toBlock")
+    def request(blockNumber: String, from: String, data: String) =
+      RpcRequest("2.0", rpcMethod, Params(blockNumber, from, data), s"ec_$from")
 
     implicit val encodeParams: Encoder[Params] = (params: Params) =>
       Json.arr(
         Json.obj(
-          "fromBlock" -> Json.fromString(params.fromBlock),
-          "toBlock" -> Json.fromString(params.toBlock),
-          "topics" -> params.topics.asJson
-        )
+          "to" -> Json.fromString(params.from),
+          "data" -> Json.fromString(params.data)
+        ),
+        Json.fromString(params.blockNumber)
       )
   }
+
+  // Decoders for the Ethereum domain case classes.
+  implicit val decodeBytecode: Decoder[Bytecode] = (c: HCursor) =>
+    for {
+      bytecode <- c.as[String]
+    } yield Bytecode(bytecode)
+
 }

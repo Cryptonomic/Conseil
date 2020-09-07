@@ -47,19 +47,57 @@ class EthereumPersistenceTest
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.logRow)
       }
 
+      "save transaction receipt from the JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {
+        (for {
+          // we have to have block row to save the transaction (due to the foreign key)
+          _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
+          _ <- tx.transact(Tables.Receipts += RpcFixtures.transactionReceiptResult.convertTo[Tables.ReceiptsRow])
+          result <- tx.transact(Tables.Receipts.result)
+        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.transactionReceiptRow)
+      }
+
+      "save token transfer from the log JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {
+        (for {
+          // we have to have block row to save the transaction (due to the foreign key)
+          _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
+          _ <- tx.transact(Tables.TokenTransfers += RpcFixtures.logResult.convertTo[Tables.TokenTransfersRow])
+          result <- tx.transact(Tables.TokenTransfers.result)
+        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.tokenTransferRow)
+      }
+
+      "save contract from the JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {
+        (for {
+          // we have to have block row to save the transaction (due to the foreign key)
+          _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
+          _ <- tx.transact(ethereumPersistenceStub.createContracts(List(RpcFixtures.contractResult)))
+          result <- tx.transact(Tables.Contracts.result)
+        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.contractRow)
+      }
+
+      "save token from the JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {
+        (for {
+          // we have to have block row to save the transaction (due to the foreign key)
+          _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
+          _ <- tx.transact(ethereumPersistenceStub.createTokens(List(RpcFixtures.tokenResult)))
+          result <- tx.transact(Tables.Tokens.result)
+        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.tokenRow)
+      }
+
       "save block with transactions using persistence (integration test)" in new EthereumPersistenceStubs(dbHandler) {
         (for {
           // run
           _ <- tx.transact(
             ethereumPersistenceStub
-              .createBlock(RpcFixtures.blockResult, List(RpcFixtures.transactionResult))
+              .createBlock(RpcFixtures.blockResult, List(RpcFixtures.transactionResult), List(RpcFixtures.transactionReceiptResult))
           )
           // test results
           block <- tx.transact(Tables.Blocks.result)
           transactions <- tx.transact(Tables.Transactions.result)
-        } yield block ++ transactions).unsafeRunSync() shouldBe Vector(
+          receipts <- tx.transact(Tables.Receipts.result)
+        } yield block ++ transactions ++ receipts).unsafeRunSync() shouldBe Vector(
               DbFixtures.blockRow,
-              DbFixtures.transactionRow
+              DbFixtures.transactionRow,
+              DbFixtures.transactionReceiptRow
             )
       }
 

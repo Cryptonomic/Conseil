@@ -1,13 +1,16 @@
 package tech.cryptonomic.conseil.common.rpc
 
+import scala.concurrent.duration.Duration
 import scala.util.control.NoStackTrace
 
 import cats.effect.{Concurrent, Resource}
 import com.typesafe.scalalogging.LazyLogging
 import fs2.Stream
 import org.http4s.{EntityDecoder, EntityEncoder, Header, Method, Uri}
-import org.http4s.client.Client
+import org.http4s.client.{Client, WaitQueueTimeoutException}
+import org.http4s.client.middleware.RetryPolicy
 import org.http4s.client.dsl.Http4sClientDsl
+import org.http4s.Status._
 
 import tech.cryptonomic.conseil.common.rpc.RpcClient._
 
@@ -132,6 +135,28 @@ object RpcClient {
         httpClient,
         headers: _*
       )
+    )
+
+  /**
+    * Default exponential retry policy for http4s client.
+    */
+  def exponentialRetryPolicy[F[_]](maxWait: Duration, maxRetry: Int) =
+    RetryPolicy[F](
+      RetryPolicy.exponentialBackoff(maxWait, maxRetry),
+      (_, result) =>
+        result match {
+          case Right(resp) =>
+            Set(
+              RequestTimeout,
+              InternalServerError,
+              ServiceUnavailable,
+              BadGateway,
+              GatewayTimeout,
+              TooManyRequests
+            )(resp.status)
+          case Left(WaitQueueTimeoutException) => false
+          case _ => true
+        }
     )
 
   /**

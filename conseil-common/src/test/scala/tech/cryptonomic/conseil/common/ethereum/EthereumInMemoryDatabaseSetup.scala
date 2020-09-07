@@ -10,7 +10,12 @@ trait EthereumInMemoryDatabaseSetup extends InMemoryDatabaseSetup {
     Seq(
       Fixture.table(Tables.Blocks),
       Fixture.table(Tables.Transactions),
-      Fixture.table(Tables.Logs)
+      Fixture.table(Tables.Receipts),
+      Fixture.table(Tables.Logs),
+      Fixture.table(Tables.Contracts),
+      Fixture.table(Tables.Tokens),
+      Fixture.table(Tables.TokenTransfers),
+      Fixture.view(Views.AccountsViewSql)
     )
   )
 }
