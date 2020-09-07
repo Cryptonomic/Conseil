@@ -127,14 +127,13 @@ class BitcoinDataOperationsTest
 
         whenReady(sut.fetchAccountByAddress("script_pub_key_address_2")) { result =>
           result.value should (contain key "address" and contain value output2.scriptPubKeyAddresses)
-          //TODO Fix test for 'value' field in AccountRow
-          //Issue with the current approach is that type inside case class is from 'scala' while slick is mapping data inside 'QueryResponse' to 'java'.
-          //Additionally BigDecimals are not easy comparable with 'scalatest'.
-          //Once type for 'value' field inside AccountRow will be changed from 'BigDecimal' into something else or
-          //the type returned by 'fetchAccountByAddress' will be different than 'QueryResponse',
-          //assert below should be either uncommented (in case of replacing 'BigDecimal')
-          //or entire test should be updated (in case of changing returned type by 'fetchAccountByAddress').
-          //result.value should (contain key "value" and contain value output2.value)
+          result.value should (contain key "value" and contain value output2.value.map(convertAndScale(_, 2)))
+
+          // Since we are getting data for QueryResponse in generic way,
+          // we are accessing Java API which returns java data types.
+          // We need to convert and adjust scale for what we are receiving from Slick,
+          // because ScalaTest uses `==`, instead od `compareTo` for this type.
+          def convertAndScale(v: BigDecimal, s: Int): java.math.BigDecimal = v.bigDecimal.setScale(s)
         }
       }
     }
