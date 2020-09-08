@@ -94,160 +94,249 @@ class EthereumDataOperationsTest
           result.value.size shouldBe 3
         }
       }
+
+      "return proper receipts, while fetching all receipts" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Receipts ++= receipts).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchReceipts(Query.empty)) { result =>
+          result.value.size shouldBe 3
+        }
+      }
+
+      "return proper contracts, while fetching all contracts" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Contracts ++= contracts).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchContracts(Query.empty)) { result =>
+          result.value.size shouldBe 3
+        }
+      }
+
+      "return proper tokens, while fetching all tokens" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Tokens ++= tokens).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchTokens(Query.empty)) { result =>
+          result.value.size shouldBe 3
+        }
+      }
+
+      "return proper token transfers, while fetching all token transfers" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Tokens ++= tokens).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchTokenTransfers(Query.empty)) { result =>
+          result.value.size shouldBe 3
+        }
+      }
+
+      "return proper number of accounts, while fetching all of accounts" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchAccounts(Query.empty)) { result =>
+          result.value.size shouldBe 2
+        }
+      }
+
+      "return proper account by address" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchAccountByAddress("to")) { result =>
+          result.value should (contain key "address" and contain value transaction1.to)
+          result.value should (contain key "value" and contain value Some(
+            convertAndScale(transaction2.value + transaction3.value, 2)
+          ))
+
+          // Since we are getting data for QueryResponse in generic way,
+          // we are accessing Java API which returns java data types.
+          // We need to convert and adjust scale for what we are receiving from Slick,
+          // because ScalaTest uses `==`, instead od `compareTo` for this type.
+          def convertAndScale(v: BigDecimal, s: Int): java.math.BigDecimal = v.bigDecimal.setScale(s)
+        }
+      }
     }
 }
 
 object EthereumDataOperationsTest {
   trait Fixtures {
 
-    val block1: BlocksRow = BlocksRow(
-      hash = "hash1",
-      number = 1,
-      difficulty = "1",
-      extraData = "extra1",
-      gasLimit = "1",
-      gasUsed = "1",
+    private val defaultBlock = BlocksRow(
+      hash = "hash",
+      number = 0,
+      difficulty = "0",
+      extraData = "extra",
+      gasLimit = "0",
+      gasUsed = "0",
       logsBloom = "bloom",
       miner = "a",
-      mixHash = "m1",
+      mixHash = "m",
       nonce = "n",
       parentHash = None,
       receiptsRoot = "r",
       sha3Uncles = "sha3",
-      size = "3",
+      size = "0",
       stateRoot = "sr",
-      totalDifficulty = "3",
+      totalDifficulty = "0",
       transactionsRoot = "tr",
       uncles = None,
-      timestamp = Timestamp.valueOf("2020-06-20 20:05:40")
+      timestamp = Timestamp.valueOf("2020-01-01 00:00:00")
     )
-    val block2: BlocksRow = BlocksRow(
-      hash = "hash2",
-      number = 2,
-      difficulty = "3",
-      extraData = "extra1",
-      gasLimit = "3",
-      gasUsed = "2",
-      logsBloom = "bloom",
-      miner = "a",
-      mixHash = "m1",
-      nonce = "n",
-      parentHash = Some(block1.hash),
-      receiptsRoot = "r",
-      sha3Uncles = "sha3",
-      size = "3",
-      stateRoot = "sr",
-      totalDifficulty = "5",
-      transactionsRoot = "tr",
-      uncles = None,
-      timestamp = Timestamp.valueOf("2020-06-20 20:06:10")
-    )
-    val block3: BlocksRow = BlocksRow(
-      hash = "hash3",
-      number = 3,
-      difficulty = "5",
-      extraData = "extra1",
-      gasLimit = "3",
-      gasUsed = "2",
-      logsBloom = "bloom",
-      miner = "a",
-      mixHash = "m1",
-      nonce = "n",
-      parentHash = None,
-      receiptsRoot = "r",
-      sha3Uncles = "sha3",
-      size = "3",
-      stateRoot = "sr",
-      totalDifficulty = "5",
-      transactionsRoot = "tr",
-      uncles = None,
-      timestamp = Timestamp.valueOf("2020-06-20 20:08:00")
-    )
+    val block1: BlocksRow =
+      defaultBlock.copy(hash = "hash1", number = 1, timestamp = Timestamp.valueOf("2020-06-20 20:05:40"))
+    val block2: BlocksRow =
+      defaultBlock.copy(
+        hash = "hash2",
+        number = 2,
+        parentHash = Some(block1.hash),
+        timestamp = Timestamp.valueOf("2020-06-20 20:06:10")
+      )
+    val block3: BlocksRow =
+      defaultBlock.copy(
+        hash = "hash3",
+        number = 3,
+        parentHash = None,
+        timestamp = Timestamp.valueOf("2020-06-20 20:08:00")
+      )
     val blocks: Seq[BlocksRow] = List(block1, block2, block3)
 
-    val transaction1: TransactionsRow = TransactionsRow(
+    private val defaultTransaction = TransactionsRow(
+      hash = "hash",
+      blockHash = "blockHash",
+      blockNumber = 0,
+      from = "from",
+      gas = "1",
+      gasPrice = "1",
+      input = "i",
+      nonce = "1",
+      to = None,
+      transactionIndex = "0",
+      value = BigDecimal("0"),
+      v = "v",
+      r = "r",
+      s = "s"
+    )
+    val transaction1: TransactionsRow = defaultTransaction.copy(
       hash = "hash1",
       blockHash = block1.hash,
       blockNumber = block1.number,
       from = "from1",
-      gas = "1",
-      gasPrice = "1",
-      input = "i1",
-      nonce = "1",
-      to = Some("to1"),
+      to = Some("to"),
       transactionIndex = "1",
-      value = BigDecimal("100"),
-      v = "v",
-      r = "r",
-      s = "s"
+      value = BigDecimal("100")
     )
-    val transaction2: TransactionsRow = TransactionsRow(
+    val transaction2: TransactionsRow = defaultTransaction.copy(
       hash = "hash2",
       blockHash = block2.hash,
       blockNumber = block3.number,
       from = "from1",
-      gas = "1",
-      gasPrice = "1",
-      input = "i1",
-      nonce = "1",
-      to = Some("to1"),
+      to = Some("to"),
       transactionIndex = "2",
-      value = BigDecimal("150"),
-      v = "v",
-      r = "r",
-      s = "s"
+      value = BigDecimal("150")
     )
-    val transaction3: TransactionsRow = TransactionsRow(
+    val transaction3: TransactionsRow = defaultTransaction.copy(
       hash = "hash3",
       blockHash = block3.hash,
       blockNumber = block2.number,
       from = "from2",
-      gas = "1",
-      gasPrice = "1",
-      input = "i1",
-      nonce = "1",
-      to = Some("to1"),
+      to = Some("to3"),
       transactionIndex = "3",
-      value = BigDecimal("100"),
-      v = "v",
-      r = "r",
-      s = "s"
+      value = BigDecimal("100")
     )
     val transactions: Seq[TransactionsRow] = List(transaction1, transaction2, transaction3)
 
-    val log1: LogsRow = LogsRow(
-      address = "address1",
-      blockHash = block1.hash,
-      blockNumber = block1.number,
-      data = "data1",
-      logIndex = "1",
-      removed = false,
-      topics = "t1",
-      transactionHash = transaction1.hash,
-      transactionIndex = transaction1.transactionIndex
-    )
-    val log2: LogsRow = LogsRow(
-      address = "address2",
-      blockHash = block2.hash,
-      blockNumber = block2.number,
-      data = "data2",
-      logIndex = "1",
-      removed = false,
-      topics = "t2",
-      transactionHash = transaction2.hash,
-      transactionIndex = transaction2.transactionIndex
-    )
-    val log3: LogsRow = LogsRow(
-      address = "address3",
-      blockHash = block3.hash,
-      blockNumber = block3.number,
-      data = "data3",
-      logIndex = "1",
-      removed = false,
-      topics = "t3",
-      transactionHash = transaction3.hash,
-      transactionIndex = transaction3.transactionIndex
-    )
+    private val defaultLogs =
+      (block: BlocksRow, transaction: TransactionsRow) =>
+        LogsRow(
+          address = "address",
+          blockHash = block.hash,
+          blockNumber = block.number,
+          data = "data",
+          logIndex = "0",
+          removed = false,
+          topics = "t0",
+          transactionHash = transaction.hash,
+          transactionIndex = transaction.transactionIndex
+        )
+    val log1: LogsRow = defaultLogs(block1, transaction1).copy(address = "address1", topics = "t1")
+    val log2: LogsRow = defaultLogs(block2, transaction2).copy(address = "address2", topics = "t2")
+    val log3: LogsRow = defaultLogs(block3, transaction3).copy(address = "address3", topics = "t3")
     val logs: Seq[LogsRow] = List(log1, log2, log3)
+
+    private val defaultReceipt =
+      (block: BlocksRow, transaction: TransactionsRow) =>
+        ReceiptsRow(
+          transactionHash = transaction.hash,
+          transactionIndex = transaction.transactionIndex,
+          blockHash = block.hash,
+          blockNumber = block.number,
+          contractAddress = Some("0x1"),
+          cumulativeGasUsed = "0x1",
+          gasUsed = "0x1",
+          logsBloom = "0x0",
+          status = None,
+          root = Some("0x1")
+        )
+    val receipt1: ReceiptsRow = defaultReceipt(block1, transaction1)
+    val receipt2: ReceiptsRow = defaultReceipt(block2, transaction2)
+    val receipt3: ReceiptsRow = defaultReceipt(block3, transaction3)
+    val receipts: Seq[ReceiptsRow] = List(receipt1, receipt2, receipt3)
+
+    private val defaultContract = (block: BlocksRow) =>
+      ContractsRow(
+        address = "0x0",
+        blockHash = block.hash,
+        blockNumber = block.number,
+        bytecode = "0x0"
+      )
+    val contract1: ContractsRow = defaultContract(block1).copy(address = "0x1")
+    val contract2: ContractsRow = defaultContract(block2).copy(address = "0x2")
+    val contract3: ContractsRow = defaultContract(block3).copy(address = "0x3")
+    val contracts: Seq[ContractsRow] = List(contract1, contract2, contract3)
+
+    private val defaultToken = (block: BlocksRow) =>
+      TokensRow(
+        address = "0x1",
+        blockHash = block.hash,
+        blockNumber = block.number,
+        name = "token",
+        symbol = "symbol",
+        decimals = "0x0",
+        totalSupply = "0x0"
+      )
+    val token1: TokensRow = defaultToken(block1).copy(address = "0x1")
+    val token2: TokensRow = defaultToken(block2).copy(address = "0x2")
+    val token3: TokensRow = defaultToken(block3).copy(address = "0x3")
+    val tokens: Seq[TokensRow] = List(token1, token2, token3)
+
+    private val defaultTokenTransfer =
+      (block: BlocksRow, transaction: TransactionsRow) =>
+        TokenTransfersRow(
+          blockNumber = block.number,
+          transactionHash = transaction.hash,
+          fromAddress = "0x0",
+          toAddress = "0x0",
+          value = 1.0
+        )
+    val tokenTransfer1: TokenTransfersRow =
+      defaultTokenTransfer(block1, transaction1).copy(fromAddress = "0x1", toAddress = "0x2")
+    val tokenTransfer2: TokenTransfersRow =
+      defaultTokenTransfer(block2, transaction2).copy(fromAddress = "0x3", toAddress = "0x4")
+    val tokenTransfer3: TokenTransfersRow =
+      defaultTokenTransfer(block3, transaction3).copy(fromAddress = "0x5", toAddress = "0x6")
+    val tokenTransfers: Seq[TokenTransfersRow] = List(tokenTransfer1, tokenTransfer2, tokenTransfer3)
   }
 }

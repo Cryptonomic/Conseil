@@ -15,6 +15,7 @@ private[ethereum] trait EthereumFilterFromQueryString extends ApiFilterQueryStri
       Set[String],
       Set[String],
       Set[String],
+      Set[String],
       Option[String],
       Option[Sorting]
   )
@@ -25,6 +26,7 @@ private[ethereum] trait EthereumFilterFromQueryString extends ApiFilterQueryStri
           qs[Set[String]]("block_id") &
           qs[Set[String]]("block_hash") &
           qs[Set[String]]("transaction_id") &
+          qs[Set[String]]("account_addresses") &
           sortBy &
           order
 

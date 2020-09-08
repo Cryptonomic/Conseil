@@ -127,14 +127,13 @@ class BitcoinDataOperationsTest
 
         whenReady(sut.fetchAccountByAddress("script_pub_key_address_2")) { result =>
           result.value should (contain key "address" and contain value output2.scriptPubKeyAddresses)
-          //TODO Fix test for 'value' field in AccountRow
-          //Issue with the current approach is that type inside case class is from 'scala' while slick is mapping data inside 'QueryResponse' to 'java'.
-          //Additionally BigDecimals are not easy comparable with 'scalatest'.
-          //Once type for 'value' field inside AccountRow will be changed from 'BigDecimal' into something else or
-          //the type returned by 'fetchAccountByAddress' will be different than 'QueryResponse',
-          //assert below should be either uncommented (in case of replacing 'BigDecimal')
-          //or entire test should be updated (in case of changing returned type by 'fetchAccountByAddress').
-          //result.value should (contain key "value" and contain value output2.value)
+          result.value should (contain key "value" and contain value output2.value.map(convertAndScale(_, 2)))
+
+          // Since we are getting data for QueryResponse in generic way,
+          // we are accessing Java API which returns java data types.
+          // We need to convert and adjust scale for what we are receiving from Slick,
+          // because ScalaTest uses `==`, instead od `compareTo` for this type.
+          def convertAndScale(v: BigDecimal, s: Int): java.math.BigDecimal = v.bigDecimal.setScale(s)
         }
       }
     }
@@ -142,98 +141,57 @@ class BitcoinDataOperationsTest
 
 object BitcoinDataOperationsTest {
   trait Fixtures {
-    val block1: BlocksRow = BlocksRow(
-      hash = "hash1",
-      size = 6,
-      strippedSize = 6,
-      weight = 3,
-      height = 3,
+    private val defaultBlock = BlocksRow(
+      hash = "hash",
+      size = 0,
+      strippedSize = 0,
+      weight = 0,
+      height = 0,
       version = 1,
-      versionHex = "vhex1",
+      versionHex = "vhex",
       merkleRoot = "root",
-      nonce = 1,
+      nonce = 0,
       bits = "bits",
-      difficulty = 3,
-      chainWork = "cw1",
+      difficulty = 0,
+      chainWork = "cw",
       nTx = 0,
+      medianTime = Timestamp.valueOf("2020-01-01 00:00:00"),
+      time = Timestamp.valueOf("2020-01-01 00:00:00")
+    )
+    val block1: BlocksRow = defaultBlock.copy(
+      hash = "hash1",
       medianTime = Timestamp.valueOf("2020-06-20 20:00:00"),
       time = Timestamp.valueOf("2020-06-20 20:00:00")
     )
-    val block2: BlocksRow = BlocksRow(
+    val block2: BlocksRow = defaultBlock.copy(
       hash = "hash2",
-      size = 3,
-      strippedSize = 6,
-      weight = 1,
-      height = 1,
-      version = 1,
-      versionHex = "vhex2",
-      merkleRoot = "root",
-      nonce = 1,
-      bits = "bits",
-      difficulty = 2,
-      chainWork = "cw2",
-      nTx = 0,
       medianTime = Timestamp.valueOf("2020-06-20 20:04:00"),
       time = Timestamp.valueOf("2020-06-20 20:04:00")
     )
-    val block3: BlocksRow = BlocksRow(
+    val block3: BlocksRow = defaultBlock.copy(
       hash = "hash3",
-      size = 2,
-      strippedSize = 6,
-      weight = 1,
-      height = 1,
-      version = 1,
-      versionHex = "vhex3",
-      merkleRoot = "root",
-      nonce = 1,
-      bits = "bits",
-      difficulty = 1,
-      chainWork = "cw3",
-      nTx = 0,
       medianTime = Timestamp.valueOf("2020-06-20 20:05:40"),
       time = Timestamp.valueOf("2020-06-20 20:05:40")
     )
     val blocks: Seq[BlocksRow] = List(block1, block2, block3)
 
-    val transaction1: TransactionsRow = TransactionsRow(
-      txid = "1",
-      blockhash = block1.hash,
-      hash = "txhash1",
-      hex = "hex1",
-      size = block1.size,
-      weight = block1.weight,
-      vsize = 1,
-      version = 1,
-      lockTime = block1.time,
-      blockTime = block1.time,
-      time = block1.time
-    )
-    val transaction2: TransactionsRow = TransactionsRow(
-      txid = "2",
-      blockhash = block2.hash,
-      hash = "txhash1",
-      hex = "hex2",
-      size = block2.size,
-      weight = block2.weight,
-      vsize = 1,
-      version = 1,
-      lockTime = block2.time,
-      blockTime = block2.time,
-      time = block2.time
-    )
-    val transaction3: TransactionsRow = TransactionsRow(
-      txid = "3",
-      blockhash = block3.hash,
-      hash = "txhash1",
-      hex = "hex3",
-      size = block3.size,
-      weight = block3.weight,
-      vsize = 1,
-      version = 1,
-      lockTime = block3.time,
-      blockTime = block3.time,
-      time = block3.time
-    )
+    private val defaultTransaction: BlocksRow => TransactionsRow =
+      block => TransactionsRow(
+        txid = "0",
+        blockhash = block.hash,
+        hash = "txhash0",
+        hex = "hex",
+        size = block.size,
+        weight = block.weight,
+        vsize = 1,
+        version = 1,
+        lockTime = block.time,
+        blockTime = block.time,
+        time = block.time
+      )
+    val transaction1: TransactionsRow = defaultTransaction(block1).copy(txid = "1", hash = "txhash1")
+    val transaction2: TransactionsRow = defaultTransaction(block2).copy(txid = "2", hash = "txhash1")
+    val transaction3: TransactionsRow = defaultTransaction(block3).copy(txid = "3", hash = "txhash1")
     val transactions: Seq[TransactionsRow] = List(transaction1, transaction2, transaction3)
 
     val input1: InputsRow = InputsRow(txid = "1", sequence = 1, vOut = Some(1), outputTxid = Some("1"))

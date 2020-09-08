@@ -18,7 +18,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /** Trait, which contains routes for Ethereum-related block-chains */
 trait EthereumDataRoutesCreator
-  extends EthereumDataHelpers
+    extends EthereumDataHelpers
     with EthereumDataEndpoints
     with ApiDataRoutes
     with LazyLogging {
@@ -60,44 +60,80 @@ trait EthereumDataRoutesCreator
   }
 
   /** V2 Route implementation for blocks endpoint */
-  private val blocksRoute: Route = ethereumBlocksEndpoint.implementedByAsync {
-    case ((network, filter), _) =>
-      platformNetworkValidation(network) {
-        operations.fetchBlocks(filter.toQuery.withLimitCap(maxQueryResultSize))
-      }
-  }
+  private val blocksRoute: Route = delegateCall(ethereumBlocksEndpoint)(
+    filter => operations.fetchBlocks(filter.toQuery.withLimitCap(maxQueryResultSize))
+  )
 
   /** V2 Route implementation for blocks head endpoint */
-  private val blocksHeadRoute: Route = ethereumBlocksHeadEndpoint.implementedByAsync {
-    case (network, _) =>
-      platformNetworkValidation(network) {
-        operations.fetchBlocksHead()
-      }
-  }
+  private val blocksHeadRoute: Route = delegateCall0(ethereumBlocksHeadEndpoint)(operations.fetchBlocksHead)
 
   /** V2 Route implementation for blocks by hash endpoint */
-  private val blockByHashRoute: Route = ethereumBlockByHashEndpoint.implementedByAsync {
-    case ((network, hash), _) =>
-      platformNetworkValidation(network) {
-        operations.fetchBlockByHash(EthereumBlockHash(hash))
-      }
-  }
+  private val blockByHashRoute: Route =
+    delegateCall(ethereumBlockByHashEndpoint)(hash => operations.fetchBlockByHash(EthereumBlockHash(hash)))
 
   /** V2 Route implementation for transactions endpoint */
-  private val transactionsRoute: Route = ethereumTransactionsEndpoint.implementedByAsync {
-    case ((network, filter), _) =>
-      platformNetworkValidation(network) {
-        operations.fetchTransactions(filter.toQuery.withLimitCap(maxQueryResultSize))
-      }
-  }
+  private val transactionsRoute: Route = delegateCall(ethereumTransactionsEndpoint)(
+    filter => operations.fetchTransactions(filter.toQuery.withLimitCap(maxQueryResultSize))
+  )
 
   /** V2 Route implementation for transaction by id endpoint */
-  private val transactionByIdRoute: Route = ethereumTransactionByHashEndpoint.implementedByAsync {
-    case ((network, id), _) =>
-      platformNetworkValidation(network) {
-        operations.fetchTransactionByHash(id)
-      }
-  }
+  private val transactionByIdRoute: Route =
+    delegateCall(ethereumTransactionByHashEndpoint)(operations.fetchTransactionByHash)
+
+  /** V2 Route implementation for logs endpoint */
+  private val logsRoute: Route =
+    delegateCall(ethereumLogsEndpoint)(filter => operations.fetchLogs(filter.toQuery.withLimitCap(maxQueryResultSize)))
+
+  /** V2 Route implementation for receipts endpoint */
+  private val receiptsRoute: Route = delegateCall(ethereumReceiptsEndpoint)(
+    filter => operations.fetchReceipts(filter.toQuery.withLimitCap(maxQueryResultSize))
+  )
+
+  /** V2 Route implementation for contracts endpoint */
+  private val contractsRoute: Route = delegateCall(ethereumContractsEndpoint)(
+    filter => operations.fetchContracts(filter.toQuery.withLimitCap(maxQueryResultSize))
+  )
+
+  /** V2 Route implementation for tokens endpoint */
+  private val tokensRoute: Route = delegateCall(ethereumTokensEndpoint)(
+    filter => operations.fetchTokens(filter.toQuery.withLimitCap(maxQueryResultSize))
+  )
+
+  /** V2 Route implementation for token transfers endpoint */
+  private val tokenTransfersRoute: Route = delegateCall(ethereumTokenTransfersEndpoint)(
+    filter => operations.fetchTokenTransfers(filter.toQuery.withLimitCap(maxQueryResultSize))
+  )
+
+  /** V2 Route implementation for accounts endpoint */
+  private val accountsRoute: Route = delegateCall(ethereumAccountsEndpoint)(
+    filter => operations.fetchAccounts(filter.toQuery.withLimitCap(maxQueryResultSize))
+  )
+
+  /** V2 Route implementation for accounts by address endpoint */
+  private val accountsByAddressRoute: Route =
+    delegateCall(ethereumAccountByAddressEndpoint)(operations.fetchAccountByAddress)
+
+  /**
+    * Helper method, which validates the network and delegates the call for specific endpoint to the given method `f`.
+    * Note that this method works only for Tuple2 input parameters in the `endpoint`.
+    **/
+  private def delegateCall0[B](
+      endpoint: Endpoint[(String, Option[String]), Option[B]]
+  )(f: () => Future[Option[B]]): Route =
+    endpoint.implementedByAsync {
+      case (network, _) => platformNetworkValidation(network)(f())
+    }
+
+  /**
+    * Helper method, which validates the network and delegates the call for specific endpoint to the given method `f`.
+    * Note that this method works for more generic input type in the `endpoint`.
+    **/
+  private def delegateCall[A, B](
+      endpoint: Endpoint[((String, A), Option[String]), Option[B]]
+  )(f: A => Future[Option[B]]): Route =
+    endpoint.implementedByAsync {
+      case ((network, element), _) => platformNetworkValidation(network)(f(element))
+    }
 
   /** V2 concatenated routes */
   override val getRoute: Route =
@@ -106,7 +142,14 @@ trait EthereumDataRoutesCreator
       blockByHashRoute,
       blocksRoute,
       transactionsRoute,
-      transactionByIdRoute
+      transactionByIdRoute,
+      logsRoute,
+      receiptsRoute,
+      contractsRoute,
+      tokensRoute,
+      tokenTransfersRoute,
+      accountsRoute,
+      accountsByAddressRoute
     )
 
   /** Function for validation of the platform and network with flatten */

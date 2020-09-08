@@ -22,8 +22,26 @@ trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
   def ethereumTransactionByHashEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
     transactionByHashEndpoint(platform)
 
-  def ethereumLogsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
+  def ethereumLogsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
     logsEndpoint(platform)
+
+  def ethereumReceiptsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
+    receiptsEndpoint(platform)
+
+  def ethereumContractsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
+    contractsEndpoint(platform)
+
+  def ethereumTokensEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
+    tokensEndpoint(platform)
+
+  def ethereumTokenTransfersEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
+    tokenTransfersEndpoint(platform)
+
+  def ethereumAccountsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
+    accountsEndpoint(platform)
+  
+  def ethereumAccountByAddressEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
+    accountByAddressEndpoint(platform)
 
 }
 
@@ -47,7 +65,25 @@ trait QuorumDataEndpoints extends EthereumDataEndpointsCreator {
   def quorumTransactionByHashEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
     transactionByHashEndpoint(platform)
 
-  def quorumLogsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[QueryResponse]] =
+  def quorumLogsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
     logsEndpoint(platform)
+
+  def quorumReceiptsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
+    receiptsEndpoint(platform)
+
+  def quorumContractsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
+    contractsEndpoint(platform)
+
+  def quorumTokensEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
+    tokensEndpoint(platform)
+
+  def quorumTokenTransfersEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
+    tokenTransfersEndpoint(platform)
+
+  def quorumAccountsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
+    accountsEndpoint(platform)
+  
+  def quorumAccountByAddressEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
+    accountByAddressEndpoint(platform)
 
 }
