@@ -95,13 +95,12 @@ class AccountsProcessor(
           case Some(Left(Protocol4Delegate(_, Some(pkh)))) => pkh
         }
 
-      val taggedBakersKeys = taggedList.map {
-        case BlockTagged(blockHash, blockLevel, timestamp, cycle, period, accountsMap) =>
-          val bakerKeys = accountsMap.values.toList
-            .mapFilter(extractBakerKey)
-
-          bakerKeys.taggedWithBlock(blockHash, blockLevel, timestamp, cycle, period)
-      }
+      val taggedBakersKeys = taggedList.map(
+        taggedIndex =>
+          taggedIndex.map(
+            accountsIndex => accountsIndex.values.toList.mapFilter(extractBakerKey)
+          )
+      )
       (taggedList, taggedBakersKeys)
     }
 
@@ -125,7 +124,7 @@ class AccountsProcessor(
       // at this point in time and put the information about it in the separate row
       // (there is no operation like bakers deactivation)
       val accountsWithHistoryFut = for {
-        activatedOperations <- fetchActivationOperationsByLevel(taggedAccounts.map(_.blockLevel).distinct)
+        activatedOperations <- fetchActivationOperationsByLevel(taggedAccounts.map(_.ref.level).distinct)
         activatedAccounts <- db.run(TezosDb.findActivatedAccountIds)
         updatedTaggedAccounts = updateTaggedAccountsWithIsActivated(
           taggedAccounts,
@@ -150,8 +149,8 @@ class AccountsProcessor(
         taggedAccounts: List[BlockTagged[AccountsIndex]]
     ): Future[List[(BlockTagged[AccountsIndex], List[Tables.AccountsRow])]] =
       Future.traverse(taggedAccounts) { accountsPerLevel =>
-        if (accountsPerLevel.blockLevel % rightsConf.cycleSize == 1) {
-          nodeOperator.fetchActiveBakers(accountsPerLevel.blockHash).flatMap { activeBakers =>
+        if (accountsPerLevel.ref.level % rightsConf.cycleSize == 1) {
+          nodeOperator.fetchActiveBakers(accountsPerLevel.ref.hash).flatMap { activeBakers =>
             //the returned ids also reference the input hash, but we can discard it
             //we only want the active ids to fetch the inactive by difference from the database
             val activeIds = activeBakers.map(_._2.toSet).getOrElse(Set.empty)
@@ -182,7 +181,7 @@ class AccountsProcessor(
         activatedViaAccountIds: Set[PublicKeyHash]
     ): List[BlockTagged[AccountsIndex]] =
       taggedAccounts.map { taggedAccount =>
-        val activatedViaOperations = activatedViaOperationsPerLevel.getOrElse(taggedAccount.blockLevel, Set.empty)
+        val activatedViaOperations = activatedViaOperationsPerLevel.getOrElse(taggedAccount.ref.level, Set.empty)
         taggedAccount.copy(
           content = taggedAccount.content.mapValues { account =>
             if (account.manager.exists(activatedViaAccountIds | activatedViaOperations)) {
@@ -235,7 +234,7 @@ class AccountsProcessor(
       pageFut.map { accounts =>
         accounts.map { taggedAccounts =>
           votingData
-            .get(taggedAccounts.blockHash)
+            .get(taggedAccounts.ref.hash)
             .map { rolls =>
               val affectedAccounts = rolls.map(_.pkh.value)
               val accUp = taggedAccounts.content.map {
@@ -304,8 +303,8 @@ class AccountsProcessor(
       }
 
     val sorted = updates.flatMap {
-      case BlockTagged(hash, level, timestamp, cycle, period, ids) =>
-        ids.map(_ -> BlockReference(hash, level, timestamp, cycle, period))
+      case BlockTagged(ref, ids) =>
+        ids.map(_ -> ref)
     }.sortBy {
       case (id, ref) => ref.level
     }(Ordering[Long].reverse)

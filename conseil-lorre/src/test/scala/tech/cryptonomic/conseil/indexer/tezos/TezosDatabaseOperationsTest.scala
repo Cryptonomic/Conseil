@@ -1099,14 +1099,14 @@ class TezosDatabaseOperationsTest
         val matchingId = AccountId("tz19alkdjf83aadkcl")
 
         val block = generateBlockRows(1, testReferenceTimestamp).head
-        val BlockTagged(hash, level, ts, cycle, period, accountsContent) =
+        val BlockTagged(ref, accountsContent) =
           generateAccounts(expectedCount, TezosBlockHash(block.hash), block.level)
         val updatedContent = accountsContent.map {
           case (AccountId(id), account) if id == "1" => (matchingId, account)
           case any => any
         }
 
-        val accountsInfo = BlockTagged(hash, level, ts, cycle, period, updatedContent)
+        val accountsInfo = BlockTagged(ref, updatedContent)
 
         val populate =
           (Tables.Blocks += block) >>
