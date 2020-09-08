@@ -4,7 +4,7 @@ import cats.instances.future._
 import cats.syntax.applicative._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.common.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.common.util.{CryptoUtil, JsonUtil}
@@ -109,7 +109,7 @@ private[tezos] class TezosNodeOperator(
   def getAccountForBlock(blockHash: TezosBlockHash, accountId: AccountId): Future[Account] = {
     import TezosJsonDecoders.Circe.Accounts._
     node
-      .runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountId.id}")
+      .runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountId.value}")
       .flatMap(result => Future.fromTry(fromJson[Account](result)))
 
   }
@@ -177,7 +177,7 @@ private[tezos] class TezosNodeOperator(
   def getAccountManagerForBlock(blockHash: TezosBlockHash, accountId: AccountId): Future[ManagerKey] = {
     import TezosJsonDecoders.Circe.Accounts._
     node
-      .runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountId.id}/manager_key")
+      .runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountId.value}/manager_key")
       .flatMap(result => Future.fromTry(fromJson[ManagerKey](result)))
 
   }
@@ -190,7 +190,7 @@ private[tezos] class TezosNodeOperator(
   def getAllAccountsForBlock(blockHash: TezosBlockHash): Future[Map[AccountId, Account]] =
     for {
       jsonEncodedAccounts <- node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts")
-      accountIds <- Future.fromTry(fromJson[List[String]](jsonEncodedAccounts).map(_.map(AccountId)))
+      accountIds <- Future.fromTry(fromJson[List[String]](jsonEncodedAccounts).map(_.map(makeAccountId)))
       accounts <- getAccountsForBlock(accountIds, blockHash)
     } yield accounts
 
@@ -257,7 +257,7 @@ private[tezos] class TezosNodeOperator(
         logger.warn(
           "The following account keys were not found querying the {} node: {}",
           network,
-          missing.map(_.id).mkString("\n", ",", "\n")
+          missing.map(_.value).mkString("\n", ",", "\n")
         )
 
     //uses the index to collect together BlockAccounts matching the same block
@@ -278,7 +278,7 @@ private[tezos] class TezosNodeOperator(
             case Failure(err) =>
               val showSomeIds = accountsBlocksIndex.keys
                 .take(30)
-                .map(_.id)
+                .map(_.value)
                 .mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
               logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err)
           }.map {
@@ -699,7 +699,7 @@ private[tezos] class TezosNodeOperator(
         blockHeaderMetadata <- discardGenesis(blockData.metadata).toList
         balanceUpdate <- blockHeaderMetadata.balance_updates
         id <- balanceUpdate.contract.map(_.id).toList ::: balanceUpdate.delegate.map(_.value).toList
-      } yield AccountId(id)
+      } yield makeAccountId(id)
 
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it

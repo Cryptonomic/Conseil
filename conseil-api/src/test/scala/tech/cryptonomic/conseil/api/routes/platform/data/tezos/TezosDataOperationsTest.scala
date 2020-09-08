@@ -21,7 +21,7 @@ import tech.cryptonomic.conseil.common.tezos.Tables.{
   OperationsRow
 }
 import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, TezosBlockHash}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{makeAccountId, TezosBlockHash}
 
 import scala.concurrent.duration._
 
@@ -254,7 +254,7 @@ class TezosDataOperationsTest
 
       "fetchAccount is empty" in {
         // given
-        val input = AccountId("xyz")
+        val input = makeAccountId("xyz")
 
         // when
         val result = sut.fetchAccount(input).futureValue
@@ -267,13 +267,13 @@ class TezosDataOperationsTest
         // given
         dbHandler.run(Tables.Blocks ++= blocksTmp).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.Accounts ++= accountsTmp).isReadyWithin(5.seconds) shouldBe true
-        val input = AccountId(accountsTmp.head.accountId)
+        val input = makeAccountId(accountsTmp.head.accountId)
 
         // when
         val result = sut.fetchAccount(input).futureValue.value
 
         // then
-        result.account.accountId shouldBe input.id
+        result.account.accountId shouldBe input.value
       }
 
       "fetchLatestBlock when DB is empty" in {

@@ -106,7 +106,7 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         accounts.map {
           case (id, Account(balance, delegate, script, counter, manager, spendable, isBaker, isActivated)) =>
             Tables.AccountsRow(
-              accountId = id.id,
+              accountId = id.value,
               blockId = hash.value,
               counter = counter,
               script = script.map(_.code.expression),
@@ -737,7 +737,7 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         ids.map(
           accountId =>
             Tables.AccountsCheckpointRow(
-              accountId = accountId.id,
+              accountId = accountId.value,
               blockId = blockHash.value,
               blockLevel = blockLevel,
               asof = Timestamp.from(timestamp.getOrElse(Instant.ofEpochMilli(0))),

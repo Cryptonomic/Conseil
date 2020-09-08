@@ -5,7 +5,7 @@ import cats.implicits._
 import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.DBIO
 import tech.cryptonomic.conseil.common.tezos.TezosOptics.Operations.extractAppliedTransactions
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, Block, ContractId, ScriptId}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, Block, ContractId, PublicKeyHash, ScriptId}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract.{
   BigMapId,
@@ -27,7 +27,7 @@ private[tezos] class TezosNamesOperations(tnsContracts: TNSContract, node: Tezos
     case LookupMapReference(
         ContractId(contractId),
         Name(name),
-        AccountId(accountId),
+        PublicKeyHash(accountId),
         BigMapId(bigMapId),
         ScriptId(keyHash)
         ) =>
@@ -54,7 +54,7 @@ private[tezos] class TezosNamesOperations(tnsContracts: TNSContract, node: Tezos
             .filter(
               nameRecord =>
                 //double-check we're looking at the right data for the call
-                nameRecord.name == lookupRef.lookupName.value && nameRecord.resolver == lookupRef.resolver.id
+                nameRecord.name == lookupRef.lookupName.value && nameRecord.resolver == lookupRef.resolver.value
             )
       }.flattenOption
 

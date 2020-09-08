@@ -298,7 +298,7 @@ class TezosDatabaseOperationsTest
 
         forAll(dbAccounts zip accountsInfo.content) {
           case (row, (id, account)) =>
-            row.accountId shouldEqual id.id
+            row.accountId shouldEqual id.value
             row.blockId shouldEqual block.hash
             row.counter shouldEqual account.counter
             row.script shouldEqual account.script.map(_.code.expression)
@@ -343,7 +343,7 @@ class TezosDatabaseOperationsTest
         val accountsInfo = generateAccounts(accountChanges, TezosBlockHash(hashUpdate), levelUpdate)
 
         //double-check for the identifier existence
-        accountsInfo.content.keySet.map(_.id) should contain(account.accountId)
+        accountsInfo.content.keySet.map(_.value) should contain(account.accountId)
 
         //do the updates
         val writeUpdatedAndGetRows = for {
@@ -364,7 +364,7 @@ class TezosDatabaseOperationsTest
         //both rows on db should refer to updated data
         forAll(dbAccounts zip accountsInfo.content) {
           case (row, (id, account)) =>
-            row.accountId shouldEqual id.id
+            row.accountId shouldEqual id.value
             row.blockId shouldEqual hashUpdate
             row.counter shouldEqual account.counter
             row.script shouldEqual account.script.map(_.code.expression)
@@ -396,7 +396,7 @@ class TezosDatabaseOperationsTest
                 Some(time),
                 None,
                 None,
-                List.fill(idPerBlock)(AccountId(generateHash(5)))
+                List.fill(idPerBlock)(makeAccountId(generateHash(5)))
               )
           )
 
@@ -423,7 +423,7 @@ class TezosDatabaseOperationsTest
           case (row, (hash, level, accountId)) =>
             row.blockId shouldEqual hash.value
             row.blockLevel shouldBe level
-            row.accountId shouldEqual accountId.id
+            row.accountId shouldEqual accountId.value
         }
 
       }
@@ -492,7 +492,7 @@ class TezosDatabaseOperationsTest
 
         val inSelection = Set(accountIds(1), accountIds(2), accountIds(3), accountIds(4))
 
-        val selection = inSelection.map(AccountId)
+        val selection = inSelection.map(makeAccountId)
 
         val expected = checkpointRows.filterNot(row => inSelection(row.accountId))
 
@@ -605,7 +605,7 @@ class TezosDatabaseOperationsTest
         val changes = 2
         val (hashUpdate, levelUpdate) = (second.hash, second.level)
         val delegatedKeys =
-          generateAccounts(howMany = changes, TezosBlockHash(hashUpdate), levelUpdate).content.keySet.map(_.id)
+          generateAccounts(howMany = changes, TezosBlockHash(hashUpdate), levelUpdate).content.keySet.map(_.value)
         val delegatesInfo = generateDelegates(
           delegatedHashes = delegatedKeys.toList,
           blockHash = TezosBlockHash(hashUpdate),
@@ -819,7 +819,7 @@ class TezosDatabaseOperationsTest
         )
 
         def entry(accountAtIndex: Int, atLevel: Int, time: Timestamp) =
-          AccountId(accountIds(accountAtIndex)) ->
+          makeAccountId(accountIds(accountAtIndex)) ->
               BlockReference(TezosBlockHash(blockIds(atLevel)), atLevel, Some(time.toInstant), None, None)
 
         //expecting only the following to remain
@@ -1096,13 +1096,13 @@ class TezosDatabaseOperationsTest
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         val expectedCount = 3
-        val matchingId = AccountId("tz19alkdjf83aadkcl")
+        val matchingId = makeAccountId("tz19alkdjf83aadkcl")
 
         val block = generateBlockRows(1, testReferenceTimestamp).head
         val BlockTagged(hash, level, ts, cycle, period, accountsContent) =
           generateAccounts(expectedCount, TezosBlockHash(block.hash), block.level)
         val updatedContent = accountsContent.map {
-          case (AccountId(id), account) if id == "1" => (matchingId, account)
+          case (PublicKeyHash(id), account) if id == "1" => (matchingId, account)
           case any => any
         }
 

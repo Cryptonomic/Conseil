@@ -93,6 +93,11 @@ class TezosJsonDecodersTest extends AnyWordSpec with Matchers with EitherValues 
         decoded.right.value shouldBe PublicKeyHash(validB58Hash)
       }
 
+      "decode valid json base58check strings into a AccountId" in {
+        val decoded = decode[AccountId](jsonStringOf(validB58Hash))
+        decoded.right.value shouldBe PublicKeyHash(validB58Hash)
+      }
+
       "fail to decode an invalid json base58check strings into a PublicKeyHash" in {
         val decoded = decode[PublicKeyHash](jsonStringOf(invalidB58Hash))
         decoded shouldBe 'left
@@ -126,11 +131,6 @@ class TezosJsonDecodersTest extends AnyWordSpec with Matchers with EitherValues 
       "fail to decode an invalid json base58check strings into a OperationHash" in {
         val decoded = decode[OperationHash](jsonStringOf(invalidB58Hash))
         decoded shouldBe 'left
-      }
-
-      "decode valid json base58check strings into a AccountId" in {
-        val decoded = decode[AccountId](jsonStringOf(validB58Hash))
-        decoded.right.value shouldBe AccountId(validB58Hash)
       }
 
       "fail to decode an invalid json base58check strings into a AccountId" in {

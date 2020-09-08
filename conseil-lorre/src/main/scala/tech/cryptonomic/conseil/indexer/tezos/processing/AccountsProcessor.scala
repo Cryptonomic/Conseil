@@ -26,6 +26,7 @@ import tech.cryptonomic.conseil.indexer.tezos.TezosErrors.AccountsProcessingFail
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.common.util.JsonUtil.AccountIds
 
 /** Collects operations related to handling accounts from
   * the tezos node.
@@ -222,8 +223,10 @@ class AccountsProcessor(
       if (onlyProcessLatest) db.run {
         TezosDb.getLevelsForAccounts(ids.keySet).map { currentlyStored =>
           ids.filterNot {
-            case (AccountId(id), BlockReference(_, updateLevel, _, _, _)) =>
-              currentlyStored.exists { case (storedId, storedLevel) => storedId == id && storedLevel > updateLevel }
+            case (PublicKeyHash(accountId), BlockReference(_, updateLevel, _, _, _)) =>
+              currentlyStored.exists {
+                case (storedId, storedLevel) => storedId == accountId && storedLevel > updateLevel
+              }
           }
         }
       } else Future.successful(ids)
@@ -239,7 +242,7 @@ class AccountsProcessor(
             .map { rolls =>
               val affectedAccounts = rolls.map(_.pkh.value)
               val accUp = taggedAccounts.content.map {
-                case (accId, acc) if affectedAccounts.contains(accId.id) =>
+                case (accId, acc) if affectedAccounts.contains(accId.value) =>
                   accId -> acc.copy(isBaker = Some(true))
                 case x => x
               }

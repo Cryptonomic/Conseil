@@ -106,7 +106,7 @@ private[tezos] trait TezosBlocksDataFetchers {
   val accountIdsJsonDecode: Kleisli[Id, String, List[AccountId]] =
     Kleisli[Id, String, List[AccountId]] {
       case JsonUtil.AccountIds(id, ids @ _*) =>
-        (id :: ids.toList).distinct.map(AccountId)
+        (id :: ids.toList).distinct.map(makeAccountId)
       case _ =>
         List.empty
     }
@@ -682,7 +682,7 @@ trait AccountsDataFetchers {
     type In = AccountId
     type Out = Option[Account]
 
-    private val makeUrl = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}"
+    private val makeUrl = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.value}"
 
     override val fetchData = Kleisli(
       ids => {
@@ -693,7 +693,7 @@ trait AccountsDataFetchers {
               .error(
                 "I encountered problems while fetching account data from {}, for ids {}. The error says {}",
                 network,
-                ids.map(_.id).mkString(", "),
+                ids.map(_.value).mkString(", "),
                 err.getMessage
               )
               .pure[Future]

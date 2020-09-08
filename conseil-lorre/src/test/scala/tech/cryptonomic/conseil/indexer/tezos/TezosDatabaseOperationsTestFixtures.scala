@@ -53,7 +53,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
     val rnd = new Random(randomSeed.seed)
 
     val accounts = (1 to howMany).map { currentId =>
-      AccountId(String valueOf currentId) ->
+      makeAccountId(String valueOf currentId) ->
         Account(
           balance = rnd.nextInt,
           counter = Some(currentId),

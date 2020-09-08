@@ -384,7 +384,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
             tokenId =>
               Tables.TokenBalancesRow(
                 tokenId,
-                address = tokenUpdate.accountId.id,
+                address = tokenUpdate.accountId.value,
                 balance = BigDecimal(tokenUpdate.balance),
                 blockId = blockData.hash.value,
                 blockLevel = blockData.header.level,
