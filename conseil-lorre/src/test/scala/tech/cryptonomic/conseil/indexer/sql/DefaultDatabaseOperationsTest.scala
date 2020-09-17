@@ -8,10 +8,10 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
-import tech.cryptonomic.conseil.common.tezos.Tables
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
 import tech.cryptonomic.conseil.common.tezos.Tables.{Fees, FeesRow}
-import tech.cryptonomic.conseil.indexer.sql.DefaultDatabaseOperations._
 import tech.cryptonomic.conseil.indexer.tezos.TezosInMemoryDatabaseSetup
+import tech.cryptonomic.conseil.indexer.sql.DefaultDatabaseOperations._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -33,7 +33,8 @@ class DefaultDatabaseOperationsTest
           Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)),
           s"$i-example",
           None,
-          None
+          None,
+          forkId = Fork.mainForkId
         )
       }
 

@@ -458,9 +458,9 @@ object TezosDatabaseOperations extends LazyLogging {
     import CustomProfileExtension.api._
     logger.info("Writing endorsing rights to the DB...")
     val transformationResult = for {
-      (blockHashWithCycleAndGovernancePeriod, endorsingRightsList) <- endorsingRightsMap
+      (fetchRights, endorsingRightsList) <- endorsingRightsMap
       endorsingRights <- endorsingRightsList
-    } yield (blockHashWithCycleAndGovernancePeriod, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
+    } yield (fetchRights, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
 
     Tables.EndorsingRights.insertOrUpdateAll(transformationResult.flatten)
   }
@@ -517,14 +517,14 @@ object TezosDatabaseOperations extends LazyLogging {
     *  @return list of baking rights rows
     */
   def getBakingRightsForLevel(blockLevel: BlockLevel): DBIO[Seq[Tables.BakingRightsRow]] =
-    Tables.BakingRights.filter(_.blockLevel === blockLevel).result
+    Tables.BakingRights.filter(rights => rights.blockLevel === blockLevel && rights.invalidatedAsof.isEmpty).result
 
   /** Fetches endorsing rights for given block level
     *  @param blockLevel block level
     *  @return list of endorsing rights rows
     */
   def getEndorsingRightsForLevel(blockLevel: BlockLevel): DBIO[Seq[Tables.EndorsingRightsRow]] =
-    Tables.EndorsingRights.filter(_.blockLevel === blockLevel).result
+    Tables.EndorsingRights.filter(rights => rights.blockLevel === blockLevel && rights.invalidatedAsof.isEmpty).result
 
   /**
     * Fetches all governance entries for a given block level
@@ -532,7 +532,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return the governance data
     */
   def getGovernanceForLevel(level: BlockLevel): DBIO[Seq[GovernanceRow]] =
-    Tables.Governance.filter(_.level === level).result
+    Tables.Governance.filter(gov => gov.level === level && gov.invalidatedAsof.isEmpty).result
 
   /**
     * Stores the governance statistic aggregates in the database
@@ -617,7 +617,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def getBallotOperationsForCycle(cycle: Int)(implicit ec: ExecutionContext): DBIO[Voting.BallotCounts] =
     Tables.Operations
-      .filter(op => op.kind === "ballot" && op.cycle === cycle)
+      .filter(op => op.kind === "ballot" && op.cycle === cycle && op.invalidatedAsof.isEmpty)
       .groupBy(_.ballot)
       .map {
         case (vote, ops) => vote -> ops.length
@@ -639,7 +639,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def getBallotOperationsForLevel(level: BlockLevel)(implicit ec: ExecutionContext): DBIO[Voting.BallotCounts] =
     Tables.Operations
-      .filter(op => op.kind === "ballot" && op.blockLevel === level)
+      .filter(op => op.kind === "ballot" && op.blockLevel === level && op.invalidatedAsof.isEmpty)
       .groupBy(_.ballot)
       .map {
         case (vote, ops) => vote -> ops.length
@@ -658,7 +658,7 @@ object TezosDatabaseOperations extends LazyLogging {
   /** Gets proposal hashes from operations table for given cycle */
   def getProposalOperationHashesByCycle(cycle: Int)(implicit ec: ExecutionContext): DBIO[Map[ProtocolId, Int]] =
     Tables.Operations
-      .filter(op => op.kind === "proposals" && op.cycle === cycle && op.proposal.nonEmpty)
+      .filter(op => op.kind === "proposals" && op.cycle === cycle && op.proposal.nonEmpty && op.invalidatedAsof.isEmpty)
       .map(_.proposal.getOrElse("[]"))
       .result
       .map {
@@ -672,13 +672,15 @@ object TezosDatabaseOperations extends LazyLogging {
   /** Fetch the latest block level available for each account id stored */
   def getLevelsForAccounts(ids: Set[AccountId]): DBIO[Seq[(String, BlockLevel)]] =
     Tables.Accounts
+      .filter(_.invalidatedAsof.isEmpty)
       .map(table => (table.accountId, table.blockLevel))
       .filter(_._1 inSet ids.map(_.id))
       .result
 
   /** Fetch the latest block level available for each delegate pkh stored */
-  def getLevelsForDelegates(ids: Set[PublicKeyHash]): DBIO[Seq[(String, BlockLevel)]] =
+  def getLevelsForBakers(ids: Set[PublicKeyHash]): DBIO[Seq[(String, BlockLevel)]] =
     Tables.Bakers
+      .filter(_.invalidatedAsof.isEmpty)
       .map(table => (table.pkh, table.blockLevel))
       .filter(_._1 inSet ids.map(_.value))
       .result
@@ -692,6 +694,7 @@ object TezosDatabaseOperations extends LazyLogging {
   )(implicit ec: ExecutionContext): DBIO[List[Tables.AccountsRow]] =
     Tables.Accounts
       .filter(_.isBaker === true)
+      .filter(_.invalidatedAsof.isEmpty)
       .filterNot(_.accountId inSet exclude.map(_.id))
       .result
       .map(_.toList)
@@ -699,10 +702,14 @@ object TezosDatabaseOperations extends LazyLogging {
   /** Updates accounts history with bakers */
   def updateAccountsHistoryWithBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Int] = {
     logger.info(s"""Writing ${bakers.length} accounts history updates to the DB...""")
+    val bakersIdStrings = bakers.map(_.pkh.value)
     Tables.AccountsHistory
       .filter(
         ahs =>
-          ahs.isBaker === false && ahs.blockId === block.data.hash.value && ahs.accountId.inSet(bakers.map(_.pkh.value))
+          ahs.invalidatedAsof.isEmpty
+            && ahs.isBaker === false
+            && ahs.blockId === block.data.hash.value
+            && ahs.accountId.inSet(bakersIdStrings)
       )
       .map(_.isBaker)
       .update(true)
@@ -711,11 +718,14 @@ object TezosDatabaseOperations extends LazyLogging {
   /** Updates accounts with bakers */
   def updateAccountsWithBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Int] = {
     logger.info(s"""Writing ${bakers.length} accounts updates to the DB...""")
+    val bakersIdStrings = bakers.map(_.pkh.value)
     Tables.Accounts
       .filter(
         account =>
-          account.isBaker === false && account.blockId === block.data.hash.value && account.accountId
-              .inSet(bakers.map(_.pkh.value))
+          account.invalidatedAsof.isEmpty
+            && account.isBaker === false
+            && account.blockId === block.data.hash.value
+            && account.accountId.inSet(bakersIdStrings)
       )
       .map(_.isBaker)
       .update(true)
@@ -733,9 +743,10 @@ object TezosDatabaseOperations extends LazyLogging {
     DBIO.sequence {
       hashes.map { hash =>
         Tables.Bakers
-          .filter(_.pkh === hash.value)
+          .filter(_.blockId === hash.value)
+          .filter(_.invalidatedAsof.isEmpty)
           .result
-          .map(hash -> _.map(delegate => BakerRolls(PublicKeyHash(delegate.pkh), delegate.rolls)).toList)
+          .map(hash -> _.map(baker => BakerRolls(PublicKeyHash(baker.pkh), baker.rolls)).toList)
       }
     }
 
@@ -744,7 +755,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return
     */
   def getBakers(): DBIO[Seq[Tables.BakersRow]] =
-    Tables.Bakers.result
+    Tables.Bakers.filter(_.invalidatedAsof.isEmpty).result
 
   /**
     * Updates bakers table.
@@ -787,7 +798,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
     val opQuery =
       Tables.Operations
-        .filter(_.kind === kind)
+        .filter(op => op.kind === kind && op.invalidatedAsof.isEmpty)
         .map(o => (o.fee, o.timestamp, o.cycle, o.blockLevel))
         .distinct
         .sortBy { case (_, ts, _, _) => ts.desc }
@@ -807,7 +818,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def findActivatedAccountIds: DBIO[Seq[String]] =
     Tables.Accounts
-      .filter(_.isActivated)
+      .filter(acc => acc.isActivated && acc.invalidatedAsof.isEmpty)
       .map(_.accountId)
       .result
 
@@ -819,30 +830,18 @@ object TezosDatabaseOperations extends LazyLogging {
   def fetchRecentOperationsHashByKind(
       ofKind: Set[String],
       fromLevel: BlockLevel = 0
-  ): DBIO[Seq[Option[String]]] =
+  ): DBIO[Seq[String]] =
     Tables.Operations
       .filter(
-        row => (row.kind inSet ofKind) && (row.blockLevel >= fromLevel)
+        row =>
+          (row.kind inSet ofKind)
+            && (row.blockLevel >= fromLevel)
+            && (row.pkh.isDefined)
+            && row.invalidatedAsof.isEmpty
       )
       .sortBy(_.blockLevel.asc)
-      .map(_.pkh)
+      .map(_.pkh.get) //this is allowed only because we filtered by non-empty pkh
       .result
-
-  /**
-    * Checks if a block for this hash and related operations are stored on db
-    * @param hash Identifies the block
-    * @param ec   Needed to compose the operations
-    * @return     true if block and operations exists
-    */
-  def blockExists(hash: TezosBlockHash)(implicit ec: ExecutionContext): DBIO[Boolean] =
-    for {
-      blockThere <- Tables.Blocks.findBy(_.hash).applied(hash.value).exists.result
-      opsThere <- Tables.OperationGroups.filter(_.blockId === hash.value).exists.result
-    } yield blockThere && opsThere
-
-  /** is there any block stored? */
-  def doBlocksExist(): DBIO[Boolean] =
-    Tables.Blocks.exists.result
 
   /** Returns all levels that have seen a custom event processing, e.g.
     * - auto-refresh of all accounts after the babylon protocol amendment

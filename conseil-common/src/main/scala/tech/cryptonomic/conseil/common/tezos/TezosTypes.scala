@@ -61,6 +61,12 @@ object TezosTypes {
   /** a conventional value to get the latest block in the chain */
   final lazy val blockHeadHash = TezosBlockHash("head")
 
+  final case class Block(
+      data: BlockData,
+      operationGroups: List[OperationsGroup],
+      votes: CurrentVotes
+  )
+
   final case class BlockData(
       protocol: String,
       chain_id: Option[String],
@@ -176,6 +182,21 @@ object TezosTypes {
   sealed trait Operation extends Product with Serializable
   //operations definition
   type ParametersCompatibility = Either[Parameters, Micheline]
+
+  /** The set of operations kinds */
+  val knownOperationKinds = Set(
+    "seed_nonce_revelation",
+    "delegation",
+    "transaction",
+    "activate_account",
+    "origination",
+    "reveal",
+    "double_endorsement_evidence",
+    "double_baking_evidence",
+    "endorsement",
+    "proposals",
+    "ballot"
+  )
 
   final case class Endorsement(
       level: BlockLevel,
@@ -531,12 +552,6 @@ object TezosTypes {
   final object CurrentVotes {
     val empty = CurrentVotes(quorum = None, active = None)
   }
-
-  final case class Block(
-      data: BlockData,
-      operationGroups: List[OperationsGroup],
-      votes: CurrentVotes
-  )
 
   final case class ManagerKey(
       manager: String,

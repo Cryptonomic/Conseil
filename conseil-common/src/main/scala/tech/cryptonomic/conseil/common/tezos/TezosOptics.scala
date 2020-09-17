@@ -85,6 +85,9 @@ object TezosOptics {
     private[TezosOptics] val acrossOperationGroups = GenLens[Block](_.operationGroups) composeTraversal each
     private[TezosOptics] val acrossOperations = GenLens[OperationsGroup](_.contents) composeTraversal each
 
+    /** Read/write access to the block header level */
+    val onLevel = onData composeLens onHeader composeLens GenLens[BlockHeader](_.level)
+
     /** An optional optic allowing to reach into balances for blocks' metadata */
     val forMetadataBalanceUpdates: Optional[Block, List[BalanceUpdate]] =
       onData composeLens onMetadata composePrism selectHeaderMetadata composeLens onHeaderBalances

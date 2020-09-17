@@ -94,7 +94,7 @@ class BakersProcessor(
     //if needed, we get the stored levels and only keep updates that are more recent
     def prunedUpdates(): Future[Map[PublicKeyHash, BlockReference]] =
       if (onlyProcessLatest) db.run {
-        TezosDb.getLevelsForDelegates(ids.keySet).map { currentlyStored =>
+        TezosDb.getLevelsForBakers(ids.keySet).map { currentlyStored =>
           ids.filterNot {
             case (PublicKeyHash(pkh), BlockReference(_, updateLevel, _, _, _)) =>
               currentlyStored.exists {

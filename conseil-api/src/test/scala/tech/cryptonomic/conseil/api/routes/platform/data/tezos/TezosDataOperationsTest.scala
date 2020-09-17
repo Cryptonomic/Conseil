@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 import java.sql.Timestamp
 
 import com.typesafe.scalalogging.LazyLogging
+import com.softwaremill.diffx.scalatest.DiffMatcher
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.OptionValues
 import org.scalatest.wordspec.AnyWordSpec
@@ -19,7 +20,7 @@ import tech.cryptonomic.conseil.common.tezos.Tables.{
   OperationGroupsRow,
   OperationsRow
 }
-import tech.cryptonomic.conseil.common.tezos.Tables
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, TezosBlockHash}
 
 import scala.concurrent.duration._
@@ -31,6 +32,7 @@ class TezosDataOperationsTest
     with TezosInMemoryDatabaseSetup
     with ScalaFutures
     with OptionValues
+    with DiffMatcher
     with LazyLogging
     with IntegrationPatience {
 
@@ -56,7 +58,8 @@ class TezosDataOperationsTest
           utcYear = 1970,
           utcMonth = 1,
           utcDay = 1,
-          utcTime = "00:00:00"
+          utcTime = "00:00:00",
+          forkId = Fork.mainForkId
         ),
         BlocksRow(
           1,
@@ -72,7 +75,8 @@ class TezosDataOperationsTest
           utcYear = 1970,
           utcMonth = 1,
           utcDay = 1,
-          utcTime = "00:00:00"
+          utcTime = "00:00:00",
+          forkId = Fork.mainForkId
         ),
         BlocksRow(
           2,
@@ -88,7 +92,8 @@ class TezosDataOperationsTest
           utcYear = 2018,
           utcMonth = 1,
           utcDay = 1,
-          utcTime = "00:00:00"
+          utcTime = "00:00:00",
+          forkId = Fork.mainForkId
         )
       )
 
@@ -100,7 +105,8 @@ class TezosDataOperationsTest
           "Pny9KR0NpY",
           Some("sigZuUeFTZ2IB"),
           "R0NpYZuUeF",
-          0
+          0,
+          forkId = Fork.mainForkId
         ),
         OperationGroupsRow(
           "protocol",
@@ -109,7 +115,8 @@ class TezosDataOperationsTest
           "Hy1U991CqV",
           Some("siguMl6h80BRD"),
           "aQeGrbXCmG",
-          1
+          1,
+          forkId = Fork.mainForkId
         ),
         OperationGroupsRow(
           "protocol",
@@ -118,7 +125,8 @@ class TezosDataOperationsTest
           "HAUda1992M",
           Some("sigAMjda313JN"),
           "AmmEPSs1EP",
-          2
+          2,
+          forkId = Fork.mainForkId
         )
       )
 
@@ -134,7 +142,8 @@ class TezosDataOperationsTest
           utcYear = 2018,
           utcMonth = 1,
           utcDay = 1,
-          utcTime = "00:00:00"
+          utcTime = "00:00:00",
+          forkId = Fork.mainForkId
         ),
         OperationsRow(
           operationId = 1,
@@ -147,7 +156,8 @@ class TezosDataOperationsTest
           utcYear = 2018,
           utcMonth = 1,
           utcDay = 1,
-          utcTime = "00:00:00"
+          utcTime = "00:00:00",
+          forkId = Fork.mainForkId
         ),
         OperationsRow(
           operationId = 2,
@@ -160,14 +170,15 @@ class TezosDataOperationsTest
           utcYear = 2018,
           utcMonth = 1,
           utcDay = 1,
-          utcTime = "00:00:00"
+          utcTime = "00:00:00",
+          forkId = Fork.mainForkId
         )
       )
 
       val accountsTmp = Seq(
-        AccountsRow("Jdah4819", "R0NpYZuUeF", balance = 2000),
-        AccountsRow("Jmf8217N", "aQeGrbXCmG", balance = 3000),
-        AccountsRow("Ndah178m", "AmmEPSs1EP", balance = 1000)
+        AccountsRow("Jdah4819", "R0NpYZuUeF", balance = 2000, forkId = Fork.mainForkId),
+        AccountsRow("Jmf8217N", "aQeGrbXCmG", balance = 3000, forkId = Fork.mainForkId),
+        AccountsRow("Ndah178m", "AmmEPSs1EP", balance = 1000, forkId = Fork.mainForkId)
       )
 
       "latestBlockIO for empty DB" in {
@@ -424,7 +435,8 @@ class TezosDataOperationsTest
             utcYear = 1970,
             utcMonth = 1,
             utcDay = 1,
-            utcTime = "00:00:00"
+            utcTime = "00:00:00",
+            forkId = Fork.mainForkId
           ),
           BlocksRow(
             1,
@@ -440,7 +452,8 @@ class TezosDataOperationsTest
             utcYear = 1970,
             utcMonth = 1,
             utcDay = 1,
-            utcTime = "00:00:00"
+            utcTime = "00:00:00",
+            forkId = Fork.mainForkId
           )
         )
         val columns = List(
@@ -503,7 +516,8 @@ class TezosDataOperationsTest
             utcYear = 1970,
             utcMonth = 1,
             utcDay = 1,
-            utcTime = "00:00:00"
+            utcTime = "00:00:00",
+            forkId = Fork.mainForkId
           ),
           BlocksRow(
             1,
@@ -519,7 +533,8 @@ class TezosDataOperationsTest
             utcYear = 1970,
             utcMonth = 1,
             utcDay = 1,
-            utcTime = "00:00:00"
+            utcTime = "00:00:00",
+            forkId = Fork.mainForkId
           )
         )
         val columns = List(
@@ -769,7 +784,8 @@ class TezosDataOperationsTest
             utcYear = 1970,
             utcMonth = 1,
             utcDay = 1,
-            utcTime = "00:00:00"
+            utcTime = "00:00:00",
+            forkId = Fork.mainForkId
           ),
           BlocksRow(
             1,
@@ -785,7 +801,8 @@ class TezosDataOperationsTest
             utcYear = 1970,
             utcMonth = 1,
             utcDay = 1,
-            utcTime = "00:00:00"
+            utcTime = "00:00:00",
+            forkId = Fork.mainForkId
           ),
           BlocksRow(
             2,
@@ -801,7 +818,8 @@ class TezosDataOperationsTest
             utcYear = 1970,
             utcMonth = 1,
             utcDay = 1,
-            utcTime = "00:00:00"
+            utcTime = "00:00:00",
+            forkId = Fork.mainForkId
           ),
           BlocksRow(
             3,
@@ -817,7 +835,8 @@ class TezosDataOperationsTest
             utcYear = 1970,
             utcMonth = 1,
             utcDay = 1,
-            utcTime = "00:00:00"
+            utcTime = "00:00:00",
+            forkId = Fork.mainForkId
           )
         )
 
@@ -1405,7 +1424,8 @@ class TezosDataOperationsTest
         blockLevel = 0,
         counter = None,
         script = None,
-        balance = BigDecimal(1.45)
+        balance = BigDecimal(1.45),
+        forkId = Fork.mainForkId
       )
       "get one element when correctly rounded value" in {
         val columns = List(SimpleField("account_id"), SimpleField("balance"))
@@ -1672,9 +1692,9 @@ class TezosDataOperationsTest
 
       "should aggregate with COUNT function" in {
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(0), "kind"),
-          FeesRow(0, 4, 8, new Timestamp(1), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(2), "kind")
+          FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(2), "kind", forkId = Fork.mainForkId)
         )
 
         val aggregate = List(
@@ -1699,7 +1719,7 @@ class TezosDataOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-        result shouldBe List(
+        result should contain theSameElementsAs List(
           Map("high" -> Some(8), "count_medium" -> Some(1), "low" -> Some(0)),
           Map("high" -> Some(4), "count_medium" -> Some(2), "low" -> Some(0))
         )
@@ -1707,9 +1727,9 @@ class TezosDataOperationsTest
 
       "should aggregate with MAX function" in {
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(0), "kind"),
-          FeesRow(0, 4, 8, new Timestamp(1), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(2), "kind")
+          FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(2), "kind", forkId = Fork.mainForkId)
         )
 
         val aggregate = List(
@@ -1734,7 +1754,7 @@ class TezosDataOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-        result shouldBe List(
+        result should contain theSameElementsAs List(
           Map("high" -> Some(8), "max_medium" -> Some(4), "low" -> Some(0)),
           Map("high" -> Some(4), "max_medium" -> Some(3), "low" -> Some(0))
         )
@@ -1742,9 +1762,9 @@ class TezosDataOperationsTest
 
       "should aggregate with MIN function" in {
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(0), "kind"),
-          FeesRow(0, 4, 8, new Timestamp(1), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(2), "kind")
+          FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(2), "kind", forkId = Fork.mainForkId)
         )
 
         val aggregate = List(
@@ -1769,7 +1789,7 @@ class TezosDataOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-        result shouldBe List(
+        result should contain theSameElementsAs List(
           Map("high" -> Some(8), "min_medium" -> Some(4), "low" -> Some(0)),
           Map("high" -> Some(4), "min_medium" -> Some(2), "low" -> Some(0))
         )
@@ -1777,9 +1797,9 @@ class TezosDataOperationsTest
 
       "should aggregate with SUM function" in {
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(0), "kind"),
-          FeesRow(0, 4, 8, new Timestamp(1), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(2), "kind")
+          FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(2), "kind", forkId = Fork.mainForkId)
         )
 
         val aggregate = List(
@@ -1804,7 +1824,7 @@ class TezosDataOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-        result shouldBe List(
+        result should contain theSameElementsAs List(
           Map("high" -> Some(8), "sum_medium" -> Some(4), "low" -> Some(0)),
           Map("high" -> Some(4), "sum_medium" -> Some(5), "low" -> Some(0))
         )
@@ -1812,9 +1832,9 @@ class TezosDataOperationsTest
 
       "should aggregate with SUM function and order by SUM()" in {
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(0), "kind"),
-          FeesRow(0, 4, 8, new Timestamp(1), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(2), "kind")
+          FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(2), "kind", forkId = Fork.mainForkId)
         )
 
         val aggregate = List(
@@ -1839,7 +1859,7 @@ class TezosDataOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-        result shouldBe List(
+        result should contain theSameElementsAs List(
           Map("high" -> Some(4), "sum_medium" -> Some(5), "low" -> Some(0)),
           Map("high" -> Some(8), "sum_medium" -> Some(4), "low" -> Some(0))
         )
@@ -1847,9 +1867,9 @@ class TezosDataOperationsTest
 
       "should order correctly by the field not existing in query)" in {
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(0), "kind"),
-          FeesRow(0, 4, 8, new Timestamp(1), "kind"),
-          FeesRow(0, 3, 3, new Timestamp(2), "kind")
+          FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 3, new Timestamp(2), "kind", forkId = Fork.mainForkId)
         )
 
         val populateAndTest = for {
@@ -1879,9 +1899,9 @@ class TezosDataOperationsTest
 
       "should correctly check use between in the timestamps" in {
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(0), "kind"),
-          FeesRow(0, 4, 8, new Timestamp(2), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(4), "kind")
+          FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 8, new Timestamp(2), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(4), "kind", forkId = Fork.mainForkId)
         )
 
         val predicate = Predicate(
@@ -1918,10 +1938,10 @@ class TezosDataOperationsTest
 
       "should correctly execute BETWEEN operation using numeric comparison instead of lexicographical" in {
         val feesTmp = List(
-          FeesRow(0, 0, 0, new Timestamp(0), "kind"),
-          FeesRow(0, 0, 10, new Timestamp(3), "kind"),
-          FeesRow(0, 0, 2, new Timestamp(1), "kind"),
-          FeesRow(0, 0, 30, new Timestamp(2), "kind")
+          FeesRow(0, 0, 0, new Timestamp(0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 0, 10, new Timestamp(3), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 0, 2, new Timestamp(1), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 0, 30, new Timestamp(2), "kind", forkId = Fork.mainForkId)
         )
 
         val predicate = Predicate(
@@ -1970,9 +1990,9 @@ class TezosDataOperationsTest
         )
 
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(0), "kind"),
-          FeesRow(0, 4, 8, new Timestamp(1), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(2), "kind")
+          FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(2), "kind", forkId = Fork.mainForkId)
         )
 
         val aggregate = List(
@@ -1980,7 +2000,7 @@ class TezosDataOperationsTest
         )
 
         val expectedQuery =
-          "SELECT SUM(medium) as sum_medium,low,high FROM tezos.fees WHERE true  AND medium = '4' IS false AND low BETWEEN '0' AND '1' GROUP BY low,high ORDER BY sum_medium desc LIMIT 3"
+          "SELECT SUM(medium) as sum_medium,low,high FROM tezos.fees WHERE true  AND invalidated_asof ISNULL AND medium = '4' IS false AND low BETWEEN '0' AND '1' GROUP BY low,high ORDER BY sum_medium desc LIMIT 3"
         val populateAndTest = for {
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
@@ -2004,9 +2024,9 @@ class TezosDataOperationsTest
 
       "should aggregate with multiple aggregations on the same field" in {
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(0), "kind"),
-          FeesRow(0, 4, 8, new Timestamp(1), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(2), "kind")
+          FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(2), "kind", forkId = Fork.mainForkId)
         )
 
         val aggregate = List(
@@ -2040,9 +2060,9 @@ class TezosDataOperationsTest
 
       "should aggregate with single aggegation when there is only one field" in {
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(0), "kind"),
-          FeesRow(0, 4, 8, new Timestamp(1), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(2), "kind")
+          FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(2), "kind", forkId = Fork.mainForkId)
         )
 
         val aggregate = List(
@@ -2089,10 +2109,10 @@ class TezosDataOperationsTest
 
       "should aggregate with correct predicate field when aggregation is using predicate" in {
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(0), "kind1"),
-          FeesRow(0, 4, 8, new Timestamp(1), "kind2"),
-          FeesRow(0, 3, 4, new Timestamp(2), "kind1"),
-          FeesRow(0, 2, 4, new Timestamp(3), "kind4")
+          FeesRow(0, 2, 4, new Timestamp(0), "kind1", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind2", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(2), "kind1", forkId = Fork.mainForkId),
+          FeesRow(0, 2, 4, new Timestamp(3), "kind4", forkId = Fork.mainForkId)
         )
 
         val aggregate = List(
@@ -2146,11 +2166,11 @@ class TezosDataOperationsTest
 
       "should aggregate correctly with multiple aggregation fields with predicate" in {
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(0), "kind1"),
-          FeesRow(0, 4, 8, new Timestamp(1), "kind2"),
-          FeesRow(0, 3, 4, new Timestamp(2), "kind1"),
-          FeesRow(0, 2, 4, new Timestamp(3), "kind2"),
-          FeesRow(1, 2, 4, new Timestamp(4), "kind3")
+          FeesRow(0, 2, 4, new Timestamp(0), "kind1", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind2", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(2), "kind1", forkId = Fork.mainForkId),
+          FeesRow(0, 2, 4, new Timestamp(3), "kind2", forkId = Fork.mainForkId),
+          FeesRow(1, 2, 4, new Timestamp(4), "kind3", forkId = Fork.mainForkId)
         )
 
         val aggregate = List(
@@ -2221,12 +2241,12 @@ class TezosDataOperationsTest
 
       "should aggregate with datePart aggregation" in {
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(100, 0, 1, 0, 0, 0, 0), "kind"),
-          FeesRow(0, 4, 8, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind")
+          FeesRow(0, 2, 4, new Timestamp(100, 0, 1, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 8, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId)
         )
 
         val aggregate = List(
@@ -2261,12 +2281,12 @@ class TezosDataOperationsTest
 
       "should map date with datePart aggregation when it is only type of aggregation" in {
         val feesTmp = List(
-          FeesRow(0, 1, 4, new Timestamp(100, 0, 1, 0, 0, 0, 0), "kind"),
-          FeesRow(0, 2, 8, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
-          FeesRow(0, 4, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
-          FeesRow(0, 5, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind"),
-          FeesRow(0, 6, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind")
+          FeesRow(0, 1, 4, new Timestamp(100, 0, 1, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 2, 8, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 5, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 6, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId)
         )
 
         val populateAndTest = for {
@@ -2304,7 +2324,8 @@ class TezosDataOperationsTest
           blockId = "blockid",
           balance = BigDecimal(1.0),
           blockLevel = 1,
-          asof = new Timestamp(1)
+          asof = new Timestamp(1),
+          forkId = Fork.mainForkId
         )
 
         val populateAndTest = for {
@@ -2344,21 +2365,24 @@ class TezosDataOperationsTest
             blockId = "blockid1",
             balance = BigDecimal(1.0),
             blockLevel = 1,
-            asof = new Timestamp(1)
+            asof = new Timestamp(1),
+            forkId = Fork.mainForkId
           ),
           AccountsHistoryRow(
             accountId = "id1",
             blockId = "blockid2",
             balance = BigDecimal(2.0),
             blockLevel = 2,
-            asof = new Timestamp(2)
+            asof = new Timestamp(2),
+            forkId = Fork.mainForkId
           ),
           AccountsHistoryRow(
             accountId = "id1",
             blockId = "blockid3",
             balance = BigDecimal(3.0),
             blockLevel = 3,
-            asof = new Timestamp(3)
+            asof = new Timestamp(3),
+            forkId = Fork.mainForkId
           )
         )
 
@@ -2398,21 +2422,24 @@ class TezosDataOperationsTest
             blockId = "blockid1",
             balance = BigDecimal(1.0),
             blockLevel = 1,
-            asof = new Timestamp(1)
+            asof = new Timestamp(1),
+            forkId = Fork.mainForkId
           ),
           AccountsHistoryRow(
             accountId = "id2",
             blockId = "blockid2",
             balance = BigDecimal(2.0),
             blockLevel = 2,
-            asof = new Timestamp(2)
+            asof = new Timestamp(2),
+            forkId = Fork.mainForkId
           ),
           AccountsHistoryRow(
             accountId = "id3",
             blockId = "blockid3",
             balance = BigDecimal(3.0),
             blockLevel = 3,
-            asof = new Timestamp(3)
+            asof = new Timestamp(3),
+            forkId = Fork.mainForkId
           )
         )
 

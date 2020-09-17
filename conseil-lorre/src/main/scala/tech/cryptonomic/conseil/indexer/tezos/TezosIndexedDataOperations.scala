@@ -21,6 +21,7 @@ private[tezos] class TezosIndexedDataOperations extends DatabaseMetadataOperatio
   def fetchMaxLevel(): Future[BlockLevel] =
     runQuery(
       Tables.Blocks
+        .filter(_.invalidatedAsof.isEmpty)
         .map(_.level)
         .max
         .getOrElse(defaultBlockLevel)
@@ -33,7 +34,14 @@ private[tezos] class TezosIndexedDataOperations extends DatabaseMetadataOperatio
     * @return Max level or -1 if no baking rights were found in the database.
     */
   def fetchMaxBakingRightsLevel(): Future[BlockLevel] =
-    runQuery(Tables.BakingRights.map(_.blockLevel).max.getOrElse(defaultBlockLevel).result)
+    runQuery(
+      Tables.BakingRights
+        .filter(_.invalidatedAsof.isEmpty)
+        .map(_.blockLevel)
+        .max
+        .getOrElse(defaultBlockLevel)
+        .result
+    )
 
   /**
     * Fetches the max level of endorsing rights.
@@ -41,7 +49,14 @@ private[tezos] class TezosIndexedDataOperations extends DatabaseMetadataOperatio
     * @return Max level or -1 if no endorsing rights were found in the database.
     */
   def fetchMaxEndorsingRightsLevel(): Future[BlockLevel] =
-    runQuery(Tables.EndorsingRights.map(_.blockLevel).max.getOrElse(defaultBlockLevel).result)
+    runQuery(
+      Tables.EndorsingRights
+        .filter(_.invalidatedAsof.isEmpty)
+        .map(_.blockLevel)
+        .max
+        .getOrElse(defaultBlockLevel)
+        .result
+    )
 
   /* use as max block level when none exists */
   private[tezos] val defaultBlockLevel: BlockLevel = -1
@@ -53,6 +68,6 @@ private[tezos] class TezosIndexedDataOperations extends DatabaseMetadataOperatio
     * @return the block if that level is already stored
     */
   def fetchBlockAtLevel(level: BlockLevel): Future[Option[Tables.BlocksRow]] =
-    runQuery(Tables.Blocks.filter(_.level === level).result.headOption)
+    runQuery(Tables.Blocks.filter(row => row.level === level && row.invalidatedAsof.isEmpty).result.headOption)
 
 }

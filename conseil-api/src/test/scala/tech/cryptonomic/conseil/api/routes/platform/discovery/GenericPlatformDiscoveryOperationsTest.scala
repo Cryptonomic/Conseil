@@ -25,7 +25,7 @@ import tech.cryptonomic.conseil.common.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, _}
 import tech.cryptonomic.conseil.common.metadata._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
-import tech.cryptonomic.conseil.common.tezos.{Tables => TezosT}
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables => TezosT}
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -196,7 +196,9 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "fees"),
             Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "fees"),
             Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "fees"),
-            Attribute("level", "Level", DataType.LargeInt, None, KeyType.NonKey, "fees")
+            Attribute("level", "Level", DataType.LargeInt, None, KeyType.NonKey, "fees"),
+            Attribute("invalidated_asof", "Invalidated asof", DataType.DateTime, None, KeyType.NonKey, "fees"),
+            Attribute("fork_id", "Fork id", DataType.String, None, KeyType.NonKey, "fees")
           )
         )
       }
@@ -205,7 +207,7 @@ class GenericPlatformDiscoveryOperationsTest
         sut.getTableAttributes(EntityPath("accounts", networkPath)).futureValue.value.toSet should matchTo(
           Set(
             Attribute("account_id", "Account id", DataType.String, None, KeyType.UniqueKey, "accounts"),
-            Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "accounts"),
+            Attribute("block_id", "Block id", DataType.String, None, KeyType.UniqueKey, "accounts"),
             Attribute("counter", "Counter", DataType.Int, None, KeyType.NonKey, "accounts"),
             Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "accounts"),
             Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "accounts"),
@@ -216,7 +218,9 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("delegate_setable", "Delegate setable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
             Attribute("delegate_value", "Delegate value", DataType.String, None, KeyType.NonKey, "accounts"),
             Attribute("is_baker", "Is baker", DataType.Boolean, None, KeyType.NonKey, "accounts"),
-            Attribute("is_activated", "Is activated", DataType.Boolean, None, KeyType.UniqueKey, "accounts")
+            Attribute("is_activated", "Is activated", DataType.Boolean, None, KeyType.UniqueKey, "accounts"),
+            Attribute("invalidated_asof", "Invalidated asof", DataType.DateTime, None, KeyType.NonKey, "accounts"),
+            Attribute("fork_id", "Fork id", DataType.String, None, KeyType.UniqueKey, "accounts")
           )
         )
       }
@@ -264,7 +268,9 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("utc_year", "Utc year", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("utc_month", "Utc month", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("utc_day", "Utc day", DataType.Int, None, KeyType.NonKey, "blocks"),
-            Attribute("utc_time", "Utc time", DataType.String, None, KeyType.NonKey, "blocks")
+            Attribute("utc_time", "Utc time", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("invalidated_asof", "Invalidated asof", DataType.DateTime, None, KeyType.NonKey, "blocks"),
+            Attribute("fork_id", "Fork id", DataType.String, None, KeyType.UniqueKey, "blocks")
           )
         )
 
@@ -339,7 +345,7 @@ class GenericPlatformDiscoveryOperationsTest
               KeyType.UniqueKey,
               "operations"
             ),
-            Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("block_hash", "Block hash", DataType.String, None, KeyType.UniqueKey, "operations"),
             Attribute("block_level", "Block level", DataType.LargeInt, None, KeyType.UniqueKey, "operations"),
             Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
@@ -354,7 +360,11 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("utc_year", "Utc year", DataType.Int, None, KeyType.NonKey, "operations"),
             Attribute("utc_month", "Utc month", DataType.Int, None, KeyType.NonKey, "operations"),
             Attribute("utc_day", "Utc day", DataType.Int, None, KeyType.NonKey, "operations"),
-            Attribute("utc_time", "Utc time", DataType.String, None, KeyType.NonKey, "operations")
+            Attribute("utc_time", "Utc time", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("invalidated_asof", "Invalidated asof", DataType.DateTime, None, KeyType.NonKey, "operations"),
+            Attribute("fork_id", "Fork id", DataType.String, None, KeyType.UniqueKey, "operations"),
+            Attribute("invalidated_asof", "Invalidated asof", DataType.DateTime, None, KeyType.NonKey, "operations"),
+            Attribute("fork_id", "Fork id", DataType.String, None, KeyType.UniqueKey, "operations")
           )
         )
       }
@@ -369,7 +379,16 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operation_groups"),
             Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "operation_groups"),
             Attribute("block_id", "Block id", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
-            Attribute("block_level", "Block level", DataType.LargeInt, None, KeyType.UniqueKey, "operation_groups")
+            Attribute("block_level", "Block level", DataType.LargeInt, None, KeyType.UniqueKey, "operation_groups"),
+            Attribute(
+              "invalidated_asof",
+              "Invalidated asof",
+              DataType.DateTime,
+              None,
+              KeyType.NonKey,
+              "operation_groups"
+            ),
+            Attribute("fork_id", "Fork id", DataType.String, None, KeyType.UniqueKey, "operation_groups")
           )
         )
       }
@@ -389,7 +408,16 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("grace_period", "Grace period", DataType.Int, None, KeyType.NonKey, "bakers"),
             Attribute("block_level", "Block level", DataType.LargeInt, None, KeyType.NonKey, "bakers"),
             Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "bakers"),
-            Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "bakers")
+            Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "bakers"),
+            Attribute(
+              "invalidated_asof",
+              "Invalidated asof",
+              DataType.DateTime,
+              None,
+              KeyType.NonKey,
+              "bakers"
+            ),
+            Attribute("fork_id", "Fork id", DataType.String, None, KeyType.UniqueKey, "bakers")
           )
         )
       }
@@ -539,7 +567,16 @@ class GenericPlatformDiscoveryOperationsTest
 
       "return list of values of kind attribute of Fees without filter" in {
         val fee =
-          TezosT.FeesRow(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
+          TezosT.FeesRow(
+            1,
+            3,
+            5,
+            Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)),
+            "example1",
+            None,
+            None,
+            forkId = Fork.mainForkId
+          )
         metadataOperations.runQuery(TezosT.Fees ++= List(fee)).isReadyWithin(5 seconds)
 
         sut
@@ -551,7 +588,16 @@ class GenericPlatformDiscoveryOperationsTest
 
       "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
         val fee =
-          TezosT.FeesRow(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
+          TezosT.FeesRow(
+            1,
+            3,
+            5,
+            Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)),
+            "example1",
+            None,
+            None,
+            forkId = Fork.mainForkId
+          )
 
         dbHandler.run(TezosT.Fees ++= List(fee)).isReadyWithin(5 seconds)
 
@@ -568,7 +614,16 @@ class GenericPlatformDiscoveryOperationsTest
 
       "return list with one error when the minimum matching length is greater than match length" in {
         val fee =
-          TezosT.FeesRow(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
+          TezosT.FeesRow(
+            1,
+            3,
+            5,
+            Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)),
+            "example1",
+            None,
+            None,
+            forkId = Fork.mainForkId
+          )
 
         dbHandler.run(TezosT.Fees ++= List(fee)).isReadyWithin(5.seconds)
 
@@ -585,7 +640,16 @@ class GenericPlatformDiscoveryOperationsTest
 
       "return empty list when trying to sql inject" in {
         val fee =
-          TezosT.FeesRow(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
+          TezosT.FeesRow(
+            1,
+            3,
+            5,
+            Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)),
+            "example1",
+            None,
+            None,
+            forkId = Fork.mainForkId
+          )
 
         dbHandler.run(TezosT.Fees ++= List(fee)).isReadyWithin(5 seconds)
         // That's how the SLQ-injected string will look like:
@@ -603,8 +667,26 @@ class GenericPlatformDiscoveryOperationsTest
       }
       "correctly apply the filter" in {
         val fees = List(
-          TezosT.FeesRow(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None),
-          TezosT.FeesRow(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2", None, None)
+          TezosT.FeesRow(
+            1,
+            3,
+            5,
+            Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)),
+            "example1",
+            None,
+            None,
+            forkId = Fork.mainForkId
+          ),
+          TezosT.FeesRow(
+            2,
+            4,
+            6,
+            Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)),
+            "example2",
+            None,
+            None,
+            forkId = Fork.mainForkId
+          )
         )
 
         sut

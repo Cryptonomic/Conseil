@@ -10,7 +10,7 @@ import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, Contract, ContractId, Decimal, ParametersCompatibility}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Contract.BigMapUpdate
-import tech.cryptonomic.conseil.common.tezos.Tables
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
 import tech.cryptonomic.conseil.common.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
 import tech.cryptonomic.conseil.common.tezos.TezosOptics
 import TezosOptics.Operations.{
@@ -388,7 +388,8 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
                 balance = BigDecimal(tokenUpdate.balance),
                 blockId = blockData.hash.value,
                 blockLevel = blockData.header.level,
-                asof = toSql(blockData.header.timestamp)
+                asof = toSql(blockData.header.timestamp),
+                forkId = Fork.mainForkId
               )
           )
         }

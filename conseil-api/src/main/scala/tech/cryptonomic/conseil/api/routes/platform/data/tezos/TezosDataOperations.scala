@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 import com.github.ghik.silencer.silent
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataOperations
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OperationType, Predicate}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockLevel, TezosBlockHash}
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
@@ -14,10 +15,26 @@ object TezosDataOperations {
   case class BlockResult(block: Tables.BlocksRow, operation_groups: Seq[Tables.OperationGroupsRow])
   case class OperationGroupResult(operation_group: Tables.OperationGroupsRow, operations: Seq[Tables.OperationsRow])
   case class AccountResult(account: Tables.AccountsRow)
+
+  /* this is the basic predicate that will remove any row which was fork-invalidated from results */
+  private val nonInvalidatedPredicate = Predicate("invalidated_asof", OperationType.isnull)
 }
 
 class TezosDataOperations extends ApiDataOperations {
   import TezosDataOperations._
+
+  override protected val forkRelatedFields = Set("invalidated_asof", "fork_id")
+
+  override protected def hideForkResults(userQueryPredicates: List[Predicate]): List[Predicate] = {
+    /* each predicate group will need an additional predicate, because the grouping logic will
+     * combine them with an OR, thus nullifying the effect of adding only one predicate overall
+     */
+    val groups = userQueryPredicates.map(_.group).distinct
+    if (groups.nonEmpty)
+      groups.map(predicateGroup => nonInvalidatedPredicate.copy(group = predicateGroup))
+    else
+      nonInvalidatedPredicate :: Nil
+  }
 
   override lazy val dbReadHandle: Database = DatabaseUtil.conseilDb
 
@@ -37,8 +54,8 @@ class TezosDataOperations extends ApiDataOperations {
     */
   def fetchBlock(hash: TezosBlockHash)(implicit ec: ExecutionContext): Future[Option[BlockResult]] = {
     val joins = for {
-      groups <- Tables.OperationGroups if groups.blockId === hash.value
-      block <- groups.blocksFk
+      groups <- Tables.OperationGroups if groups.blockId === hash.value && groups.invalidatedAsof.isEmpty
+      block <- Tables.Blocks if block.hash === hash.value && block.invalidatedAsof.isEmpty
     } yield (block, groups)
 
     runQuery(joins.result).map { paired =>
@@ -80,9 +97,6 @@ class TezosDataOperations extends ApiDataOperations {
     runQuery(groupsMapIO)
   }
 
-  /** Precompiled fetch for Operations by Group */
-  val operationsByGroupHash = Tables.Operations.findBy(_.operationGroupHash)
-
   /**
     * Reads in all operations referring to the group
     * @param groupHash is the group identifier
@@ -93,8 +107,8 @@ class TezosDataOperations extends ApiDataOperations {
       groupHash: String
   )(implicit ec: ExecutionContext): DBIO[Option[(Tables.OperationGroupsRow, Seq[Tables.OperationsRow])]] =
     (for {
-      operation <- operationsByGroupHash(groupHash).extract
-      group <- operation.operationGroupsFk
+      operation <- Tables.Operations if operation.operationGroupHash === groupHash && operation.invalidatedAsof.isEmpty
+      group <- Tables.OperationGroups if group.hash === groupHash && group.invalidatedAsof.isEmpty
     } yield (group, operation)).result.map { pairs =>
       /*
        * we first collect all de-normalized pairs under the common group and then extract the
@@ -114,7 +128,7 @@ class TezosDataOperations extends ApiDataOperations {
   def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Option[AccountResult]] = {
     val fetchOperation =
       Tables.Accounts
-        .filter(row => row.accountId === account_id.id)
+        .filter(row => row.accountId === account_id.id && row.invalidatedAsof.isEmpty)
         .take(1)
         .result
 
@@ -131,7 +145,7 @@ class TezosDataOperations extends ApiDataOperations {
     fetchMaxBlockLevel.flatMap(
       maxLevel =>
         Tables.Blocks
-          .filter(_.level === maxLevel)
+          .filter(row => row.level === maxLevel && row.invalidatedAsof.isEmpty)
           .take(1)
           .result
           .headOption
@@ -143,6 +157,7 @@ class TezosDataOperations extends ApiDataOperations {
   /** Computes the max level of blocks or [[defaultBlockLevel]] if no block exists */
   private[tezos] def fetchMaxBlockLevel: DBIO[BlockLevel] =
     Tables.Blocks
+      .filter(_.invalidatedAsof.isEmpty)
       .map(_.level)
       .max
       .getOrElse(defaultBlockLevel)
