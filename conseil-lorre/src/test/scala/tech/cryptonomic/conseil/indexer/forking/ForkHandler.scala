@@ -23,7 +23,7 @@ class ForkHandler[Eff[_]: Monad, BlockId: Eq](
   private val detector = new ForkDetector(indexerSearch, nodeSearch)
 
   /** Given the current indexer head level, probes for a possible fork
-    * and evetually run compensating actions.
+    * and eventually run compensating actions.
     *
     * @param currentHeadLevel the tip of the locally indexed chain
     * @return None if no fork happened, or the result of data amendment

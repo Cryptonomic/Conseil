@@ -11,7 +11,7 @@ import org.scalacheck.Gen
 
 /** Provides all individual building blocks to define a specification
   * for the fork handling scenarios.
-  * This includes type aliases to simplify the test defintions, instances of
+  * This includes type aliases to simplify the test definitions, instances of
   * test-doubles for sub-components of the fork handler, a simplified version of
   * the indexer itself to evaluate, and simple datatypes that simulates forks and
   * blockchain data.
@@ -40,10 +40,9 @@ object ForkHandlingScenariosFixtures {
   class MockSearch(var chain: PartialChain) extends SearchBlockId[TestEffect, TestBlockId] {
 
     override def searchForLevel(level: Long): Either[Throwable, TestBlockId] =
-      chain.collect {
+      chain.collectFirst {
         case (`level`, block) => block
-      }.headOption
-        .toRight(new NoSuchElementException(s"No element on the chain for level $level"))
+      }.toRight(new NoSuchElementException(s"No element on the chain for level $level"))
 
   }
 
@@ -62,7 +61,7 @@ object ForkHandlingScenariosFixtures {
         indexedHeadLevel: Long,
         detectionTime: Instant
     ): Either[Throwable, ForkAmender.Results] = {
-      //genearate the amendment data
+      //generate the amendment data
       val amendedLevels = Range.Long.inclusive(forkLevel, indexedHeadLevel, step = 1L)
       val forkId = ju.UUID.randomUUID().toString
 

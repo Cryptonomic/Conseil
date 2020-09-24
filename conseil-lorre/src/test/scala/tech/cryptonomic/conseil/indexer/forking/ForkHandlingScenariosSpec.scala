@@ -161,7 +161,7 @@ object ForkHandlingScenariosSpec extends Commands {
       fork =>
         SimulationState(
           currentlyOnFork = fork.id,
-          indexedChain = fork.blocks.take(initialBlocks).toSeq
+          indexedChain = fork.blocks.take(initialBlocks)
         )
     )
 
@@ -207,7 +207,7 @@ object ForkHandlingScenariosSpec extends Commands {
       println(
         s"Fork-scenario-${sut.uuid.toString().take(6)} >> proceeding on fork number ${selectedFork.id}, advancing $plusLevels levels to $newHeadLevel."
       )
-      val newNodeChain = selectedFork.blocks.take(sut.node.chain.size + plusLevels).toSeq
+      val newNodeChain = selectedFork.blocks.take(sut.node.chain.size + plusLevels)
       sut.node.chain = newNodeChain
 
       val outcome = sut.forkHandler.handleFork(sut.indexHead)

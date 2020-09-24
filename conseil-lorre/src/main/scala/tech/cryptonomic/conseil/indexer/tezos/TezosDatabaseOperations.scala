@@ -896,14 +896,14 @@ object TezosDatabaseOperations extends LazyLogging {
     * reference data useful to analyse the event.
     *
     * @param forkLevel the point where data was actually different, the fork point
-    * @param forkHash the first block hash differing from that on the current chain
+    * @param forkBlockHash the first block hash differing from that on the current chain
     * @param indexedHeadLevel how far has the indexer gone ahead in the fork
     * @param detectionTime when the indexer identified the fork having happened
     * @return a unique identifier for the newly recorded fork, used as `forkId` in the system
     */
   def writeForkEntry(
       forkLevel: BlockLevel,
-      forkHash: TezosBlockHash,
+      forkBlockHash: TezosBlockHash,
       indexedHeadLevel: BlockLevel,
       detectionTime: Instant
   ): DBIO[String] = {
@@ -911,11 +911,11 @@ object TezosDatabaseOperations extends LazyLogging {
     val ts = new Timestamp(detectionTime.getEpochSecond())
     Tables.Forks.returning(
       Tables.Forks.map(_.forkId)
-    ) += Tables.ForksRow(forkId, forkLevel, forkHash.value, indexedHeadLevel, ts)
+    ) += Tables.ForksRow(forkId, forkLevel, forkBlockHash.value, indexedHeadLevel, ts)
   }
 
   /** Temporarily lift statement constraints on foreign keys
-    * We need to defer any such contraints until the transaction commits
+    * We need to defer any such constraints until the transaction commits
     * when we want to update fork references in blocks and all related
     * db entities, lifting the constraint checks until everything is updated
     * and consistent.
@@ -931,15 +931,15 @@ object TezosDatabaseOperations extends LazyLogging {
       * on a specific table when a fork is detected
       *
       * @param query a query that reads the entity rows
-      * @param toLevel reads the column where the referencing block level is stored
-      * @param toInvalidationTime reads the column that tracks invalidation time
-      * @param toForkId reads the column that reference the current fork
+      * @param levelColumn reads the column where the referencing block level is stored
+      * @param invalidationTimeColumn reads the column that tracks invalidation time
+      * @param forkIdColumn reads the column that references the current fork
       * @tparam E the slick specific table type
       */
     case class EntityTableInvalidator[E <: AbstractTable[_]](query: TableQuery[E])(
-        toLevel: E => Rep[BlockLevel],
-        toInvalidationTime: E => Rep[Option[Timestamp]],
-        toForkId: E => Rep[String]
+        levelColumn: E => Rep[BlockLevel],
+        invalidationTimeColumn: E => Rep[Option[Timestamp]],
+        forkIdColumn: E => Rep[String]
     ) {
 
       /** Marks all relevant entities as invalidated (i.e. by a forking event), by
@@ -957,8 +957,8 @@ object TezosDatabaseOperations extends LazyLogging {
         assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
         val asOfTimestamp = Timestamp.from(asOf)
         query
-          .filter(toLevel(_) >= fromLevel)
-          .map(e => (toInvalidationTime(e), toForkId(e)))
+          .filter(levelColumn(_) >= fromLevel)
+          .map(e => (invalidationTimeColumn(e), forkIdColumn(e)))
           .update(asOfTimestamp.some, forkId)
       }
 

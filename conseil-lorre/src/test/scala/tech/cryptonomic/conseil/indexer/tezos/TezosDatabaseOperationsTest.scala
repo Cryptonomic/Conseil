@@ -1166,7 +1166,7 @@ class TezosDatabaseOperationsTest
         val writeAndReadback = for {
           forkId <- sut.writeForkEntry(
             forkLevel = forkLevel,
-            forkHash = forkHash,
+            forkBlockHash = forkHash,
             indexedHeadLevel = headLevel,
             detectionTime = timestamp
           )

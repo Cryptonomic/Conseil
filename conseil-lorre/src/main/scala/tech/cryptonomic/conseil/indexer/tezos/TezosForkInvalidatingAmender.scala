@@ -50,7 +50,7 @@ class TezosForkInvalidatingAmender(implicit ec: ExecutionContext) extends ForkAm
       } yield (forkId, invalidated)
     ).transactionally
 
-  /* run invalidation on db accross all impacted tables
+  /* run invalidation on db across all impacted tables
    * The powerful combinator foldA uses the fact that
    * - a List can be folded over, that is, given a combinator for each pair of elements,
    *   it can be reduced to a single value, by recursively applying the combinator (e.g. i + j)
