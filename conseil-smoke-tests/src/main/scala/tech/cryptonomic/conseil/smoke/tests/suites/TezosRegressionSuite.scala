@@ -19,6 +19,8 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.sys.process._
 import scala.util.Try
+import scala.annotation.tailrec
+import io.circe.ACursor
 
 /** Currently can be used to test any conseil instance that loaded blocks levels 1 to 1000
   * against predefined expectations on the responses
@@ -36,7 +38,7 @@ class TezosRegressionSuite(configfile: String, syncNetwork: Option[String])
   //this is supposed to throw an error if there's anything wrong, and be catched by the companion smart constructor
   private val apiKey = {
     val key = Try(
-      ConfigFactory.load().getStringList("conseil.security.apiKeys.keys").get(0)
+      ConfigFactory.load().getStringList("conseil.security.api-keys.keys").get(0)
     )
     key.failed.foreach(_ => println("No apiKey found in configuration, I can't test conseil api without"))
     key.get
@@ -55,7 +57,7 @@ class TezosRegressionSuite(configfile: String, syncNetwork: Option[String])
       )
     private val runConseil =
       Process(
-        command = Seq("sbt", "runConseil -v"),
+        command = Seq("sbt", "runApi -v"),
         cwd = None,
         extraEnv = "SBT_OPTS" -> s"-Dconfig.file=$configfile"
       )
@@ -68,7 +70,7 @@ class TezosRegressionSuite(configfile: String, syncNetwork: Option[String])
         _ <- if (syncNetwork.nonEmpty) syncData(syncNetwork.get) else IO(0)
         proc <- IO(runConseil.run())
         _ <- IO(println("waiting for conseil to start"))
-        _ <- timer.sleep(15.seconds)
+        _ <- timer.sleep(20.seconds)
       } yield proc
 
     val conseilProcess = Resource.make(startConseil) { conseil =>
@@ -207,6 +209,27 @@ class TezosRegressionSuite(configfile: String, syncNetwork: Option[String])
 
     val endpoint = Uri.uri("http://localhost:1337/v2/data/tezos/mainnet/operations")
 
+    /* Assuming a json array is passed-in, recursively remove the field from
+     * all objects in it.
+     * We use cursors to verify the presence of teh field and remove it,
+     * then we check at each recursion step if there's yet another sibling on the
+     * array, else we return the last object.
+     * Finding an object that doesn't have the field signals the recursion termination.
+     * We return the whole array back
+     */
+    def stripObjectsField(fieldName: String, from: Json): Option[Json] = {
+      @tailrec
+      def loop(cursor: ACursor): Option[Json] = {
+        val field = cursor.downField(fieldName)
+        if (field.succeeded) {
+          val stripped = field.delete
+          loop(stripped.right.success.getOrElse(stripped))
+        } else cursor.top
+      }
+
+      loop(from.hcursor.downArray)
+    }
+
     clientBuild.resource.use { client =>
       val req = POST(
         body = callBody,
@@ -219,11 +242,12 @@ class TezosRegressionSuite(configfile: String, syncNetwork: Option[String])
       IO(println("Running test on /v2/data/tezos/mainnet/operations for grouped predicates query")) *>
         client.expect[Json](req).attempt.map {
           case Right(json) =>
+            val normalized = stripObjectsField("operation_id", from = json).get
             Either.cond(
-              json == expected,
+              normalized == expected,
               right = json,
               left = new Exception(
-                s"Failed to match on $endpoint: expected \n${expected.spaces2} \n but found \n ${json.spaces2}"
+                s"Failed to match on $endpoint: expected \n${expected.spaces2} \n but found \n ${normalized.spaces2}"
               )
             )
           case left => left

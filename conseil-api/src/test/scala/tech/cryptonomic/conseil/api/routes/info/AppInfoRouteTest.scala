@@ -3,11 +3,20 @@ package tech.cryptonomic.conseil.api.routes.info
 import akka.http.scaladsl.model.{ContentTypes, StatusCodes}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.util.JsonUtil._
+import tech.cryptonomic.conseil.api.routes.info.AppInfo.{GitInfo, Info}
+import io.circe._
+import io.circe.generic.extras.semiauto._
+import io.circe.generic.extras.Configuration
 
-class AppInfoRouteTest extends AnyWordSpec with Matchers with ScalatestRouteTest {
+class AppInfoRouteTest extends AnyWordSpec with Matchers with OptionValues with ScalatestRouteTest {
+
+  implicit val derivation = Configuration.default
+  implicit val gitInfoDecoder = deriveDecoder[GitInfo]
+  implicit val infoDecoder = deriveDecoder[Info]
 
   "The application info route" should {
 
@@ -20,10 +29,10 @@ class AppInfoRouteTest extends AnyWordSpec with Matchers with ScalatestRouteTest
         Get("/info") ~> addHeader("apiKey", "hooman") ~> sut ~> check {
           status shouldEqual StatusCodes.OK
           contentType shouldBe ContentTypes.`application/json`
-          val info: Map[String, Any] = toMap[Any](responseAs[String])
-          info("application") shouldBe "Conseil"
-          info("version").toString should fullyMatch regex """^0\.\d{4}\.\d{4}(-SNAPSHOT)?"""
-          info("git").asInstanceOf[Map[String, String]]("commitHash") should fullyMatch regex """^[0-9a-f]+$"""
+          val info: Info = fromJson[Info](responseAs[String]).get
+          info.application shouldBe "Conseil"
+          info.version should fullyMatch regex """^0\.\d{4}\.\d{4}(-SNAPSHOT)?"""
+          info.git.commitHash.value should fullyMatch regex """^[0-9a-f]+$"""
         }
       }
 

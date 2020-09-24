@@ -2,11 +2,10 @@ package tech.cryptonomic.conseil.common.util
 
 import org.scalatest.Inspectors._
 import JsonUtil._
+import JsonUtil.JsonString.InvalidJsonString
 import com.stephenn.scalatest.jsonassert.JsonMatchers
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-
-case class TestObject(field: String = "")
 
 class JsonUtilTest extends AnyWordSpec with Matchers with JsonMatchers {
 
@@ -26,15 +25,13 @@ class JsonUtilTest extends AnyWordSpec with Matchers with JsonMatchers {
         val arrays = base.mkString("[", ",", "]") :: objects.mkString("[", ",", "]") :: Nil
 
         forAll(base ++ objects ++ arrays) { json =>
-          val jsonTry = JsonString.wrapString(json)
+          val jsonTry = JsonString.fromString(json)
           jsonTry shouldBe 'success
           jsonTry.get shouldBe a[JsonString]
         }
       }
 
       "fail when wrapping invalid json into a JsonString" in {
-
-        import com.fasterxml.jackson.core.JsonParseException
 
         val invalid =
           List(
@@ -45,9 +42,9 @@ class JsonUtilTest extends AnyWordSpec with Matchers with JsonMatchers {
           )
 
         forAll(invalid) { string =>
-          val jsonTry = JsonString.wrapString(string)
+          val jsonTry = JsonString.fromString(string)
           jsonTry shouldBe 'failure
-          jsonTry.failed.get shouldBe a[JsonParseException]
+          jsonTry.failed.get shouldBe a[InvalidJsonString[_]]
         }
       }
 
@@ -81,30 +78,36 @@ class JsonUtilTest extends AnyWordSpec with Matchers with JsonMatchers {
         result should matchJson("""{"key1": "value1", "key2": "value2"}""")
       }
 
-      "convert a complex map to json" in {
-        val result = JsonUtil.toJson(Map("a" -> "b", "c" -> Map("d" -> "e", "f" -> "g"))).json
+      "convert a nested generic shapeless Record to json" in {
+        import shapeless.record.Record
+        /* this does the trick of encoding any Record whose fields have encoders themeselves */
+        import io.circe.generic.encoding.ReprObjectEncoder._
+
+        val record = Record(a = "b", c = Record(d = "e", f = "g"))
+        val result = JsonUtil.toJson(record).json
         result should matchJson("""{"a": "b", "c": {"d": "e", "f": "g"}}""")
       }
 
-      "convert a simple json to a map" in {
-        val result = JsonUtil.toMap[String]("""{"key1": "value1", "key2": "value2"}""")
-        result should be(Map("key1" -> "value1", "key2" -> "value2"))
-      }
-
-      "convert a complex json to a map" in {
-        val result = JsonUtil.toMap[Any]("""{"a": "b", "c": {"d": "e", "f": "g"}}""")
-        result should be(Map("a" -> "b", "c" -> Map("d" -> "e", "f" -> "g")))
-      }
-
       "allow lenient parsing of json with duplicate object keys, actually deserialized or not" in {
+        case class TestObject(field: String = "")
+        object TestObject {
+          import io.circe.Decoder
+          import io.circe.generic.semiauto._
+          /* required by Circe to decode from json */
+          implicit val testObjectDecode: Decoder[TestObject] = deriveDecoder
+        }
+
+        val valid = """{"field": "value"}"""
+
+        JsonUtil.fromJson[TestObject](valid).get shouldBe TestObject(field = "value")
 
         val duplicateKey = """{"field": "value", "field": "dup"}"""
 
-        JsonUtil.fromJson[TestObject](duplicateKey) shouldBe TestObject(field = "dup")
+        JsonUtil.fromJson[TestObject](duplicateKey).get shouldBe TestObject(field = "dup")
 
         val duplicateInnerKey = """{"field": "value", "inner": {"field":"inner", "field": "dup", "another": 10}}"""
 
-        JsonUtil.fromJson[TestObject](duplicateInnerKey) shouldBe TestObject(field = "value")
+        JsonUtil.fromJson[TestObject](duplicateInnerKey).get shouldBe TestObject(field = "value")
       }
 
     }
