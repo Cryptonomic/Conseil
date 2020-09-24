@@ -175,6 +175,7 @@ CREATE TABLE tezos.accounts (
     is_activated boolean NOT NULL DEFAULT false,
     invalidated_asof timestamp,
     fork_id character varying NOT NULL,
+    script_hash character varying,
     PRIMARY KEY (account_id, fork_id)
 );
 
