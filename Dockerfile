@@ -33,6 +33,7 @@ ADD ./conseil-api/src/main/resources/metadata.conf /root/metadata.conf
 ADD ./docker/entrypoint.sh /root/entrypoint.sh
 ADD ./docker/wait-for.sh /root/wait-for.sh
 ADD ./sql/conseil.sql /root/sql/conseil.sql
+ADD ./conseil-api/src/main/resources/metadata/tezos.delphinet.conf /root/tezos.delphinet.conf
 
 RUN chmod +x /root/entrypoint.sh
 RUN chmod +rx /root/wait-for.sh
