@@ -10,18 +10,11 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, _}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
-import tech.cryptonomic.conseil.common.tezos.Tables.{
-  AccountsHistoryRow,
-  AccountsRow,
-  BlocksRow,
-  FeesRow,
-  OperationGroupsRow,
-  OperationsRow
-}
+import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, TezosBlockHash}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{makeAccountId, TezosBlockHash}
 
 import scala.concurrent.duration._
 import java.time.Instant
@@ -278,7 +271,7 @@ class TezosForkDataOperationsTest
         // given
         dbHandler.run(Tables.Blocks ++= forkInvalidBlocks).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.Accounts ++= forkInvalidAccounts).isReadyWithin(5.seconds) shouldBe true
-        val input = AccountId(forkInvalidAccounts.head.accountId)
+        val input = makeAccountId(forkInvalidAccounts.head.accountId)
 
         // when
         val result = sut.fetchAccount(input).futureValue
