@@ -14,7 +14,7 @@ import ConsistentForkDetector.ConsistentDetectionRepeatingFailure
 
 /** Here we verify the properties of the [[ConsistentForkDetector]] implementation.
   * This spec works essentially in the same way as
-  * the [[tech.cryptonomic.conseil.indexer.forking.ForkDetectorSpec]]
+  * the [[tech.cryptonomic.conseil.indexer.forks.ForkDetectorSpec]]
   */
 class ConsistentForkDetectorSpec extends AnyPropSpec with ScalaCheckDrivenPropertyChecks with Matchers {
 
