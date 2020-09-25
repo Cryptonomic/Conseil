@@ -13,7 +13,7 @@ import tech.cryptonomic.conseil.indexer.tezos.ConsistentForkDetector.ConsistentD
 
 /** Here we verify the properties of the [[ConsistentForkDetector]] implementation.
   * This spec works essentially in the same way as
-  * the [[tech.cryptonomic.conseil.indexer.ForkDetectorSpec]]
+  * the [[tech.cryptonomic.conseil.indexer.forking.ForkDetectorSpec]]
   */
 class ConsistentForkDetectorSpec extends AnyPropSpec with ScalaCheckDrivenPropertyChecks with Matchers {
 

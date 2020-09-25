@@ -19,9 +19,11 @@ object ConsistentForkDetector {
 /** Provides guarantees of a more consistent fork level, given
   * a tezos node that might return unstable results - from different
   * alternating forks - during the search.
-  * The returned value is guaranteed to be locally consistent, i.e.
-  * local blocks are consistent before the fork level and with the
-  * new remote block from the fork on.
+  * The returned value is guaranteed to be "locally consistent", i.e.
+  * if we consider the locally stored blocks before the detected value, and those
+  * available from the node, starting from the fork value on, we would see a
+  * consistent sequence of blocks, correctly linked via their
+  * predecessor field.
   *
   * @param indexerSearch same as for the generic [[ForkDetector]]
   * @param nodeSearch same as for the generic [[ForkDetector]]
@@ -71,7 +73,7 @@ class ConsistentForkDetector[Eff[_]: Monad](
     * consistent results.
     * It might happen that network calls to both services were not fast enough, to the
     * point that the fork on which the reference node was at the time of detection changed
-    * during the algorthm execution. This might be a reasonable expectation in a highly
+    * during the algorithm execution. This might be a reasonable expectation in a highly
     * unstable moment of the chain, while decentralized consensus is being reached.
     * This would lead to possibly inconsistent results on the evaluated fork level.
     * We just make sure that the node block at such level is consistent with the previous
