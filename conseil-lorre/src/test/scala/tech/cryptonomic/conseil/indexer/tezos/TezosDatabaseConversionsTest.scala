@@ -163,10 +163,10 @@ class TezosDatabaseConversionsTest
             change = BigDecimal(up1.change),
             level = up1.level,
             category = up1.category,
-            blockId = tag.blockHash.value,
-            blockLevel = tag.blockLevel,
-            cycle = tag.cycle,
-            period = tag.period,
+            blockId = tag.ref.hash.value,
+            blockLevel = tag.ref.level,
+            cycle = tag.ref.cycle,
+            period = tag.ref.period,
             forkId = Fork.mainForkId
           ),
           Tables.BalanceUpdatesRow(
@@ -179,10 +179,10 @@ class TezosDatabaseConversionsTest
             change = BigDecimal(up2.change),
             level = up2.level,
             category = up2.category,
-            blockId = tag.blockHash.value,
-            blockLevel = tag.blockLevel,
-            cycle = tag.cycle,
-            period = tag.period,
+            blockId = tag.ref.hash.value,
+            blockLevel = tag.ref.level,
+            cycle = tag.ref.cycle,
+            period = tag.ref.period,
             forkId = Fork.mainForkId
           ),
           Tables.BalanceUpdatesRow(
@@ -195,10 +195,10 @@ class TezosDatabaseConversionsTest
             change = BigDecimal(up3.change),
             level = up3.level,
             category = up3.category,
-            blockId = tag.blockHash.value,
-            blockLevel = tag.blockLevel,
-            cycle = tag.cycle,
-            period = tag.period,
+            blockId = tag.ref.hash.value,
+            blockLevel = tag.ref.level,
+            cycle = tag.ref.cycle,
+            period = tag.ref.period,
             forkId = Fork.mainForkId
           )
         )
@@ -208,7 +208,7 @@ class TezosDatabaseConversionsTest
         import OperationBalances._
         import SymbolSourceLabels.Show._
 
-        BlockTagged(TezosBlockHash("sampleHash"), 123, None, None, None, sampleReveal)
+        BlockTagged(BlockReference(TezosBlockHash("sampleHash"), 123, None, None, None), sampleReveal)
           .convertToA[List, Tables.BalanceUpdatesRow] should contain only (
           Tables.BalanceUpdatesRow(
             id = 0,
@@ -245,7 +245,7 @@ class TezosDatabaseConversionsTest
         import OperationBalances._
         import SymbolSourceLabels.Show._
 
-        BlockTagged(TezosBlockHash("sampleHash"), 123, None, None, None, sampleOrigination)
+        BlockTagged(BlockReference(TezosBlockHash("sampleHash"), 123, None, None, None), sampleOrigination)
           .convertToA[List, Tables.BalanceUpdatesRow] should contain only (
           Tables.BalanceUpdatesRow(
             id = 0,

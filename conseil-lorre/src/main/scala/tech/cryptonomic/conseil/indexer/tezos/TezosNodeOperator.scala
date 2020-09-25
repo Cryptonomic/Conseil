@@ -265,8 +265,8 @@ private[tezos] class TezosNodeOperator(
       data.groupBy {
         case (id, _) => accountsBlocksIndex(id)
       }.map {
-        case (BlockReference(hash, level, timestamp, cycle, period), accounts) =>
-          accounts.taggedWithBlock(hash, level, timestamp, cycle, period)
+        case (blockReference, accounts) =>
+          accounts.taggedWithBlock(blockReference)
       }.toList
 
     //fetch accounts by requested ids and group them together with corresponding blocks
@@ -455,8 +455,8 @@ private[tezos] class TezosNodeOperator(
       data.groupBy {
         case (pkh, _) => keysBlocksIndex(pkh)
       }.map {
-        case (BlockReference(hash, level, timestamp, cycle, period), delegates) =>
-          delegates.taggedWithBlock(hash, level, timestamp, cycle, period)
+        case (blockReference, delegates) =>
+          delegates.taggedWithBlock(blockReference)
       }.toList
 
     //fetch delegates by requested pkh and group them together with corresponding blocks

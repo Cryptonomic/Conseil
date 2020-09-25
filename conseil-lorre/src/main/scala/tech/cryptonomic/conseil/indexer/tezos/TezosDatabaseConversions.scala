@@ -102,7 +102,7 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
         }
 
       override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
-        val BlockTagged(hash, level, timestamp, cycle, period, accounts) = from
+        val BlockTagged(BlockReference(hash, level, timestamp, cycle, period), accounts) = from
         accounts.map {
           case (id, Account(balance, delegate, script, counter, manager, spendable, isBaker, isActivated)) =>
             Tables.AccountsRow(
@@ -143,8 +143,11 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
 
           accountsRow
             .into[Tables.AccountsHistoryRow]
-            .withFieldConst(_.asof, Timestamp.from(blockTaggedAccounts.timestamp.getOrElse(Instant.ofEpochMilli(0))))
-            .withFieldConst(_.cycle, blockTaggedAccounts.cycle)
+            .withFieldConst(
+              _.asof,
+              Timestamp.from(blockTaggedAccounts.ref.timestamp.getOrElse(Instant.ofEpochMilli(0)))
+            )
+            .withFieldConst(_.cycle, blockTaggedAccounts.ref.cycle)
             .withFieldConst(_.isActiveBaker, isActiveBaker)
             .withFieldConst(_.forkId, Fork.mainForkId)
             .transform
@@ -159,11 +162,11 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
               _.into[Tables.AccountsHistoryRow]
                 .withFieldConst(
                   _.asof,
-                  Timestamp.from(blockTaggedAccounts.timestamp.getOrElse(Instant.ofEpochMilli(0)))
+                  Timestamp.from(blockTaggedAccounts.ref.timestamp.getOrElse(Instant.ofEpochMilli(0)))
                 )
-                .withFieldConst(_.cycle, blockTaggedAccounts.cycle)
-                .withFieldConst(_.blockLevel, blockTaggedAccounts.blockLevel)
-                .withFieldConst(_.blockId, blockTaggedAccounts.blockHash.value)
+                .withFieldConst(_.cycle, blockTaggedAccounts.ref.cycle)
+                .withFieldConst(_.blockLevel, blockTaggedAccounts.ref.level)
+                .withFieldConst(_.blockId, blockTaggedAccounts.ref.hash.value)
                 .withFieldConst(_.isActiveBaker, Some(false))
                 .transform
             }
@@ -596,7 +599,7 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
       balances
         .get(from)
         .flatMap {
-          case (BlockTagged(blockHash, blockLevel, _, cycle, period, tag), updates) =>
+          case (BlockTagged(BlockReference(blockHash, blockLevel, _, cycle, period), tag), updates) =>
             updates.map {
               case OperationMetadata.BalanceUpdate(kind, change, category, contract, delegate, level) =>
                 Tables.BalanceUpdatesRow(
@@ -772,17 +775,13 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
 
     }
 
-  implicit val bakerToRow =
-    new Conversion[
-      Id,
-      (TezosBlockHash, BlockLevel, PublicKeyHash, Delegate, Option[Int], Option[Int]),
-      Tables.BakersRow
-    ] {
-      override def convert(from: (TezosBlockHash, BlockLevel, PublicKeyHash, Delegate, Option[Int], Option[Int])) = {
-        val (blockHash, blockLevel, keyHash, delegate, cycle, period) = from
+  implicit val blockTaggedBakerToRow =
+    new Conversion[Id, BlockTagged[(PublicKeyHash, Delegate)], Tables.BakersRow] {
+      override def convert(from: BlockTagged[(PublicKeyHash, Delegate)]) = {
+        val BlockTagged(BlockReference(hash, level, _, cycle, period), (pkh, delegate)) = from
         Tables.BakersRow(
-          pkh = keyHash.value,
-          blockId = blockHash.value,
+          pkh = pkh.value,
+          blockId = hash.value,
           balance = extractBigDecimal(delegate.balance),
           frozenBalance = extractBigDecimal(delegate.frozen_balance),
           stakingBalance = extractBigDecimal(delegate.staking_balance),
@@ -790,7 +789,7 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
           rolls = delegate.rolls.getOrElse(0),
           deactivated = delegate.deactivated,
           gracePeriod = delegate.grace_period,
-          blockLevel = blockLevel,
+          blockLevel = level,
           cycle = cycle,
           period = period,
           forkId = Fork.mainForkId

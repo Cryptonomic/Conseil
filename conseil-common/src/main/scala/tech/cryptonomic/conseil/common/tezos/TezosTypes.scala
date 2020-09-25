@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.common.tezos
 
 import java.time.{Instant, ZonedDateTime}
 import scala.util.Try
+import cats.Functor
 
 /**
   * Classes used for deserializing Tezos node RPC results.
@@ -16,15 +17,6 @@ object TezosTypes {
     val pattern = "^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]*$".r.pattern
     pattern.matcher(s).matches
   }
-
-  /** convenience class to keep multiple values referencing a specific block */
-  case class BlockReference(
-      hash: TezosBlockHash,
-      level: BlockLevel,
-      timestamp: Option[Instant],
-      cycle: Option[Int],
-      period: Option[Int]
-  )
 
   /** use to remove ambiguities about the meaning in voting proposals usage */
   type ProposalSupporters = Int
@@ -470,18 +462,23 @@ object TezosTypes {
       isActivated: Option[Boolean]
   )
 
+  /** convenience class to keep multiple values referencing a specific block */
+  case class BlockReference(
+      hash: TezosBlockHash,
+      level: BlockLevel,
+      timestamp: Option[Instant],
+      cycle: Option[Int],
+      period: Option[Int]
+  )
+
   /** Keeps track of association between some domain type and a block reference
     * Synthetic class, no domain correspondence, it's used to simplify signatures
     */
   final case class BlockTagged[T](
-      blockHash: TezosBlockHash,
-      blockLevel: BlockLevel,
-      timestamp: Option[Instant],
-      cycle: Option[Int],
-      period: Option[Int],
+      ref: BlockReference,
       content: T
   ) {
-    val asTuple = (blockHash, blockLevel, timestamp, cycle, period, content)
+    val asTuple = (ref.hash, ref.level, ref.timestamp, ref.cycle, ref.period, content)
 
     /** Helper method for updating content of the class */
     def updateContent[A](newContent: A): BlockTagged[A] = this.copy(content = newContent)
@@ -490,14 +487,21 @@ object TezosTypes {
   /** Companion object for BlockTagged */
   object BlockTagged {
 
+    /** Now we can easily map the content without touching the referenced block data */
+    implicit val functorForBlockTagged = new Functor[BlockTagged] {
+      override def map[A, B](fa: BlockTagged[A])(f: A => B): BlockTagged[B] = fa.copy(content = f(fa.content))
+    }
+
     /** Tags given content with BlockData */
     def fromBlockData[T](block: BlockData, content: T): BlockTagged[T] =
       BlockTagged(
-        block.hash,
-        block.header.level,
-        Some(block.header.timestamp.toInstant),
-        TezosOptics.Blocks.extractCycle(block),
-        TezosOptics.Blocks.extractPeriod(block.metadata),
+        BlockReference(
+          block.hash,
+          block.header.level,
+          Some(block.header.timestamp.toInstant),
+          TezosOptics.Blocks.extractCycle(block),
+          TezosOptics.Blocks.extractPeriod(block.metadata)
+        ),
         content
       )
   }
@@ -602,14 +606,7 @@ object TezosTypes {
     implicit class BlockTagger[T](val content: T) extends AnyVal {
 
       /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference */
-      def taggedWithBlock(
-          hash: TezosBlockHash,
-          level: BlockLevel,
-          timestamp: Option[Instant] = None,
-          cycle: Option[Int],
-          period: Option[Int]
-      ): BlockTagged[T] =
-        BlockTagged(hash, level, timestamp, cycle, period, content)
+      def taggedWithBlock(ref: BlockReference): BlockTagged[T] = BlockTagged(ref, content)
 
       /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference */
       def taggedWithBlockData(data: BlockData): BlockTagged[T] =

@@ -55,14 +55,10 @@ class TezosTypesTest extends AnyWordSpec with Matchers with OptionValues with Ei
         val content = "A content string"
         val (hash, level) = (TezosBlockHash("hash"), 1)
 
-        content.taggedWithBlock(hash, level, someTime, None, None) shouldEqual BlockTagged(
-          hash,
-          level,
-          someTime,
-          None,
-          None,
-          content
-        )
+        val ref = BlockReference(hash, level, someTime, None, None)
+
+        content.taggedWithBlock(ref) shouldEqual BlockTagged(ref, content)
+
       }
     }
 
@@ -72,7 +68,7 @@ class TezosTypesTest extends AnyWordSpec with Matchers with OptionValues with Ei
         val content = "A content string"
         val (hash, level) = (TezosBlockHash("hash"), 1)
 
-        BlockTagged(hash, level, someTime, None, None, content).asTuple shouldEqual (hash, level, someTime, None, None, content)
+        BlockTagged(BlockReference(hash, level, someTime, None, None), content).asTuple shouldEqual (hash, level, someTime, None, None, content)
       }
     }
 

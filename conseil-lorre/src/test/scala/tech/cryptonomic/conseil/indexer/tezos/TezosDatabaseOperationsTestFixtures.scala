@@ -66,7 +66,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
         )
     }.toMap
 
-    accounts.taggedWithBlock(blockHash, blockLevel, Some(time), None, None)
+    accounts.taggedWithBlock(BlockReference(blockHash, blockLevel, Some(time), None, None))
   }
 
   /* randomly generates a number of delegates with associated block data */
@@ -99,7 +99,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
             )
     }.toMap
 
-    delegates.taggedWithBlock(blockHash, blockLevel, Some(Instant.ofEpochSecond(0)), None, None)
+    delegates.taggedWithBlock(BlockReference(blockHash, blockLevel, Some(Instant.ofEpochSecond(0)), None, None))
   }
 
   /* randomly populate a number of blocks based on a level range */

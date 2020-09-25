@@ -120,7 +120,7 @@ class BakersProcessor(
         .mapConcat(identity) //concatenates the list of values as single-valued elements in the stream
         .grouped(batchingConf.blockPageSize) //re-arranges the process batching
         .mapAsync(1)(taggedBakers => {
-          val hashes = taggedBakers.map(_.blockHash).toList
+          val hashes = taggedBakers.map(_.ref.hash).toList
           nodeOperator
             .getBakerRollsForBlockHashes(hashes)
             .map { hashKeyedRolls =>
@@ -166,8 +166,8 @@ class BakersProcessor(
       }
 
     val sorted = updates.flatMap {
-      case BlockTagged(hash, level, timestamp, cycle, period, ids) =>
-        ids.map(_ -> BlockReference(hash, level, timestamp, cycle, period))
+      case BlockTagged(ref, ids) =>
+        ids.map(_ -> ref)
     }.sortBy {
       case (id, ref) => ref.level
     }(Ordering[Long].reverse)

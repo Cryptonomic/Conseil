@@ -584,6 +584,7 @@ object TezosDatabaseOperations extends LazyLogging {
       bakers: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
   )(implicit ec: ExecutionContext): DBIO[(Option[Int], Option[Int])] = {
     import CustomProfileExtension.api._
+    import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 
     val keepMostRecent = (rows: List[Tables.BakersRow]) =>
       rows
@@ -597,13 +598,13 @@ object TezosDatabaseOperations extends LazyLogging {
     logger.info("Writing bakers to DB and copying contracts to bakers table...")
 
     val (rows, historyRows) = bakers.flatMap {
-      case BlockTagged(blockHash, blockLevel, timestamp, cycle, period, delegateMap) =>
-        delegateMap.map {
-          case (pkh, delegate) =>
-            val bakers = (blockHash, blockLevel, pkh, delegate, cycle, period).convertTo[Tables.BakersRow]
-            val bakersHistory = (bakers, timestamp).convertTo[Tables.BakersHistoryRow]
-            bakers -> bakersHistory
-        }
+      case BlockTagged(blockReference, bakersMap) =>
+        bakersMap
+          .map(_.taggedWithBlock(blockReference).convertTo[Tables.BakersRow])
+          .map { row =>
+            val history = (row, blockReference.timestamp).convertTo[Tables.BakersHistoryRow]
+            row -> history
+          }
     }.unzip
 
     (keepMostRecent andThen Tables.Bakers.insertOrUpdateAll)(rows).flatMap { res =>
