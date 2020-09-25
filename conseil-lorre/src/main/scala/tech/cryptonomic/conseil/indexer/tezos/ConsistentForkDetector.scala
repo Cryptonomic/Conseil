@@ -26,7 +26,7 @@ object ConsistentForkDetector {
   * @param indexerSearch same as for the generic [[ForkDetector]]
   * @param nodeSearch same as for the generic [[ForkDetector]]
   * @param nodeData will provide [[BlockData]] from the node for a given level
-  * @param maxAttempts how many times to try upon inconsistent fork level detection, needs be a positive
+  * @param maxAttempts how many times to try upon inconsistent fork level detection, has to be strictly positive
   */
 class ConsistentForkDetector[Eff[_]: Monad](
     indexerSearch: SearchBlockId[Eff, TezosBlockHash],
@@ -94,7 +94,7 @@ class ConsistentForkDetector[Eff[_]: Monad](
       case false =>
         logger
           .error(
-            s"Verifcation of the potential fork by matching remote block predecessor with the locally indexed block failed, for level $candidateForkLevel"
+            s"Verification of the potential fork by matching remote block predecessor with the locally indexed block failed, for level $candidateForkLevel"
           )
           .pure[Eff]
     }
