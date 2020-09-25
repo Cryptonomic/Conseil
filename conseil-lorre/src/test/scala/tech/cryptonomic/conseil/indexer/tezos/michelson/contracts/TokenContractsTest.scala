@@ -43,7 +43,7 @@ class TokenContractsTest extends AnyWordSpec with Matchers with OptionValues {
         val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
 
         //then
-        val (AccountId(id), balance) = balanceUpdate.value
+        val (PublicKeyHash(id), balance) = balanceUpdate.value
         id shouldEqual "tz1dae51wqhBwC7YdGiJAAU5JYwEvVH3Usf2"
         balance shouldEqual BigInt(10000)
 
@@ -75,7 +75,7 @@ class TokenContractsTest extends AnyWordSpec with Matchers with OptionValues {
         val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
 
         //then
-        val (AccountId(id), balance) = balanceUpdate.value
+        val (PublicKeyHash(id), balance) = balanceUpdate.value
         id shouldEqual "tz1YWeZqt67XGHUvPFBmfMfWAoZtXELTWtKh"
         balance shouldEqual BigInt(290502)
 

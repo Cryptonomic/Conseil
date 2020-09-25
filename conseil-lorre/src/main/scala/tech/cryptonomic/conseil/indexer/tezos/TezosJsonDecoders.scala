@@ -91,7 +91,6 @@ private[tezos] object TezosJsonDecoders {
     implicit val blockHashDecoder: Decoder[TezosBlockHash] = base58CheckDecoder.map(b58 => TezosBlockHash(b58.content))
     implicit val opHashDecoder: Decoder[OperationHash] = base58CheckDecoder.map(b58 => OperationHash(b58.content))
     implicit val contractIdDecoder: Decoder[ContractId] = base58CheckDecoder.map(b58 => ContractId(b58.content))
-    implicit val accountIdDecoder: Decoder[AccountId] = base58CheckDecoder.map(b58 => AccountId(b58.content))
     implicit val chainIdDecoder: Decoder[ChainId] = base58CheckDecoder.map(b58 => ChainId(b58.content))
     implicit val protocolIdDecoder: Decoder[ProtocolId] = base58CheckDecoder.map(b58 => ProtocolId(b58.content))
     implicit val scriptIdDecoder: Decoder[ScriptId] = base58CheckDecoder.map(b58 => ScriptId(b58.content))

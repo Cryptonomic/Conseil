@@ -128,7 +128,7 @@ class TezosDataOperations extends ApiDataOperations {
   def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Option[AccountResult]] = {
     val fetchOperation =
       Tables.Accounts
-        .filter(row => row.accountId === account_id.id && row.invalidatedAsof.isEmpty)
+        .filter(row => row.accountId === account_id.value && row.invalidatedAsof.isEmpty)
         .take(1)
         .result
 

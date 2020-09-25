@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.indexer.tezos.michelson.contracts
 
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
+  makeAccountId,
   AccountId,
   Contract,
   ContractId,
@@ -208,7 +209,7 @@ object TokenContracts extends LazyLogging {
         id.toOption
       case packedAddress if packedAddress.startsWith("0") =>
         //this is directly the packed addres
-        val id = CryptoUtil.readAddress(packedAddress).map(AccountId)
+        val id = CryptoUtil.readAddress(packedAddress).map(makeAccountId)
         id.failed.foreach(
           err => logger.error("I failed to match a big map key as a proper account address", err)
         )
@@ -310,7 +311,7 @@ object TokenContracts extends LazyLogging {
         //this is number of bytes, each hex byte will take 2 chars
         length <- Hex.decode(hexLength).map(BigInt(_).toInt)
         accountId <- CryptoUtil.readAddress(hexAccount.take(length * 2))
-      } yield AccountId(accountId)
+      } yield makeAccountId(accountId)
 
     /* Michelson can be binary-encoded, in this case representing the following
      * example expression:

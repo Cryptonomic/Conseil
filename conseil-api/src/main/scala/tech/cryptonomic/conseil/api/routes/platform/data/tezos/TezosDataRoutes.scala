@@ -9,7 +9,7 @@ import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.common.metadata
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, TezosBlockHash}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{makeAccountId, TezosBlockHash}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -94,7 +94,7 @@ case class TezosDataRoutes(
   private val accountByIdRoute: Route = tezosAccountByIdEndpoint.implementedByAsync {
     case ((network, accountId), _) =>
       platformNetworkValidation(network) {
-        operations.fetchAccount(AccountId(accountId))
+        operations.fetchAccount(makeAccountId(accountId))
       }
   }
 

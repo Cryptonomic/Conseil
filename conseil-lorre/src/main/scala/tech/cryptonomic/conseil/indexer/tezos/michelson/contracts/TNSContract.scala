@@ -4,6 +4,7 @@ import cats.implicits._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.config.Platforms.TNSContractConfiguration
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
+  makeAccountId,
   AccountId,
   Contract,
   ContractId,
@@ -290,7 +291,7 @@ object TNSContract extends LazyLogging {
             _ :: MichelsonType("Pair", MichelsonStringConstant(name) :: MichelsonStringConstant(resolver) :: _, _) :: _,
             _
             ) =>
-          (Name(name), AccountId(resolver))
+          (Name(name), makeAccountId(resolver))
       }
 
     /* Reads paramters for a registerName call, extracting the name mapping */
@@ -306,7 +307,7 @@ object TNSContract extends LazyLogging {
         val extracted = MichelsonParamExpr
           .findFirstIn(michelson)
           .map {
-            case MichelsonParamExpr(name, resolver) => (Name(name), AccountId(resolver))
+            case MichelsonParamExpr(name, resolver) => (Name(name), makeAccountId(resolver))
           }
           .orElse(parseAsMicheline(michelson))
         if (extracted.isEmpty)

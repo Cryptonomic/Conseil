@@ -27,7 +27,7 @@ class TNSContractsTest extends AnyWordSpec with Matchers with OptionValues {
           LookupMapReference(
             contractId = tnsContractId,
             lookupName = TNSContract.Name("me want tacos"),
-            resolver = AccountId("tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m"),
+            resolver = makeAccountId("tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m"),
             mapId = TNSContract.BigMapId(lookupId),
             mapKeyHash = ScriptId("exprvT4zX5M2nUKv2msyEeRTQx6zYoMh6rpnpWeDJhEranRRt8Hea9")
           )

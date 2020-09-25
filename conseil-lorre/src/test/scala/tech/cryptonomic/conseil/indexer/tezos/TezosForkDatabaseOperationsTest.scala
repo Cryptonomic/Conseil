@@ -4,32 +4,29 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.OptionValues
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalacheck.Gen
 import org.scalacheck.Arbitrary.arbitrary
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.DBSafe
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, Voting}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{makeAccountId, Block, PublicKeyHash, TezosBlockHash, Voting}
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.{
+  AccountsHistoryRow,
   AccountsRow,
+  BakersRow,
   BakingRightsRow,
   BlocksRow,
   EndorsingRightsRow,
   GovernanceRow,
+  OperationGroupsRow,
   OperationsRow
 }
+import TezosDataGenerationKit.ForkValid
+
 import java.{util => ju}
 import java.sql.Timestamp
-
-import TezosDataGenerationKit.ForkValid
-import tech.cryptonomic.conseil.common.tezos.Tables.OperationGroupsRow
-import org.scalacheck.Gen
-import _root_.tech.cryptonomic.conseil.common.tezos.TezosTypes.AccountId
-import tech.cryptonomic.conseil.common.tezos.Tables.BakersRow
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.PublicKeyHash
-import tech.cryptonomic.conseil.common.tezos.Tables.AccountsHistoryRow
-import _root_.tech.cryptonomic.conseil.common.tezos.TezosTypes.TezosBlockHash
 
 /** Here we verify that any ∂ata saved persistently, that is marked as
   * belonging to a forked branch having been invalidated by latest chain
@@ -314,7 +311,7 @@ class TezosForkDatabaseOperationsTest
         val populateAndFetch = for {
           _ <- Tables.Blocks += invalidBlock
           Some(stored) <- Tables.Accounts ++= invalidRows
-          loaded <- sut.getLevelsForAccounts(invalidRows.map(row => AccountId(row.accountId)).toSet)
+          loaded <- sut.getLevelsForAccounts(invalidRows.map(row => makeAccountId(row.accountId)).toSet)
         } yield (stored, loaded)
 
         /* Test the results */

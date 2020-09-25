@@ -91,8 +91,8 @@ class StakerDaoTest extends AnyWordSpec with Matchers with OptionValues {
 
         //then
         balanceUpdates should contain theSameElementsAs List(
-          AccountId("tz1dcWXLS1UBeGc7EazGvoNE6D8YSzVkAsSa") -> BigInt(1),
-          AccountId("tz1WAVpSaCFtLQKSJkrdVApCQC1TNK8iNxq9") -> BigInt(1499998)
+          makeAccountId("tz1dcWXLS1UBeGc7EazGvoNE6D8YSzVkAsSa") -> BigInt(1),
+          makeAccountId("tz1WAVpSaCFtLQKSJkrdVApCQC1TNK8iNxq9") -> BigInt(1499998)
         )
 
       }

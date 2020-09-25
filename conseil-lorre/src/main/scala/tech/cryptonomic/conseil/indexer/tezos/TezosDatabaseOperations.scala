@@ -15,7 +15,7 @@ import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.tezos.Tables.{GovernanceRow, OriginatedAccountMapsRow}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.BakerRolls
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{FetchRights, _}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.bigmaps.BigMapsOperations
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.Tables
@@ -238,7 +238,7 @@ object TezosDatabaseOperations extends LazyLogging {
       selection = ids,
       tableQuery = Tables.AccountsCheckpoint,
       tableTotal = getAccountsCheckpointSize(),
-      applySelection = (checkpoint, keySet) => checkpoint.filter(_.accountId inSet keySet.map(_.id))
+      applySelection = (checkpoint, keySet) => checkpoint.filter(_.accountId inSet keySet.map(_.value))
     )
   }
 
@@ -348,7 +348,7 @@ object TezosDatabaseOperations extends LazyLogging {
         ids =>
           writeAccountsCheckpoint(
             List(
-              (hash, level, Some(timestamp), cycle, None, ids.map(AccountId(_)).toList)
+              (hash, level, Some(timestamp), cycle, None, ids.map(makeAccountId).toList)
             )
           )
       )
@@ -373,7 +373,7 @@ object TezosDatabaseOperations extends LazyLogging {
      */
     def keepLatestAccountIds(checkpoints: Seq[Tables.AccountsCheckpointRow]): Map[AccountId, BlockReference] =
       checkpoints.foldLeft(Map.empty[AccountId, BlockReference]) { (collected, row) =>
-        val key = AccountId(row.accountId)
+        val key = makeAccountId(row.accountId)
         val time = row.asof.toInstant
         if (collected.contains(key)) collected
         else
@@ -675,7 +675,7 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.Accounts
       .filter(_.invalidatedAsof.isEmpty)
       .map(table => (table.accountId, table.blockLevel))
-      .filter(_._1 inSet ids.map(_.id))
+      .filter(_._1 inSet ids.map(_.value))
       .result
 
   /** Fetch the latest block level available for each delegate pkh stored */
@@ -696,7 +696,7 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.Accounts
       .filter(_.isBaker === true)
       .filter(_.invalidatedAsof.isEmpty)
-      .filterNot(_.accountId inSet exclude.map(_.id))
+      .filterNot(_.accountId inSet exclude.map(_.value))
       .result
       .map(_.toList)
 

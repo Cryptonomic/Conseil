@@ -367,7 +367,7 @@ object TezosOptics {
     val extractAddressesFromExpression = (micheline: Micheline) => {
       micheline.expression match {
         case JsonUtil.AccountIds(id, ids @ _*) =>
-          (id :: ids.toList).distinct.map(AccountId)
+          (id :: ids.toList).distinct.map(makeAccountId)
         case _ =>
           List.empty[AccountId]
       }

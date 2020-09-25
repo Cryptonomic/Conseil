@@ -28,13 +28,17 @@ object TezosTypes {
 
   final case class PublicKeyHash(value: String) extends AnyVal
 
+  /** we use this alias to highlight the semantic of use, but it's another PKH */
+  type AccountId = PublicKeyHash
+
+  /** Wraps a string into an account id value, i.e. a public key hash */
+  val makeAccountId = PublicKeyHash(_)
+
   final case class Signature(value: String) extends AnyVal
 
   final case class OperationHash(value: String) extends AnyVal
 
   final case class ContractId(id: String) extends AnyVal
-
-  final case class AccountId(id: String) extends AnyVal
 
   final case class ChainId(id: String) extends AnyVal
 
