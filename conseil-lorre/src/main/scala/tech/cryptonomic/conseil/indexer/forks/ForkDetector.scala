@@ -1,10 +1,9 @@
-package tech.cryptonomic.conseil.indexer
-
-import tech.cryptonomic.conseil.indexer.ForkDetector._
+package tech.cryptonomic.conseil.indexer.forks
 
 import cats._
 import cats.implicits._
 import com.typesafe.scalalogging.LazyLogging
+import ForkDetector._
 
 /** Definitions and common utilities for fork-detection */
 object ForkDetector {

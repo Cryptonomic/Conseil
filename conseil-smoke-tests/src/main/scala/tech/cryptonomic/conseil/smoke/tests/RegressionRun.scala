@@ -34,11 +34,10 @@ object RegressionRun extends IOApp {
       case platform :: Nil => (defaultConfigFileName, platform, None)
     }
 
-    val configPrint = IO(
-      println(
-        s"Running with configuration from $conf and ${network.fold("no syncing to tezos")(net => "syncing to tezos " + net)}"
-      )
-    )
+    val configPrint = {
+      val syncReport = network.fold(s"no syncing to $platform")(net => s"syncing to $platform " + net)
+      IO(println(s"Running with configuration from $conf and $syncReport"))
+    }
 
     for {
       _ <- configPrint

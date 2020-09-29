@@ -6,20 +6,22 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
 import com.typesafe.scalalogging.LazyLogging
 import mouse.any._
+import cats.instances.future._
 import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, TezosConfiguration}
 import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
-import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.ContractId
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
+import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
 import tech.cryptonomic.conseil.indexer.LorreIndexer
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.indexer.config._
+import tech.cryptonomic.conseil.indexer.forks.ForkHandler
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors._
+import tech.cryptonomic.conseil.indexer.tezos.forks.TezosForkInvalidatingAmender
 import tech.cryptonomic.conseil.indexer.tezos.processing._
 import tech.cryptonomic.conseil.indexer.tezos.processing.AccountsResetHandler.{AccountResetEvents, UnhandledResetEvents}
 
@@ -27,27 +29,32 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
+import tech.cryptonomic.conseil.indexer.tezos.forks.TezosForkSearchEngine
 
 /** Class responsible for indexing data for Tezos BlockChain
   * @param ignoreProcessFailures `true` if non-critical errors while fetchign data should simply resume the indexer logic and retry
   * @param lorreConf keeps necessary configuration values
   * @param nodeOperator access to the remote node to read data
+  * @param indexedData access to locally indexed data
   * @param blocksProcessor module providing entity-specific operations
   * @param accountsProcessor module providing entity-related operations
   * @param bakersProcessor module providing entity-related operations
   * @param rightsProcessor module providing entity-related operations
   * @param accountsResetHandler module handling global events that could trigger global accounts reprocessing
+  * @param forkHandler module for regular verification of fork occurrences in the chain and correction of data
   * @param terminationSequence a function to clean up any pending resource upon shutdown of the indexer
   */
 class TezosIndexer private (
     ignoreProcessFailures: Boolean,
     lorreConf: LorreConfiguration,
     nodeOperator: TezosNodeOperator,
+    indexedData: TezosIndexedDataOperations,
     blocksProcessor: BlocksProcessor,
     accountsProcessor: AccountsProcessor,
     bakersProcessor: BakersProcessor,
     rightsProcessor: BakingAndEndorsingRightsProcessor,
     accountsResetHandler: AccountsResetHandler,
+    forkHandler: ForkHandler[Future, TezosBlockHash],
     terminationSequence: () => Future[ShutdownComplete]
 )(
     implicit
@@ -85,8 +92,12 @@ class TezosIndexer private (
   ): Unit = {
     val noOp = Future.successful(())
     val processing = for {
-      unhandled <- accountsResetHandler.applyUnhandledAccountsResets(accountResetEvents)
-      _ <- processTezosBlocks()
+      maxLevel <- indexedData.fetchMaxLevel
+      reloadedAccountEvents <- processFork(maxLevel)
+      unhandled <- accountsResetHandler.applyUnhandledAccountsResets(
+        reloadedAccountEvents.getOrElse(accountResetEvents)
+      )
+      _ <- processTezosBlocks(maxLevel)
       _ <- if (iteration % lorreConf.feeUpdateInterval == 0)
         TezosFeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
       else
@@ -125,18 +136,46 @@ class TezosIndexer private (
     }
   }
 
+  /** Search for any possible forks happened between the last sync cycle and now.
+    * If a fork is detected, corrections will be applied.
+    *
+    * @param maxIndexedLevel how far has the indexer gone
+    * @return the actual AccountResetEvents still to be processed, if a fork happened, else no meaningful value
+    */
+  private def processFork(maxIndexedLevel: BlockLevel): Future[Option[AccountResetEvents]] = {
+    lazy val emptyOutcome = Future.successful(Option.empty)
+    //nothing to check if no block was indexed yet
+    if (maxIndexedLevel != indexedData.defaultBlockLevel)
+      forkHandler.handleFork(maxIndexedLevel).flatMap {
+        case None =>
+          logger.debug(s"No fork detected up to $maxIndexedLevel")
+          emptyOutcome
+        case Some((forkId, invalidations)) =>
+          logger.warn(
+            s"A fork was detected somewhere before the currently indexed level $maxIndexedLevel. $invalidations entries were invalidated and connected to fork $forkId"
+          )
+          /* locally processed events were invalidated on db, we need to reload them afresh */
+          accountsResetHandler
+            .unprocessedResetRequestLevels(lorreConf.chainEvents)
+            .map(Some(_))
+
+      } else emptyOutcome
+  }
+
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
     * Additionally stores account references that needs updating, too
+    *
+    * @param maxIndexedLevel the highest level reached locally
     */
-  private def processTezosBlocks(): Future[Done] = {
+  private def processTezosBlocks(maxIndexedLevel: BlockLevel): Future[Done] = {
     import cats.instances.future._
     import cats.syntax.flatMap._
 
     logger.info("Processing Tezos Blocks..")
 
     val blockPagesToSynchronize = lorreConf.depth match {
-      case Newest => nodeOperator.getBlocksNotInDatabase()
+      case Newest => nodeOperator.getBlocksNotInDatabase(maxIndexedLevel)
       case Everything => nodeOperator.getLatestBlocks()
       case Custom(n) => nodeOperator.getLatestBlocks(Some(n), lorreConf.headHash.map(TezosBlockHash))
     }
@@ -223,8 +262,7 @@ object TezosIndexer extends LazyLogging {
     val nodeOperator = new TezosNodeOperator(
       new TezosNodeInterface(conf, callsConf, streamingClientConf),
       selectedNetwork,
-      batchingConf,
-      indexedData
+      batchingConf
     )
 
     /* provides operations to handle rights to bake and endorse blocks */
@@ -325,6 +363,26 @@ object TezosIndexer extends LazyLogging {
       bakersProcessor
     )
 
+    /* A single component will provide all required search functions for the fork-handler */
+    val forkSearchEngine = new TezosForkSearchEngine(
+      nodeOps = nodeOperator,
+      indexedOps = indexedData
+    )
+
+    /* Handles almost every detail of the process when a fork happens,
+     * apart from the detail of updating the global chain events to
+     * be processed.
+     * Those are kept by TezosIndexer in memory, therefore they need to
+     * be refreshed from persistent storage after the invalidation.
+     */
+    val forkHandler: ForkHandler[Future, TezosBlockHash] =
+      new ForksProcessor(
+        nodeSearch = forkSearchEngine.idsNodeSearch,
+        nodeDataSearch = forkSearchEngine.blocksNodeSearch,
+        indexerSearch = forkSearchEngine.idsIndexerSearch,
+        amender = TezosForkInvalidatingAmender(db)
+      )
+
     /* the shutdown sequence to free resources */
     val gracefulTermination = () =>
       for {
@@ -337,11 +395,13 @@ object TezosIndexer extends LazyLogging {
       ignoreProcessFailures,
       lorreConf,
       nodeOperator,
+      indexedData,
       blocksProcessor,
       accountsProcessor,
       bakersProcessor,
       rightsProcessor,
       accountsResetHandler,
+      forkHandler,
       gracefulTermination
     )
   }

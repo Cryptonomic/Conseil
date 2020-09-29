@@ -35,7 +35,7 @@ class TezosNodeOperatorTest
         .returns(blockResponse)
 
       val sut: TezosNodeOperator =
-        new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig, Fixtures.indexOps())
+        new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig)
 
       //when
       val block: Future[TezosTypes.Block] = sut.getBlock(genesisHash)
@@ -52,7 +52,7 @@ class TezosNodeOperatorTest
       val tezosRPCInterface = Fixtures.mockNodeInterface()
 
       val sut: TezosNodeOperator =
-        new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig, Fixtures.indexOps())
+        new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig)
 
       //when
       val blockPages: Future[sut.PaginatedBlocksResults] = sut.getLatestBlocks()
@@ -71,7 +71,7 @@ class TezosNodeOperatorTest
       val tezosRPCInterface = Fixtures.mockNodeInterface()
 
       val sut: TezosNodeOperator =
-        new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig, Fixtures.indexOps())
+        new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig)
 
       //when
       val blockPages: Future[sut.PaginatedBlocksResults] = sut.getLatestBlocks(Some(1))
@@ -89,7 +89,7 @@ class TezosNodeOperatorTest
       val tezosRPCInterface =
         Fixtures.mockNodeInterface(blockReferenceHash = "BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c")
       val sut: TezosNodeOperator =
-        new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig, Fixtures.indexOps())
+        new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig)
 
       //when
       val blockPages: Future[sut.PaginatedBlocksResults] =
@@ -110,15 +110,11 @@ class TezosNodeOperatorTest
       /* we simulate that blocks up to level 2 are already stored
        * since the head has level 3, only 1 block is expected
        */
-      val sut: TezosNodeOperator = new TezosNodeOperator(
-        tezosRPCInterface,
-        "zeronet",
-        Fixtures.batchConfig,
-        Fixtures.indexOps(maxIndexedLevel = 2)
-      )
+      val sut: TezosNodeOperator =
+        new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig)
 
       //when
-      val blockPages: Future[sut.PaginatedBlocksResults] = sut.getBlocksNotInDatabase()
+      val blockPages: Future[sut.PaginatedBlocksResults] = sut.getBlocksNotInDatabase(maxIndexedLevel = 2)
 
       //then
       val (pages, total) = blockPages.futureValue
@@ -133,12 +129,6 @@ class TezosNodeOperatorTest
 
     /* default configuration for fetch batching */
     val batchConfig = BatchFetchConfiguration(1, 1, 500, 10 seconds, 10 seconds, 10 seconds)
-
-    /* a reference for operations on already indexed data */
-    def indexOps(maxIndexedLevel: TezosTypes.BlockLevel = 0L): TezosIndexedDataOperations =
-      new TezosIndexedDataOperations {
-        override def fetchMaxLevel(): Future[TezosTypes.BlockLevel] = Future.successful(maxIndexedLevel)
-      }
 
     /* mocks the rpc interface with proper responses based on the expected reference [head] block hash
      * as given by the parameter

@@ -1,13 +1,12 @@
-package tech.cryptonomic.conseil.indexer.forking
+package tech.cryptonomic.conseil.indexer.forks
 
-import tech.cryptonomic.conseil.indexer.ForkAmender
-import tech.cryptonomic.conseil.indexer.ForkDetector.SearchBlockId
-import tech.cryptonomic.conseil.indexer.tezos.TezosDataGenerationKit
 import scala.collection.immutable.NumericRange
 import java.time.Instant
 import java.{util => ju}
 import cats.implicits._
 import org.scalacheck.Gen
+import tech.cryptonomic.conseil.indexer.tezos.TezosDataGenerationKit
+import ForkDetector.SearchBlockId
 
 /** Provides all individual building blocks to define a specification
   * for the fork handling scenarios.
@@ -22,7 +21,6 @@ object ForkHandlingScenariosFixtures {
   /* Here we use Strings as block identifiers */
   type TestBlockId = String
   type ForkId = String
-  type BasicForkHandler = ForkHandler[TestEffect, TestBlockId]
   /* A single implementation works for both locally indexed data and remote node data,
    * yet we use aliases to make the intent of methods
    * and dependent classes explicit
@@ -31,6 +29,20 @@ object ForkHandlingScenariosFixtures {
   type MockNode = MockSearch
   /* a piece of the whole chain, in its raw core form */
   type PartialChain = Seq[(Long, TestBlockId)]
+
+  /* This implementation does the most straightforward logic
+   * to handle forks by re-using the individual components
+   */
+  case class BasicForkHandler(
+      nodeSearch: MockNode,
+      indexerSearch: MockIndexer,
+      amender: MockAmender
+  ) extends ForkHandler[TestEffect, TestBlockId](indexerSearch, amender) {
+
+    /* regular detector implementation */
+    override protected val detector = new ForkDetector(indexerSearch, nodeSearch)
+
+  }
 
   /** A basic chain search that tracks a sequence of ids for each level.
     * This same mock can be used to simulate both a local Indexer and a remote Node
@@ -98,7 +110,7 @@ object ForkHandlingScenariosFixtures {
     val amender = new MockAmender()
 
     /** run the fork handling logic using the locally defined modules */
-    val forkHandler = new BasicForkHandler(indexer, node, amender)
+    val forkHandler = new BasicForkHandler(node, indexer, amender)
 
     /** the current head level of the indexer */
     def indexHead: Long = indexer.chain.map(_._1).max
@@ -113,10 +125,10 @@ object ForkHandlingScenariosFixtures {
     * @param id an index (1..n) identifying each fork
     * @param blocks the block ids and levels, lazily computed
     */
-  case class ChainFork(id: Int, blocks: Stream[(Long, TestBlockId)])
+  case class ChainBranch(id: Int, blocks: Stream[(Long, TestBlockId)])
 
   /** will randomly create a fork chain indexed by i */
-  private def chainForkGen(id: Int) = {
+  private def branchGen(id: Int) = {
     /* we zip increasing leves with infinite hashes, where perturbation on the seed
      * should reduce the chance of conflicting sequences of hashes when we're
      * generating different forks. We're making efforts such that differently indexed
@@ -125,11 +137,11 @@ object ForkHandlingScenariosFixtures {
     val levels = Stream.from(0).map(_.toLong)
     for {
       hashes <- Gen.infiniteStream(TezosDataGenerationKit.arbitraryBase58CheckString.withPerturb(_.reseed(id)))
-    } yield ChainFork(id, levels zip hashes)
+    } yield ChainBranch(id, levels zip hashes)
   }
 
-  /** randomly creates a number of distinct simulated chain forks */
-  def randomForks(howMany: Int): List[ChainFork] =
-    (1 to howMany).map(chainForkGen).map(_.sample.get).toList
+  /** randomly creates a number of distinct simulated chain branches */
+  def randomBranches(howMany: Int): List[ChainBranch] =
+    (1 to howMany).map(branchGen).map(_.sample.get).toList
 
 }

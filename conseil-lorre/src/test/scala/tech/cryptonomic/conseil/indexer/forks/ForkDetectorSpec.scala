@@ -1,10 +1,11 @@
-package tech.cryptonomic.conseil.indexer.forking
+package tech.cryptonomic.conseil.indexer.forks
 
-import tech.cryptonomic.conseil.indexer.ForkDetector
 import org.scalatest.propspec.AnyPropSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import org.scalacheck.{Arbitrary, Gen}
+import org.scalacheck.Arbitrary.arbitrary
+import org.scalacheck.ScalacheckShapeless._
 import cats.implicits._
 
 /** Here we verify the properties of the [[ForkDetector]] implementation.
@@ -18,12 +19,9 @@ class ForkDetectorSpec extends AnyPropSpec with ScalaCheckDrivenPropertyChecks w
 
   import Fixtures._
 
-  /* Each property call will generate a hundred test values and verify the assertion on each of them,
-   * unless a different acceptance threshold is defined, using
+  /* Each property call will generate a hundred test values and verify the assertion on each of them.
    *
-   * forAll(minSuccessful(<runs>)) {...}
-   *
-   * Similarly we can establish how many discarded values (by a `whenever(predicate)` block) are
+   * We can establish how many discarded values (by a `whenever(predicate)` block) are
    * acceptable, as a multiplier of the overall successes.
    * E.g. forAll(maxDiscardedFactor(3.0)) means that for 100 successful runs, no more than 300
    * test values should've been discarded by using `whenever`.
@@ -38,19 +36,19 @@ class ForkDetectorSpec extends AnyPropSpec with ScalaCheckDrivenPropertyChecks w
   }
 
   property("The fork detection level check should return consistent results below the forking point") {
-    forAll(maxDiscardedFactor(3.0)) { (range: ForkDetectionRange, level: Long) =>
-      whenever(level < range.fork) {
+    forAll { (range: ForkDetectionRange, level: PreFork) =>
+      whenever(level.toLong < range.fork) {
         val sut = detector(forkingPoint = range.fork)
-        sut.checkOnLevel(level) shouldBe ForkDetector.SameId
+        sut.checkOnLevel(level.toLong) shouldBe ForkDetector.SameId
       }
     }
   }
 
   property("The fork detection level check should return consistent results above the forking point") {
-    forAll(maxDiscardedFactor(3.0)) { (range: ForkDetectionRange, level: Long) =>
-      whenever(level >= range.fork) {
+    forAll { (range: ForkDetectionRange, level: PostFork) =>
+      whenever(level.toLong >= range.fork) {
         val sut = detector(forkingPoint = range.fork)
-        sut.checkOnLevel(level) shouldBe ForkDetector.ForkedId
+        sut.checkOnLevel(level.toLong) shouldBe ForkDetector.ForkedId
       }
     }
   }
@@ -108,6 +106,32 @@ class ForkDetectorSpec extends AnyPropSpec with ScalaCheckDrivenPropertyChecks w
         high <- Gen.choose(low + 2, low + 1000000) //arbitrary number in a range
         fork <- Gen.choose(low + 1, high - 1) //arbitrary number in-between
       } yield ForkDetectionRange(low, fork, high)
+    )
+
+    /* A typed wrapper to identify a level which is lower than a fork */
+    case class PreFork(toLong: Long)
+
+    /* A typed wrapper to identify a level which is higher than a fork */
+    case class PostFork(toLong: Long)
+
+    /** will generate a detection range and a random value that is
+      * guaranteed to be below the fork level generated
+      */
+    implicit val rangeWithPreForkLevels: Arbitrary[(ForkDetectionRange, PreFork)] = Arbitrary(
+      for {
+        range <- arbitrary[ForkDetectionRange]
+        level <- Gen.choose(range.low, range.fork - 1)
+      } yield (range, PreFork(level))
+    )
+
+    /** will generate a detection range and a random value that is
+      * guaranteed to be above the fork level generated
+      */
+    implicit val rangeWithPostForkLevels: Arbitrary[(ForkDetectionRange, PostFork)] = Arbitrary(
+      for {
+        range <- arbitrary[ForkDetectionRange]
+        level <- Gen.choose(range.fork, range.high)
+      } yield (range, PostFork(level))
     )
 
   }

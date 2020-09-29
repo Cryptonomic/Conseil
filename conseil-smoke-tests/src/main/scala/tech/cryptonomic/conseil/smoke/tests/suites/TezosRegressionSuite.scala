@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.smoke.tests.suites
 import java.util.concurrent.Executors
 
 import cats.effect.{IO, Resource}
-import cats.syntax.all._
 import com.typesafe.config.ConfigFactory
 import io.circe.{parser, Json}
 import org.http4s.circe._
@@ -22,7 +21,7 @@ import scala.util.Try
 import scala.annotation.tailrec
 import io.circe.ACursor
 
-/** Currently can be used to test any conseil instance that loaded blocks levels 1 to 1000
+/** Currently can be used to test any conseil instance that loaded blocks levels 1 to 5000
   * against predefined expectations on the responses
   */
 class TezosRegressionSuite(configfile: String, syncNetwork: Option[String])
@@ -55,7 +54,7 @@ class TezosRegressionSuite(configfile: String, syncNetwork: Option[String])
         cwd = None,
         extraEnv = "SBT_OPTS" -> s"-Dconfig.file=$configfile"
       )
-    private val runConseil =
+    private val runApi =
       Process(
         command = Seq("sbt", "runApi -v"),
         cwd = None,
@@ -68,7 +67,7 @@ class TezosRegressionSuite(configfile: String, syncNetwork: Option[String])
     private def startConseil: IO[Process] =
       for {
         _ <- if (syncNetwork.nonEmpty) syncData(syncNetwork.get) else IO(0)
-        proc <- IO(runConseil.run())
+        proc <- IO(runApi.run())
         _ <- IO(println("waiting for conseil to start"))
         _ <- timer.sleep(20.seconds)
       } yield proc
@@ -211,7 +210,7 @@ class TezosRegressionSuite(configfile: String, syncNetwork: Option[String])
 
     /* Assuming a json array is passed-in, recursively remove the field from
      * all objects in it.
-     * We use cursors to verify the presence of teh field and remove it,
+     * We use cursors to verify the presence of the field and remove it,
      * then we check at each recursion step if there's yet another sibling on the
      * array, else we return the last object.
      * Finding an object that doesn't have the field signals the recursion termination.

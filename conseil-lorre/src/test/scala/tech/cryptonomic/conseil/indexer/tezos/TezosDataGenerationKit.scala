@@ -173,7 +173,7 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
        */
       for {
         totallyArbitrary <- arbitrary[BlocksRow]
-        arbitraryB52C <- Gen.infiniteStream(arbitraryBase58CheckString)
+        arbitraryB58C <- Gen.infiniteStream(arbitraryBase58CheckString)
         arbitraryTimestamp <- timestampGenerator
         arbitraryFit <- databaseFriendlyStringGenerator
         arbitraryCtx <- Gen.option(databaseFriendlyStringGenerator)
@@ -184,9 +184,9 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
       } yield
         ForkValid(
           totallyArbitrary.copy(
-            predecessor = arbitraryB52C(0),
-            protocol = arbitraryB52C(1),
-            hash = arbitraryB52C(2),
+            predecessor = arbitraryB58C(0),
+            protocol = arbitraryB58C(1),
+            hash = arbitraryB58C(2),
             activeProposal = arbitraryProposal,
             fitness = arbitraryFit.value,
             context = arbitraryCtx.map(_.value),
@@ -261,7 +261,7 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
       for {
         totallyArbitrary <- arbitrary[AccountsRow]
         arbitraryBase58Check <- arbitraryBase58CheckString
-        arbitraryB52C <- Gen.infiniteStream(Gen.option(arbitraryBase58CheckString))
+        arbitraryB58COption <- Gen.infiniteStream(Gen.option(arbitraryBase58CheckString))
         DBSafe(arbitraryBalance) <- databaseFriendlyBigDecimalGenerator
         arbitraryScript <- Gen.option(databaseFriendlyStringGenerator)
         arbitraryStorage <- Gen.option(databaseFriendlyStringGenerator)
@@ -272,8 +272,8 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
             balance = arbitraryBalance,
             script = arbitraryScript.map(_.value),
             storage = arbitraryStorage.map(_.value),
-            manager = arbitraryB52C(0),
-            delegateValue = arbitraryB52C(1),
+            manager = arbitraryB58COption(0),
+            delegateValue = arbitraryB58COption(1),
             invalidatedAsof = None,
             forkId = Fork.mainForkId
           )
@@ -360,15 +360,26 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
       * **Notice** that the generated rows are **not invalidated**
       */
     implicit val validOperationGroupsRowGenerator = Arbitrary(
-      /* we modify the completely random instance provided by scalacheck shapeless
-       * to provide our customized version
+      /* We build a new instance from individual random values.
+       * No value added here from generating the base object completely randomly,
+       * 'cause all fields might fail to save on db.
        */
       for {
-        totallyArbitrary <- arbitrary[OperationGroupsRow]
+        arbitraryHash <- arbitraryBase58CheckString
+        arbitraryBlockHash <- arbitraryBase58CheckString
+        arbitraryStrings <- Gen.infiniteStream(databaseFriendlyStringGenerator)
+        arbitraryOptionalStrings <- Gen.infiniteStream(Gen.option(databaseFriendlyStringGenerator))
+        arbitraryLevel <- Gen.posNum[Long]
       } yield
         ForkValid(
-          /* we currently generate totally random strings for hash fields, as long as it's ok */
-          totallyArbitrary.copy(
+          OperationGroupsRow(
+            hash = arbitraryHash,
+            protocol = arbitraryStrings(0).value,
+            branch = arbitraryStrings(1).value,
+            chainId = arbitraryOptionalStrings(0).map(_.value),
+            signature = arbitraryOptionalStrings(1).map(_.value),
+            blockId = arbitraryBlockHash,
+            blockLevel = arbitraryLevel,
             invalidatedAsof = None,
             forkId = Fork.mainForkId
           )
