@@ -31,6 +31,7 @@ trait Tables {
     Blocks.schema,
     EndorsingRights.schema,
     Fees.schema,
+    Forks.schema,
     Governance.schema,
     KnownAddresses.schema,
     OperationGroups.schema,
@@ -1233,8 +1234,8 @@ trait Tables {
     /** Primary key of BakingRights (database name baking_rights_pkey) */
     val pk = primaryKey("baking_rights_pkey", (blockLevel, delegate, forkId))
 
-    /** Foreign key referencing Blocks (database name fk_block_hash) */
-    lazy val blocksFk = foreignKey("fk_block_hash", (blockHash, forkId), Blocks)(
+    /** Foreign key referencing Blocks (database name bake_rights_block_fkey) */
+    lazy val blocksFk = foreignKey("bake_rights_block_fkey", (blockHash, forkId), Blocks)(
       r => (Rep.Some(r.hash), r.forkId),
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
@@ -1924,8 +1925,8 @@ trait Tables {
     /** Primary key of EndorsingRights (database name endorsing_rights_pkey) */
     val pk = primaryKey("endorsing_rights_pkey", (blockLevel, delegate, slot, forkId))
 
-    /** Foreign key referencing Blocks (database name fk_block_hash) */
-    lazy val blocksFk = foreignKey("fk_block_hash", (blockHash, forkId), Blocks)(
+    /** Foreign key referencing Blocks (database name endorse_rights_block_fkey) */
+    lazy val blocksFk = foreignKey("endorse_rights_block_fkey", (blockHash, forkId), Blocks)(
       r => (Rep.Some(r.hash), r.forkId),
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
@@ -2051,6 +2052,53 @@ trait Tables {
 
   /** Collection-like TableQuery object for table Fees */
   lazy val Fees = new TableQuery(tag => new Fees(tag))
+
+  /** Entity class storing rows of table Forks
+    *  @param forkId Database column fork_id SqlType(varchar), PrimaryKey
+    *  @param forkLevel Database column fork_level SqlType(int8)
+    *  @param forkHash Database column fork_hash SqlType(varchar)
+    *  @param headLevel Database column head_level SqlType(int8)
+    *  @param timestamp Database column timestamp SqlType(timestamp) */
+  case class ForksRow(forkId: String, forkLevel: Long, forkHash: String, headLevel: Long, timestamp: java.sql.Timestamp)
+
+  /** GetResult implicit for fetching ForksRow objects using plain SQL queries */
+  implicit def GetResultForksRow(implicit e0: GR[String], e1: GR[Long], e2: GR[java.sql.Timestamp]): GR[ForksRow] = GR {
+    prs =>
+      import prs._
+      ForksRow.tupled((<<[String], <<[Long], <<[String], <<[Long], <<[java.sql.Timestamp]))
+  }
+
+  /** Table description of table forks. Objects of this class serve as prototypes for rows in queries. */
+  class Forks(_tableTag: Tag) extends profile.api.Table[ForksRow](_tableTag, Some("tezos"), "forks") {
+    def * = (forkId, forkLevel, forkHash, headLevel, timestamp) <> (ForksRow.tupled, ForksRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      ((Rep.Some(forkId), Rep.Some(forkLevel), Rep.Some(forkHash), Rep.Some(headLevel), Rep.Some(timestamp))).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => ForksRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    /** Database column fork_id SqlType(varchar), PrimaryKey */
+    val forkId: Rep[String] = column[String]("fork_id", O.PrimaryKey)
+
+    /** Database column fork_level SqlType(int8) */
+    val forkLevel: Rep[Long] = column[Long]("fork_level")
+
+    /** Database column fork_hash SqlType(varchar) */
+    val forkHash: Rep[String] = column[String]("fork_hash")
+
+    /** Database column head_level SqlType(int8) */
+    val headLevel: Rep[Long] = column[Long]("head_level")
+
+    /** Database column timestamp SqlType(timestamp) */
+    val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
+  }
+
+  /** Collection-like TableQuery object for table Forks */
+  lazy val Forks = new TableQuery(tag => new Forks(tag))
 
   /** Entity class storing rows of table Governance
     *  @param votingPeriod Database column voting_period SqlType(int4)

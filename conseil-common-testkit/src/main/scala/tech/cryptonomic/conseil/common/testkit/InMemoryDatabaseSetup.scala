@@ -22,8 +22,8 @@ trait InMemoryDatabaseSetup {
 
   /*** Fixture is needed to run away from type madness in Slick */
   trait Fixture {
-    def create: DBIOAction[Unit, NoStream, Effect.Schema]
-    def delete: DBIOAction[Int, NoStream, Effect.Write]
+    def create: DBIOAction[Unit, NoStream, Effect.Schema] = DBIO.successful(())
+    def delete: DBIOAction[Int, NoStream, Effect.Write] = DBIO.successful(0)
   }
 
   /** Companion object for Fixture trait */
@@ -40,16 +40,15 @@ trait InMemoryDatabaseSetup {
 
   /*** Represents fixture for common slick tables */
   case class TFixture[U](query: TableQuery[_ <: Table[U]]) extends Fixture {
-    def create: DBIOAction[Unit, NoStream, Effect.Schema] = query.schema.create
-    def delete: DBIOAction[Int, NoStream, Effect.Write] = query.delete
+    override def create: DBIOAction[Unit, NoStream, Effect.Schema] = query.schema.create
+    override def delete: DBIOAction[Int, NoStream, Effect.Write] = query.delete
   }
 
   /*** Represents fixture for custom slick views */
   case class VFixture(createSql: Iterable[String]) extends Fixture {
     private val ddl = DDL(createSql, Iterable.empty) // We do not need to drop views
 
-    def create: DBIOAction[Unit, NoStream, Effect.Schema] = ddl.create
-    def delete: DBIOAction[Int, NoStream, Effect.Write] = DBIOAction.successful(0)
+    override def create: DBIOAction[Unit, NoStream, Effect.Schema] = ddl.create
   }
 
   /*** Represents the script to initialize the database, before creating tables */
@@ -57,6 +56,8 @@ trait InMemoryDatabaseSetup {
     private val ddl = DDL(createSql, dropSql)
 
     def create: DBIOAction[Unit, NoStream, Effect.Schema] = ddl.create
+
+    def customize: DBIOAction[Unit, NoStream, Effect.All] = DBIO.successful(())
   }
 
 }

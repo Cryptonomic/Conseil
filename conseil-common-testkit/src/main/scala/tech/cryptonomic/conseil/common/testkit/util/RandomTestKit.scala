@@ -66,6 +66,14 @@ trait RandomGenerationKit {
   def boundedAlphabetStringGenerator(alphabet: String): Gen[String] =
     Gen.someOf(alphabet.toSet).map(_.mkString)
 
+  /** Creates a generator for fixed-size strings where the characters come from the given alphabet
+    *
+    * @param size how long the resulting string is
+    * @param alphabet valid chars included in the generated string, provided as a single string
+    */
+  def boundedAlphabetStringGenerator(size: Int, alphabet: String): Gen[String] =
+    Gen.pick(size, alphabet.toSet).map(_.mkString)
+
   /** Generator for strings that can be safely used as column values in a db */
   val databaseFriendlyStringGenerator: Gen[DBSafe[String]] =
     arbitrary[String].map(string => DBSafe(string.filterNot(_ == nullUTF_8)))

@@ -18,7 +18,7 @@ object Dependencies {
 
     val slick = "3.3.0"
     val slickPG = "0.18.0"
-    val slickEffect = "0.3.0-M3"
+    val slickEffect = "0.3.0"
     val postgres = "42.1.4"
 
     val endpoints = "0.10.0"

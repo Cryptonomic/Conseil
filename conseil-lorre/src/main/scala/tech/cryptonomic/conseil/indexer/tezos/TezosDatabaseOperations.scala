@@ -30,6 +30,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.math.{ceil, max}
 import scala.util.{Failure, Success}
 import tech.cryptonomic.conseil.indexer.tezos.TezosGovernanceOperations.GovernanceAggregate
+import java.{util => ju}
 
 /**
   * Functions for writing Tezos data to a database.
@@ -890,5 +891,107 @@ object TezosDatabaseOperations extends LazyLogging {
         logger.warn("No csv configuration found to initialize table {} for {}.", table.baseTableRow.tableName, network)
         Future.successful(List.empty -> None)
     }
+
+  /** Write an audit log entry of a detected fork and some
+    * reference data useful to analyse the event.
+    *
+    * @param forkLevel the point where data was actually different, the fork point
+    * @param forkBlockHash the first block hash differing from that on the current chain
+    * @param indexedHeadLevel how far has the indexer gone ahead in the fork
+    * @param detectionTime when the indexer identified the fork having happened
+    * @return a unique identifier for the newly recorded fork, used as `forkId` in the system
+    */
+  def writeForkEntry(
+      forkLevel: BlockLevel,
+      forkBlockHash: TezosBlockHash,
+      indexedHeadLevel: BlockLevel,
+      detectionTime: Instant
+  ): DBIO[String] = {
+    val forkId = ju.UUID.randomUUID().toString
+    val ts = new Timestamp(detectionTime.getEpochSecond())
+    Tables.Forks.returning(
+      Tables.Forks.map(_.forkId)
+    ) += Tables.ForksRow(forkId, forkLevel, forkBlockHash.value, indexedHeadLevel, ts)
+  }
+
+  /** Temporarily lift statement constraints on foreign keys
+    * We need to defer any such constraints until the transaction commits
+    * when we want to update fork references in blocks and all related
+    * db entities, lifting the constraint checks until everything is updated
+    * and consistent.
+    */
+  def deferConstraints(): DBIO[Int] =
+    sqlu"SET CONSTRAINTS ALL DEFERRED;"
+
+  /** Operations related to data invalidation due to forks on the chain */
+  object ForkInvalidation {
+    import Tables._
+
+    /** Collects custom data to identify how to invalidate data
+      * on a specific table when a fork is detected
+      *
+      * @param query a query that reads the entity rows
+      * @param levelColumn reads the column where the referencing block level is stored
+      * @param invalidationTimeColumn reads the column that tracks invalidation time
+      * @param forkIdColumn reads the column that references the current fork
+      * @tparam E the slick specific table type
+      */
+    case class EntityTableInvalidator[E <: AbstractTable[_]](query: TableQuery[E])(
+        levelColumn: E => Rep[BlockLevel],
+        invalidationTimeColumn: E => Rep[Option[Timestamp]],
+        forkIdColumn: E => Rep[String]
+    ) {
+
+      /** Marks all relevant entities as invalidated (i.e. by a forking event), by
+        * specifying the block level at which the chain showed divergence from the local data.
+        *
+        * Such invalidated entries should not appear anymore as results from queries against the
+        * main fork of the chain. They will thereafter need to be specifically requested.
+        *
+        * @param fromLevel the lower level, included, for which data doesn't match the node
+        * @param asOf a time-stamp of the invalidation operation
+        * @param forkId a unique identifier of the fork on which the entities were found
+        * @return the number of impacted rows
+        */
+      def invalidate(fromLevel: BlockLevel, asOf: Instant, forkId: String): DBIO[Int] = {
+        assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
+        val asOfTimestamp = Timestamp.from(asOf)
+        query
+          .filter(levelColumn(_) >= fromLevel)
+          .map(e => (invalidationTimeColumn(e), forkIdColumn(e)))
+          .update(asOfTimestamp.some, forkId)
+      }
+
+    }
+
+    lazy val blocks = EntityTableInvalidator(Blocks)(_.level, _.invalidatedAsof, _.forkId)
+    lazy val operationGroups = EntityTableInvalidator(OperationGroups)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val operations = EntityTableInvalidator(Operations)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val accounts = EntityTableInvalidator(Accounts)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val accountsHistory = EntityTableInvalidator(AccountsHistory)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val bakers = EntityTableInvalidator(Bakers)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val bakersHistory = EntityTableInvalidator(BakersHistory)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val bakingRights = EntityTableInvalidator(BakingRights)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val endorsingRights = EntityTableInvalidator(EndorsingRights)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val tokenBalances = EntityTableInvalidator(TokenBalances)(_.blockLevel, _.invalidatedAsof, _.forkId)
+    lazy val governance = EntityTableInvalidator(Governance)(_.level.ifNull(-1L), _.invalidatedAsof, _.forkId)
+    lazy val fees = EntityTableInvalidator(Fees)(_.level.ifNull(-1L), _.invalidatedAsof, _.forkId)
+
+    /** Deletes entries for the registry of processed chain events.
+      * Due to a fork, those events will need be processed again over the new fork
+      * data.
+      * Notice that we have to be careful here and make sure that events' processing is
+      * an operation that can be executed mutliple times with no downsides
+      * (a.k.a. idempotent)
+      *
+      * @param fromLevel the lower level, included, for which data doesn't match the node
+      * @return the number of impacted rows (deleted)
+      */
+    def deleteProcessedEvents(fromLevel: BlockLevel): DBIO[Int] = {
+      assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
+      Tables.ProcessedChainEvents.filter(_.eventLevel >= fromLevel).delete
+    }
+
+  }
 
 }
