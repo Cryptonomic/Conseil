@@ -10,7 +10,7 @@ import cats.Monad
 /** Tezos specific logic to identify and handle forks in the chain,
   * and to correct them.
   * This will allow the indexer to proceed re-syncing from
-  * the point were the divergence occured.
+  * the point were the divergence occurred.
   *
   * @param nodeSearch retrieves block ids on the remote node by level
   * @param nodeDataSearch retrieves blocks' data on the remote node by level
