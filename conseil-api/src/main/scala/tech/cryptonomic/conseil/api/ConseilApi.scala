@@ -29,7 +29,7 @@ import tech.cryptonomic.conseil.api.security.Security
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.config.Platforms
 import tech.cryptonomic.conseil.common.config.Platforms.BlockchainPlatform
-import tech.cryptonomic.conseil.common.sql.DatabaseMetadataOperations
+import tech.cryptonomic.conseil.common.sql.DatabaseRunner
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 
 import scala.concurrent.ExecutionContext
@@ -157,7 +157,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
 
     private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
     private val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
-    private val metadataOperations: DatabaseMetadataOperations = new DatabaseMetadataOperations {
+    private val metadataOperations: DatabaseRunner = new DatabaseRunner {
       override lazy val dbReadHandle = DatabaseUtil.conseilDb
     }
 

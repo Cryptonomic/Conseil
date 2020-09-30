@@ -43,6 +43,7 @@ class TezosDatabaseOperationsTest
       import TezosDataGenerationKit.DomainModelGeneration._
 
       val sut = TezosDatabaseOperations
+      val indexed = new TezosIndexedDataOperations(dbHandler)
       val feesToConsider = 1000
 
       "use the right collation" in {
@@ -798,57 +799,6 @@ class TezosDatabaseOperationsTest
 
       }
 
-      "read latest account ids from checkpoint" in {
-        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-        //generate data
-        val blocks = generateBlockRows(toLevel = 5, testReferenceTimestamp)
-
-        //store required blocks for FK
-        dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
-        val accountIds = Array("a0", "a1", "a2", "a3", "a4", "a5", "a6")
-        val blockIds = blocks.map(_.hash)
-
-        //create test data:
-        val checkpointRows = Array(
-          Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5, testReferenceTimestamp)
-        )
-
-        def entry(accountAtIndex: Int, atLevel: Int, time: Timestamp) =
-          makeAccountId(accountIds(accountAtIndex)) ->
-              BlockReference(TezosBlockHash(blockIds(atLevel)), atLevel, Some(time.toInstant), None, None)
-
-        //expecting only the following to remain
-        val expected =
-          Map(
-            entry(accountAtIndex = 1, atLevel = 1, time = testReferenceTimestamp),
-            entry(accountAtIndex = 2, atLevel = 3, time = testReferenceTimestamp),
-            entry(accountAtIndex = 3, atLevel = 4, time = testReferenceTimestamp),
-            entry(accountAtIndex = 4, atLevel = 2, time = testReferenceTimestamp),
-            entry(accountAtIndex = 5, atLevel = 4, time = testReferenceTimestamp),
-            entry(accountAtIndex = 6, atLevel = 5, time = testReferenceTimestamp)
-          )
-
-        val populateAndFetch = for {
-          stored <- Tables.AccountsCheckpoint ++= checkpointRows
-          rows <- sut.getLatestAccountsFromCheckpoint
-        } yield (stored, rows)
-
-        val (initialCount, latest) = dbHandler.run(populateAndFetch.transactionally).futureValue
-        initialCount.value shouldBe checkpointRows.size
-
-        latest.toSeq should contain theSameElementsAs expected.toSeq
-
-      }
-
       "read latest baker key hashes from checkpoint" in {
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
@@ -1081,7 +1031,7 @@ class TezosDatabaseOperationsTest
         results.value shouldBe 3
 
         //then
-        val checkpoint = dbHandler.run(sut.getLatestAccountsFromCheckpoint).futureValue
+        val checkpoint = indexed.getLatestAccountsFromCheckpoint.futureValue
 
         checkpoint.keys should contain theSameElementsAs accountsInfo.content.keys
 
@@ -1134,7 +1084,7 @@ class TezosDatabaseOperationsTest
         results.value shouldBe 1
 
         //then
-        val checkpoint = dbHandler.run(sut.getLatestAccountsFromCheckpoint).futureValue
+        val checkpoint = indexed.getLatestAccountsFromCheckpoint.futureValue
 
         checkpoint.keys.size shouldBe 1
         checkpoint.keySet should contain only matchingId

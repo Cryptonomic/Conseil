@@ -4,7 +4,7 @@ import slick.dbio.DBIO
 
 import scala.concurrent.Future
 
-trait MetadataOperations {
+trait DBIORunner {
 
   /**
     * Runs DBIO action for reading purposes
