@@ -64,25 +64,6 @@ class BakersProcessor(
         logger.info("{} baker history rows were added to the database.", historyRows.fold("The")(String.valueOf))
     }
 
-    def processBakersPage(
-        taggedBakers: Seq[BlockTagged[Map[PublicKeyHash, Delegate]]],
-        rolls: List[Voting.BakerRolls]
-    ): Future[(Option[Int], Option[Int])] = {
-
-      val enrichedBakers = taggedBakers
-        .map(
-          blockTagged =>
-            blockTagged.copy(content = blockTagged.content.map {
-              case (key, baker) =>
-                val rollsSum = rolls.filter(_.pkh.value == key.value).map(_.rolls).sum
-                (key, baker.updateRolls(rollsSum))
-            })
-        )
-
-      db.run(TezosDb.writeBakersAndCopyContracts(enrichedBakers.toList))
-        .andThen(logWriteFailure)
-    }
-
     def cleanup = {
       //can fail with no real downsides
       val processed = Some(ids.keySet)
@@ -119,18 +100,11 @@ class BakersProcessor(
         .mapAsync(1)(identity) //extracts the future value as an element of the stream
         .mapConcat(identity) //concatenates the list of values as single-valued elements in the stream
         .grouped(batchingConf.blockPageSize) //re-arranges the process batching
-        .mapAsync(1)(taggedBakers => {
-          val hashes = taggedBakers.map(_.ref.hash).toList
-          nodeOperator
-            .getBakerRollsForBlockHashes(hashes)
-            .map { hashKeyedRolls =>
-              val rolls = hashKeyedRolls.flatMap { case (hash, rolls) => rolls }
-              taggedBakers -> rolls
-            }
-        })
-        .mapAsync(1) {
-          case (bakers, rolls) => processBakersPage(bakers, rolls)
-        }
+        .mapAsync(1)(
+          taggedBakers =>
+            db.run(TezosDb.writeBakersAndCopyContracts(taggedBakers.toList))
+              .andThen(logWriteFailure)
+        )
         .runFold((Monoid[Option[Int]].empty, Monoid[Option[Int]].empty)) {
           case ((processedRows, processedHistoryRows), (justDone, justDoneHistory)) =>
             (processedRows |+| justDone) -> (processedHistoryRows |+| justDoneHistory)
@@ -231,6 +205,14 @@ class BakersProcessor(
       case InvalidPositiveDecimal(_) => None
     }
 
+    /** Computes updated rolls from the stake balance being updated */
+    def rollsFromStakes(balance: PositiveBigNumber): Int = balance match {
+      case PositiveDecimal(value) =>
+        (value quot Voting.BakerRollsSize).toIntExact
+      case InvalidPositiveDecimal(jsonString) =>
+        0
+    }
+
     def findUpdateDelegate(baker: Tables.BakersRow) = delegates.get(PublicKeyHash(baker.pkh))
 
     bakers.map(baker => baker -> findUpdateDelegate(baker)).collect {
@@ -239,6 +221,7 @@ class BakersProcessor(
           balance = extractBalance(delegate.balance),
           frozenBalance = extractBalance(delegate.frozen_balance),
           stakingBalance = extractBalance(delegate.staking_balance),
+          rolls = rollsFromStakes(delegate.staking_balance),
           delegatedBalance = extractBalance(delegate.delegated_balance),
           deactivated = delegate.deactivated
         )

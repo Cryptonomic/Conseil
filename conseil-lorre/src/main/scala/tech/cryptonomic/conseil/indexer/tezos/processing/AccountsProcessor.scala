@@ -227,29 +227,22 @@ class AccountsProcessor(
 
     logger.info("Ready to fetch updated accounts information from the chain")
 
-    // updates account pages with baker information
-    def updateAccountPages(
-        pages: LazyPages[nodeOperator.AccountFetchingResults]
-    ): LazyPages[nodeOperator.AccountFetchingResults] =
-      pages.map { pageFut =>
-        pageFut.map { accounts =>
-          accounts.map { taggedAccounts =>
-            votingData
-              .get(taggedAccounts.ref.hash)
-              .map { rolls =>
-                //TODO this map should be read from the indexed bakers
-                //essentially read the bakers list from the previous blocks
-                val affectedAccounts = rolls.map(_.pkh.value)
-                val accUp = taggedAccounts.content.map {
-                  case (accId, acc) if affectedAccounts.contains(accId.value) =>
-                    accId -> acc.copy(isBaker = Some(true))
-                  case x => x
-                }
-                taggedAccounts.copy(content = accUp)
-              }
-              .getOrElse(taggedAccounts)
-          }
+    /** Updates the accounts in the paginated results by adding
+      * baking information.
+      *
+      * It currently uses stored bakers' entries to match the account ids.
+      */
+    def markAnyBakerAccount(
+        taggedAccounts: BlockTagged[Map[AccountId, Account]]
+    ): Future[BlockTagged[Map[AccountId, Account]]] =
+      indexedData.getBakersSelection(taggedAccounts.content.keySet).map { identifiedBakers =>
+        val isBaker = identifiedBakers.map(_.pkh).toSet
+        val marked = taggedAccounts.content.map {
+          case (id, account) if isBaker(id.value) =>
+            id -> account.copy(isBaker = Some(true))
+          case other => other
         }
+        taggedAccounts.copy(content = marked)
       }
 
     /* Streams the (unevaluated) incoming data, actually fetching the results.
@@ -273,7 +266,7 @@ class AccountsProcessor(
 
     val fetchAndStore = for {
       (accountPages, _) <- prunedUpdates().map(nodeOperator.getAccountsForBlocks)
-      updatedPages = updateAccountPages(accountPages)
+      updatedPages = TezosNodeOperator.mapAsyncByPageItem(accountPages)(markAnyBakerAccount)
       (stored, checkpoints, delegateKeys) <- saveAccounts(updatedPages) flatTap (_ => cleanup)
     } yield delegateKeys
 

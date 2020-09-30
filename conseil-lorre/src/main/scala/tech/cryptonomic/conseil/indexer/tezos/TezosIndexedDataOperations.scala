@@ -13,6 +13,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
 }
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.BakerRolls
 import tech.cryptonomic.conseil.common.tezos.Tables
+import tech.cryptonomic.conseil.common.tezos.Tables.BakersRow
 
 /**
   * Functionality for fetching data from the Conseil database specific only for conseil-lorre module.
@@ -123,6 +124,21 @@ private[tezos] class TezosIndexedDataOperations(
           .map(hash -> _.map(baker => BakerRolls(PublicKeyHash(baker.pkh), baker.rolls)).toList)
       }
     })
+
+  /** Gets baker rows for any matching id in the input.
+    * Useful to verify which account corresponds to a baker.
+    *
+    * @param include the account ids to match on
+    */
+  def getBakersSelection(
+      include: Set[AccountId]
+  )(implicit ec: ExecutionContext): Future[List[BakersRow]] =
+    runQuery(
+      Tables.Bakers
+        .filter(_.pkh inSet include.map(_.value))
+        .result
+        .map(_.toList)
+    )
 
   /** Fetch the latest block level available for each account id stored */
   def getLevelsForAccounts(ids: Set[AccountId]): Future[Seq[(String, BlockLevel)]] =

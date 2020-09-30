@@ -517,11 +517,17 @@ object TezosTypes {
       staking_balance: PositiveBigNumber,
       delegated_contracts: List[ContractId],
       delegated_balance: PositiveBigNumber,
-      rolls: Option[Int] = None,
       deactivated: Boolean,
       grace_period: Int
   ) {
-    def updateRolls(rolls: Int): Delegate = this.copy(rolls = Some(rolls))
+
+    /** Compute rolls based on staked balance */
+    def rolls: Option[Int] = staking_balance match {
+      case PositiveDecimal(value) =>
+        Some((value quot Voting.BakerRollsSize).toIntExact)
+      case InvalidPositiveDecimal(jsonString) =>
+        None
+    }
   }
 
   final case class CycleBalance(
@@ -596,6 +602,9 @@ object TezosTypes {
   final case class MichelsonExpression(prim: String, args: List[String])
 
   object Voting {
+
+    /** how big is a baker roll */
+    final val BakerRollsSize = BigDecimal.decimal(8000)
 
     final case class Vote(value: String) extends AnyVal
     final case class Proposal(protocols: List[(ProtocolId, ProposalSupporters)], block: Block)

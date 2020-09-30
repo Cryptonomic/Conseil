@@ -94,8 +94,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
               delegated_contracts = List(ContractId(accountPkh)),
               delegated_balance = PositiveDecimal(rnd.nextInt()),
               deactivated = false,
-              grace_period = rnd.nextInt(),
-              rolls = None
+              grace_period = rnd.nextInt()
             )
     }.toMap
 
