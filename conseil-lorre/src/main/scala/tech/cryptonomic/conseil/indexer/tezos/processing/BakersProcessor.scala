@@ -14,8 +14,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   InvalidPositiveDecimal,
   PositiveBigNumber,
   PositiveDecimal,
-  PublicKeyHash,
-  Voting
+  PublicKeyHash
 }
 import tech.cryptonomic.conseil.indexer.tezos.{TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator.LazyPages
@@ -205,14 +204,6 @@ class BakersProcessor(
       case InvalidPositiveDecimal(_) => None
     }
 
-    /** Computes updated rolls from the stake balance being updated */
-    def rollsFromStakes(balance: PositiveBigNumber): Int = balance match {
-      case PositiveDecimal(value) =>
-        (value quot Voting.BakerRollsSize).toIntExact
-      case InvalidPositiveDecimal(jsonString) =>
-        0
-    }
-
     def findUpdateDelegate(baker: Tables.BakersRow) = delegates.get(PublicKeyHash(baker.pkh))
 
     bakers.map(baker => baker -> findUpdateDelegate(baker)).collect {
@@ -221,7 +212,7 @@ class BakersProcessor(
           balance = extractBalance(delegate.balance),
           frozenBalance = extractBalance(delegate.frozen_balance),
           stakingBalance = extractBalance(delegate.staking_balance),
-          rolls = rollsFromStakes(delegate.staking_balance),
+          rolls = delegate.rolls.getOrElse(0),
           delegatedBalance = extractBalance(delegate.delegated_balance),
           deactivated = delegate.deactivated
         )

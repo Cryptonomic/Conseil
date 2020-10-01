@@ -522,12 +522,8 @@ object TezosTypes {
   ) {
 
     /** Compute rolls based on staked balance */
-    def rolls: Option[Int] = staking_balance match {
-      case PositiveDecimal(value) =>
-        Some((value quot Voting.BakerRollsSize).toIntExact)
-      case InvalidPositiveDecimal(jsonString) =>
-        None
-    }
+    def rolls: Option[Int] = Baking.computeRollsFromStakes(staking_balance)
+
   }
 
   final case class CycleBalance(
@@ -603,14 +599,28 @@ object TezosTypes {
 
   object Voting {
 
-    /** how big is a baker roll */
-    final val BakerRollsSize = BigDecimal.decimal(8000)
-
     final case class Vote(value: String) extends AnyVal
     final case class Proposal(protocols: List[(ProtocolId, ProposalSupporters)], block: Block)
     final case class BakerRolls(pkh: PublicKeyHash, rolls: Int)
     final case class Ballot(pkh: PublicKeyHash, ballot: Vote)
     final case class BallotCounts(yay: Int, nay: Int, pass: Int)
+  }
+
+  /** Utilities related to the baking process */
+  object Baking {
+
+    //we'll move this to a proper chain configuration value later on
+    /** how big is a baker roll */
+    final val BakerRollsSize = BigDecimal.decimal(8000)
+
+    def computeRollsFromStakes(stakingBalance: PositiveBigNumber): Option[Int] =
+      stakingBalance match {
+        case PositiveDecimal(value) =>
+          Some((value quot BakerRollsSize).toIntExact)
+        case InvalidPositiveDecimal(jsonString) =>
+          None
+      }
+
   }
 
   object Syntax {
