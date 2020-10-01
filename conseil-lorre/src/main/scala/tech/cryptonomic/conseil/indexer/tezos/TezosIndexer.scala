@@ -256,7 +256,7 @@ object TezosIndexer extends LazyLogging {
 
     /* Here we collect all internal service operations and resources, needed to run the indexer */
     val db = DatabaseUtil.lorreDb
-    val indexedData = new TezosIndexedDataOperations
+    val indexedData = new TezosIndexedDataOperations(db)
 
     /* collects data from the remote tezos node */
     val nodeOperator = new TezosNodeOperator(
@@ -274,7 +274,8 @@ object TezosIndexer extends LazyLogging {
     )
 
     /* handles standard accounts data */
-    val accountsProcessor = new AccountsProcessor(nodeOperator, db, batchingConf, lorreConf.blockRightsFetching)
+    val accountsProcessor =
+      new AccountsProcessor(nodeOperator, indexedData, batchingConf, lorreConf.blockRightsFetching)
 
     /* handles wide-range accounts refresh due to occasional special events */
     val accountsResetHandler = new AccountsResetHandler(db, indexedData)

@@ -8,7 +8,11 @@ import akka.stream.scaladsl.Source
 import cats._
 import cats.implicits._
 import tech.cryptonomic.conseil.indexer.config.{BakingAndEndorsingRights, BatchFetchConfiguration}
-import tech.cryptonomic.conseil.indexer.tezos.{TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.indexer.tezos.{
+  TezosIndexedDataOperations,
+  TezosNodeOperator,
+  TezosDatabaseOperations => TezosDb
+}
 import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator.LazyPages
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
@@ -23,23 +27,20 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   Voting
 }
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors.AccountsProcessingFailed
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 import com.typesafe.scalalogging.LazyLogging
-import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.common.util.JsonUtil.AccountIds
 
 /** Collects operations related to handling accounts from
   * the tezos node.
   *
   * @param nodeOperator connects to tezos
-  * @param db raw access to the slick database
+  * @param indexedData access to the chain data already in the indexer
   * @param batchingConf used to access configuration on batch fetching
   * @param rightsConf used to access configuration for baking/endorsing rights processing
   * @param mat implicitly required materializer of akka streams, used by internal streaming processing
   */
 class AccountsProcessor(
     nodeOperator: TezosNodeOperator,
-    db: Database,
+    indexedData: TezosIndexedDataOperations,
     batchingConf: BatchFetchConfiguration,
     rightsConf: BakingAndEndorsingRights
 )(
@@ -126,7 +127,7 @@ class AccountsProcessor(
       // (there is no operation like bakers deactivation)
       val accountsWithHistoryFut = for {
         activatedOperations <- fetchActivationOperationsByLevel(taggedAccounts.map(_.ref.level).distinct)
-        activatedAccounts <- db.run(TezosDb.findActivatedAccountIds)
+        activatedAccounts <- indexedData.findActivatedAccountIds
         updatedTaggedAccounts = updateTaggedAccountsWithIsActivated(
           taggedAccounts,
           activatedOperations.mapValues(_.toSet),
@@ -136,7 +137,8 @@ class AccountsProcessor(
       } yield inactiveBakerAccounts
 
       accountsWithHistoryFut.flatMap { accountsWithHistory =>
-        db.run(TezosDb.writeAccountsAndCheckpointBakers(accountsWithHistory, taggedBakerKeys))
+        indexedData
+          .runQuery(TezosDb.writeAccountsAndCheckpointBakers(accountsWithHistory, taggedBakerKeys))
           .map {
             case (accountWrites, accountHistoryWrites, bakerCheckpoints) =>
               (accountWrites, bakerCheckpoints, taggedBakerKeys)
@@ -155,11 +157,7 @@ class AccountsProcessor(
             //the returned ids also reference the input hash, but we can discard it
             //we only want the active ids to fetch the inactive by difference from the database
             val activeIds = activeBakers.map(_._2.toSet).getOrElse(Set.empty)
-            db.run {
-              TezosDb
-                .getFilteredBakerAccounts(exclude = activeIds)
-                .map(accountsPerLevel -> _)
-            }
+            indexedData.getFilteredBakerAccounts(exclude = activeIds).map(accountsPerLevel -> _)
           }
         } else {
           Future.successful(accountsPerLevel -> List.empty)
@@ -193,34 +191,31 @@ class AccountsProcessor(
       }
 
     /** Get all pkh for each level in input, belonging to any activate-account operation */
-    def fetchActivationOperationsByLevel(levels: List[BlockLevel]): Future[Map[BlockLevel, List[PublicKeyHash]]] = {
-      import slick.jdbc.PostgresProfile.api._
-      db.run {
-        DBIO.sequence {
-          levels.map { level =>
-            TezosDb
-              .fetchRecentOperationsHashByKind(Set("activate_account"), level)
-              .map(
-                optionalOperationHashes => level -> optionalOperationHashes.toList.map(PublicKeyHash(_))
-              )
-          }
-        }.map(_.toMap)
-      }
-    }
+    def fetchActivationOperationsByLevel(levels: List[BlockLevel]): Future[Map[BlockLevel, List[PublicKeyHash]]] =
+      Future
+        .traverse(levels) { level =>
+          indexedData
+            .fetchRecentOperationsHashByKind(Set("activate_account"), level)
+            .map(
+              optionalOperationHashes => level -> optionalOperationHashes.toList.map(PublicKeyHash(_))
+            )
+        }
+        .map(_.toMap)
 
     /** remove from the checkpoints any processed id */
     def cleanup = {
       //can fail with no real downsides
       val processed = Some(ids.keySet)
       logger.info("Cleaning {} processed accounts from the checkpoint...", ids.size)
-      db.run(TezosDb.cleanAccountsCheckpoint(processed))
+      indexedData
+        .runQuery(TezosDb.cleanAccountsCheckpoint(processed))
         .map(cleaned => logger.info("Done cleaning {} accounts checkpoint rows.", cleaned))
     }
 
     //if needed, we get the stored levels and only keep updates that are more recent
     def prunedUpdates(): Future[Map[AccountId, BlockReference]] =
-      if (onlyProcessLatest) db.run {
-        TezosDb.getLevelsForAccounts(ids.keySet).map { currentlyStored =>
+      if (onlyProcessLatest) {
+        indexedData.getLevelsForAccounts(ids.keySet).map { currentlyStored =>
           ids.filterNot {
             case (PublicKeyHash(accountId), BlockReference(_, updateLevel, _, _, _)) =>
               currentlyStored.exists {
@@ -232,25 +227,23 @@ class AccountsProcessor(
 
     logger.info("Ready to fetch updated accounts information from the chain")
 
-    // updates account pages with baker information
-    def updateAccountPages(pages: LazyPages[nodeOperator.AccountFetchingResults]) = pages.map { pageFut =>
-      pageFut.map { accounts =>
-        accounts.map { taggedAccounts =>
-          votingData
-            .get(taggedAccounts.ref.hash)
-            .map { rolls =>
-              val affectedAccounts = rolls.map(_.pkh.value)
-              val accUp = taggedAccounts.content.map {
-                case (accId, acc) if affectedAccounts.contains(accId.value) =>
-                  accId -> acc.copy(isBaker = Some(true))
-                case x => x
-              }
-              taggedAccounts.copy(content = accUp)
-            }
-            .getOrElse(taggedAccounts)
+    /** Updates the accounts in the paginated results by adding
+      * baking information.
+      *
+      * It currently uses stored bakers' entries to match the account ids.
+      */
+    def markAnyBakerAccount(
+        taggedAccounts: BlockTagged[Map[AccountId, Account]]
+    ): Future[BlockTagged[Map[AccountId, Account]]] =
+      indexedData.getBakersSelection(taggedAccounts.content.keySet).map { identifiedBakers =>
+        val isBaker = identifiedBakers.map(_.pkh).toSet
+        val marked = taggedAccounts.content.map {
+          case (id, account) if isBaker(id.value) =>
+            id -> account.copy(isBaker = Some(true))
+          case other => other
         }
+        taggedAccounts.copy(content = marked)
       }
-    }
 
     /* Streams the (unevaluated) incoming data, actually fetching the results.
      * We use combinators to keep the ongoing requests' flow under control, taking advantage of
@@ -273,7 +266,7 @@ class AccountsProcessor(
 
     val fetchAndStore = for {
       (accountPages, _) <- prunedUpdates().map(nodeOperator.getAccountsForBlocks)
-      updatedPages = updateAccountPages(accountPages)
+      updatedPages = TezosNodeOperator.mapAsyncByPageItem(accountPages)(markAnyBakerAccount)
       (stored, checkpoints, delegateKeys) <- saveAccounts(updatedPages) flatTap (_ => cleanup)
     } yield delegateKeys
 
@@ -321,14 +314,15 @@ class AccountsProcessor(
   private[tezos] def processTezosAccountsCheckpoint()(implicit ec: ExecutionContext): Future[Done] = {
 
     logger.info("Selecting all accounts left in the checkpoint table...")
-    db.run(TezosDb.getLatestAccountsFromCheckpoint) flatMap { checkpoints =>
+
+    indexedData.getLatestAccountsFromCheckpoint flatMap { checkpoints =>
       if (checkpoints.nonEmpty) {
         logger.info(
           "I loaded all of {} checkpointed ids from the DB and will proceed to fetch updated accounts information from the chain",
           checkpoints.size
         )
         // here we need to get missing bakers for the given block
-        db.run(TezosDb.getBakersForBlocks(checkpoints.values.map(_.hash).toList)).flatMap { bakers =>
+        indexedData.getBakersForBlocks(checkpoints.values.map(_.hash).toList).flatMap { bakers =>
           process(checkpoints, bakers.toMap, onlyProcessLatest = true).map(_ => Done)
         }
 

@@ -21,6 +21,29 @@ private[tezos] object TezosNodeOperator {
   type LazyPages[T] = Iterator[Future[T]]
   type Paginated[T, N] = (LazyPages[T], N)
 
+  /** Process every single page of results by converting the content with a custom function.
+    * The returned value will be the content of the paginated results.
+    */
+  def mapByPage[T](pages: LazyPages[T])(pageMapper: T => T)(implicit ec: ExecutionContext): LazyPages[T] =
+    pages.map(_.map(pageMapper))
+
+  /** Process every single page of results by converting the content with a custom asynchronous function.
+    * The returned value will be the content of the paginated results.
+    */
+  def mapAsyncByPage[T](pages: LazyPages[T])(pageMapper: T => Future[T])(implicit ec: ExecutionContext): LazyPages[T] =
+    pages.map(_.flatMap(pageMapper))
+
+  /** Process every single page of results by converting the content with a custom asynchronous function.
+    *  In this case the mapping is applied independently for every item of the page.
+    * The returned value will be the content of the paginated results.
+    */
+  def mapAsyncByPageItem[T](
+      pages: LazyPages[List[T]]
+  )(pageItemMapper: T => Future[T])(implicit ec: ExecutionContext): LazyPages[List[T]] =
+    mapAsyncByPage(pages) { accountsResults =>
+      Future.traverse(accountsResults)(pageItemMapper)
+    }
+
   /**
     * Output of operation signing.
     * @param bytes      Signed bytes of the transaction

@@ -16,7 +16,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
 }
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
-import tech.cryptonomic.conseil.common.generic.chain.{MetadataOperations, PlatformDiscoveryOperations}
+import tech.cryptonomic.conseil.common.generic.chain.{DBIORunner, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.common.metadata._
 
 import scala.concurrent.duration.FiniteDuration
@@ -26,7 +26,7 @@ import scala.concurrent.{ExecutionContext, Future}
 object GenericPlatformDiscoveryOperations {
 
   def apply(
-      metadataOperations: MetadataOperations,
+      metadataOperations: DBIORunner,
       caching: MetadataCaching[IO],
       cacheOverrides: AttributeValuesCacheConfiguration,
       cacheTTL: FiniteDuration,
@@ -37,7 +37,7 @@ object GenericPlatformDiscoveryOperations {
 
 /** Class providing the implementation of the metadata calls with caching */
 class GenericPlatformDiscoveryOperations(
-    metadataOperations: MetadataOperations,
+    metadataOperations: DBIORunner,
     caching: MetadataCaching[IO],
     cacheOverrides: AttributeValuesCacheConfiguration,
     cacheTTL: FiniteDuration,

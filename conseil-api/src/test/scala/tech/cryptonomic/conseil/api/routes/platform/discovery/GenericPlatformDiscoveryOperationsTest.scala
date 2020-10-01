@@ -21,7 +21,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
   InvalidAttributeDataType,
   InvalidAttributeFilterLength
 }
-import tech.cryptonomic.conseil.common.generic.chain.MetadataOperations
+import tech.cryptonomic.conseil.common.generic.chain.DBIORunner
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, _}
 import tech.cryptonomic.conseil.common.metadata._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
@@ -49,7 +49,7 @@ class GenericPlatformDiscoveryOperationsTest
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  val metadataOperations: MetadataOperations = new MetadataOperations {
+  val metadataOperations: DBIORunner = new DBIORunner {
     override def runQuery[A](action: dbio.DBIO[A]): Future[A] = dbHandler.run(action)
   }
   implicit val contextShift: ContextShift[IO] = IO.contextShift(implicitly[ExecutionContext])

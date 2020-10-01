@@ -290,46 +290,6 @@ class TezosForkDatabaseOperationsTest
 
       }
 
-      "not return fork-invalidated data for account levels" in {
-
-        /* Generate the data random sample */
-        val (validRows, validReferencedBlock, invalidation, fork) =
-          Gen
-            .zip(
-              //duplicate ids will fail to save on the db for violation of the PK uniqueness
-              nonConflictingArbitrary[ForkValid[AccountsRow]],
-              arbitrary[ForkValid[BlocksRow]],
-              arbitrary[Timestamp],
-              arbitrary[ju.UUID]
-            )
-            .sample
-            .value
-
-        val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
-        val invalidRows = validRows.map(
-          _.data.copy(
-            blockId = invalidBlock.hash,
-            blockLevel = invalidBlock.level,
-            invalidatedAsof = Some(invalidation),
-            forkId = fork.toString
-          )
-        )
-
-        /* Store everything on db */
-        val populateAndFetch = for {
-          _ <- Tables.Blocks += invalidBlock
-          Some(stored) <- Tables.Accounts ++= invalidRows
-          loaded <- sut.getLevelsForAccounts(invalidRows.map(row => makeAccountId(row.accountId)).toSet)
-        } yield (stored, loaded)
-
-        /* Test the results */
-        val (stored, loaded) = dbHandler.run(populateAndFetch).futureValue
-
-        stored shouldBe >(0)
-        loaded shouldBe empty
-
-      }
-
       "not return fork-invalidated data for baker levels" in {
 
         /* Generate the data random sample */
@@ -360,46 +320,6 @@ class TezosForkDatabaseOperationsTest
           _ <- Tables.Blocks += invalidBlock
           Some(stored) <- Tables.Bakers ++= invalidRows
           loaded <- sut.getLevelsForBakers(invalidRows.map(row => PublicKeyHash(row.pkh)).toSet)
-        } yield (stored, loaded)
-
-        /* Test the results */
-        val (stored, loaded) = dbHandler.run(populateAndFetch).futureValue
-
-        stored shouldBe >(0)
-        loaded shouldBe empty
-
-      }
-
-      "not return fork-invalidated data for filteres bakers" in {
-
-        /* Generate the data random sample */
-        val (validRows, validReferencedBlock, invalidation, fork) =
-          Gen
-            .zip(
-              //duplicate ids will fail to save on the db for violation of the PK uniqueness
-              nonConflictingArbitrary[ForkValid[AccountsRow]],
-              arbitrary[ForkValid[BlocksRow]],
-              arbitrary[Timestamp],
-              arbitrary[ju.UUID]
-            )
-            .sample
-            .value
-
-        val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
-        val invalidRows = validRows.map(
-          _.data.copy(
-            blockId = invalidBlock.hash,
-            blockLevel = invalidBlock.level,
-            invalidatedAsof = Some(invalidation),
-            forkId = fork.toString
-          )
-        )
-
-        /* Store everything on db */
-        val populateAndFetch = for {
-          _ <- Tables.Blocks += invalidBlock
-          Some(stored) <- Tables.Accounts ++= invalidRows
-          loaded <- sut.getFilteredBakerAccounts(exclude = Set.empty)
         } yield (stored, loaded)
 
         /* Test the results */
@@ -571,42 +491,6 @@ class TezosForkDatabaseOperationsTest
 
       }
 
-      "not return fork-invalidated data for bakers by block-hash" in {
-
-        val (validRow, validReferencedBlock, invalidation, fork) =
-          arbitrary[
-            (
-                ForkValid[BakersRow],
-                ForkValid[BlocksRow],
-                Timestamp,
-                ju.UUID
-            )
-          ].sample.value
-
-        val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
-        val invalidRow = validRow.data.copy(
-          blockId = invalidBlock.hash,
-          blockLevel = invalidBlock.level,
-          invalidatedAsof = Some(invalidation),
-          forkId = fork.toString
-        )
-
-        val populateAndFetch = for {
-          _ <- Tables.Blocks += invalidBlock
-          stored <- Tables.Bakers += invalidRow
-          loaded <- sut.getBakersForBlocks(List(TezosBlockHash(invalidRow.blockId)))
-        } yield (stored, loaded)
-
-        val (stored, loaded) = dbHandler.run(populateAndFetch).futureValue
-
-        stored shouldBe >(0)
-        //get all rolls for any requested hash and concat them together
-        loaded.foldLeft(List.empty[Voting.BakerRolls]) {
-          case (allRolls, (hash, rolls)) => allRolls ++ rolls
-        } shouldBe empty
-
-      }
-
       "not use fork-invalidated operation to compute average fees" in {
 
         /* Generate the data random sample */
@@ -653,95 +537,6 @@ class TezosForkDatabaseOperationsTest
         stored shouldBe >(0)
         loaded shouldBe empty
 
-      }
-
-      "not return fork-invalidated data for activated accounts" in {
-
-        val (validRow, validReferencedBlock, invalidation, fork) =
-          arbitrary[
-            (
-                ForkValid[AccountsRow],
-                ForkValid[BlocksRow],
-                Timestamp,
-                ju.UUID
-            )
-          ].sample.value
-
-        val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
-        val invalidRow = validRow.data.copy(
-          isActivated = true,
-          blockLevel = invalidBlock.level,
-          blockId = invalidBlock.hash,
-          invalidatedAsof = Some(invalidation),
-          forkId = fork.toString
-        )
-        val populateAndFetch = for {
-          _ <- Tables.Blocks += invalidBlock
-          stored <- Tables.Accounts += invalidRow
-          loaded <- sut.findActivatedAccountIds
-        } yield (stored, loaded)
-
-        val (stored, loaded) = dbHandler.run(populateAndFetch).futureValue
-
-        stored shouldBe >(0)
-        loaded shouldBe empty
-
-      }
-
-      "not return fork-invalidated data for latest operation hashes by kind" in {
-        /* Generate the data random sample */
-        val (validRows, validReferencedGroup, validReferencedBlock, invalidation, fork) =
-          Gen
-            .zip(
-              nonConflictingArbitrary[ForkValid[OperationsRow]](
-                //add a bit more realism
-                satisfying = (row: ForkValid[OperationsRow]) => row.data.blockLevel > 0
-              ),
-              arbitrary[ForkValid[OperationGroupsRow]],
-              arbitrary[ForkValid[BlocksRow]],
-              arbitrary[Timestamp],
-              arbitrary[ju.UUID]
-            )
-            .sample
-            .value
-
-        val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
-        val invalidGroup = validReferencedGroup.data.copy(
-          blockId = invalidBlock.hash,
-          blockLevel = invalidBlock.level,
-          invalidatedAsof = Some(invalidation),
-          forkId = fork.toString
-        )
-        /* take heed that we keep the levels random */
-        val invalidRows = validRows.map(
-          _.data.copy(
-            blockHash = invalidBlock.hash,
-            operationGroupHash = invalidGroup.hash,
-            invalidatedAsof = Some(invalidation),
-            forkId = fork.toString
-          )
-        )
-
-        /* take note of relevant params */
-        val minRecordedLevel = invalidRows.map(_.blockLevel).min
-        val operationKinds = invalidRows.map(_.kind).toSet
-        //double-check
-        minRecordedLevel shouldBe >(0L)
-        operationKinds should not be empty
-
-        /* Store everything on db */
-        val populateAndFetch = for {
-          _ <- Tables.Blocks += invalidBlock
-          _ <- Tables.OperationGroups += invalidGroup
-          Some(stored) <- Tables.Operations ++= invalidRows
-          loaded <- sut.fetchRecentOperationsHashByKind(ofKind = operationKinds, fromLevel = minRecordedLevel)
-        } yield (stored, loaded)
-
-        /* Test the results */
-        val (stored, loaded) = dbHandler.run(populateAndFetch).futureValue
-
-        stored shouldBe >(0)
-        loaded shouldBe empty
       }
 
       "invalidate blocks" in {

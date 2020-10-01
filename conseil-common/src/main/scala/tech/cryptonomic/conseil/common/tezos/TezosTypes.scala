@@ -517,11 +517,13 @@ object TezosTypes {
       staking_balance: PositiveBigNumber,
       delegated_contracts: List[ContractId],
       delegated_balance: PositiveBigNumber,
-      rolls: Option[Int] = None,
       deactivated: Boolean,
       grace_period: Int
   ) {
-    def updateRolls(rolls: Int): Delegate = this.copy(rolls = Some(rolls))
+
+    /** Compute rolls based on staked balance */
+    def rolls: Option[Int] = Baking.computeRollsFromStakes(staking_balance)
+
   }
 
   final case class CycleBalance(
@@ -602,6 +604,23 @@ object TezosTypes {
     final case class BakerRolls(pkh: PublicKeyHash, rolls: Int)
     final case class Ballot(pkh: PublicKeyHash, ballot: Vote)
     final case class BallotCounts(yay: Int, nay: Int, pass: Int)
+  }
+
+  /** Utilities related to the baking process */
+  object Baking {
+
+    //we'll move this to a proper chain configuration value later on
+    /** how big is a baker roll */
+    final val BakerRollsSize = BigDecimal.decimal(8000)
+
+    def computeRollsFromStakes(stakingBalance: PositiveBigNumber): Option[Int] =
+      stakingBalance match {
+        case PositiveDecimal(value) =>
+          Some((value quot BakerRollsSize).toIntExact)
+        case InvalidPositiveDecimal(jsonString) =>
+          None
+      }
+
   }
 
   object Syntax {
