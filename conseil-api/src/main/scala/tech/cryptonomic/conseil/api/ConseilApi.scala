@@ -12,17 +12,14 @@ import ch.megard.akka.http.cors.scaladsl.CorsDirectives.cors
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.ConseilApi.NoNetworkEnabledError
 import tech.cryptonomic.conseil.api.config.ConseilAppConfig.CombinedConfiguration
+import tech.cryptonomic.conseil.api.config.NautilusCloudConfiguration
 import tech.cryptonomic.conseil.api.directives.{EnableCORSDirectives, RecordingDirectives, ValidatingDirectives}
 import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.api.routes.Docs
 import tech.cryptonomic.conseil.api.routes.info.AppInfo
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
 import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.{BitcoinDataOperations, BitcoinDataRoutes}
-import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{
-  EthereumDataOperations,
-  EthereumDataRoutes,
-  QuorumDataRoutes
-}
+import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{EthereumDataOperations, EthereumDataRoutes, QuorumDataRoutes}
 import tech.cryptonomic.conseil.api.routes.platform.data.tezos.{TezosDataOperations, TezosDataRoutes}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.{GenericPlatformDiscoveryOperations, PlatformDiscovery}
 import tech.cryptonomic.conseil.api.security.Security
@@ -55,8 +52,9 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
   implicit private val dispatcher: ExecutionContext = system.dispatcher
   implicit private val contextShift: ContextShift[IO] = IO.contextShift(dispatcher)
 
-  config.nautilusCloud.foreach { ncc =>
-    system.scheduler.schedule(ncc.delay, ncc.interval)(Security.updateKeys(ncc))
+  config.nautilusCloud match {
+    case ncc@NautilusCloudConfiguration(true, _, _, _, _, delay, interval) =>
+      system.scheduler.schedule(delay, interval)(Security.updateKeys(ncc))
   }
 
   config.platforms.platforms.foreach { conf =>

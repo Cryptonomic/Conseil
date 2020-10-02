@@ -50,7 +50,7 @@ trait ConseilAppConfig {
       platforms <- loadConfig[PlatformsConfiguration]
       metadataOverrides <- loadConfig[MetadataConfiguration]
       securityApi <- Security()
-      nautilusCloud <- loadConfig[Option[NautilusCloudConfiguration]]("nautilus-cloud")
+      nautilusCloud <- loadConfig[NautilusCloudConfiguration]("nautilus-cloud")
     } yield
       CombinedConfiguration(
         conseil,
@@ -82,6 +82,6 @@ object ConseilAppConfig extends LazyLogging with PlatformConfigurationHint {
       failFast: FailFast,
       verbose: VerboseOutput,
       metadata: MetadataConfiguration,
-      nautilusCloud: Option[NautilusCloudConfiguration]
+      nautilusCloud: NautilusCloudConfiguration
   )
 }

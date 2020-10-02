@@ -13,6 +13,7 @@ final case class ConseilConfiguration(
 
 /** configuration for fetching keys from nautilus cloud instance */
 final case class NautilusCloudConfiguration(
+    enabled: Boolean,
     host: String,
     port: Int,
     path: String,
