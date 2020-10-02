@@ -325,7 +325,8 @@ trait Tables {
     *  @param isActivated Database column is_activated SqlType(bool), Default(false)
     *  @param isActiveBaker Database column is_active_baker SqlType(bool), Default(None)
     *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
-    *  @param forkId Database column fork_id SqlType(varchar) */
+    *  @param forkId Database column fork_id SqlType(varchar)
+    *  @param scriptHash Database column script_hash SqlType(varchar), Default(None) */
   case class AccountsHistoryRow(
       accountId: String,
       blockId: String,
@@ -340,7 +341,8 @@ trait Tables {
       isActivated: Boolean = false,
       isActiveBaker: Option[Boolean] = None,
       invalidatedAsof: Option[java.sql.Timestamp] = None,
-      forkId: String
+      forkId: String,
+      scriptHash: Option[String] = None
   )
 
   /** GetResult implicit for fetching AccountsHistoryRow objects using plain SQL queries */
@@ -371,7 +373,8 @@ trait Tables {
         <<[Boolean],
         <<?[Boolean],
         <<?[java.sql.Timestamp],
-        <<[String]
+        <<[String],
+        <<?[String]
       )
     )
   }
@@ -394,7 +397,8 @@ trait Tables {
         isActivated,
         isActiveBaker,
         invalidatedAsof,
-        forkId
+        forkId,
+        scriptHash
       ) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -414,15 +418,17 @@ trait Tables {
           Rep.Some(isActivated),
           isActiveBaker,
           invalidatedAsof,
-          Rep.Some(forkId)
+          Rep.Some(forkId),
+          scriptHash
         )
       ).shaped.<>(
         { r =>
           import r._;
           _1.map(
             _ =>
-              AccountsHistoryRow
-                .tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9.get, _10, _11.get, _12, _13, _14.get))
+              AccountsHistoryRow.tupled(
+                (_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9.get, _10, _11.get, _12, _13, _14.get, _15)
+              )
           )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -470,6 +476,9 @@ trait Tables {
 
     /** Database column fork_id SqlType(varchar) */
     val forkId: Rep[String] = column[String]("fork_id")
+
+    /** Database column script_hash SqlType(varchar), Default(None) */
+    val scriptHash: Rep[Option[String]] = column[Option[String]]("script_hash", O.Default(None))
 
     /** Index over (accountId) (database name ix_account_id) */
     val index1 = index("ix_account_id", accountId)
