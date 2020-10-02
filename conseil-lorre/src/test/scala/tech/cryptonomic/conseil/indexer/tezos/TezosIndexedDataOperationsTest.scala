@@ -60,6 +60,7 @@ class TezosIndexedDataOperationsTest
   import scala.concurrent.ExecutionContext.Implicits.global
   import TezosDataGenerationKit.DomainModelGeneration._
   import TezosDataGenerationKit.DataModelGeneration._
+  import TezosDataGenerationKit.arbitraryBase58CheckString
   import LocalGenerationUtils._
 
   "TezosIndexedDataOperations" should {
@@ -308,10 +309,10 @@ class TezosIndexedDataOperationsTest
             DBSafe(referenceBlock) <- arbitrary[DBSafe[Block]]
             fetchRights <- arbitrary[FetchRights]
             endorseRights <- Gen.nonEmptyListOf(arbitrary[EndorsingRights])
-            delegates <- Gen.infiniteStream(arbitrary[DBSafe[String]])
+            delegates <- Gen.infiniteStream(arbitraryBase58CheckString)
             dbSafeRights = fetchRights.copy(blockHash = Some(referenceBlock.data.hash))
             dbSafeEndorsingRights = endorseRights.zip(delegates).map {
-              case (rights, DBSafe(delegate)) => rights.copy(delegate = delegate)
+              case (rights, delegate) => rights.copy(delegate = delegate)
             }
           } yield (dbSafeRights, dbSafeEndorsingRights, referenceBlock)
 

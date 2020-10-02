@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.tezos.Tables
-import slick.dbio.{DBIOAction, Effect}
+import slick.dbio.DBIOAction
 import slick.jdbc.PostgresProfile.api._
 
 trait TezosInMemoryDatabaseSetup extends InMemoryDatabaseSetup {

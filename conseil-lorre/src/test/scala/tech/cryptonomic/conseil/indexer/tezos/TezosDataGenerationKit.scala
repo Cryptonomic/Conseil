@@ -355,7 +355,7 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
         )
     )
 
-    /** This instance in scope allows to obtain random [[BakingRightsRow]]
+    /** This instance in scope allows to obtain random [[OperationGroupsRow]]
       *
       * **Notice** that the generated rows are **not invalidated**
       */

@@ -16,7 +16,7 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach with In
 
   //#JavaThankYou
   val dbInstance: PostgreSQLContainer[_] =
-    new PostgreSQLContainer("postgres:11.6")
+    new PostgreSQLContainer("postgres:11.9")
       .asInstanceOf[PostgreSQLContainer[_]]
       .withCommand("-c full_page_writes=off") //should improve performance for the tests
       .asInstanceOf[PostgreSQLContainer[_]]
