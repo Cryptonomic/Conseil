@@ -110,6 +110,7 @@ class ConseilAppConfigTest extends AnyWordSpec with Matchers with EitherValues w
       "extract Some, when configuration for Nautilus Cloud exists" in {
         val config = ConfigFactory.parseString("""
             |nautilus-cloud {
+            |  enabled: true
             |  host: "http://localhost"
             |  port: 1234
             |  path: "apiKeys/dev" // here should be an environment name after '/'
@@ -122,6 +123,7 @@ class ConseilAppConfigTest extends AnyWordSpec with Matchers with EitherValues w
           pureconfig.loadConfig[Option[NautilusCloudConfiguration]](conf = config, namespace = "nautilus-cloud")
 
         typedConfig.right.value.value shouldBe NautilusCloudConfiguration(
+          true,
           "http://localhost",
           1234,
           "apiKeys/dev",

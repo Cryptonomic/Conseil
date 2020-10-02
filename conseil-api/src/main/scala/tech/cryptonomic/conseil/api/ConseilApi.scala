@@ -55,6 +55,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
   config.nautilusCloud match {
     case ncc@NautilusCloudConfiguration(true, _, _, _, _, delay, interval) =>
       system.scheduler.schedule(delay, interval)(Security.updateKeys(ncc))
+    case _ => ()
   }
 
   config.platforms.platforms.foreach { conf =>
