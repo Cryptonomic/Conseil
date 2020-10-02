@@ -44,6 +44,12 @@ services:
       # CONSEIL_API_KEY:???              # (required)
       # CONSEIL_API_ALLOW_BLANK_KEYS:??? # (default false)
 
+      # CONSEIL_NC_ENABLED: ???          # (default false)
+      # CONSEIL_NC_HOST: ???             # (default http://localhost)
+      # CONSEIL_NC_PORT: ???             # (default 1234)
+      # CONSEIL_NC_PATH: ???             # (default apiKeys/dev)
+      # CONSEIL_NC_KEY: ???              # (default exampleApiKeyDev)
+
       # JVM_XMX:??? # (recommended -Xmx4G)
 
       # CONFIG_PATH:??? # (optional path to external configuration)
