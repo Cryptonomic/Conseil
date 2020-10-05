@@ -175,6 +175,7 @@ CREATE TABLE tezos.accounts (
     is_activated boolean NOT NULL DEFAULT false,
     invalidated_asof timestamp,
     fork_id character varying NOT NULL,
+    script_hash character varying,
     PRIMARY KEY (account_id, fork_id)
 );
 
@@ -193,7 +194,8 @@ CREATE TABLE tezos.accounts_history (
     is_activated boolean NOT NULL DEFAULT false,
     is_active_baker boolean,
     invalidated_asof timestamp,
-    fork_id character varying NOT NULL
+    fork_id character varying NOT NULL,
+    script_hash character varying
 );
 
 CREATE INDEX ix_account_id ON tezos.accounts_history USING btree (account_id);

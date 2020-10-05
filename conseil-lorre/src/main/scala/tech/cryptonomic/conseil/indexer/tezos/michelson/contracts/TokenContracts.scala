@@ -33,6 +33,7 @@ class TokenContracts(private val registry: Set[TokenContracts.TokenToolbox]) {
     *
     * @param token the id for a smart contract
     * @param diff the big map changes found in a transaction
+    * @param params the optional parameters passed in the transaction
     * @return a possible pair of an account and its new balance for a token associated to the passed-in contract
     */
   def readBalance(token: ContractId)(

@@ -16,6 +16,7 @@ import tech.cryptonomic.conseil.common.tezos.{Fork, Tables, TezosOptics}
 import tech.cryptonomic.conseil.common.util.Conversion
 
 import scala.util.Try
+import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.SmartContracts
 
 private[tezos] object TezosDatabaseConversions extends LazyLogging {
 
@@ -119,7 +120,8 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
               delegateValue = toDelegateValue(delegate),
               isBaker = isBaker.getOrElse(false),
               isActivated = isActivated.getOrElse(false),
-              forkId = Fork.mainForkId
+              forkId = Fork.mainForkId,
+              scriptHash = script.map(it => SmartContracts.hashMichelsonScript(it.code.expression))
             )
         }.toList
       }

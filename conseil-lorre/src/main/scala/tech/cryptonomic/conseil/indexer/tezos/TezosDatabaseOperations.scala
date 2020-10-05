@@ -175,7 +175,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
     /* The interleaving of these operations would actually need a more sophisticated handling to be robust:
      * we're processing collections of blocks, therefore some operations handled "after" might be
-     * referring to something "happening before" or viceversa.
+     * referring to something "happening before" or viceversa. It's some form of dependency-graph problem.
      * E.g. you could find that a new origination creates a map with the same identifier of another previously
      * removed (is this allowed?).
      * Therefore the insert might fail on finding the old record id being there already, whereas the real sequence

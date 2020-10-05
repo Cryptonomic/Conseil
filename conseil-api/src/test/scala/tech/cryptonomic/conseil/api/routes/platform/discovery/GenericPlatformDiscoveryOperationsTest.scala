@@ -220,7 +220,8 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("is_baker", "Is baker", DataType.Boolean, None, KeyType.NonKey, "accounts"),
             Attribute("is_activated", "Is activated", DataType.Boolean, None, KeyType.UniqueKey, "accounts"),
             Attribute("invalidated_asof", "Invalidated asof", DataType.DateTime, None, KeyType.NonKey, "accounts"),
-            Attribute("fork_id", "Fork id", DataType.String, None, KeyType.UniqueKey, "accounts")
+            Attribute("fork_id", "Fork id", DataType.String, None, KeyType.UniqueKey, "accounts"),
+            Attribute("script_hash", "Script hash", DataType.String, None, KeyType.NonKey, "accounts")
           )
         )
       }
@@ -393,7 +394,7 @@ class GenericPlatformDiscoveryOperationsTest
         )
       }
 
-      "return list of attributes of delegates" in {
+      "return list of attributes of bakers" in {
 
         sut.getTableAttributes(EntityPath("bakers", networkPath)).futureValue.value.toSet should matchTo(
           Set(
