@@ -610,13 +610,14 @@ object TezosTypes {
   object Baking {
 
     //we'll move this to a proper chain configuration value later on
-    /** how big is a baker roll */
+    /** how big is a baker roll in tez */
     final val BakerRollsSize = BigDecimal.decimal(8000)
 
+    /** Starting from the staking balance, infers number of rolls for a given baker. */
     def computeRollsFromStakes(stakingBalance: PositiveBigNumber): Option[Int] =
       stakingBalance match {
         case PositiveDecimal(value) =>
-          Some((value quot BakerRollsSize).toIntExact)
+          Some((value quot (BakerRollsSize * BigDecimal(1000))).toIntExact)
         case InvalidPositiveDecimal(jsonString) =>
           None
       }
