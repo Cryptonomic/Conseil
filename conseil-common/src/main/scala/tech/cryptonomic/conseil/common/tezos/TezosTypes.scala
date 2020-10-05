@@ -661,11 +661,11 @@ object TezosTypes {
 
   /**
     * Information for fetching baking/endorsing rights
+    * @param blockHash        hash of a block
     * @param cycle            block cycle
     * @param governancePeriod governance period
-    * @param blockHash        hash of a block
     */
-  final case class FetchRights(cycle: Option[Int], governancePeriod: Option[Int], blockHash: Option[TezosBlockHash])
+  final case class RightsFetchKey(blockHash: TezosBlockHash, cycle: Option[Int], governancePeriod: Option[Int])
 
   object Fee {
 

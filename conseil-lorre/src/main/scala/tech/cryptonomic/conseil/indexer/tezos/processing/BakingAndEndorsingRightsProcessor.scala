@@ -6,8 +6,8 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   BlockHeaderMetadata,
   Endorsement,
   EndorsingRights,
-  FetchRights,
-  GenesisMetadata
+  GenesisMetadata,
+  RightsFetchKey
 }
 import tech.cryptonomic.conseil.indexer.config
 import tech.cryptonomic.conseil.indexer.tezos.{
@@ -51,9 +51,9 @@ class BakingAndEndorsingRightsProcessor(
       case (Block(data, _, _), _) => {
         data.metadata match {
           case GenesisMetadata =>
-            FetchRights(None, None, Some(data.hash))
+            RightsFetchKey(data.hash, None, None)
           case BlockHeaderMetadata(_, _, _, _, _, level) =>
-            FetchRights(Some(level.cycle), Some(level.voting_period), Some(data.hash))
+            RightsFetchKey(data.hash, Some(level.cycle), Some(level.voting_period))
         }
       }
     }
@@ -69,9 +69,9 @@ class BakingAndEndorsingRightsProcessor(
 
   /** Updates endorsing rights with endorsed block */
   private def addEndorsedBlockToRights(
-      endorsingRights: Map[FetchRights, List[EndorsingRights]],
+      endorsingRights: Map[RightsFetchKey, List[EndorsingRights]],
       fetchingResults: nodeOperator.BlockFetchingResults
-  ): Map[FetchRights, List[EndorsingRights]] = {
+  ): Map[RightsFetchKey, List[EndorsingRights]] = {
 
     val endorsementsForBlock = fetchingResults.map {
       case (Block(data, operations, _), _) =>
@@ -79,7 +79,7 @@ class BakingAndEndorsingRightsProcessor(
     }.toMap.withDefaultValue(List.empty)
 
     endorsingRights.map {
-      case (fetch @ FetchRights(_, _, Some(fetchHash)), rightsList) if endorsementsForBlock.contains(fetchHash) =>
+      case (fetch @ RightsFetchKey(fetchHash, _, _), rightsList) if endorsementsForBlock.contains(fetchHash) =>
         val updatedRights = rightsList.map { rights =>
           val endorsedLevel = endorsementsForBlock(fetchHash).collect {
             case endorsement if endorsement.metadata.delegate.value == rights.delegate => endorsement.level

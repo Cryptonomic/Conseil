@@ -18,7 +18,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   Block,
   BlockReference,
   EndorsingRights,
-  FetchRights,
+  RightsFetchKey,
   TezosBlockHash,
   Voting
 }
@@ -60,6 +60,7 @@ class TezosIndexedDataOperationsTest
   import scala.concurrent.ExecutionContext.Implicits.global
   import TezosDataGenerationKit.DomainModelGeneration._
   import TezosDataGenerationKit.DataModelGeneration._
+  import TezosDataGenerationKit.arbitraryBase58CheckString
   import LocalGenerationUtils._
 
   "TezosIndexedDataOperations" should {
@@ -272,10 +273,10 @@ class TezosIndexedDataOperationsTest
         val (fetchKey, bakingRights, block) = {
           val generator = for {
             DBSafe(referenceBlock) <- arbitrary[DBSafe[Block]]
-            fetchRights <- arbitrary[FetchRights]
+            DBSafe(fetchKey) <- arbitrary[DBSafe[RightsFetchKey]]
             bakeRights <- Gen.nonEmptyListOf(arbitrary[BakingRights])
             delegates <- Gen.infiniteStream(arbitrary[DBSafe[String]])
-            dbSafeRights = fetchRights.copy(blockHash = Some(referenceBlock.data.hash))
+            dbSafeRights = fetchKey.copy(blockHash = referenceBlock.data.hash)
             dbSafeBakingRights = bakeRights.zip(delegates).map {
               case (rights, DBSafe(delegate)) => rights.copy(delegate = delegate)
             }
@@ -306,12 +307,12 @@ class TezosIndexedDataOperationsTest
         val (fetchKey, endorsingRights, block) = {
           val generator = for {
             DBSafe(referenceBlock) <- arbitrary[DBSafe[Block]]
-            fetchRights <- arbitrary[FetchRights]
-            endorseRights <- Gen.nonEmptyListOf(arbitrary[EndorsingRights])
-            delegates <- Gen.infiniteStream(arbitrary[DBSafe[String]])
-            dbSafeRights = fetchRights.copy(blockHash = Some(referenceBlock.data.hash))
+            DBSafe(fetchKey) <- arbitrary[DBSafe[RightsFetchKey]]
+            endorseRights <- Gen.nonEmptyListOf(arbitrary[EndorsingRights]).retryUntil(_.exists(_.slots.nonEmpty))
+            delegates <- Gen.infiniteStream(arbitraryBase58CheckString)
+            dbSafeRights = fetchKey.copy(blockHash = referenceBlock.data.hash)
             dbSafeEndorsingRights = endorseRights.zip(delegates).map {
-              case (rights, DBSafe(delegate)) => rights.copy(delegate = delegate)
+              case (rights, delegate) => rights.copy(delegate = delegate)
             }
           } yield (dbSafeRights, dbSafeEndorsingRights, referenceBlock)
 

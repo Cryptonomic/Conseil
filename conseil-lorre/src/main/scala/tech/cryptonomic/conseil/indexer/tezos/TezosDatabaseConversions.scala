@@ -10,7 +10,7 @@ import com.typesafe.scalalogging.LazyLogging
 import io.scalaland.chimney.dsl._
 import monocle.Getter
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
 import tech.cryptonomic.conseil.common.tezos.{Fork, Tables, TezosOptics}
 import tech.cryptonomic.conseil.common.util.Conversion
@@ -810,38 +810,38 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
     }
 
   implicit val bakingRightsToRows =
-    new Conversion[Id, (FetchRights, BakingRights), Tables.BakingRightsRow] {
+    new Conversion[Id, (RightsFetchKey, BakingRights), Tables.BakingRightsRow] {
       override def convert(
-          from: (FetchRights, BakingRights)
+          from: (RightsFetchKey, BakingRights)
       ): Tables.BakingRightsRow = {
-        val (fetchRights, bakingRights) = from
+        val (fetchKey, bakingRights) = from
         Tables.BakingRightsRow(
-          blockHash = fetchRights.blockHash.map(_.value),
+          blockHash = Some(fetchKey.blockHash.value),
           blockLevel = bakingRights.level,
           delegate = bakingRights.delegate,
           priority = bakingRights.priority,
           estimatedTime = bakingRights.estimated_time.map(toSql),
-          cycle = fetchRights.cycle,
-          governancePeriod = fetchRights.governancePeriod,
+          cycle = fetchKey.cycle,
+          governancePeriod = fetchKey.governancePeriod,
           forkId = Fork.mainForkId
         )
       }
     }
 
   implicit val endorsingRightsToRows =
-    new Conversion[List, (FetchRights, EndorsingRights), Tables.EndorsingRightsRow] {
+    new Conversion[List, (RightsFetchKey, EndorsingRights), Tables.EndorsingRightsRow] {
       override def convert(
-          from: (FetchRights, EndorsingRights)
+          from: (RightsFetchKey, EndorsingRights)
       ): List[Tables.EndorsingRightsRow] = {
-        val (fetchRights, endorsingRights) = from
+        val (fetchKey, endorsingRights) = from
         endorsingRights.slots.map { slot =>
           Tables.EndorsingRightsRow(
-            blockHash = fetchRights.blockHash.map(_.value),
+            blockHash = Some(fetchKey.blockHash.value),
             blockLevel = endorsingRights.level,
             delegate = endorsingRights.delegate,
             slot = slot,
             estimatedTime = endorsingRights.estimated_time.map(toSql),
-            governancePeriod = fetchRights.governancePeriod,
+            governancePeriod = fetchKey.governancePeriod,
             endorsedBlock = endorsingRights.endorsedBlock,
             forkId = Fork.mainForkId
           )
