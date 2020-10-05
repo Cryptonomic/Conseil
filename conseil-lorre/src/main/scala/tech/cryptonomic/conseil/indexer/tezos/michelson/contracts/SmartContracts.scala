@@ -44,7 +44,7 @@ object SmartContracts {
     * i.e. code, parameters, storage.
     * Makes sure that contract hashing is consistent.
     *
-    * @param code the michelson code as a raw string
+    * @param script the michelson code as a raw string
     * @return the individual pieces, indexed by a symbol
     */
   private def preProcessScript(script: String): Map[Symbol, String] = {
