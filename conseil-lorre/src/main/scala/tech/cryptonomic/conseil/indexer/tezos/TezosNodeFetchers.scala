@@ -261,7 +261,7 @@ private[tezos] trait TezosBlocksDataFetchers {
     import TezosJsonDecoders.Circe.Rights._
 
     /** the input type, e.g. ids of data */
-    override type In = FetchRights
+    override type In = RightsFetchKey
 
     /** the output type, e.g. the decoded block data */
     override type Out = List[BakingRights]
@@ -269,25 +269,25 @@ private[tezos] trait TezosBlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (blockData: In) => s"blocks/${blockData.blockHash.get.value}/helpers/baking_rights"
+    private val makeUrl = (key: In) => s"blocks/${key.blockHash.value}/helpers/baking_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
     override val fetchData: Kleisli[Future, List[In], List[
-      (FetchRights, String)
+      (RightsFetchKey, String)
     ]] =
       Kleisli(
-        hashesWithCycleAndGovernancePeriod => {
-          val hashes = hashesWithCycleAndGovernancePeriod.map(_.blockHash)
+        fetchKeys => {
+          val hashes = fetchKeys.map(_.blockHash)
           logger.info("Fetching baking rights")
-          node.runBatchedGetQuery(network, hashesWithCycleAndGovernancePeriod, makeUrl, fetchConcurrency).onError {
+          node.runBatchedGetQuery(network, fetchKeys, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
                 .error(
                   "I encountered problems while fetching baking rights from {}, for blocks {}. The error says {}",
                   network,
-                  hashes.map(_.get.value).mkString(", "),
+                  hashes.map(_.value).mkString(", "),
                   err.getMessage
                 )
                 .pure[Future]
@@ -315,7 +315,7 @@ private[tezos] trait TezosBlocksDataFetchers {
     import TezosJsonDecoders.Circe.Rights._
 
     /** the input type, e.g. ids of data */
-    override type In = FetchRights
+    override type In = RightsFetchKey
 
     /** the output type, e.g. the decoded block data */
     override type Out = List[EndorsingRights]
@@ -323,25 +323,25 @@ private[tezos] trait TezosBlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (blockData: In) => s"blocks/${blockData.blockHash.get.value}/helpers/endorsing_rights"
+    private val makeUrl = (key: In) => s"blocks/${key.blockHash.value}/helpers/endorsing_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
     override val fetchData: Kleisli[Future, List[In], List[
-      (FetchRights, String)
+      (RightsFetchKey, String)
     ]] =
       Kleisli(
-        hashesWithCycleAndGovernancePeriod => {
-          val hashes = hashesWithCycleAndGovernancePeriod.map(_.blockHash)
+        fetchKeys => {
+          val hashes = fetchKeys.map(_.blockHash)
           logger.info("Fetching endorsing rights")
-          node.runBatchedGetQuery(network, hashesWithCycleAndGovernancePeriod, makeUrl, fetchConcurrency).onError {
+          node.runBatchedGetQuery(network, fetchKeys, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
                 .error(
                   "I encountered problems while fetching endorsing rights from {}, for blocks {}. The error says {}",
                   network,
-                  hashes.map(_.get.value).mkString(", "),
+                  hashes.map(_.value).mkString(", "),
                   err.getMessage
                 )
                 .pure[Future]

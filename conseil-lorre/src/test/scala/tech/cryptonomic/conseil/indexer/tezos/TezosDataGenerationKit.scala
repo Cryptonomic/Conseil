@@ -26,6 +26,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   OperationsGroup,
   PositiveDecimal,
   PublicKeyHash,
+  RightsFetchKey,
   TezosBlockHash,
   Voting,
   VotingPeriod
@@ -127,6 +128,17 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
         data <- blockDataGenerator
         group <- emptyOperationsGroupGenerator
       } yield DBSafe(totallyArbitrary.copy(data = data, operationGroups = List(group)))
+    )
+
+    /** This instance in scope allows to obtain a random [[RightsFetchKey]] */
+    implicit val validBakingRights: Arbitrary[DBSafe[RightsFetchKey]] = Arbitrary(
+      /* we modify the completely random instance provided by scalacheck shapeless
+       * to provide our customized version
+       */
+      for {
+        totallyArbitrary <- arbitrary[RightsFetchKey]
+        blockHash <- arbitrary[TezosBlockHash]
+      } yield DBSafe(totallyArbitrary.copy(blockHash = blockHash))
     )
   }
 

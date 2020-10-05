@@ -409,14 +409,14 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param bakingRightsMap mapping of hash to bakingRights list
     */
   def upsertBakingRights(
-      bakingRightsMap: Map[FetchRights, List[BakingRights]]
+      bakingRightsMap: Map[RightsFetchKey, List[BakingRights]]
   ): DBIO[Option[Int]] = {
     import CustomProfileExtension.api._
     logger.info("Writing baking rights to the DB...")
     val conversionResult = for {
-      (blockHashWithCycleAndGovernancePeriod, bakingRightsList) <- bakingRightsMap
+      (fetchKey, bakingRightsList) <- bakingRightsMap
       bakingRights <- bakingRightsList
-    } yield (blockHashWithCycleAndGovernancePeriod, bakingRights).convertTo[Tables.BakingRightsRow]
+    } yield (fetchKey, bakingRights).convertTo[Tables.BakingRightsRow]
 
     Tables.BakingRights.insertOrUpdateAll(conversionResult)
   }
@@ -426,14 +426,14 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param endorsingRightsMap mapping of hash to endorsingRights list
     */
   def upsertEndorsingRights(
-      endorsingRightsMap: Map[FetchRights, List[EndorsingRights]]
+      endorsingRightsMap: Map[RightsFetchKey, List[EndorsingRights]]
   ): DBIO[Option[Int]] = {
     import CustomProfileExtension.api._
     logger.info("Writing endorsing rights to the DB...")
     val transformationResult = for {
-      (fetchRights, endorsingRightsList) <- endorsingRightsMap
+      (fetchKey, endorsingRightsList) <- endorsingRightsMap
       endorsingRights <- endorsingRightsList
-    } yield (fetchRights, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
+    } yield (fetchKey, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
 
     Tables.EndorsingRights.insertOrUpdateAll(transformationResult.flatten)
   }
