@@ -66,9 +66,10 @@ class TezosIndexer private (
     with LorreProgressLogging {
 
   /** Schedules method for fetching baking rights */
-  system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
-    rightsProcessor.writeFutureRights()
-  )
+  if (lorreConf.blockRightsFetching.enabled)
+    system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
+      rightsProcessor.writeFutureRights()
+    )
 
   /** Tries to fetch blocks head to verify if connection with Tezos node was successfully established */
   @tailrec
