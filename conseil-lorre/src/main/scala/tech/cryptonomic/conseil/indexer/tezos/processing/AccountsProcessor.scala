@@ -312,10 +312,13 @@ class AccountsProcessor(
     * table.
     */
   def markBakerAccounts(blockHashes: Set[TezosBlockHash])(implicit ec: ExecutionContext): Future[Done] =
-    indexedData.runQuery(TezosDb.updateAnyBakerAccountStored(blockHashes)).map {
+    indexedData.runQuery(TezosDb.updateAnyBakerAccountStored(blockHashes)).flatMap {
       case accounts :: history :: Nil =>
         logger.info(s"$accounts entries were identified and stored as bakers")
-        Done
+        Future.successful(Done)
+      case other =>
+        logger.error("The results from baker updates are inconsistent")
+        Future.failed(new IllegalStateException(s"Unexpected row counts for data updates: $other"))
     }
 
 }

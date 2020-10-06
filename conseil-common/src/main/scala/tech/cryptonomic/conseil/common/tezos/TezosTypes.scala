@@ -617,7 +617,7 @@ object TezosTypes {
     def computeRollsFromStakes(stakingBalance: PositiveBigNumber): Option[Int] =
       stakingBalance match {
         case PositiveDecimal(value) =>
-          Some((value quot (BakerRollsSize * BigDecimal(1000))).toIntExact)
+          Some((value quot (BakerRollsSize * BigDecimal(1e6))).toIntExact) // taking scale of mutez into account
         case InvalidPositiveDecimal(jsonString) =>
           None
       }
