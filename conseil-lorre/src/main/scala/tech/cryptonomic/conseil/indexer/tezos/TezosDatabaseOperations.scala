@@ -14,7 +14,6 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.tezos.Tables.{GovernanceRow, OriginatedAccountMapsRow}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.BakerRolls
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.bigmaps.BigMapsOperations
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
@@ -700,13 +699,11 @@ object TezosDatabaseOperations extends LazyLogging {
 
     val bakersIds =
       Tables.AccountsHistory
-        .filter(
-          account =>
-            account.invalidatedAsof.isEmpty
-              && account.isBaker === false
-              && (account.blockId inSet blockHashes.map(_.value))
+        .filter(account => account.invalidatedAsof.isEmpty && account.isBaker === false)
+        .join(
+          Tables.Bakers
+            .filter(baker => baker.invalidatedAsof.isEmpty && (baker.blockId inSet blockHashes.map(_.value)))
         )
-        .join(Tables.Bakers.filter(_.invalidatedAsof.isEmpty))
         .on(_.accountId === _.pkh)
         .map { case (accounts, bakers) => accounts.accountId }
 
@@ -724,13 +721,11 @@ object TezosDatabaseOperations extends LazyLogging {
 
     val bakersIds =
       Tables.Accounts
-        .filter(
-          account =>
-            account.invalidatedAsof.isEmpty
-              && account.isBaker === false
-              && (account.blockId inSet blockHashes.map(_.value))
+        .filter(account => account.invalidatedAsof.isEmpty && account.isBaker === false)
+        .join(
+          Tables.Bakers
+            .filter(baker => baker.invalidatedAsof.isEmpty && (baker.blockId inSet blockHashes.map(_.value)))
         )
-        .join(Tables.Bakers.filter(_.invalidatedAsof.isEmpty))
         .on(_.accountId === _.pkh)
         .map { case (accounts, bakers) => accounts.accountId }
 
