@@ -70,12 +70,17 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
   }
 
   /* randomly generates a number of delegates with associated block data */
-  def generateDelegates(delegatedHashes: List[String], blockHash: TezosBlockHash, blockLevel: BlockLevel)(
+  def generateDelegates(
+      delegatedHashes: List[String],
+      blockHash: TezosBlockHash,
+      blockLevel: BlockLevel,
+      delegateKey: Option[PublicKeyHash] = None
+  )(
       implicit randomSeed: RandomSeed
   ): BlockTagged[Map[PublicKeyHash, Delegate]] = {
     require(
       delegatedHashes.nonEmpty,
-      "the test can generates a positive number of delegates, you can't pass an empty list of account key hashes"
+      "the test can generate only a positive number of delegates, you can't pass an empty list of account key hashes"
     )
 
     val rnd = new Random(randomSeed.seed)
@@ -83,19 +88,18 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
     //custom hash generator with predictable seed
     val generateHash: Int => String = alphaNumericGenerator(rnd)
 
-    val delegates = delegatedHashes.zipWithIndex.map {
-      case (accountPkh, _) =>
-        PublicKeyHash(generateHash(10)) ->
-            Delegate(
-              balance = PositiveDecimal(rnd.nextInt()),
-              frozen_balance = PositiveDecimal(rnd.nextInt()),
-              frozen_balance_by_cycle = List.empty,
-              staking_balance = PositiveDecimal(rnd.nextInt()),
-              delegated_contracts = List(ContractId(accountPkh)),
-              delegated_balance = PositiveDecimal(rnd.nextInt()),
-              deactivated = false,
-              grace_period = rnd.nextInt()
-            )
+    val delegates = delegatedHashes.map { accountPkh =>
+      delegateKey.getOrElse(PublicKeyHash(generateHash(10))) ->
+        Delegate(
+          balance = PositiveDecimal(rnd.nextInt()),
+          frozen_balance = PositiveDecimal(rnd.nextInt()),
+          frozen_balance_by_cycle = List.empty,
+          staking_balance = PositiveDecimal(rnd.nextInt()),
+          delegated_contracts = List(ContractId(accountPkh)),
+          delegated_balance = PositiveDecimal(rnd.nextInt()),
+          deactivated = false,
+          grace_period = rnd.nextInt()
+        )
     }.toMap
 
     delegates.taggedWithBlock(BlockReference(blockHash, blockLevel, Some(Instant.ofEpochSecond(0)), None, None))

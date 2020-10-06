@@ -23,8 +23,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   BlockTagged,
   Protocol4Delegate,
   PublicKeyHash,
-  TezosBlockHash,
-  Voting
+  TezosBlockHash
 }
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors.AccountsProcessingFailed
 import com.typesafe.scalalogging.LazyLogging
@@ -55,13 +54,11 @@ class AccountsProcessor(
   /* Fetches the data from the chain node and stores accounts into the data store.
    *
    * @param ids a pre-filtered map of account ids with latest block referring to them
-   * @param votingData rolls associated to each block, we assume data is available for all block associated in the `ids`
    * @param onlyProcessLatest verify that no recent update was made to the account before processing each id
    *        (default = false)
    */
   private def process(
       ids: Map[AccountId, BlockReference],
-      votingData: Map[TezosBlockHash, List[Voting.BakerRolls]],
       onlyProcessLatest: Boolean = false
   )(
       implicit ec: ExecutionContext
@@ -227,24 +224,6 @@ class AccountsProcessor(
 
     logger.info("Ready to fetch updated accounts information from the chain")
 
-    /** Updates the accounts in the paginated results by adding
-      * baking information.
-      *
-      * It currently uses stored bakers' entries to match the account ids.
-      */
-    def markAnyBakerAccount(
-        taggedAccounts: BlockTagged[Map[AccountId, Account]]
-    ): Future[BlockTagged[Map[AccountId, Account]]] =
-      indexedData.getBakersSelection(taggedAccounts.content.keySet).map { identifiedBakers =>
-        val isBaker = identifiedBakers.map(_.pkh).toSet
-        val marked = taggedAccounts.content.map {
-          case (id, account) if isBaker(id.value) =>
-            id -> account.copy(isBaker = Some(true))
-          case other => other
-        }
-        taggedAccounts.copy(content = marked)
-      }
-
     /* Streams the (unevaluated) incoming data, actually fetching the results.
      * We use combinators to keep the ongoing requests' flow under control, taking advantage of
      * akka-streams automatic backpressure control.
@@ -266,8 +245,7 @@ class AccountsProcessor(
 
     val fetchAndStore = for {
       (accountPages, _) <- prunedUpdates().map(nodeOperator.getAccountsForBlocks)
-      updatedPages = TezosNodeOperator.mapAsyncByPageItem(accountPages)(markAnyBakerAccount)
-      (stored, checkpoints, delegateKeys) <- saveAccounts(updatedPages) flatTap (_ => cleanup)
+      (stored, checkpoints, delegateKeys) <- saveAccounts(accountPages) flatTap (_ => cleanup)
     } yield delegateKeys
 
     fetchAndStore.transform(
@@ -285,8 +263,7 @@ class AccountsProcessor(
    * @return the bakers key-hashes found for the accounts passed-in, grouped by block reference
    */
   private[tezos] def processAccountsForBlocks(
-      updates: List[BlockTagged[List[AccountId]]],
-      votingData: Map[TezosBlockHash, List[Voting.BakerRolls]]
+      updates: List[BlockTagged[List[AccountId]]]
   )(
       implicit ec: ExecutionContext
   ): Future[List[BlockTagged[List[PublicKeyHash]]]] = {
@@ -307,7 +284,7 @@ class AccountsProcessor(
 
     val toBeFetched = keepMostRecent(sorted)
 
-    process(toBeFetched, votingData)
+    process(toBeFetched)
   }
 
   /** Fetches and stores all accounts from the latest blocks still in the checkpoint */
@@ -321,16 +298,24 @@ class AccountsProcessor(
           "I loaded all of {} checkpointed ids from the DB and will proceed to fetch updated accounts information from the chain",
           checkpoints.size
         )
-        // here we need to get missing bakers for the given block
-        indexedData.getBakersForBlocks(checkpoints.values.map(_.hash).toList).flatMap { bakers =>
-          process(checkpoints, bakers.toMap, onlyProcessLatest = true).map(_ => Done)
-        }
-
+        process(checkpoints, onlyProcessLatest = true).map(_ => Done)
       } else {
         logger.info("No data to fetch from the accounts checkpoint")
         Future.successful(Done)
       }
     }
   }
+
+  /** For any stored account entry or history entry, which is related to one of the given
+    * blocks, will verify and update baker information.
+    * That is, it will mark the account as baker if the appropriate row is stored in the bakers
+    * table.
+    */
+  def markBakerAccounts(blockHashes: Set[TezosBlockHash])(implicit ec: ExecutionContext): Future[Done] =
+    indexedData.runQuery(TezosDb.updateAnyBakerAccountStored(blockHashes)).map {
+      case accounts :: history :: Nil =>
+        logger.info(s"$accounts entries were identified and stored as bakers")
+        Done
+    }
 
 }

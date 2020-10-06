@@ -31,6 +31,7 @@ import scala.math.{ceil, max}
 import scala.util.{Failure, Success}
 import tech.cryptonomic.conseil.indexer.tezos.TezosGovernanceOperations.GovernanceAggregate
 import java.{util => ju}
+import slick.dbio.DBIOAction
 
 /**
   * Functions for writing Tezos data to a database.
@@ -553,7 +554,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param bakers the full delegates' data
     * @return a database action that stores delegates and returns the number of saved rows
     */
-  def writeBakersAndCopyContracts(
+  def writeBakers(
       bakers: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
   )(implicit ec: ExecutionContext): DBIO[(Option[Int], Option[Int])] = {
     import CustomProfileExtension.api._
@@ -651,6 +652,16 @@ object TezosDatabaseOperations extends LazyLogging {
       .filter(_._1 inSet ids.map(_.value))
       .result
 
+  /** Stores updated baking information on any account, including the history bitemporal table. */
+  def updateAnyBakerAccountStored(blockHashes: Set[TezosBlockHash]) =
+    DBIOAction
+      .sequence(
+        updateAccountsWithBakers(blockHashes) ::
+            updateAccountsHistoryWithBakers(blockHashes) ::
+            Nil
+      )
+      .transactionally
+
   /** Updates accounts history with bakers */
   def updateAccountsHistoryWithBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Int] = {
     logger.info(s"""Writing ${bakers.length} accounts history updates to the DB...""")
@@ -681,6 +692,49 @@ object TezosDatabaseOperations extends LazyLogging {
       )
       .map(_.isBaker)
       .update(true)
+  }
+
+  /** Updates accounts history entries as bakers where applicable */
+  def updateAccountsHistoryWithBakers(blockHashes: Set[TezosBlockHash]): DBIO[Int] = {
+    logger.info("Writing any baker accounts history updates to the DB...")
+
+    val bakersIds =
+      Tables.AccountsHistory
+        .filter(
+          account =>
+            account.invalidatedAsof.isEmpty
+              && account.isBaker === false
+              && (account.blockId inSet blockHashes.map(_.value))
+        )
+        .join(Tables.Bakers.filter(_.invalidatedAsof.isEmpty))
+        .on(_.accountId === _.pkh)
+        .map { case (accounts, bakers) => accounts.accountId }
+
+    Tables.AccountsHistory
+      .filter(
+        account => (account.accountId in bakersIds) && (account.blockId inSet blockHashes.map(_.value))
+      )
+      .map(_.isBaker)
+      .update(true)
+  }
+
+  /** Updates accounts as bakers where applicable */
+  def updateAccountsWithBakers(blockHashes: Set[TezosBlockHash]): DBIO[Int] = {
+    logger.info("Writing any baker accounts updates to the DB...")
+
+    val bakersIds =
+      Tables.Accounts
+        .filter(
+          account =>
+            account.invalidatedAsof.isEmpty
+              && account.isBaker === false
+              && (account.blockId inSet blockHashes.map(_.value))
+        )
+        .join(Tables.Bakers.filter(_.invalidatedAsof.isEmpty))
+        .on(_.accountId === _.pkh)
+        .map { case (accounts, bakers) => accounts.accountId }
+
+    Tables.Accounts.filter(_.accountId in bakersIds).map(_.isBaker).update(true)
   }
 
   /**
