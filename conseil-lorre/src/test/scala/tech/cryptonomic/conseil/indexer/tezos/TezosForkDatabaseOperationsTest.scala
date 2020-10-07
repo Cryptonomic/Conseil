@@ -12,7 +12,7 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.DBSafe
 import tech.cryptonomic.conseil.common.tezos.Fork
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{makeAccountId, Block, PublicKeyHash, TezosBlockHash, Voting}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{PublicKeyHash, TezosBlockHash, Voting}
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.{
   AccountsHistoryRow,
@@ -333,128 +333,126 @@ class TezosForkDatabaseOperationsTest
       "not mark fork-invalidated accounts history as bakers" in {
 
         /* Generate the data random sample */
-        val (validRow, validReferencedBlock, rolls, invalidation, fork) =
+        val (validRow, validReferencedBlock, ForkValid(baker), invalidation, fork) =
           arbitrary[
             (
                 ForkValid[AccountsHistoryRow],
                 ForkValid[BlocksRow],
-                Voting.BakerRolls,
+                ForkValid[BakersRow],
                 Timestamp,
                 ju.UUID
             )
           ].sample.value
 
+        /* Stores the same block hash both as invalidated and valid.
+         * The block will have the hash referenced by the history entry, but should not update
+         * the entry itself, even when it matches the baker pkh.
+         * The case might happen when a fork "jumps" back'n'forth between two alternatives and blocks
+         * with the associated data is first invalidated, but later re-added to the system upon
+         * the invalidated fork being restored as the valid one.
+         * We want the invalidated history to remain there unchanged as evidence of what happened, even
+         * though a new baker entry has the same pkh.
+         */
+
+        //this will be a baker stored for the valid block
+        val validBaker = baker.copy(blockId = validReferencedBlock.data.hash)
+        //a block referencing the invalidated account data, invalidated itself
         val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
+        //the invalidated account data, matching the valid baker id
         val invalidRow = validRow.data.copy(
           blockId = invalidBlock.hash,
           blockLevel = invalidBlock.level,
           isBaker = false,
-          accountId = rolls.pkh.value,
+          accountId = baker.pkh,
           invalidatedAsof = Some(invalidation),
           forkId = fork.toString
         )
 
         /* Store everything on db */
         val populate = for {
-          _ <- Tables.Blocks += invalidBlock
-          stored <- Tables.AccountsHistory += invalidRow
-        } yield stored
+          _ <- Tables.Blocks ++= List(invalidBlock, validReferencedBlock.data)
+          storedAccounts <- Tables.AccountsHistory += invalidRow
+          storedBakers <- Tables.Bakers += validBaker
+        } yield storedAccounts + storedBakers
 
         /* Test it's there */
         val stored = dbHandler.run(populate).futureValue
 
         stored shouldBe >(0)
 
-        /* Generate a new block that will be used to reference the bakers rolls matching the history entry
-         * we just saved.
-         * The block will have the hash referenced by the history entry, but should not update
-         * the history entry itself.
-         * The case might happen when a fork "jumps" back'n'forth between two alternatives and blocks
-         * with the associated data is first invalidated, but later re-added to the system upon
-         * the invalidated fork being restored as the valid one.
-         * We want the invalidated history to remain there unchanged as evidence of what happened.
-         */
-
-        val block = arbitrary[DBSafe[Block]].map {
-          case DBSafe(block @ Block(data, operations, votes)) =>
-            block.copy(
-              data = data.copy(hash = TezosBlockHash(invalidRow.blockId))
-            )
-        }.sample.value
-
         /* Test the results */
         val updateAndFetch = for {
-          updatedRows <- sut.updateAccountsHistoryWithBakers(List(rolls), block)
+          updatedRows <- sut.updateAccountsHistoryWithBakers(Set(TezosBlockHash(validBaker.blockId)))
           historyRows <- Tables.AccountsHistory.result
         } yield (updatedRows, historyRows)
 
         val (updates, history) = dbHandler.run(updateAndFetch).futureValue
 
         updates shouldBe 0
-        history.find(_.isBaker) shouldBe empty
+        history.exists(_.isBaker) shouldBe false
 
       }
 
       "not mark fork-invalidated accounts as bakers" in {
 
         /* Generate the data random sample */
-        val (validRow, validReferencedBlock, rolls, invalidation, fork) =
+        val (validRow, validReferencedBlock, ForkValid(baker), invalidation, fork) =
           arbitrary[
             (
                 ForkValid[AccountsRow],
                 ForkValid[BlocksRow],
-                Voting.BakerRolls,
+                ForkValid[BakersRow],
                 Timestamp,
                 ju.UUID
             )
           ].sample.value
 
+        /* Stores the same block hash both as invalidated and valid.
+         * The block will have the hash referenced by the account entry, but should not update
+         * the entry itself, even when it matches the baker pkh.
+         * The case might happen when a fork "jumps" back'n'forth between two alternatives and blocks
+         * with the associated data is first invalidated, but later re-added to the system upon
+         * the invalidated fork being restored as the valid one.
+         * We want the invalidated account to remain there unchanged as evidence of what happened, even
+         * though a new baker entry has the same pkh.
+         */
+
+        //this will be a baker stored for the valid block
+        val validBaker = baker.copy(blockId = validReferencedBlock.data.hash)
+        //a block referencing the invalidated account data, invalidated itself
         val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
+        //the invalidated account data, matching the valid baker id
         val invalidRow = validRow.data.copy(
           blockId = invalidBlock.hash,
           blockLevel = invalidBlock.level,
           isBaker = false,
-          accountId = rolls.pkh.value,
+          accountId = baker.pkh,
           invalidatedAsof = Some(invalidation),
           forkId = fork.toString
         )
 
         /* Store everything on db */
         val populate = for {
-          _ <- Tables.Blocks += invalidBlock
-          stored <- Tables.Accounts += invalidRow
-        } yield stored
+          _ <- Tables.Blocks ++= List(invalidBlock, validReferencedBlock.data)
+          storedAccounts <- Tables.Accounts += invalidRow
+          storedBakers <- Tables.Bakers += validBaker
+        } yield storedAccounts + storedBakers
 
         /* Test it's there */
         val stored = dbHandler.run(populate).futureValue
 
         stored shouldBe >(0)
 
-        /* Generate a new block that will be used to reference the bakers rolls matching the history entry
-         * we just saved.
-         * The block will have the hash referenced by the history entry, but should not update
-         * the history entry itself.
-         * The case might happen when a fork "jumps" back'n'forth between two alternatives and blocks
-         * with the associated data is first invalidated, but later re-added to the system upon
-         * the invalidated fork being restored as the valid one.
-         * We want the invalidated history to remain there unchanged as evidence of what happened.
-         */
-
-        val block = arbitrary[DBSafe[Block]].map {
-          case DBSafe(block @ Block(data, operations, votes)) =>
-            block.copy(data = data.copy(hash = TezosBlockHash(invalidRow.blockId)))
-        }.sample.value
-
         /* Test the results */
         val updateAndFetch = for {
-          updatedRows <- sut.updateAccountsWithBakers(List(rolls), block)
-          historyRows <- Tables.Accounts.result
-        } yield (updatedRows, historyRows)
+          updatedRows <- sut.updateAccountsWithBakers(Set(TezosBlockHash(validBaker.blockId)))
+          accountRows <- Tables.Accounts.result
+        } yield (updatedRows, accountRows)
 
-        val (updates, history) = dbHandler.run(updateAndFetch).futureValue
+        val (updates, loaded) = dbHandler.run(updateAndFetch).futureValue
 
         updates shouldBe 0
-        history.find(_.isBaker) shouldBe empty
+        loaded.exists(_.isBaker) shouldBe false
 
       }
 

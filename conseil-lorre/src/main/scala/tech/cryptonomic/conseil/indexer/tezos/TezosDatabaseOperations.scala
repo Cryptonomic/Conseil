@@ -661,38 +661,6 @@ object TezosDatabaseOperations extends LazyLogging {
       )
       .transactionally
 
-  /** Updates accounts history with bakers */
-  def updateAccountsHistoryWithBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Int] = {
-    logger.info(s"""Writing ${bakers.length} accounts history updates to the DB...""")
-    val bakersIdStrings = bakers.map(_.pkh.value)
-    Tables.AccountsHistory
-      .filter(
-        ahs =>
-          ahs.invalidatedAsof.isEmpty
-            && ahs.isBaker === false
-            && ahs.blockId === block.data.hash.value
-            && ahs.accountId.inSet(bakersIdStrings)
-      )
-      .map(_.isBaker)
-      .update(true)
-  }
-
-  /** Updates accounts with bakers */
-  def updateAccountsWithBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Int] = {
-    logger.info(s"""Writing ${bakers.length} accounts updates to the DB...""")
-    val bakersIdStrings = bakers.map(_.pkh.value)
-    Tables.Accounts
-      .filter(
-        account =>
-          account.invalidatedAsof.isEmpty
-            && account.isBaker === false
-            && account.blockId === block.data.hash.value
-            && account.accountId.inSet(bakersIdStrings)
-      )
-      .map(_.isBaker)
-      .update(true)
-  }
-
   /** Updates accounts history entries as bakers where applicable */
   def updateAccountsHistoryWithBakers(blockHashes: Set[TezosBlockHash]): DBIO[Int] = {
     logger.info("Writing any baker accounts history updates to the DB...")
