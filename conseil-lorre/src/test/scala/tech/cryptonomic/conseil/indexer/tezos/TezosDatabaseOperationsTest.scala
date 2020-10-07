@@ -44,7 +44,7 @@ class TezosDatabaseOperationsTest
 
       val sut = TezosDatabaseOperations
       val indexed = new TezosIndexedDataOperations(dbHandler)
-      val feesToConsider = 1000
+      val feesSelectionWindowInDays = 100
 
       "use the right collation" in {
         val ordered =
@@ -970,7 +970,7 @@ class TezosDatabaseOperationsTest
         //check
         //we specify when the computation of fees needs be done, to have the test block reference time in range
         val feesCalculation =
-          sut.calculateAverageFees(ops.head.kind, feesToConsider, asOf = testReferenceDateTime.toInstant())
+          sut.calculateAverageFees(ops.head.kind, feesSelectionWindowInDays, asOf = testReferenceDateTime.toInstant())
 
         dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
 
@@ -996,7 +996,7 @@ class TezosDatabaseOperationsTest
         //check
         //we specify when the computation of fees needs be done, to have the test block reference time in range
         val feesCalculation =
-          sut.calculateAverageFees("undefined", feesToConsider, asOf = testReferenceDateTime.toInstant())
+          sut.calculateAverageFees("undefined", feesSelectionWindowInDays, asOf = testReferenceDateTime.toInstant())
 
         dbHandler.run(feesCalculation).futureValue shouldBe None
 
@@ -1044,7 +1044,11 @@ class TezosDatabaseOperationsTest
         //check
         //we specify when the computation of fees needs be done, to have the test block reference time in range
         val feesCalculation =
-          sut.calculateAverageFees(selection.head.kind, feesToConsider, asOf = testReferenceDateTime.toInstant())
+          sut.calculateAverageFees(
+            selection.head.kind,
+            feesSelectionWindowInDays,
+            asOf = testReferenceDateTime.toInstant()
+          )
 
         dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
 

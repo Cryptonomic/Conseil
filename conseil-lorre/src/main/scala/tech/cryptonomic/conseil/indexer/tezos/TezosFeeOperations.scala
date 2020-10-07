@@ -6,6 +6,7 @@ import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperations => TezosD
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * Helper classes and functions used for average fee calculations.
@@ -26,16 +27,23 @@ private[tezos] object TezosFeeOperations extends LazyLogging {
     "endorsement"
   )
 
-  /**
-    * Calculates average fees for each operation kind and stores them into a fees table.
+  /** Calculates average fees for each operation kind and stores them into a fees table.
+    * The computation will use a limited number of fees, as the result of a selection window in days.
+    * Only blocks belonging within such window in the past, relative to the calculation moment, will be considered.
+    *
     * @param numberOfFeesAveraged a limit on how many of the latest fee values will be used for averaging
-    * @param ex the needed ExecutionContext to combine multiple database operations
+    * @param selectionWindow the max number of days back from the current block timestamp to use when averaging
+    * @param ec the needed ExecutionContext to combine multiple database operations
     * @return a future result of the number of rows stored to db, if supported by the driver
     */
-  def processTezosAverageFees(numberOfFeesAveraged: Int)(implicit ex: ExecutionContext): Future[Option[Int]] = {
+  def processTezosAverageFees(selectionWindow: FiniteDuration)(implicit ec: ExecutionContext): Future[Option[Int]] = {
     logger.info("Processing latest Tezos fee data...")
+
+    //partially apply the fixed window to get a function that only uses the kind
+    val calculateForWindow = TezosDb.calculateAverageFees(_: String, daysPast = selectionWindow.toDays.toInt)
+
     val computeAndStore = for {
-      fees <- DBIOAction.sequence(operationKinds.map(TezosDb.calculateAverageFees(_, numberOfFeesAveraged)))
+      fees <- DBIOAction.sequence(operationKinds.map(calculateForWindow))
       dbWrites <- TezosDb.writeFees(fees.collect { case Some(fee) => fee })
     } yield dbWrites
 

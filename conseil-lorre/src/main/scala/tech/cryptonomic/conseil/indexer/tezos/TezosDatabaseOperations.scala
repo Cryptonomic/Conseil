@@ -718,16 +718,16 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.Bakers.insertOrUpdateAll(bakers)
   }
 
-  /**
-    * Given the operation kind, return range of fees and timestamp for that operation.
-    * @param kind                 Operation kind
-    * @param numberOfFeesAveraged How many values to use for statistics computations
-    * @param asOf                 When the computation is to be considered, by default uses the time of invocation
-    * @return                     The average fees for a given operation kind, if it exists
+  /** Given the operation kind, return range of fees and timestamp for that operation.
+    *
+    * @param kind     operation kind
+    * @param daysPast how many values to use for statistics computations, as a time-window
+    * @param asOf     when the computation is to be considered, by default uses the time of invocation
+    * @return         the average fees for a given operation kind, if it exists
     */
   def calculateAverageFees(
       kind: String,
-      numberOfFeesAveraged: Int,
+      daysPast: Int,
       asOf: Instant = Instant.now()
   )(
       implicit ec: ExecutionContext
@@ -735,26 +735,12 @@ object TezosDatabaseOperations extends LazyLogging {
     /* We need to limit the past timestamps for this computation to a reasonable value.
      * Otherwise the query optimizer won't be able to efficiently use the indexing and
      * will do a full table scan.
-     *
-     * This is what we know now:
-     * - each cycle bakes 4096 blocks
-     * - a cycle takes around 2-3 days to run
-     * - each block stores a variable number of transactions, down-to the min of 1.
-     *
-     * We can make conservative computations to figure out how far in the past we need to go,
-     * to guarantee a [[numberOfFeesAveraged]] values.
-     *
-     * We can assume a single transaction per block (1 trans/block), hence we need numberOfFeesAveraged blocks.
-     * Assuming 3 days to get 4096 blocks we have 4096/3 blocks-a-day at worst, which is ~1365 blocks.
-     * Therefore we want to look back to numberOfFeesAveraged/1365 days in the past to guarantee the required fees counts.
      */
-    val blocksPerDay = 1365
-    val daysToPastHorizon = 1 + (numberOfFeesAveraged / blocksPerDay) //round-up for integer division
     val secsPerDay = 60L * 60L * 24L //secs * mins * hours
-    val secsToPastHorizon = daysToPastHorizon.toLong * secsPerDay
+    val secsToPastHorizon = daysPast * secsPerDay
 
     logger.info(
-      s"Computing fees starting from $daysToPastHorizon days before $asOf, averaging over $numberOfFeesAveraged values"
+      s"Computing fees starting from $daysPast days before $asOf, averaging over all values in the range"
     )
 
     type Cycle = Int
@@ -785,7 +771,6 @@ object TezosDatabaseOperations extends LazyLogging {
         .filter(_.timestamp >= timestampLowerBound)
         .map(o => (o.fee, o.timestamp, o.cycle, o.blockLevel))
         .sortBy { case (_, ts, _, _) => ts.desc }
-        .take(numberOfFeesAveraged)
         .result
 
     opQuery.map { timestampedFees =>

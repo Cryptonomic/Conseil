@@ -527,7 +527,7 @@ class TezosForkDatabaseOperationsTest
           _ <- Tables.Blocks += invalidBlock
           _ <- Tables.OperationGroups += invalidGroup
           Some(stored) <- Tables.Operations ++= invalidRows
-          loaded <- sut.calculateAverageFees(kind = "transaction", numberOfFeesAveraged = invalidRows.size)
+          loaded <- sut.calculateAverageFees(kind = "transaction", daysPast = 10)
         } yield (stored, loaded)
 
         val (stored, loaded) = dbHandler.run(populateAndFetch).futureValue
@@ -1400,8 +1400,7 @@ class TezosForkDatabaseOperationsTest
         val (validRows, forkLevel, invalidation, fork) = {
           val generator = for {
             //duplicate ids will fail to save on the db for violation of the PK uniqueness
-            rows <- Gen
-              .nonEmptyListOf(arbitrary[DBSafe[ProcessedChainEventsRow]])
+            rows <- nonConflictingArbitrary[DBSafe[ProcessedChainEventsRow]]
             level <- Gen.posNum[Long]
             instant <- TezosDataGenerationKit.instantGenerator
             id <- arbitrary[ju.UUID]
@@ -1429,11 +1428,8 @@ class TezosForkDatabaseOperationsTest
         /* we expect to have some invalidation and that the fork level will discriminate */
         invalidCount shouldBe >(0)
 
-        /* we also want non-empty results to verify */
-        loaded should not be empty
-
         /* we expect no more events after the fork */
-        loaded.exists(_.eventLevel >= forkLevel) shouldBe false
+        (loaded.isEmpty || loaded.forall(_.eventLevel < forkLevel)) shouldBe true
 
         info(s"resulting in ${loaded.size} remaining elements after the invalidation")
       }
@@ -1464,7 +1460,12 @@ class TezosForkDatabaseOperationsTest
        * corresponds to the single method of HasKey, i.e. getKey
        */
       implicit def forkValidWithKey[PK, E](implicit hasKey: HasKey[E, PK]): HasKey[ForkValid[E], PK] = {
-        case ForkValid(entity) => implicitly[HasKey[E, PK]].getKey(entity)
+        case ForkValid(entity) => hasKey.getKey(entity)
+      }
+
+      /* will provide an implicit HasKey for an entity wrapped by DBSafe, like the one for ForkValid */
+      implicit def dbSafeWithKey[PK, E](implicit hasKey: HasKey[E, PK]): HasKey[DBSafe[E], PK] = {
+        case DBSafe(entity) => hasKey.getKey(entity)
       }
 
       /* There we provide all the key extractors for known db entites, again using functional interfaces shortcut */
@@ -1480,6 +1481,8 @@ class TezosForkDatabaseOperationsTest
       implicit val tokenBalancesRowHasKey: HasKey[TokenBalancesRow, String] = _.address
       implicit val governanceRowHasKey: HasKey[GovernanceRow, (String, String, String)] =
         gov => (gov.blockHash, gov.proposalHash, gov.votingPeriodKind)
+      implicit val processedChainEventsRowHasKey: HasKey[ProcessedChainEventsRow, (Long, String)] =
+        ev => (ev.eventLevel, ev.eventType)
 
     }
 
