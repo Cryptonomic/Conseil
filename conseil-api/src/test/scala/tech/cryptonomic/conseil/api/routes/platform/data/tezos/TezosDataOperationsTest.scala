@@ -2246,7 +2246,7 @@ class TezosDataOperationsTest
           FeesRow(0, 3, 4, Timestamp.valueOf("2000-01-02 00:00:00"), "kind", forkId = Fork.mainForkId),
           FeesRow(0, 3, 4, Timestamp.valueOf("2000-01-02 00:00:00"), "kind", forkId = Fork.mainForkId),
           FeesRow(0, 3, 4, Timestamp.valueOf("2000-01-03 00:00:00"), "kind", forkId = Fork.mainForkId),
-          FeesRow(0, 3, 4, Timestamp.valueOf("2000-01-03 00:00:00"), "kind", forkId = Fork.mainForkId))
+          FeesRow(0, 3, 4, Timestamp.valueOf("2000-01-03 00:00:00"), "kind", forkId = Fork.mainForkId)
         )
 
         val aggregate = List(
@@ -2281,12 +2281,12 @@ class TezosDataOperationsTest
 
       "map date with datePart aggregation when it is only type of aggregation" in {
         val feesTmp = List(
-          FeesRow(0, 1, 4, Timestamp.valueOf("2000-01-01 00:00:00"), "kind",forkId = Fork.mainForkId),
-          FeesRow(0, 2, 8, Timestamp.valueOf("2000-01-02 00:00:00"), "kind",forkId = Fork.mainForkId),
-          FeesRow(0, 3, 4, Timestamp.valueOf("2000-01-02 00:00:00"), "kind",forkId = Fork.mainForkId),
-          FeesRow(0, 4, 4, Timestamp.valueOf("2000-01-02 00:00:00"), "kind",forkId = Fork.mainForkId),
-          FeesRow(0, 5, 4, Timestamp.valueOf("2000-01-03 00:00:00"), "kind",forkId = Fork.mainForkId),
-          FeesRow(0, 6, 4, Timestamp.valueOf("2000-01-03 00:00:00"), "kind",forkId = Fork.mainForkId)
+          FeesRow(0, 1, 4, Timestamp.valueOf("2000-01-01 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 2, 8, Timestamp.valueOf("2000-01-02 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, Timestamp.valueOf("2000-01-02 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 4, Timestamp.valueOf("2000-01-02 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 5, 4, Timestamp.valueOf("2000-01-03 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 6, 4, Timestamp.valueOf("2000-01-03 00:00:00"), "kind", forkId = Fork.mainForkId)
         )
 
         val populateAndTest = for {
