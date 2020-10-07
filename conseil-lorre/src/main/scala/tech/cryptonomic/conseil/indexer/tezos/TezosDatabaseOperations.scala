@@ -711,8 +711,8 @@ object TezosDatabaseOperations extends LazyLogging {
       .filter(
         account => (account.accountId in bakersIds) && (account.blockId inSet blockHashes.map(_.value))
       )
-      .map(_.isBaker)
-      .update(true)
+      .map(account => (account.isBaker, account.isActiveBaker))
+      .update((true, Some(true)))
   }
 
   /** Updates accounts as bakers where applicable */
