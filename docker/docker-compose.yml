@@ -113,6 +113,9 @@ services:
       LORRE_RUNNER_PLATFORM: "tezos"
       LORRE_RUNNER_NETWORK: "carthagenet"
 
+      # Feature-Flag: set to false to disable the concurrent computation of future endorsement/baking rights
+      CONSEIL_LORRE_BLOCK_RIGHTS_FETCHING_ENABLED: "true"
+
       JVM_XMX: "4G"
     entrypoint: ["/root/wait-for.sh", "conseil-postgres:5432", "-t", "120", "--", "/root/entrypoint.sh", "conseil-lorre"]
     depends_on:

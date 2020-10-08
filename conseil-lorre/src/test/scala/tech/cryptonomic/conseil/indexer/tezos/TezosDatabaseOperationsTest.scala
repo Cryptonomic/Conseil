@@ -531,7 +531,7 @@ class TezosDatabaseOperationsTest
         val writeAndGetRows = for {
           _ <- Tables.Blocks += block
           _ <- Tables.Accounts ++= delegatedAccounts
-          written <- sut.writeBakersAndCopyContracts(List(delegatesInfo))
+          written <- sut.writeBakers(List(delegatesInfo))
           delegatesRows <- Tables.Bakers.result
         } yield (written, delegatesRows)
 
@@ -581,7 +581,7 @@ class TezosDatabaseOperationsTest
           blockLevel = 1
         )
 
-        val resultFuture = dbHandler.run(sut.writeBakersAndCopyContracts(List(delegatesInfo)))
+        val resultFuture = dbHandler.run(sut.writeBakers(List(delegatesInfo)))
 
         whenReady(resultFuture.failed) {
           _ shouldBe a[java.sql.SQLException]
@@ -625,7 +625,7 @@ class TezosDatabaseOperationsTest
 
         //do the updates
         val writeUpdatedAndGetRows = for {
-          written <- sut.writeBakersAndCopyContracts(List(updatedDelegates))
+          written <- sut.writeBakers(List(updatedDelegates))
           rows <- Tables.Bakers.result
         } yield (written, rows)
 
@@ -847,6 +847,80 @@ class TezosDatabaseOperationsTest
         initialCount.value shouldBe checkpointRows.size
 
         latest.toSeq should contain theSameElementsAs expected.toSeq
+
+      }
+
+      "update the accounts listed as bakers" in {
+        //generate data
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val accountsGenerated = 3
+        val expectedCount = 1
+
+        val block = generateBlockRows(1, testReferenceTimestamp).head
+        val blockId = TezosBlockHash(block.hash)
+
+        //we generate an account to be delegate and the rest as delegated contracts
+        val delegate :: delegatedAccounts = generateAccountRows(howMany = accountsGenerated, block)
+
+        val delegatesInfo =
+          generateDelegates(
+            delegatedHashes = delegatedAccounts.map(_.accountId),
+            delegateKey = Some(PublicKeyHash(delegate.accountId)),
+            blockHash = blockId,
+            blockLevel = block.level
+          )
+
+        val historyAccounts = (delegate :: delegatedAccounts).map(
+          row =>
+            Tables.AccountsHistoryRow(
+              accountId = row.accountId,
+              blockId = row.blockId,
+              counter = row.counter,
+              storage = row.storage,
+              balance = row.balance,
+              blockLevel = row.blockLevel,
+              delegateValue = row.delegateValue,
+              isBaker = row.isBaker,
+              cycle = block.metaCycle,
+              isActivated = row.isActivated,
+              invalidatedAsof = row.invalidatedAsof,
+              forkId = row.forkId,
+              scriptHash = row.scriptHash,
+              asof = testReferenceTimestamp
+            )
+        )
+
+        val populate = for {
+          _ <- Tables.Blocks += block
+          _ <- Tables.Accounts ++= delegate :: delegatedAccounts
+          _ <- Tables.AccountsHistory ++= historyAccounts
+          (bakersWritten, historyWritten) <- sut.writeBakers(List(delegatesInfo))
+        } yield bakersWritten
+
+        dbHandler.run(populate.transactionally).futureValue shouldBe Some(expectedCount)
+
+        //when
+        val updated = dbHandler.run(sut.updateAnyBakerAccountStored(Set(TezosBlockHash(block.hash)))).futureValue
+
+        //then
+        updated should contain theSameElementsAs List(expectedCount, expectedCount)
+
+        // check accounts
+        val readAccounts = dbHandler.run(Tables.Accounts.result).futureValue
+
+        val baker = readAccounts.find(_.accountId == delegate.accountId).value
+        baker.isBaker shouldBe true
+
+        readAccounts.filterNot(_ == baker).exists(_.isBaker) shouldBe false
+
+        //same for history entries
+        val readAccountsHistory = dbHandler.run(Tables.AccountsHistory.result).futureValue
+
+        val bakerHistory = readAccountsHistory.find(_.accountId == delegate.accountId).value
+        bakerHistory.isBaker shouldBe true
+
+        readAccountsHistory.filterNot(_ == bakerHistory).exists(_.isBaker) shouldBe false
 
       }
 

@@ -66,9 +66,10 @@ class TezosIndexer private (
     with LorreProgressLogging {
 
   /** Schedules method for fetching baking rights */
-  system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
-    rightsProcessor.writeFutureRights()
-  )
+  if (lorreConf.blockRightsFetching.enabled)
+    system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
+      rightsProcessor.writeFutureRights()
+    )
 
   /** Tries to fetch blocks head to verify if connection with Tezos node was successfully established */
   @tailrec
@@ -180,6 +181,12 @@ class TezosIndexer private (
       case Custom(n) => nodeOperator.getLatestBlocks(Some(n), lorreConf.headHash.map(TezosBlockHash))
     }
 
+    /* collects the hashes of the blocks in the results */
+    def extractProcessedHashes(fetched: nodeOperator.BlockFetchingResults): Set[TezosBlockHash] =
+      fetched.map {
+        case (block, _) => block.data.hash
+      }.toSet
+
     blockPagesToSynchronize.flatMap {
       // Fails the whole process if any page processing fails
       case (pages, total) =>
@@ -198,6 +205,7 @@ class TezosIndexer private (
                 _ =>
                   accountsProcessor.processTezosAccountsCheckpoint() >>
                       bakersProcessor.processTezosBakersCheckpoint() >>
+                      accountsProcessor.markBakerAccounts(extractProcessedHashes(fetchingResults)) >>
                       rightsProcessor.processBakingAndEndorsingRights(fetchingResults)
               )
           }

@@ -72,4 +72,18 @@ class TezosTypesTest extends AnyWordSpec with Matchers with OptionValues with Ei
       }
     }
 
+  "The Baking object" should {
+      "compute rolls from staking balances" in {
+        val stakes = PositiveDecimal(BigDecimal.exact(21126133085692L))
+
+        Baking.computeRollsFromStakes(stakes).value shouldBe 2640
+      }
+
+      "compute no rolls if there's not enough staking balance" in {
+
+        val stakes = PositiveDecimal((Baking.BakerRollsSize * 1e6) - 1)
+
+        Baking.computeRollsFromStakes(stakes).value shouldBe 0
+      }
+    }
 }

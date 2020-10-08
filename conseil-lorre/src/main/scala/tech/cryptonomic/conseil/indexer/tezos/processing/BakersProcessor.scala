@@ -101,7 +101,7 @@ class BakersProcessor(
         .grouped(batchingConf.blockPageSize) //re-arranges the process batching
         .mapAsync(1)(
           taggedBakers =>
-            db.run(TezosDb.writeBakersAndCopyContracts(taggedBakers.toList))
+            db.run(TezosDb.writeBakers(taggedBakers.toList))
               .andThen(logWriteFailure)
         )
         .runFold((Monoid[Option[Int]].empty, Monoid[Option[Int]].empty)) {

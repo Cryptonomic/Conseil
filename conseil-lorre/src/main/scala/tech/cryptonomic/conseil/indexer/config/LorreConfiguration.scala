@@ -31,7 +31,8 @@ final case class BakingAndEndorsingRights(
     cyclesToFetch: Int,
     cycleSize: Int,
     fetchSize: Int,
-    updateSize: Int
+    updateSize: Int,
+    enabled: Boolean
 )
 
 final case class BatchFetchConfiguration(

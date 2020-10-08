@@ -63,11 +63,10 @@ class BlocksProcessor(
     for {
       _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
       _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
-      rollsData <- nodeOperator.getBakerRollsForBlocks(blocks)
-      rollsByBlockHash = rollsData.map { case (block, rolls) => block.data.hash -> rolls }.toMap
-      bakersCheckpoints <- accountsProcessor.processAccountsForBlocks(accountUpdates, rollsByBlockHash) // should this fail, we still recover data from the checkpoint
+      bakersCheckpoints <- accountsProcessor.processAccountsForBlocks(accountUpdates) // should this fail, we still recover data from the checkpoint
       _ <- bakersProcessor.processBakersForBlocks(bakersCheckpoints)
       _ <- bakersProcessor.updateBakersBalances(blocks)
+      rollsData <- nodeOperator.getBakerRollsForBlocks(blocks)
       _ <- processBlocksForGovernance(rollsData.toMap)
     } yield results.size
 
