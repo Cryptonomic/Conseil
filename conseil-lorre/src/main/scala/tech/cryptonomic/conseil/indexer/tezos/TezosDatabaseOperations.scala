@@ -26,7 +26,7 @@ import tech.cryptonomic.conseil.indexer.sql.DefaultDatabaseOperations._
 
 import scala.collection.immutable.Queue
 import scala.concurrent.{ExecutionContext, Future}
-import scala.math.{ceil, max}
+import scala.math
 import scala.util.{Failure, Success}
 import tech.cryptonomic.conseil.indexer.tezos.TezosGovernanceOperations.GovernanceAggregate
 import java.{util => ju}
@@ -756,10 +756,10 @@ object TezosDatabaseOperations extends LazyLogging {
       val values = fees.map {
         case (fee, _, _, _) => fee.map(_.toDouble).getOrElse(0.0)
       }
-      val m: Int = ceil(mean(values)).toInt
-      val s: Int = ceil(stdev(values)).toInt
+      val m: Int = math.ceil(mean(values)).toInt
+      val s: Int = math.ceil(stdev(values)).toInt
 
-      AverageFees(max(m - s, 0), m, m + s, ts, kind, cycle, level)
+      AverageFees(math.max(m - s, 0), m, m + s, ts, kind, cycle, level)
     }
 
     val timestampLowerBound =
@@ -771,14 +771,82 @@ object TezosDatabaseOperations extends LazyLogging {
         .filter(_.timestamp >= timestampLowerBound)
         .map(o => (o.fee, o.timestamp, o.cycle, o.blockLevel))
         .sortBy { case (_, ts, _, _) => ts.desc }
-        .result
 
-    opQuery.map { timestampedFees =>
+    opQuery.result.statements.foreach(stmt => println(s"raising fees as $stmt"))
+
+    opQuery.result.map { timestampedFees =>
       timestampedFees.headOption.map {
         case (_, latest, cycle, level) =>
           computeAverage(latest, cycle, level, timestampedFees)
       }
     }
+  }
+
+  object FeesStatistics {
+    import CustomProfileExtension.api._
+    import CustomProfileExtension.generalAggregations.{avg, max}
+    import CustomProfileExtension.statisticsAggregations.{stdDevPop}
+    private val zeroBD = BigDecimal.exact(0)
+
+    def stats(kind: Rep[String], lowBound: Rep[Timestamp]) = {
+      val baseQuery = Tables.Operations
+        .filter(op => op.kind === kind && op.invalidatedAsof.isEmpty && op.timestamp >= lowBound)
+
+      baseQuery
+        .map(
+          it =>
+            (
+              avg(it.fee.getOrElse(zeroBD).?),
+              stdDevPop(it.fee.getOrElse(zeroBD).?),
+              max(it.timestamp.?),
+              max(it.cycle).?,
+              max(it.blockLevel.?)
+            )
+        )
+
+    }
+    val feesStatsQuery = Compiled(stats _)
+
+    def calculateAverage(kind: String, daysPast: Int, asOf: Instant = Instant.now())(
+        implicit ec: ExecutionContext
+    ): DBIO[Option[AverageFees]] = {
+
+      /* We need to limit the past timestamps for this computation to a reasonable value.
+       * Otherwise the query optimizer won't be able to efficiently use the indexing and
+       * will do a full table scan.
+       */
+
+      logger.info(
+        s"Computing fees starting from $daysPast days before $asOf, averaging over all values in the range"
+      )
+
+      val timestampLowerBound =
+        Timestamp.from(
+          asOf
+            .atOffset(ZoneOffset.UTC)
+            .minusDays(daysPast)
+            .toInstant()
+        )
+
+      stats(kind, timestampLowerBound).result.headOption.map { rows =>
+        rows.map {
+          case (mean, stddev, ts, cycle, level) =>
+            val mu = math.ceil(mean.toDouble).toInt
+            val sigma = math.ceil(stddev.toDouble).toInt
+            AverageFees(
+              low = math.max(mu - sigma, 0),
+              medium = mu,
+              high = mu + sigma,
+              timestamp = ts,
+              kind = kind,
+              cycle = cycle,
+              level = level
+            )
+        }
+      }
+
+    }
+
   }
 
   /** Returns all levels that have seen a custom event processing, e.g.

@@ -9,7 +9,7 @@ import org.scalatest.OptionValues
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalacheck.Arbitrary.arbitrary
-import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.common.sql.CustomProfileExtension.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics}
@@ -970,7 +970,11 @@ class TezosDatabaseOperationsTest
         //check
         //we specify when the computation of fees needs be done, to have the test block reference time in range
         val feesCalculation =
-          sut.calculateAverageFees(ops.head.kind, feesSelectionWindowInDays, asOf = testReferenceDateTime.toInstant())
+          sut.FeesStatistics.calculateAverage(
+            ops.head.kind,
+            feesSelectionWindowInDays,
+            asOf = testReferenceDateTime.toInstant()
+          )
 
         dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
 
@@ -996,9 +1000,13 @@ class TezosDatabaseOperationsTest
         //check
         //we specify when the computation of fees needs be done, to have the test block reference time in range
         val feesCalculation =
-          sut.calculateAverageFees("undefined", feesSelectionWindowInDays, asOf = testReferenceDateTime.toInstant())
+          sut.FeesStatistics.calculateAverage(
+            "undefined",
+            feesSelectionWindowInDays,
+            asOf = testReferenceDateTime.toInstant()
+          )
 
-        dbHandler.run(feesCalculation).futureValue shouldBe None
+        dbHandler.run(feesCalculation).futureValue shouldBe empty
 
       }
 
@@ -1044,8 +1052,8 @@ class TezosDatabaseOperationsTest
         //check
         //we specify when the computation of fees needs be done, to have the test block reference time in range
         val feesCalculation =
-          sut.calculateAverageFees(
-            selection.head.kind,
+          sut.FeesStatistics.calculateAverage(
+            ops.head.kind,
             feesSelectionWindowInDays,
             asOf = testReferenceDateTime.toInstant()
           )
