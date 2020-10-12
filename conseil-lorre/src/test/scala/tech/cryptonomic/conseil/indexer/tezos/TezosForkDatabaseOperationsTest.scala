@@ -527,7 +527,7 @@ class TezosForkDatabaseOperationsTest
           _ <- Tables.Blocks += invalidBlock
           _ <- Tables.OperationGroups += invalidGroup
           Some(stored) <- Tables.Operations ++= invalidRows
-          loaded <- sut.calculateAverageFees(kind = "transaction", daysPast = 10)
+          loaded <- sut.FeesStatistics.calculateAverage(daysPast = 10)
         } yield (stored, loaded)
 
         val (stored, loaded) = dbHandler.run(populateAndFetch).futureValue

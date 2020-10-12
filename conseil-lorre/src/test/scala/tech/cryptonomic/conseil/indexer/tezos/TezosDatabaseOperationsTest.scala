@@ -971,42 +971,11 @@ class TezosDatabaseOperationsTest
         //we specify when the computation of fees needs be done, to have the test block reference time in range
         val feesCalculation =
           sut.FeesStatistics.calculateAverage(
-            ops.head.kind,
             feesSelectionWindowInDays,
             asOf = testReferenceDateTime.toInstant()
           )
 
-        dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
-
-      }
-
-      "return None when computing average fees for a kind with no data" in {
-        //generate data
-        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-        val block = generateBlockRows(1, testReferenceTimestamp).head
-        val group = generateOperationGroupRows(block).head
-
-        val fees = Seq.fill(3)(Some(BigDecimal(1)))
-        val ops = wrapFeesWithOperations(fees, block, group)
-
-        val populate = for {
-          _ <- Tables.Blocks += block
-          _ <- Tables.OperationGroups += group
-          ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
-        } yield ids
-
-        dbHandler.run(populate).futureValue should have size (fees.size)
-
-        //check
-        //we specify when the computation of fees needs be done, to have the test block reference time in range
-        val feesCalculation =
-          sut.FeesStatistics.calculateAverage(
-            "undefined",
-            feesSelectionWindowInDays,
-            asOf = testReferenceDateTime.toInstant()
-          )
-
-        dbHandler.run(feesCalculation).futureValue shouldBe empty
+        dbHandler.run(feesCalculation).futureValue.headOption.value shouldEqual expected
 
       }
 
@@ -1053,12 +1022,11 @@ class TezosDatabaseOperationsTest
         //we specify when the computation of fees needs be done, to have the test block reference time in range
         val feesCalculation =
           sut.FeesStatistics.calculateAverage(
-            ops.head.kind,
             feesSelectionWindowInDays,
             asOf = testReferenceDateTime.toInstant()
           )
 
-        dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
+        dbHandler.run(feesCalculation).futureValue.find(_.kind == ops.head.kind).value shouldEqual expected
 
       }
 

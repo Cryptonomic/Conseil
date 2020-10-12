@@ -21,7 +21,6 @@ import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.util.ConfigUtil
 import tech.cryptonomic.conseil.common.util.CollectionOps._
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
-import tech.cryptonomic.conseil.common.util.MathUtil.{mean, stdev}
 import tech.cryptonomic.conseil.indexer.sql.DefaultDatabaseOperations._
 
 import scala.collection.immutable.Queue
@@ -718,98 +717,42 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.Bakers.insertOrUpdateAll(bakers)
   }
 
-  /** Given the operation kind, return range of fees and timestamp for that operation.
-    *
-    * @param kind     operation kind
-    * @param daysPast how many values to use for statistics computations, as a time-window
-    * @param asOf     when the computation is to be considered, by default uses the time of invocation
-    * @return         the average fees for a given operation kind, if it exists
-    */
-  def calculateAverageFees(
-      kind: String,
-      daysPast: Int,
-      asOf: Instant = Instant.now()
-  )(
-      implicit ec: ExecutionContext
-  ): DBIO[Option[AverageFees]] = {
-    /* We need to limit the past timestamps for this computation to a reasonable value.
-     * Otherwise the query optimizer won't be able to efficiently use the indexing and
-     * will do a full table scan.
-     */
-    val secsPerDay = 60L * 60L * 24L //secs * mins * hours
-    val secsToPastHorizon = daysPast * secsPerDay
-
-    logger.info(
-      s"Computing fees starting from $daysPast days before $asOf, averaging over all values in the range"
-    )
-
-    type Cycle = Int
-    type Fee = BigDecimal
-    type FeeDetails = (Option[Fee], Timestamp, Option[Cycle], BlockLevel)
-
-    def computeAverage(
-        ts: Timestamp,
-        cycle: Option[Cycle],
-        level: BlockLevel,
-        fees: Seq[FeeDetails]
-    ): AverageFees = {
-      val values = fees.map {
-        case (fee, _, _, _) => fee.map(_.toDouble).getOrElse(0.0)
-      }
-      val m: Int = math.ceil(mean(values)).toInt
-      val s: Int = math.ceil(stdev(values)).toInt
-
-      AverageFees(math.max(m - s, 0), m, m + s, ts, kind, cycle, level)
-    }
-
-    val timestampLowerBound =
-      Timestamp.from(asOf.atOffset(ZoneOffset.UTC).minusSeconds(secsToPastHorizon).toInstant())
-
-    val opQuery =
-      Tables.Operations
-        .filter(op => op.kind === kind && op.invalidatedAsof.isEmpty)
-        .filter(_.timestamp >= timestampLowerBound)
-        .map(o => (o.fee, o.timestamp, o.cycle, o.blockLevel))
-        .sortBy { case (_, ts, _, _) => ts.desc }
-
-    opQuery.result.statements.foreach(stmt => println(s"raising fees as $stmt"))
-
-    opQuery.result.map { timestampedFees =>
-      timestampedFees.headOption.map {
-        case (_, latest, cycle, level) =>
-          computeAverage(latest, cycle, level, timestampedFees)
-      }
-    }
-  }
-
+  /** Stats computations for Fees */
   object FeesStatistics {
-    import CustomProfileExtension.api._
-    import CustomProfileExtension.generalAggregations.{avg, max}
-    import CustomProfileExtension.statisticsAggregations.{stdDevPop}
+    import CustomProfileExtension.CustomApi._
     private val zeroBD = BigDecimal.exact(0)
 
-    def stats(kind: Rep[String], lowBound: Rep[Timestamp]) = {
-      val baseQuery = Tables.Operations
-        .filter(op => op.kind === kind && op.invalidatedAsof.isEmpty && op.timestamp >= lowBound)
+    /* prepares the query */
+    private def stats(lowBound: Rep[Timestamp]) = {
+      val baseSelection = Tables.Operations
+        .filter(op => op.invalidatedAsof.isEmpty && op.timestamp >= lowBound)
 
-      baseQuery
-        .map(
-          it =>
-            (
-              avg(it.fee.getOrElse(zeroBD).?),
-              stdDevPop(it.fee.getOrElse(zeroBD).?),
-              max(it.timestamp.?),
-              max(it.cycle).?,
-              max(it.blockLevel.?)
-            )
-        )
-
+      baseSelection.groupBy(_.kind).map {
+        case (kind, subQuery) =>
+          (
+            kind,
+            subQuery.map(_.fee.getOrElse(zeroBD)).avg,
+            subQuery.map(_.fee.getOrElse(zeroBD)).stdDevPop,
+            subQuery.map(_.timestamp).max,
+            subQuery.map(_.cycle).max,
+            subQuery.map(_.blockLevel).max
+          )
+      }
     }
-    val feesStatsQuery = Compiled(stats _)
 
-    def calculateAverage(kind: String, daysPast: Int, asOf: Instant = Instant.now())(
+    /* slick compiled queries don't need to be converted to sql at each call, gaining in performance */
+    private val feesStatsQuery = Compiled(stats _)
+
+    /** Collects fees from any block operation and return statistic data from a time window.
+      * The results are grouped by the operation kind.
+      *
+      * @param daysPast how many values to use for statistics computations, as a time-window
+      * @param asOf     when the computation is to be considered, by default uses the time of invocation
+      * @return         the average fees for each given operation kind, if it exists
+      */
+    def calculateAverage(daysPast: Long, asOf: Instant = Instant.now())(
         implicit ec: ExecutionContext
-    ): DBIO[Option[AverageFees]] = {
+    ): DBIO[Seq[AverageFees]] = {
 
       /* We need to limit the past timestamps for this computation to a reasonable value.
        * Otherwise the query optimizer won't be able to efficiently use the indexing and
@@ -828,9 +771,10 @@ object TezosDatabaseOperations extends LazyLogging {
             .toInstant()
         )
 
-      stats(kind, timestampLowerBound).result.headOption.map { rows =>
+      //here we assume all the values are present, as we used defaults for any of them, or know they exists for certain
+      feesStatsQuery(timestampLowerBound).result.map { rows =>
         rows.map {
-          case (mean, stddev, ts, cycle, level) =>
+          case (kind, Some(mean), Some(stddev), Some(ts), cycle, Some(level)) =>
             val mu = math.ceil(mean.toDouble).toInt
             val sigma = math.ceil(stddev.toDouble).toInt
             AverageFees(

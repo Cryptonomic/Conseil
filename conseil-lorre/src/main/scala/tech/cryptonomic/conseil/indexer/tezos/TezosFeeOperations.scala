@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
 import com.typesafe.scalalogging.LazyLogging
-import slick.dbio.DBIOAction
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperations => TezosDb}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -39,12 +38,9 @@ private[tezos] object TezosFeeOperations extends LazyLogging {
   def processTezosAverageFees(selectionWindow: FiniteDuration)(implicit ec: ExecutionContext): Future[Option[Int]] = {
     logger.info("Processing latest Tezos fee data...")
 
-    //partially apply the fixed window to get a function that only uses the kind
-    val calculateForWindow = TezosDb.calculateAverageFees(_: String, daysPast = selectionWindow.toDays.toInt)
-
     val computeAndStore = for {
-      fees <- DBIOAction.sequence(operationKinds.map(calculateForWindow))
-      dbWrites <- TezosDb.writeFees(fees.collect { case Some(fee) => fee })
+      feeStats <- TezosDb.FeesStatistics.calculateAverage(selectionWindow.toDays)
+      dbWrites <- TezosDb.writeFees(feeStats.filter(fee => operationKinds.contains(fee.kind)).toList)
     } yield dbWrites
 
     db.run(computeAndStore).andThen {
