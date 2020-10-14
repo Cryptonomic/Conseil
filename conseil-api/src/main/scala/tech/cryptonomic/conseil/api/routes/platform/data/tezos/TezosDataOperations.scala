@@ -16,8 +16,10 @@ object TezosDataOperations {
   case class OperationGroupResult(operation_group: Tables.OperationGroupsRow, operations: Seq[Tables.OperationsRow])
   case class AccountResult(account: Tables.AccountsRow)
 
+  final val InvalidationAwareAttribute = "invalidated_asof"
+
   /* this is the basic predicate that will remove any row which was fork-invalidated from results */
-  private val nonInvalidatedPredicate = Predicate("invalidated_asof", OperationType.isnull)
+  private val nonInvalidatedPredicate = Predicate(InvalidationAwareAttribute, OperationType.isnull)
 }
 
 class TezosDataOperations extends ApiDataOperations {

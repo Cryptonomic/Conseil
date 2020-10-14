@@ -9,6 +9,7 @@ import tech.cryptonomic.conseil.common.sql.DatabaseRunner
 import tech.cryptonomic.conseil.common.util.DatabaseUtil.QueryBuilder._
 
 import scala.concurrent.{ExecutionContext, Future}
+import com.typesafe.scalalogging.LazyLogging
 
 object ApiDataOperations {
 
@@ -28,7 +29,7 @@ object ApiDataOperations {
 }
 
 /** Provides the implementation for `DataOperations` trait */
-trait ApiDataOperations extends DatabaseRunner with DataOperations {
+trait ApiDataOperations extends DatabaseRunner with DataOperations with LazyLogging {
   import ApiDataOperations._
 
   /** Executes the query with given predicates
@@ -37,23 +38,35 @@ trait ApiDataOperations extends DatabaseRunner with DataOperations {
     * @param  query     query predicates and fields
     * @return query result as a map
     * */
-  override def queryWithPredicates(prefix: String, tableName: String, query: Query)(
+  override def queryWithPredicates(prefix: String, tableName: String, query: Query, hideForkInvalid: Boolean = false)(
       implicit ec: ExecutionContext
-  ): Future[List[QueryResponse]] =
+  ): Future[List[QueryResponse]] = {
+    val (fields, predicates, aggregation, ordering) = (
+      sanitizeFields(query.fields),
+      sanitizePredicates(query.predicates),
+      query.aggregation,
+      query.orderBy
+    )
+    val validFields =
+      if (hideForkInvalid) fields.filterNot(hiddenForkFields) else fields
+    val validPredicates = predicates ++ (if (hideForkInvalid) hideForkResults(predicates) else Nil)
+    val validAggregation = if (hideForkInvalid) aggregation.filterNot(hiddenForkFields) else aggregation
+    val validOrdering = if (hideForkInvalid) ordering.filterNot(hiddenForkFields) else ordering
     runQuery(
       selectWithPredicates(
         prefix,
         tableName,
-        sanitizeFields(query.fields),
-        sanitizePredicates(query.predicates),
-        query.orderBy,
-        query.aggregation,
+        validFields,
+        validPredicates,
+        validAggregation,
+        validOrdering,
         query.temporalPartition,
         query.snapshot,
         query.output,
         query.limit
       )
     )
+  }
 
   /**
     * Selects elements filtered by the predicates
@@ -61,8 +74,8 @@ trait ApiDataOperations extends DatabaseRunner with DataOperations {
     * @param table          name of the table
     * @param columns        list of column names
     * @param predicates     list of predicates for query to be filtered with
-    * @param ordering       list of ordering conditions for the query
     * @param aggregation    optional aggregation
+    * @param ordering       list of ordering conditions for the query
     * @param limit          max number of rows fetched
     * @return               list of map of [string, any], which represents list of rows as a map of column name to value
     */
@@ -71,8 +84,8 @@ trait ApiDataOperations extends DatabaseRunner with DataOperations {
       table: String,
       columns: List[Field],
       predicates: List[Predicate],
-      ordering: List[QueryOrdering],
       aggregation: List[Aggregation],
+      ordering: List[QueryOrdering],
       temporalPartition: Option[String],
       snapshot: Option[Snapshot],
       outputType: OutputType,
@@ -82,30 +95,28 @@ trait ApiDataOperations extends DatabaseRunner with DataOperations {
      * account the need to hide any fork-invalidated data
      */
     val tableWithPrefix = prefix + "." + table
-    val effectiveColumns = columns.filterNot(hiddenForkFields)
-    val effectiveAggregations = aggregation.filterNot(hiddenForkFields)
-    val effectiveOrdering = ordering.filterNot(hiddenForkFields)
-    val effectivePredicates = hideForkResults(predicates) ++ predicates
     val q = (temporalPartition, snapshot) match {
       case (Some(tempPartition), Some(snap)) =>
         makeTemporalQuery(
           tableWithPrefix,
-          effectiveColumns,
-          effectivePredicates,
-          effectiveAggregations,
-          effectiveOrdering,
+          columns,
+          predicates,
+          aggregation,
+          ordering,
           tempPartition,
           snap,
           limit
         )
       case _ =>
-        makeQuery(tableWithPrefix, effectiveColumns, effectiveAggregations)
-          .addPredicates(effectivePredicates)
-          .addGroupBy(effectiveAggregations, effectiveColumns)
-          .addHaving(effectiveAggregations)
-          .addOrdering(effectiveOrdering)
+        makeQuery(tableWithPrefix, columns, aggregation)
+          .addPredicates(predicates)
+          .addGroupBy(aggregation, columns)
+          .addHaving(aggregation)
+          .addOrdering(ordering)
           .addLimit(limit)
     }
+
+    logger.debug("Received an entity query as follows {}", q.queryParts.mkString(""))
 
     if (outputType == OutputType.sql) {
       DBIO.successful(List(Map("sql" -> Some(q.queryParts.mkString("")))))
@@ -138,7 +149,7 @@ trait ApiDataOperations extends DatabaseRunner with DataOperations {
   /* select fields that would make the fork logic apparent as ordering in the queries */
   private def hiddenForkFields(o: QueryOrdering): Boolean =
     forkRelatedFields.contains(o.field.toLowerCase)
-  /* hides from teh response the fields that would make the fork logic apparent */
+  /* hides from the response the fields that would make the fork logic apparent */
   private def hideForkFields(r: QueryResponse): QueryResponse =
     r -- forkRelatedFields
 
