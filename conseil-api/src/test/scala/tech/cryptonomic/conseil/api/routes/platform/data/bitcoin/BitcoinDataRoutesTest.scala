@@ -36,7 +36,7 @@ class BitcoinDataRoutesTest
   blockAttributes.foreach(platformDiscoveryOperations.addAttribute(testEntityPath, _))
 
   private val conseilOps: BitcoinDataOperations = new BitcoinDataOperations {
-    override def queryWithPredicates(prefix: String, tableName: String, query: Query)(
+    override def queryWithPredicates(prefix: String, tableName: String, query: Query, hideForkInvalid: Boolean = false)(
         implicit ec: ExecutionContext
     ): Future[List[QueryResponse]] =
       Future.successful(responseAsMap)

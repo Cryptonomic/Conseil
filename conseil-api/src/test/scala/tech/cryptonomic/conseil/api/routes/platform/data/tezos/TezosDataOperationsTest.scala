@@ -1531,8 +1531,8 @@ class TezosDataOperationsTest
             Tables.Blocks.baseTableRow.tableName,
             columns,
             predicates,
-            sortBy,
             List.empty,
+            sortBy,
             None,
             None,
             OutputType.json,
@@ -1565,8 +1565,8 @@ class TezosDataOperationsTest
             Tables.Blocks.baseTableRow.tableName,
             columns,
             predicates,
-            sortBy,
             List.empty,
+            sortBy,
             None,
             None,
             OutputType.json,
@@ -1599,8 +1599,8 @@ class TezosDataOperationsTest
             Tables.Blocks.baseTableRow.tableName,
             columns,
             predicates,
-            sortBy,
             List.empty,
+            sortBy,
             None,
             None,
             OutputType.json,
@@ -1633,8 +1633,8 @@ class TezosDataOperationsTest
             Tables.Blocks.baseTableRow.tableName,
             columns,
             predicates,
-            sortBy,
             List.empty,
+            sortBy,
             None,
             None,
             OutputType.json,
@@ -1673,8 +1673,8 @@ class TezosDataOperationsTest
             Tables.Blocks.baseTableRow.tableName,
             columns,
             predicates,
-            sortBy,
             List.empty,
+            sortBy,
             None,
             None,
             OutputType.json,
@@ -2000,7 +2000,7 @@ class TezosDataOperationsTest
         )
 
         val expectedQuery =
-          "SELECT SUM(medium) as sum_medium,low,high FROM tezos.fees WHERE true  AND invalidated_asof ISNULL AND medium = '4' IS false AND low BETWEEN '0' AND '1' GROUP BY low,high ORDER BY sum_medium desc LIMIT 3"
+          "SELECT SUM(medium) as sum_medium,low,high FROM tezos.fees WHERE true  AND medium = '4' IS false AND low BETWEEN '0' AND '1' GROUP BY low,high ORDER BY sum_medium desc LIMIT 3"
         val populateAndTest = for {
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
@@ -2008,8 +2008,8 @@ class TezosDataOperationsTest
             table = Tables.Fees.baseTableRow.tableName,
             columns = List(SimpleField("low"), SimpleField("medium"), SimpleField("high")),
             predicates = predicates,
-            ordering = List(QueryOrdering("sum_medium", OrderDirection.desc)),
             aggregation = aggregate,
+            ordering = List(QueryOrdering("sum_medium", OrderDirection.desc)),
             temporalPartition = None,
             snapshot = None,
             outputType = OutputType.sql,

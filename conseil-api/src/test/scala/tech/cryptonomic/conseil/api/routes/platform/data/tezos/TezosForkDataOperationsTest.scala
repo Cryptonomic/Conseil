@@ -15,7 +15,7 @@ import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{makeAccountId, TezosBlockHash}
-
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes
 import scala.concurrent.duration._
 import java.time.Instant
 import java.{util => ju}
@@ -294,25 +294,20 @@ class TezosForkDataOperationsTest
 
       "ignore fork-invalidated data when get all values from the table with nulls as nones" in {
 
-        val columns = List()
-        val populateAndTest = for {
-          /* We save some valid and invalidated data together */
-          _ <- Tables.Blocks ++= blocksTmp.head :: forkInvalidBlocks.tail
-          found <- sut.selectWithPredicates(
+        /* We save some valid and invalidated data together */
+        val populate = Tables.Blocks ++= blocksTmp.head :: forkInvalidBlocks.tail
+
+        dbHandler.run(populate).isReadyWithin(5.seconds) shouldBe true
+
+        val result = sut
+          .queryWithPredicates(
             "tezos",
             Tables.Blocks.baseTableRow.tableName,
-            columns,
-            List.empty,
-            List.empty,
-            List.empty,
-            None,
-            None,
-            OutputType.json,
-            3
+            DataTypes.Query(output = OutputType.json, limit = 3),
+            true
           )
-        } yield found
+          .futureValue
 
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
         result should contain theSameElementsAs List(
           Map(
             "operations_hash" -> None,
@@ -347,7 +342,7 @@ class TezosForkDataOperationsTest
       }
 
       "ignore fork-invalidated data when getting a map from a block table with predicate" in {
-        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
+        val fields = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "hash",
@@ -357,23 +352,24 @@ class TezosForkDataOperationsTest
           )
         )
 
-        val populateAndTest = for {
-          _ <- Tables.Blocks ++= forkInvalidBlocks
-          found <- sut.selectWithPredicates(
+        val populate = Tables.Blocks ++= forkInvalidBlocks
+
+        dbHandler.run(populate).isReadyWithin(5.seconds) shouldBe true
+
+        val result = sut
+          .queryWithPredicates(
             "tezos",
             Tables.Blocks.baseTableRow.tableName,
-            columns,
-            predicates,
-            List.empty,
-            List.empty,
-            None,
-            None,
-            OutputType.json,
-            3
+            DataTypes.Query(
+              fields = fields,
+              predicates = predicates,
+              output = OutputType.json,
+              limit = 3
+            ),
+            true
           )
-        } yield found
+          .futureValue
 
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
         result shouldBe empty
       }
 
@@ -451,7 +447,7 @@ class TezosForkDataOperationsTest
           )
         )
 
-        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
+        val fields = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "hash",
@@ -476,23 +472,24 @@ class TezosForkDataOperationsTest
           )
         )
 
-        val populateAndTest = for {
-          _ <- Tables.Blocks ++= blocksTmp
-          found <- sut.selectWithPredicates(
+        val populate = Tables.Blocks ++= blocksTmp
+
+        dbHandler.run(populate).isReadyWithin(5.seconds) shouldBe true
+
+        val result = sut
+          .queryWithPredicates(
             "tezos",
             Tables.Blocks.baseTableRow.tableName,
-            columns,
-            predicates,
-            List.empty,
-            List.empty,
-            None,
-            None,
-            OutputType.json,
-            3
+            DataTypes.Query(
+              fields = fields,
+              predicates = predicates,
+              output = OutputType.json,
+              limit = 3
+            ),
+            true
           )
-        } yield found
+          .futureValue
 
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
         result should contain theSameElementsAs List(
           Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("blockHash2")),
           Map("level" -> Some(2), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("blockHash3"))

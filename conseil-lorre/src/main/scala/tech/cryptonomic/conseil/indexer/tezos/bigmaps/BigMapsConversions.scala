@@ -47,14 +47,14 @@ object BigMapsConversions extends LazyLogging {
           )
         case (hash, _, BigMapAlloc(_, InvalidDecimal(json), _, _)) =>
           logger.warn(
-            "A big_map_diff allocation hasn't been converted to a BigMap on db, because the map id '{}' is not a valid number. The block containing the Origination operation is {}",
+            "Big Map Allocations: A big_map_diff allocation hasn't been converted to a BigMap on db, because the map id '{}' is not a valid number. The block containing the Origination operation is {}",
             json,
             hash.value
           )
           None
         case diff =>
           logger.warn(
-            "A big_map_diff result will be ignored by the allocation conversion to BigMap on db, because the diff action is not supported: {}",
+            "Big Map Allocations: A big_map_diff result will be ignored by the allocation conversion to BigMap on db, because the diff action is not supported: {}",
             from.get._2
           )
           None
@@ -86,14 +86,14 @@ object BigMapsConversions extends LazyLogging {
           )
         case (hash, _, BigMapUpdate(_, _, _, InvalidDecimal(json), _)) =>
           logger.warn(
-            "A big_map_diff update hasn't been converted to a BigMapContent on db, because the map id '{}' is not a valid number. The block containing the Transation operation is {}",
+            "Big Map Updates: A big_map_diff update hasn't been converted to a BigMapContent on db, because the map id '{}' is not a valid number. The block containing the Transation operation is {}",
             json,
             hash.value
           )
           None
         case diff =>
           logger.warn(
-            "A big_map_diff result will be ignored by the update conversion to BigMapContent on db, because the diff action is not supported: {}",
+            "Big Map Updates: A big_map_diff result will be ignored by the update conversion to BigMapContent on db, because the diff action is not supported: {}",
             from.get._2
           )
           None
@@ -116,7 +116,7 @@ object BigMapsConversions extends LazyLogging {
           )
         case (hash, ids, BigMapAlloc(_, InvalidDecimal(json), _, _)) =>
           logger.warn(
-            "A big_map_diff allocation hasn't been converted to a relation for OriginatedAccounts to BigMap on db, because the map id '{}' is not a valid number. The block containing the Transation operation is {}, involving accounts {}",
+            "Big Map Origin: A big_map_diff allocation hasn't been converted to a relation for OriginatedAccounts to BigMap on db, because the map id '{}' is not a valid number. The block containing the Transation operation is {}, involving accounts {}",
             json,
             ids.mkString(", "),
             hash.value
@@ -124,7 +124,7 @@ object BigMapsConversions extends LazyLogging {
           List.empty
         case diff =>
           logger.warn(
-            "A big_map_diff result will be ignored and not be converted to a relation for OriginatedAccounts to BigMap on db, because the diff action is not supported: {}",
+            "Big Map Origin: A big_map_diff result will be ignored and not be converted to a relation for OriginatedAccounts to BigMap on db, because the diff action is not supported: {}",
             from.get._2
           )
           List.empty

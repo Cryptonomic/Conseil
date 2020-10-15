@@ -5,11 +5,13 @@ import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.metadata.MetadataService
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.common.metadata
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{makeAccountId, TezosBlockHash}
+import tech.cryptonomic.conseil.common.tezos.Tables
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -34,34 +36,74 @@ case class TezosDataRoutes(
 
   private val platformPath = PlatformPath("tezos")
 
+  /* Collects the names of any entity which could be invalidated by a fork
+   * Currently it's a static list of table names, it should be loaded
+   * dynamically and memoized from the actual db-schema, to avoid
+   * maintenance issues.
+   * The logic would be to scan all tables and verify which one has a specific
+   * column named as [[TezosDataOperations.InvalidationAwareAttribute]]
+   */
+  private lazy val forkAwareEntities = Set(
+    Tables.Accounts.baseTableRow.tableName,
+    Tables.AccountsHistory.baseTableRow.tableName,
+    Tables.Blocks.baseTableRow.tableName,
+    Tables.Governance.baseTableRow.tableName,
+    Tables.TokenBalances.baseTableRow.tableName,
+    Tables.BakingRights.baseTableRow.tableName,
+    Tables.EndorsingRights.baseTableRow.tableName,
+    Tables.BalanceUpdates.baseTableRow.tableName,
+    Tables.Bakers.baseTableRow.tableName,
+    Tables.BakersHistory.baseTableRow.tableName,
+    Tables.Fees.baseTableRow.tableName,
+    Tables.OperationGroups.baseTableRow.tableName,
+    Tables.Operations.baseTableRow.tableName
+  )
+
   /** V2 Route implementation for query endpoint */
   override val postRoute: Route = queryEndpoint.implementedByAsync {
     case ((platform, network, entity), apiQuery, _) =>
       val path = EntityPath(entity, NetworkPath(network, PlatformPath(platform)))
 
       pathValidation(path) {
-        apiQuery
-          .validate(path, metadataService, metadataConfiguration)
-          .flatMap { validationResult =>
-            validationResult.map { validQuery =>
-              operations.queryWithPredicates(platform, entity, validQuery.withLimitCap(maxQueryResultSize)).map {
-                queryResponses =>
-                  QueryResponseWithOutput(queryResponses, validQuery.output)
+        shouldHideForkEntries(entity)(
+          hideForkData =>
+            apiQuery
+              .validate(path, metadataService, metadataConfiguration)
+              .flatMap { validationResult =>
+                validationResult.map { validQuery =>
+                  operations
+                    .queryWithPredicates(platform, entity, validQuery.withLimitCap(maxQueryResultSize), hideForkData)
+                    .map { queryResponses =>
+                      QueryResponseWithOutput(queryResponses, validQuery.output)
+                    }
+                }.left.map(Future.successful).bisequence
               }
-            }.left.map(Future.successful).bisequence
-          }
-          .map(Some(_))
+              .map(Some(_))
+        )
       }
   }
+
+  /* will provide an async operation with the information if this entity needs checking for fork-invalidation */
+  private def shouldHideForkEntries[T](entity: String)(asyncCall: Boolean => Future[T]): Future[T] =
+    asyncCall(forkAwareEntities.contains(entity))
+
+  /* reuse the query route (POST) logic for entity-specific filtered endpoints */
+  private def routeFromQuery[B](network: String, entity: String, filter: TezosFilter)(
+      handleResult: List[QueryResponse] => Option[B]
+  ): Future[Option[B]] =
+    shouldHideForkEntries(entity)(
+      hideForkData =>
+        platformNetworkValidation(network) {
+          operations
+            .queryWithPredicates("tezos", entity, filter.toQuery.withLimitCap(maxQueryResultSize), hideForkData)
+            .map(handleResult)
+        }
+    )
 
   /** V2 Route implementation for blocks endpoint */
   private val blocksRoute: Route = tezosBlocksEndpoint.implementedByAsync {
     case ((network, filter), _) =>
-      platformNetworkValidation(network) {
-        operations
-          .queryWithPredicates("tezos", "blocks", filter.toQuery.withLimitCap(maxQueryResultSize))
-          .map(Option(_))
-      }
+      routeFromQuery(network, "blocks", filter) { Option(_) }
   }
 
   /** V2 Route implementation for blocks head endpoint */
@@ -83,11 +125,7 @@ case class TezosDataRoutes(
   /** V2 Route implementation for accounts endpoint */
   private val accountsRoute: Route = tezosAccountsEndpoint.implementedByAsync {
     case ((network, filter), _) =>
-      platformNetworkValidation(network) {
-        operations
-          .queryWithPredicates("tezos", "accounts", filter.toQuery.withLimitCap(maxQueryResultSize))
-          .map(Some(_))
-      }
+      routeFromQuery(network, "accounts", filter) { Some(_) }
   }
 
   /** V2 Route implementation for account by ID endpoint */
@@ -101,11 +139,7 @@ case class TezosDataRoutes(
   /** V2 Route implementation for operation groups endpoint */
   private val operationGroupsRoute: Route = tezosOperationGroupsEndpoint.implementedByAsync {
     case ((network, filter), _) =>
-      platformNetworkValidation(network) {
-        operations
-          .queryWithPredicates("tezos", "operation_groups", filter.toQuery.withLimitCap(maxQueryResultSize))
-          .map(Some(_))
-      }
+      routeFromQuery(network, "operation_groups", filter) { Some(_) }
   }
 
   /** V2 Route implementation for operation group by ID endpoint */
@@ -119,21 +153,13 @@ case class TezosDataRoutes(
   /** V2 Route implementation for average fees endpoint */
   private val avgFeesRoute: Route = tezosAvgFeesEndpoint.implementedByAsync {
     case ((network, filter), _) =>
-      platformNetworkValidation(network) {
-        operations
-          .queryWithPredicates("tezos", "fees", filter.toQuery.withLimitCap(maxQueryResultSize))
-          .map(_.headOption)
-      }
+      routeFromQuery(network, "fees", filter) { _.headOption }
   }
 
   /** V2 Route implementation for operations endpoint */
   private val operationsRoute: Route = tezosOperationsEndpoint.implementedByAsync {
     case ((network, filter), _) =>
-      platformNetworkValidation(network) {
-        operations
-          .queryWithPredicates("tezos", "operations", filter.toQuery.withLimitCap(maxQueryResultSize))
-          .map(Some(_))
-      }
+      routeFromQuery(network, "operations", filter) { Some(_) }
   }
 
   /** V2 concatenated routes */
