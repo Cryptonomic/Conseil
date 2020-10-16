@@ -51,7 +51,6 @@ class TezosForkDatabaseOperationsTest
   import scala.concurrent.ExecutionContext.Implicits.global
 
   import TezosDataGenerationKit.DataModelGeneration._
-  import TezosDataGenerationKit.DomainModelGeneration._
   import LocalGenerationUtils._
 
   val sut = TezosDatabaseOperations

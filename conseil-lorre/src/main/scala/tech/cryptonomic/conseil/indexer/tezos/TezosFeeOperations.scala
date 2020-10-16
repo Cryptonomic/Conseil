@@ -30,7 +30,8 @@ private[tezos] object TezosFeeOperations extends LazyLogging {
     * The computation will use a limited number of fees, as the result of a selection window in days.
     * Only blocks belonging within such window in the past, relative to the calculation moment, will be considered.
     *
-    * @param numberOfFeesAveraged a limit on how many of the latest fee values will be used for averaging
+    * The window is rounded to a granularity of whole days and can't be less than 1.
+    *
     * @param selectionWindow the max number of days back from the current block timestamp to use when averaging
     * @param ec the needed ExecutionContext to combine multiple database operations
     * @return a future result of the number of rows stored to db, if supported by the driver
@@ -39,7 +40,7 @@ private[tezos] object TezosFeeOperations extends LazyLogging {
     logger.info("Processing latest Tezos fee data...")
 
     val computeAndStore = for {
-      feeStats <- TezosDb.FeesStatistics.calculateAverage(selectionWindow.toDays)
+      feeStats <- TezosDb.FeesStatistics.calculateAverage(math.max(selectionWindow.toDays, 1))
       dbWrites <- TezosDb.writeFees(feeStats.filter(fee => operationKinds.contains(fee.kind)).toList)
     } yield dbWrites
 
