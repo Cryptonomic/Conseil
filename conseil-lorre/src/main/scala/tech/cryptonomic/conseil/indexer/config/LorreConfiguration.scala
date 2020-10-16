@@ -17,7 +17,7 @@ final case class LorreConfiguration(
     bootupRetryInterval: FiniteDuration,
     bootupConnectionCheckTimeout: FiniteDuration,
     feeUpdateInterval: Int,
-    numberOfFeesAveraged: Int,
+    feesAverageTimeWindow: FiniteDuration,
     depth: Depth,
     headHash: Option[String],
     chainEvents: List[ChainEvent],

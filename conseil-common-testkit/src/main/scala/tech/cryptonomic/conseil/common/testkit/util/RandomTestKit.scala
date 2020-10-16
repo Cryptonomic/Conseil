@@ -36,7 +36,7 @@ trait RandomGenerationKit {
 
   //a stable timestamp reference if needed
   lazy val testReferenceTimestamp =
-    new Timestamp(testReferenceDateTime.toEpochSecond)
+    new Timestamp(testReferenceDateTime.toEpochSecond * 1000L)
 
   //creates pseudo-random strings of given length, based on an existing [[Random]] generator
   val alphaNumericGenerator = (random: Random) => random.alphanumeric.take(_: Int).mkString
