@@ -81,7 +81,8 @@ object Platforms {
       port: Int,
       protocol: String,
       pathPrefix: String = "",
-      chainEnv: String = "main"
+      chainEnv: String = "main",
+      traceCalls: Boolean = false
   )
 
   /** Defines chain-specific values to identify the TNS (Tezos Naming Service) smart contract */
