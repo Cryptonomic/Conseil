@@ -2,11 +2,13 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import akka.NotUsed
 import akka.actor.ActorSystem
+import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.settings.ConnectionPoolSettings
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.Source
+import akka.stream.{ActorMaterializer, Attributes}
+import akka.stream.Attributes.LogLevels
+import akka.stream.scaladsl.{Flow, Source}
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.util.JsonUtil.JsonString
 import tech.cryptonomic.conseil.common.config.Platforms.TezosConfiguration
@@ -198,7 +200,7 @@ private[tezos] class TezosNodeInterface(
   )
 
   /* creates a connections pool based on the host network */
-  private[this] def getHostPoolFlow[T] =
+  private def getHostPoolFlow[T] =
     if (node.protocol == "https")
       Http(system).cachedHostConnectionPoolHttps[T](
         host = node.hostname,
@@ -212,6 +214,37 @@ private[tezos] class TezosNodeInterface(
         settings = streamingRequestsConnectionPooling
       )
 
+  /* Defines the custom logging category to emit request-response traces on each stream element */
+  private lazy val batchedRpcTraceLogger: LoggingAdapter =
+    Logging(system.eventStream, "tech.cryptonomic.conseil.indexer.tezos.node-batch-rpc")
+
+  /* Wraps the request/response flow with logging, if enabled by configuration
+   * The returned flow is the streaming req/res exchange, paired with a correlation T
+   */
+  private def loggedRpcFlow[T] =
+    if (node.traceCalls)
+      Flow[(HttpRequest, T)]
+        .log("Tezos node rpc request", { case (req, cid) => s"Corr-Id $cid: ${req.uri}" })(log = batchedRpcTraceLogger)
+        .withAttributes(
+          Attributes.logLevels(onElement = LogLevels.Info, onFinish = LogLevels.Info, onFailure = LogLevels.Error)
+        )
+        .via(getHostPoolFlow[T])
+        .log("Tezos node response", { case (res, cid) => s"Corr-id $cid: ${res}" })(log = batchedRpcTraceLogger)
+        .withAttributes(
+          Attributes.logLevels(onElement = LogLevels.Info, onFinish = LogLevels.Info, onFailure = LogLevels.Error)
+        )
+    else getHostPoolFlow[T]
+
+  private def loggedRpcResults[T] =
+    if (node.traceCalls)
+      Flow[(T, String)]
+        .log("Tezos node rpc json payload", { case (cid, json) => s"Corr-id $cid: $json" })(log = batchedRpcTraceLogger)
+        .withAttributes(
+          Attributes.logLevels(onElement = LogLevels.Info, onFinish = LogLevels.Info, onFailure = LogLevels.Error)
+        )
+    else
+      Flow[(T, String)].map(identity)
+
   /**
     * Creates a stream that will produce http response content for the
     * list of commands.
@@ -223,7 +256,7 @@ private[tezos] class TezosNodeInterface(
     * @return A stream source whose elements will be the response string, tupled with the correlation id,
     *         used to match with the corresponding request
     */
-  private[this] def streamedGetQuery[CID](
+  private def streamedGetQuery[CID](
       ids: List[CID],
       mapToCommand: CID => String,
       concurrencyLevel: Int
@@ -242,7 +275,7 @@ private[tezos] class TezosNodeInterface(
 
     uris
       .map(toRequest)
-      .via(getHostPoolFlow)
+      .via(loggedRpcFlow)
       .mapAsyncUnordered(concurrencyLevel) {
         case (tried, id) =>
           Future
@@ -251,6 +284,8 @@ private[tezos] class TezosNodeInterface(
             .map(entity => (entity, id))
       }
       .map { case (content: HttpEntity.Strict, id) => (id, JsonString sanitize content.data.utf8String) }
+      .via(loggedRpcResults)
+
   }
 
   override def runBatchedGetQuery[CID](

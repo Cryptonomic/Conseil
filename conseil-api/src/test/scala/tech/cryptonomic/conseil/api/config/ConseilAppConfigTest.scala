@@ -40,6 +40,7 @@ class ConseilAppConfigTest extends AnyWordSpec with Matchers with EitherValues w
                                             |      hostname: "nautilus.cryptonomic.tech",
                                             |      port: 8732
                                             |      path-prefix: "tezos/alphanet-staging/"
+                                            |      trace-calls: "true"
                                             |    }
                                             |  }
                                             |]
@@ -57,7 +58,13 @@ class ConseilAppConfigTest extends AnyWordSpec with Matchers with EitherValues w
           TezosConfiguration(
             "alphanet-staging",
             enabled = false,
-            TezosNodeConfiguration("nautilus.cryptonomic.tech", 8732, "https", "tezos/alphanet-staging/"),
+            TezosNodeConfiguration(
+              "nautilus.cryptonomic.tech",
+              8732,
+              "https",
+              "tezos/alphanet-staging/",
+              traceCalls = true
+            ),
             None
           )
         )
