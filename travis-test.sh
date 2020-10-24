@@ -1,5 +1,14 @@
 #!/bin/bash
 
+sudo apt-get install postgresql
+sudo apt-get install postgres
+
+pg_ctl start -l logfile
+
+psql --command="CREATE DATABASE 'conseil';"
+
+psql --filename="/sql/conseil.sql" conseil
+
 CONFIG_PATH="conseil-common/src/main/resources/developer.conf"
 
 touch CONFIG_PATH
@@ -27,7 +36,7 @@ conseil {
  port: 1337
 
  db {
-  dataSourceClass = "org.postgresql.ds.PGSimpleDataSource"
+  dataSourceClass = \"org.postgresql.ds.PGSimpleDataSource\"
   properties {
     # Replace the below lines with details of your database configured with the Conseil database schema
     user = \"postgres\"

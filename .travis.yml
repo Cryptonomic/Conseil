@@ -3,15 +3,6 @@ jdk:
   - openjdk8
 scala:
   - 2.12.10
-services:
-  - postgresql
-postgres:
-  adapter: postgresql
-  database: conseil_db
-  username: postgres
-before_script:
-  - "psql -c 'create database' conseil_db; -U  postgres"
-  - "psql -U postgres -d conseil_db -f /sql/conseil.sql"
 script:
   - git tag 0.1234.5678
   - sbt clean coverage test coverageAggregate
