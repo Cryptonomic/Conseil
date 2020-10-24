@@ -23,7 +23,7 @@ object ApiTestRun {
     val PROTOCOL: String = "https"
     val CONSEIl_HOST: String = "localhost"
     val CONSEIL_PORT: Int = 1337
-    val CONSEIl_API_KEY: String = "conseil"
+    val CONSEIl_API_KEY: String = "hooman"
     val CONSEIL: org.http4s.Uri = Uri.unsafeFromString(PROTOCOL + "://" + CONSEIl_HOST + ":" + CONSEIL_PORT)
 
     def main(args: Array[String]): Unit = {
