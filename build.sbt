@@ -114,7 +114,21 @@ lazy val smokeTests = (project in file("conseil-smoke-tests"))
   .addRunCommand(description = "Task to run smoke tests locally")
   .disableAssembly()
 
+lazy val apiTests = (project in file("conseil-api-tests"))
+  .settings(
+      name := "conseil-api-tests",
+      mainClass := Some("tech.cryptonomic.conseil.api.tests.RegressionRun"),
+      libraryDependencies ++= Dependencies.conseilApiTestsInclude,
+      coverageExcludedPackages := Seq(
+          "<empty>",
+          "tech.cryptonomic.conseil.api.tests.*"
+      ).mkString(";")
+  )
+  .addRunCommand(description = "Task to run conseil api tests locally")
+  .disableAssembly()
+
 addCommandAlias("runApi", "; api/runTask")
 addCommandAlias("runLorre", "; lorre/runTask")
 addCommandAlias("runSchema", "; schema/runTask")
 addCommandAlias("runSmokeTests", "; smokeTests/runTask")
+addCommandAlias("runApiTests", "; apiTests/runTask")

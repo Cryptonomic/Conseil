@@ -58,4 +58,4 @@ java -jar /tmp/conseil-lorre.jar &
 
 sleep 5m
 
-# ADD SBT COMMAND TO RUN TESTING SUITE AGAINST THE LOCALLY RUNNING CONSEIL NODES
+sbt runApiTests
