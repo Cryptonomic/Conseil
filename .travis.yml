@@ -10,8 +10,8 @@ postgres:
   database: conseil_db
   username: postgres
 before_script:
-  - psql -c 'create database' conseil_db; -U  postgres
-  - psql -U postgres -d conseil_db -f /sql/conseil.sql
+  - "psql -c 'create database' conseil_db; -U  postgres"
+  - "psql -U postgres -d conseil_db -f /sql/conseil.sql"
 script:
   - git tag 0.1234.5678
   - sbt clean coverage test coverageAggregate
