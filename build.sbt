@@ -117,7 +117,7 @@ lazy val smokeTests = (project in file("conseil-smoke-tests"))
 lazy val apiTests = (project in file("conseil-api-tests"))
   .settings(
       name := "conseil-api-tests",
-      mainClass := Some("tech.cryptonomic.conseil.api.tests.RegressionRun"),
+      mainClass := Some("tech.cryptonomic.conseil.api.tests.ApiTestRun"),
       libraryDependencies ++= Dependencies.conseilApiTestsInclude,
       coverageExcludedPackages := Seq(
           "<empty>",
