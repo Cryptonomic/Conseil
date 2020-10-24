@@ -47,7 +47,11 @@ conseil {
   maxConnections = 20
 }
 
-lorre.db = ${conseil.db}
+lorre.db = \${conseil.db}
 " > CONFIG_PATH
 
 sbt clean assembly -J-Xss32m
+
+java -jar /tmp/conseil-api.jar &
+
+java -jar /tmp/conseil-lorre.jar &
