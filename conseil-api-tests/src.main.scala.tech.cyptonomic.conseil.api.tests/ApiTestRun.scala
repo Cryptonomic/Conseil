@@ -4,7 +4,7 @@ import org.http4s.Request
 import org.http4s.client.blaze._
 import java.util.concurrent.Executors
 
-import cats.effect.{ContextShift, IO}
+import cats.effect.{ContextShift, IO, ExitCode, IOApp}
 import org.http4s.Method._
 import org.http4s.client.dsl.io._
 import org.http4s.headers._
@@ -18,7 +18,7 @@ import io.circe.Json
 
 import scala.concurrent.ExecutionContext
 
-object ApiTestRun {
+object ApiTestRun extends IOApp {
 
     val PROTOCOL: String = "https"
     val CONSEIl_HOST: String = "localhost"
@@ -26,7 +26,7 @@ object ApiTestRun {
     val CONSEIl_API_KEY: String = "hooman"
     val CONSEIL: org.http4s.Uri = Uri.unsafeFromString(PROTOCOL + "://" + CONSEIl_HOST + ":" + CONSEIL_PORT)
 
-    def main(args: Array[String]): Unit = {
+    override def run(args: List[String]): IO[ExitCode] = {
 
         val httpClient: BlazeClientBuilder[IO] = createHttpClient()
 
