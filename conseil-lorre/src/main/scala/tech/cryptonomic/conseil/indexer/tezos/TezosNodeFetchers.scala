@@ -37,6 +37,7 @@ private[tezos] trait TezosBlocksDataFetchers {
   /* reduces repetion in error handling */
   private def logErrorOnJsonDecoding[Encoded](message: String): PartialFunction[Throwable, Future[Unit]] = {
     case decodingError: io.circe.Error =>
+      decodingError.fillInStackTrace()
       logger.error(message, decodingError).pure[Future]
     case t =>
       logger.error("Something unexpected failed while decoding json", t).pure[Future]
@@ -50,6 +51,7 @@ private[tezos] trait TezosBlocksDataFetchers {
     case decodingError: io.circe.Error if ignore =>
       ().pure[Future]
     case decodingError: io.circe.Error =>
+      decodingError.fillInStackTrace()
       logger.warn(message, decodingError).pure[Future]
     case t =>
       logger.error("Something unexpected failed while decoding json", t).pure[Future]
