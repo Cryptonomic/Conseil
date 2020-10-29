@@ -3,7 +3,6 @@ package tech.cyptonomic.conseil.api.tests
 object Requests {
 
   val CONSEIL_NETWORK: String = "mainnet"
-
   object ConseilRequests {
 
     final val CONSEIL_BUILD_INFO: String = "/info"
@@ -279,13 +278,14 @@ object Requests {
 
   /**
    * Generate a path to get attributes for a given entity
-   *
    * @param entity the entity to get attribtues for
    * @return the conseil api endpoint for that specific entity's attributes
    */
   def getTezosAttributePath(entity: String): String = "/v2/metadata/tezos/" + CONSEIL_NETWORK + "/" + entity + "/attributes"
 
   def getTezosQueryPath(entity: String): String = "/v2/data/tezos/" + CONSEIL_NETWORK + "/" + entity
+
+  def getTezosMetadataPath(entity: String, attribute: String): String = "/v2/metadata/tezos/" + CONSEIL_NETWORK + "/" + entity + "/" + attribute
 
   object TezosChainRequests {
 
@@ -297,6 +297,35 @@ object Requests {
 
     final val TEZOS_GET_ACCOUNT: String = "/v2/data/tezos/" + CONSEIL_NETWORK + "/accounts/KT1V7VoyjbvqSmnRtv9pHkRuBCPT7UubCrCX"
 
+  }
+
+  object TezosValidationLists {
+
+    final val TEZOS_INFO_VALIDATION = List(
+      "application",
+      "version",
+      "git",
+      "tags"
+    )
+
+    final val TEZOS_PLATFORMS_VALIDATION = List(
+      "name",
+      "displayName"
+    )
+
+    final val TEZOS_NETWORKS_VALIDATION = List(
+      "name",
+      "displayName",
+      "platform",
+      "network"
+    )
+
+    final val TEZOS_ENTITIES_VALIDATION = List(
+      "name",
+      "displayName",
+      "count",
+      "displayNamePlural"
+    )
 
   }
 

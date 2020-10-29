@@ -2,7 +2,6 @@ package tech.cyptonomic.conseil.api.tests
 
 import java.util.concurrent.Executors
 
-import cats.effect.{ExitCode, IO, IOApp}
 import io.circe.syntax._
 import org.http4s.Method._
 import org.http4s.client.blaze._
@@ -30,23 +29,41 @@ object ApiTestRun extends IOApp {
     //        TESTING CONSEIL BUILD REQUESTS
 
     println("\n\n\nTesting Info Endpoint:\n")
-    println(sendConseilRequest(httpClient, CONSEIL.withPath(Requests.ConseilRequests.CONSEIL_BUILD_INFO)))
+    println(sendConseilRequest(
+      httpClient,
+      CONSEIL.withPath(Requests.ConseilRequests.CONSEIL_BUILD_INFO),
+      Requests.TezosValidationLists.TEZOS_INFO_VALIDATION
+    ))
 
     println("\n\n\nTesting Platforms Endpoint\n")
-    println(sendConseilRequest(httpClient, CONSEIL.withPath(Requests.ConseilRequests.CONSEIL_PLATFORMS)))
+    println(sendConseilRequest(
+      httpClient,
+      CONSEIL.withPath(Requests.ConseilRequests.CONSEIL_PLATFORMS),
+      Requests.TezosValidationLists.TEZOS_PLATFORMS_VALIDATION
+    ))
 
     //        TESTING CONSEIL TEZOS BUILD CONFIG
 
     println("\n\n\nTesting Tezos Networks\n")
-    println(sendConseilRequest(httpClient, CONSEIL.withPath(Requests.TezosConfig.TEZOS_NETWORKS)))
+    println(sendConseilRequest(
+      httpClient,
+      CONSEIL.withPath(Requests.TezosConfig.TEZOS_NETWORKS),
+      Requests.TezosValidationLists.TEZOS_NETWORKS_VALIDATION
+    ))
 
     println("\n\n\nTesting Tezos Entitites\n")
-    println(sendConseilRequest(httpClient, CONSEIL.withPath(Requests.TezosConfig.TEZOS_ENTITIES)))
+    println(sendConseilRequest(
+      httpClient,
+      CONSEIL.withPath(Requests.TezosConfig.TEZOS_ENTITIES),
+      Requests.TezosValidationLists.TEZOS_ENTITIES_VALIDATION
+    ))
 
     //        TESTING TEZOS ENTITY ATTRIBUTES
     testAttributes(httpClient)
 
     testAttributeData(httpClient)
+
+    validateAttributeData(httpClient)
 
 
 
@@ -64,27 +81,26 @@ object ApiTestRun extends IOApp {
 
   /**
    * Create the http client used to make requests
-   *
    * @return The client object
    */
   def createHttpClient(): BlazeClientBuilder[IO] = {
 
     val pool = Executors.newCachedThreadPool()
     val clientExecution: ExecutionContext = ExecutionContext.fromExecutor(pool)
+    implicit val shift: ContextShift[IO] = IO.contextShift(clientExecution)
 
-    val clientBuild = BlazeClientBuilder[IO](clientExecution, None)
+    val clientBuild = BlazeClientBuilder[IO](clientExecution)
 
     clientBuild
   }
 
   /**
    * Send a conseil request with an API Key and proper headers
-   *
-   * @param client   The BlazeClientBuilder client with which to make the request
+   * @param client The BlazeClientBuilder client with which to make the request
    * @param queryUrl The URI to query
    * @return String results from the query performed
    */
-  def sendConseilRequest(client: BlazeClientBuilder[IO], queryUrl: Uri): String = {
+  def sendConseilRequest(client: BlazeClientBuilder[IO], queryUrl: Uri, validationItems: List[String] = List[String]()): String = {
 
     val conseilRequest = GET(
       queryUrl,
@@ -93,16 +109,21 @@ object ApiTestRun extends IOApp {
       Header("apiKey", CONSEIl_API_KEY)
     )
 
-    client.resource.use { client =>
+    val result: String = client.resource.use { client =>
       client.expect[String](conseilRequest)
     }.unsafeRunSync()
+
+    if(validationItems.nonEmpty) validationItems.foreach(item => {
+      validateJsonByKey(item, result, true)
+    })
+
+    result
   }
 
   /**
    * Send a Conseil query
-   *
-   * @param client    The HTTP client used to send the request
-   * @param queryUrl  The API endpoint to send the query to
+   * @param client The HTTP client used to send the request
+   * @param queryUrl The API endpoint to send the query to
    * @param queryBody The body of the query
    * @return The result of the query
    */
@@ -116,16 +137,15 @@ object ApiTestRun extends IOApp {
         Accept(MediaType.application.json)
       )
 
-    client.resource.use { client =>
+    client.resource.use {client =>
       client.expect[String](request)
     }.unsafeRunSync()
   }
 
   /**
    * Test retrieval of all tezos attributes from the entities given
-   *
    * @param httpClient The BlazeClientBuilder http client to make the conseil request
-   * @param entities   The Array of entities grab attributes for
+   * @param entities The Array of entities grab attributes for
    */
   def testAttributes(httpClient: BlazeClientBuilder[IO], entities: Array[String] = Requests.TEZOS_ENTITIES): Unit = {
     entities.foreach(entity => {
@@ -134,6 +154,27 @@ object ApiTestRun extends IOApp {
     })
   }
 
+  def testMetadata(httpClient: BlazeClientBuilder[IO], entityAttributes: Map[String, Array[String]] = Requests.TEZOS_ENTITY_ATTRIBUTES): Unit = {
+
+    entityAttributes.foreach(entity => {
+
+      entity._2.foreach(attribute => {
+
+        println("\n\n\nTesting Tezos " + entity._1 + " " + attribute + " Metadata\n")
+        val result: String = sendConseilRequest(httpClient, CONSEIL.withPath(Requests.getTezosMetadataPath(entity._1, attribute)))
+        println(result)
+
+      })
+
+    })
+
+  }
+
+  /**
+   * Test Conseil Attributes for each entity
+   * @param httpClient The BlazeClientBuilder[IO] object to make the requests to conseil
+   * @param entityAttributes A Map that has entities as keys, and an array of attributes as its values
+   */
   def testAttributeData(httpClient: BlazeClientBuilder[IO], entityAttributes: Map[String, Array[String]] = Requests.TEZOS_ENTITY_ATTRIBUTES): Unit = {
 
     entityAttributes.foreach(entity => {
@@ -150,10 +191,98 @@ object ApiTestRun extends IOApp {
           |""".stripMargin.replace("%FIELDS%", entity._2.asJson.toString)
 
       println("\n\n\nTesting Tezos " + entity._1 + " Query\n")
-      println(sendConseilQuery(httpClient, CONSEIL.withPath(Requests.getTezosQueryPath(entity._1)), queryString))
+      val result: String = sendConseilQuery(httpClient, CONSEIL.withPath(Requests.getTezosQueryPath(entity._1)), queryString)
+      println(result)
+
+      entity._2.foreach(attribute => {
+        validateJsonByKey(attribute, result)
+      })
+
     })
 
   }
 
+  /**
+   * Sends a query to make sure each attribute data is valid
+   * @param httpClient The BlazeClientBuilder[IO] object that sends the conseil requests
+   * @param entityAttributes A Map that has entities as keys, and an array of attributes as its values
+   */
+  def validateAttributeData(httpClient: BlazeClientBuilder[IO], entityAttributes: Map[String, Array[String]] = Requests.TEZOS_ENTITY_ATTRIBUTES): Unit = {
 
+    entityAttributes.foreach(entity => {
+
+      entity._2.foreach(attribute => {
+
+        val queryString: String =
+          """
+            |{
+            |     "field": ["%FIELD%"],
+            |     "predicates": [
+            |         {
+            |             "field": "%FIELD%",
+            |             "operation": "isnull",
+            |             "set": [""],
+            |             "inverse": true
+            |         }
+            |     ],
+            |     "orderBy": [],
+            |     "aggregation": [],
+            |     "limit": 1
+            |}
+            |""".stripMargin.replace("%FIELD%", attribute)
+
+        println("\n\n\nValidating Tezos " + entity._1 + " " + attribute + " Data\n")
+        var result: String = ""
+        try {
+          result = sendConseilQuery(httpClient, CONSEIL.withPath(Requests.getTezosQueryPath(entity._1)), queryString)
+        } catch {
+          case x: org.http4s.client.UnexpectedStatus => {
+
+            val queryString: String =
+              """
+                |{
+                |     "field": ["%FIELD%"],
+                |     "predicates": [],
+                |     "orderBy": [],
+                |     "aggregation": [],
+                |     "limit": 1
+                |}
+                |""".stripMargin.replace("%FIELD%", attribute)
+
+            result = sendConseilQuery(httpClient, CONSEIL.withPath(Requests.getTezosQueryPath(entity._1)), queryString)
+
+          }
+        }
+
+        println(result)
+
+        validateJsonByKey(attribute, result, notNull = true)
+
+      })
+    })
+  }
+
+  /**
+   * Validate a query output by searching for JSON keys
+   * @param key The json key to search for
+   * @param result The result of a query to search in
+   * @param notNull Whether the key's value should be allowed to be null or not
+   */
+  def validateJsonByKey(key: String, result: String, notNull: Boolean = false): Unit = {
+
+    if(result.compareTo("") == 0) throw new NullPointerException("Query Returned an Empty String")
+
+    parse(result) match {
+      case Left(failure) => throw new IllegalArgumentException("Query did not return valid JSON")
+      case Right(json) => {
+
+        if(json.findAllByKey(key).isEmpty) throw new IllegalArgumentException("Value \"" + key + "\" not found in output")
+        if(notNull && json.findAllByKey(key).contains(null)) throw new IllegalArgumentException("Value \"" + key + "\" was Null")
+
+        println(key + " was validated!")
+
+      }
+    }
+
+  }
 }
