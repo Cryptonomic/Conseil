@@ -2,6 +2,7 @@ package tech.cyptonomic.conseil.api.tests
 
 import java.util.concurrent.Executors
 
+import cats.effect.{ExitCode, IO, IOApp}
 import io.circe.syntax._
 import org.http4s.Method._
 import org.http4s.client.blaze._
