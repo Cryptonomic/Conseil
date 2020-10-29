@@ -18,7 +18,7 @@ ThisBuild / resolvers ++= Seq(
 )
 
 lazy val conseil = (project in file("."))
-  .aggregate(common, commonTestKit, api, lorre, schema, smokeTests)
+  .aggregate(common, commonTestKit, api, lorre, schema, smokeTests, apiTests)
 
 lazy val common = (project in file("conseil-common"))
   .settings(
@@ -131,4 +131,4 @@ addCommandAlias("runApi", "; api/runTask")
 addCommandAlias("runLorre", "; lorre/runTask")
 addCommandAlias("runSchema", "; schema/runTask")
 addCommandAlias("runSmokeTests", "; smokeTests/runTask")
-addCommandAlias("runApiTests", "; apiTests/runTask")
+addCommandAlias("runApiTests", "; apiTests/run")
