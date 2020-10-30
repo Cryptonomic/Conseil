@@ -89,9 +89,9 @@ object ApiTestRun extends IOApp {
 
     val pool = Executors.newCachedThreadPool()
     val clientExecution: ExecutionContext = ExecutionContext.fromExecutor(pool)
-    implicit val shift: ContextShift[IO] = IO.contextShift(clientExecution)
 
-    val clientBuild = BlazeClientBuilder[IO](clientExecution, shift)
+    implicit val shift: ContextShift[IO] = IO.contextShift(clientExecution)
+    val clientBuild = BlazeClientBuilder[IO](clientExecution  )
 
     clientBuild
   }
