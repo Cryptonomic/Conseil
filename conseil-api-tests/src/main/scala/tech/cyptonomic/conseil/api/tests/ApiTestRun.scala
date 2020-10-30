@@ -4,6 +4,7 @@ import java.util.concurrent.Executors
 
 import cats.effect.{ExitCode, IO, IOApp, ContextShift}
 import io.circe.syntax._
+import io.circe.parser._
 import org.http4s.Method._
 import org.http4s.client.blaze._
 import org.http4s.client.dsl.io._
