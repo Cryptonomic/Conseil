@@ -9,7 +9,7 @@ psql --command="CREATE DATABASE 'conseil';"
 
 psql --filename="/sql/conseil.sql" conseil
 
-CONFIG_PATH="conseil.conf"
+CONFIG_PATH="$HOME/conseil.conf"
 
 touch CONFIG_PATH
 
@@ -52,9 +52,9 @@ lorre.db = \${conseil.db}
 
 sbt clean assembly -J-Xss32m
 
-java -Dconfig.file=conseil.conf -jar /tmp/conseil-lorre.jar tezos mainnet &
+java -Dconfig.file="$CONFIG_PATH" -jar /tmp/conseil-lorre.jar tezos mainnet &
 
-java -Dconfig.file=conseil.conf -jar /tmp/conseil-api.jar &
+java -Dconfig.file="$CONFIG_PATH" -jar /tmp/conseil-api.jar &
 
 sleep 5m
 
