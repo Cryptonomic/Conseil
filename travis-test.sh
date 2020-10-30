@@ -1,13 +1,5 @@
 #!/bin/bash
 
-sudo apt-get install postgresql
-
-sudo systemctl start postgresql
-
-psql --command="CREATE DATABASE 'conseil';"
-
-psql --file="/sql/conseil.sql" conseil
-
 CONFIG_PATH="$HOME/conseil.conf"
 
 touch "$CONFIG_PATH"
