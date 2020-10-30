@@ -18,10 +18,10 @@ import scala.concurrent.ExecutionContext
 
 object ApiTestRun extends IOApp {
 
-  val PROTOCOL: String = "https"
-  val CONSEIl_HOST: String = "conseil-prod.cryptonomic-infra.tech"
+  val PROTOCOL: String = "http"
+  val CONSEIl_HOST: String = "localhost"
   val CONSEIL_PORT: Int = 443
-  val CONSEIl_API_KEY: String = "f86ab59d-d2ea-443b-98e2-6c0785e3de8c"
+  val CONSEIl_API_KEY: String = "hooman"
   val CONSEIL: org.http4s.Uri = Uri.unsafeFromString(PROTOCOL + "://" + CONSEIl_HOST + ":" + CONSEIL_PORT)
 
   override def run(args: List[String]): IO[ExitCode] = {
@@ -90,7 +90,7 @@ object ApiTestRun extends IOApp {
     val pool = Executors.newCachedThreadPool()
     val clientExecution: ExecutionContext = ExecutionContext.fromExecutor(pool)
 
-    val clientBuild = BlazeClientBuilder[IO](clientExecution  )
+    val clientBuild = BlazeClientBuilder[IO](clientExecution)
 
     clientBuild
   }
