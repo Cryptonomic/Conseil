@@ -7,7 +7,7 @@ services:
   - postgresql
 before_script:
   - psql -c 'create database conseil;' -U postgres
-  - psql -f="sql/conseil.sql" conseil -U postgres
+  - psql -f "sql/conseil.sql" conseil -U postgres
 script:
   - git tag 0.1234.5678
   - sbt clean coverage test coverageAggregate
