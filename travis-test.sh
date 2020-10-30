@@ -11,36 +11,37 @@ psql --filename="/sql/conseil.sql" conseil
 
 CONFIG_PATH="$HOME/conseil.conf"
 
-touch CONFIG_PATH
+touch "$CONFIG_PATH"
 
 echo "
 include required(classpath(\"developer.conf\"))
 
 platforms: [
   {
-    name: \"tezos\"
-    network: \"mainnet\"
-    enabled: true
+    name: \"tezos\",
+    network: \"mainnet\",
+    enabled: true,
     node {
         #Replace the below entries with the address of your Tezos node
         protocol: \"https\",
         hostname: \"tezos-prod.cryptonomic-infra.tech\",
-        port: 443
-        path-prefix: ""
+        port: 443,
+        path-prefix: \"\"
     }
   }
 ]
 
 conseil {
- hostname: \"0.0.0.0\"
+ hostname: \"0.0.0.0\",
  port: 1337
+}
 
  db {
   dataSourceClass = \"org.postgresql.ds.PGSimpleDataSource\"
   properties {
     # Replace the below lines with details of your database configured with the Conseil database schema
     user = \"postgres\"
-    password = ""
+    password = \"\"
     url = \"jdbc:postgresql://localhost:5432/conseil\"
   }
   numThreads = 20
@@ -48,7 +49,7 @@ conseil {
 }
 
 lorre.db = \${conseil.db}
-" > CONFIG_PATH
+" > "$CONFIG_PATH"
 
 sbt clean assembly -J-Xss32m
 
