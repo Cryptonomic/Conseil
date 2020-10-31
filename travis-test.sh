@@ -5,7 +5,7 @@ CONFIG_PATH="$HOME/conseil.conf"
 touch "$CONFIG_PATH"
 
 echo "
-include required(classpath(\"conseil.conf\"))
+include required(classpath(\"developer.conf\"))
 
 platforms: [
   {
