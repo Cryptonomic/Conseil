@@ -25,7 +25,6 @@ platforms: [
 conseil {
  hostname: \"0.0.0.0\",
  port: 1337
-}
 
  db {
   dataSourceClass = \"org.postgresql.ds.PGSimpleDataSource\"
@@ -37,6 +36,7 @@ conseil {
   }
   numThreads = 20
   maxConnections = 20
+  }
 }
 
 lorre.db = \${conseil.db}
