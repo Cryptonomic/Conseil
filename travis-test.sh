@@ -37,6 +37,12 @@ conseil {
   numThreads = 20
   maxConnections = 20
   }
+
+  security: {
+     apiKeys: {
+         keys: [\"hooman\"]
+     }
+  }
 }
 
 lorre.db = \${conseil.db}
