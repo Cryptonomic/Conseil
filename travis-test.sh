@@ -18,6 +18,7 @@ platforms: [
         hostname: \"tezos-prod.cryptonomic-infra.tech\",
         port: 443,
         path-prefix: \"\"
+        trace-calls: \"true\"
     }
   }
 ]
