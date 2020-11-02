@@ -40,7 +40,7 @@ conseil {
 
   cache-ttl: 12 hours
   security: {
-     apiKeys: {
+     api-keys: {
          keys: [\"hooman\", \"chiefkeef\"]
      }
   }
