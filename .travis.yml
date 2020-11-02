@@ -3,8 +3,14 @@ jdk:
   - openjdk8
 scala:
   - 2.12.10
+services:
+  - postgresql
+before_script:
+  - psql -c 'create database conseil;' -U postgres
+  - psql -f "sql/conseil.sql" conseil -U postgres
 script:
   - git tag 0.1234.5678
   - sbt clean coverage test coverageAggregate
   - git tag -d 0.1234.5678
+  - ./travis-test.sh
 after_success: sbt coveralls
