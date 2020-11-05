@@ -49,12 +49,12 @@ trait LorreInfoLogging extends ConseilLogSupport {
         |
         | Reference hash for synchronization with the chain: ${lorreConf.headHash.getOrElse("head")}
         | Requested depth of synchronization: ${lorreConf.depth}
-        | Environment set to skip failed download of chain data: ${ignoreFailures._2.getOrElse("yes")} [\u2020]
+        | Environment set to skip failed download of chain data: ${ignoreFailures._2.getOrElse("no")} [\u2020]
         |
         | ${showDatabaseConfiguration("lorre")}
         |
-        | [\u2020] To let the process crash on error,
-        |     set an environment variable named ${ignoreFailures._1} to "off" or "no"
+        | [\u2020] To let the process resume on error,
+        |     set an environment variable named ${ignoreFailures._1} to "yes" or "true"
         | ==================================***==================================
         |
       """.stripMargin
