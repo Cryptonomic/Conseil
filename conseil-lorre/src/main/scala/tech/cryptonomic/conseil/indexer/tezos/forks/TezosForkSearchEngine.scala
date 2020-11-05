@@ -1,12 +1,12 @@
 package tech.cryptonomic.conseil.indexer.tezos.forks
 
-import com.typesafe.scalalogging.LazyLogging
 import scala.util.{Failure, Success}
 import scala.concurrent.{ExecutionContext, Future, SyncVar}
-import tech.cryptonomic.conseil.indexer.tezos.{TezosIndexedDataOperations, TezosNodeOperator}
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BlockLevel, TezosBlockHash}
-import tech.cryptonomic.conseil.indexer.forks.ForkDetector.SearchBlockId
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockData
+import tech.cryptonomic.conseil.indexer.tezos.{TezosIndexedDataOperations, TezosNodeOperator}
+import tech.cryptonomic.conseil.indexer.forks.ForkDetector.SearchBlockId
 import scala.util.Try
 
 /** Provides search features needed for the fork-handling process.
@@ -20,7 +20,7 @@ class TezosForkSearchEngine(
     nodeOps: TezosNodeOperator,
     indexedOps: TezosIndexedDataOperations
 )(implicit ec: ExecutionContext)
-    extends LazyLogging {
+    extends ConseilLogSupport {
 
   /* we use this pair as a reference to compute rpc params needed to get a block via an offset */
   private type Anchor = (TezosBlockHash, BlockLevel)

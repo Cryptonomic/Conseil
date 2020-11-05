@@ -1,12 +1,10 @@
 package tech.cryptonomic.conseil.indexer.logging
 
-import com.typesafe.scalalogging.Logger
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 
 import scala.concurrent.duration.{Duration, NANOSECONDS}
 
-trait LorreProgressLogging {
-
-  protected def logger: Logger
+trait LorreProgressLogging extends ConseilLogSupport {
 
   /** Keeps track of time passed between different partial checkpoints of some entity processing
     * Designed to be partially applied to set properties of the whole process once, and then only compute partial completion
@@ -21,11 +19,12 @@ trait LorreProgressLogging {
   ): Unit = {
     val elapsed = System.nanoTime() - processStartNanos
     val progress = processed.toDouble / totalToProcess
+    val progressPercent = "%.2f".format(progress * 100)
     logger.info("================================== Progress Report ==================================")
-    logger.info("Completed processing {}% of total requested {}s", "%.2f".format(progress * 100), entityName)
+    logger.info(s"Completed processing $progressPercent% of total requested ${entityName}s")
 
     val etaMins = Duration(scala.math.ceil(elapsed / progress) - elapsed, NANOSECONDS).toMinutes
-    if (processed < totalToProcess && etaMins > 1) logger.info("Estimated time to finish is around {} minutes", etaMins)
+    if (processed < totalToProcess && etaMins > 1) logger.info(s"Estimated time to finish is around $etaMins minutes")
     logger.info("=====================================================================================")
   }
 

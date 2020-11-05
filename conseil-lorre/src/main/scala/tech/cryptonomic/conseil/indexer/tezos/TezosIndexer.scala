@@ -4,11 +4,12 @@ import akka.Done
 import akka.actor.{ActorSystem, Terminated}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
-import com.typesafe.scalalogging.LazyLogging
 import mouse.any._
 import cats.instances.future._
+import cats.syntax.applicative._
 import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, TezosConfiguration}
 import tech.cryptonomic.conseil.common.config._
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
@@ -61,17 +62,18 @@ class TezosIndexer private (
     system: ActorSystem,
     materializer: ActorMaterializer,
     dispatcher: ExecutionContext
-) extends LazyLogging
-    with LorreIndexer
+) extends LorreIndexer
     with LorreProgressLogging {
 
   val featureFlags = lorreConf.enabledFeatures
 
   /** Schedules method for fetching baking rights */
   if (featureFlags.blockRightsFetchingIsOn)
+    info("I'm scheduling the concurrent tasks to update baking and endorsing rights")
     system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
       rightsProcessor.writeFutureRights()
     )
+  }
 
   /** Tries to fetch blocks head to verify if connection with Tezos node was successfully established */
   @tailrec
@@ -93,7 +95,6 @@ class TezosIndexer private (
       iteration: Int,
       accountResetEvents: AccountResetEvents
   ): Unit = {
-    val noOp = Future.successful(())
     val processing = for {
       maxLevel <- indexedData.fetchMaxLevel
       reloadedAccountEvents <- processFork(maxLevel)
@@ -101,10 +102,9 @@ class TezosIndexer private (
         reloadedAccountEvents.getOrElse(accountResetEvents)
       )
       _ <- processTezosBlocks(maxLevel)
-      _ <- if (iteration % lorreConf.feeUpdateInterval == 0)
-        TezosFeeOperations.processTezosAverageFees(lorreConf.feesAverageTimeWindow)
-      else
-        noOp
+      _ <- TezosFeeOperations
+        .processTezosAverageFees(lorreConf.feesAverageTimeWindow)
+        .whenA(iteration % lorreConf.feeUpdateInterval == 0)
       _ <- rightsProcessor.updateRightsTimestamps()
     } yield Some(unhandled)
 
@@ -232,19 +232,25 @@ class TezosIndexer private (
 
   override def start(): Unit = {
     checkTezosConnection()
-    val accountResetsToHandle =
-      Await.result(
-        accountsResetHandler.unprocessedResetRequestLevels(lorreConf.chainEvents),
-        atMost = 5.seconds
-      )
-    mainLoop(0, accountResetsToHandle)
+    Await.result(
+      accountsResetHandler
+        .unprocessedResetRequestLevels(lorreConf.chainEvents)
+        .transform(
+          accountResets => mainLoop(0, accountResets),
+          error => {
+            logger.error("Could not get the unprocessed events block levels for this chain network", error)
+            error
+          }
+        ),
+      Duration.Inf
+    )
   }
 
   override def stop(): Future[ShutdownComplete] = terminationSequence()
 
 }
 
-object TezosIndexer extends LazyLogging {
+object TezosIndexer extends ConseilLogSupport {
 
   /** * Creates the Indexer which is dedicated for Tezos BlockChain */
   def fromConfig(
@@ -356,7 +362,7 @@ object TezosIndexer extends LazyLogging {
     implicit val tns: TNSContract =
       conf.tns match {
         case None =>
-          logger.warn("No configuration found to initialize TNS for {}.", selectedNetwork)
+          logger.warn("No configuration found to initialize TNS for the selected network.")
           TNSContract.noContract
         case Some(conf) =>
           TNSContract.fromConfig(conf)

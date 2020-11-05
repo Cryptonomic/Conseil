@@ -1,9 +1,8 @@
 package tech.cryptonomic.conseil.common.ethereum
 
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class UtilsTest extends AnyWordSpec with Matchers {
+class UtilsTest extends ConseilSpec {
   "Utils" should {
       "decode hex string" in {
         Utils.hexToString("0x313233") shouldBe "123"

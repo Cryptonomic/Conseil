@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.indexer.tezos.processing
 
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogger
 import tech.cryptonomic.conseil.common.tezos.TezosOptics
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   Block,
@@ -16,7 +17,6 @@ import tech.cryptonomic.conseil.indexer.tezos.{
   TezosDatabaseOperations => TezosDb
 }
 
-import org.slf4j.LoggerFactory
 import scala.concurrent.ExecutionContext
 import akka.stream.scaladsl.Source
 import akka.stream.scaladsl.Sink
@@ -93,7 +93,7 @@ class BakingAndEndorsingRightsProcessor(
 
   /** Fetches future baking and endorsing rights to insert it into the DB */
   private[tezos] def writeFutureRights()(implicit ec: ExecutionContext): Unit = {
-    val berLogger = LoggerFactory.getLogger("RightsFetcher")
+    val berLogger = ConseilLogger("tech.cryptonomic.conseil.indexer.tezos.RightsFetcher")
 
     import cats.implicits._
 
@@ -141,7 +141,7 @@ class BakingAndEndorsingRightsProcessor(
 
   /** Updates timestamps in the baking/endorsing rights tables */
   private[tezos] def updateRightsTimestamps()(implicit ec: ExecutionContext): Future[Unit] = {
-    val logger = LoggerFactory.getLogger("RightsUpdater")
+    val logger = ConseilLogger("tech.cryptonomic.conseil.indexer.tezos.RightsUpdater")
     import cats.implicits._
     val blockHead = nodeOperator.getBareBlockHead()
 

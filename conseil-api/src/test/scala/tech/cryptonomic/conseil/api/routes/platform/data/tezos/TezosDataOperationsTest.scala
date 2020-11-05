@@ -2,7 +2,6 @@ package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
 import java.sql.Timestamp
 
-import com.typesafe.scalalogging.LazyLogging
 import com.softwaremill.diffx.scalatest.DiffMatcher
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.OptionValues
@@ -10,6 +9,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, _}
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.tezos.Tables.{
@@ -33,7 +33,7 @@ class TezosDataOperationsTest
     with ScalaFutures
     with OptionValues
     with DiffMatcher
-    with LazyLogging
+    with ConseilLogSupport
     with IntegrationPatience {
 
   import scala.concurrent.ExecutionContext.Implicits.global

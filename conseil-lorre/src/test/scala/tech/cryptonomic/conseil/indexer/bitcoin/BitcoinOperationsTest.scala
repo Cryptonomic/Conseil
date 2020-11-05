@@ -7,16 +7,15 @@ import cats.effect.{ContextShift, IO}
 import fs2.Stream
 import slickeffect.Transactor
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.config.Platforms.BitcoinBatchFetchConfiguration
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.bitcoin.{BitcoinPersistence, Tables}
 import tech.cryptonomic.conseil.common.bitcoin.rpc.BitcoinClient
 import tech.cryptonomic.conseil.common.bitcoin.rpc.json.BlockchainInfo
 import tech.cryptonomic.conseil.indexer.config.{Custom, Everything, Newest}
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class BitcoinOperationsTest extends AnyWordSpec with MockFactory with Matchers {
+class BitcoinOperationsTest extends ConseilSpec with MockFactory {
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 

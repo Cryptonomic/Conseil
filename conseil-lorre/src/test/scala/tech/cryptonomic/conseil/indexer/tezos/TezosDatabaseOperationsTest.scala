@@ -3,11 +3,7 @@ package tech.cryptonomic.conseil.indexer.tezos
 import java.sql.Timestamp
 import java.time.Instant
 
-import com.typesafe.scalalogging.LazyLogging
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.OptionValues
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
+import org.scalatest.concurrent.IntegrationPatience
 import org.scalacheck.Arbitrary.arbitrary
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
@@ -20,16 +16,13 @@ import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Random
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class TezosDatabaseOperationsTest
-    extends AnyWordSpec
+    extends ConseilSpec
     with TezosDatabaseOperationsTestFixtures
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
-    with Matchers
-    with ScalaFutures
-    with OptionValues
-    with LazyLogging
     with IntegrationPatience {
 
   "The database api" should {

@@ -1,11 +1,10 @@
 package tech.cryptonomic.conseil.indexer.tezos.processing
 
-import com.typesafe.scalalogging.LazyLogging
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 import scala.collection.immutable.SortedSet
 import tech.cryptonomic.conseil.common.config.ChainEvent
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BlockLevel, TezosBlockHash}
 import tech.cryptonomic.conseil.indexer.tezos.{TezosIndexedDataOperations, TezosDatabaseOperations => TezosDb}
 import slick.jdbc.PostgresProfile.api._
@@ -43,7 +42,7 @@ object AccountsResetHandler {
 class AccountsResetHandler(
     db: Database,
     indexedData: TezosIndexedDataOperations
-) extends LazyLogging {
+) extends ConseilLogSupport {
   import AccountsResetHandler._
 
   /** Finds unprocessed levels requiring accounts reset (i.e. when there is a need to reload data for multiple accounts from the chain) */
@@ -78,9 +77,9 @@ class AccountsResetHandler(
         unhandled <- if (events.exists(_._1 <= storedHead)) {
           val (past, toCome) = events.partition(_._1 <= storedHead)
           val (levels, selectors) = past.unzip
+          val showLevels = levels.mkString(", ")
           logger.info(
-            "A block was reached that requires an update of account data as specified in the configuration file. A full refresh is now underway. Relevant block levels: {}",
-            levels.mkString(", ")
+            s"A block was reached that requires an update of account data as specified in the configuration file. A full refresh is now underway. Relevant block levels: $showLevels"
           )
           indexedData.fetchBlockAtLevel(levels.max).flatMap {
             case Some(referenceBlockForRefresh) =>
@@ -101,21 +100,15 @@ class AccountsResetHandler(
                 )
                 .andThen {
                   case Success(accountsCount) =>
-                    logger.info(
-                      "Checkpoint stored for{} account updates in view of the full refresh.",
-                      accountsCount.fold("")(" " + _)
-                    )
+                    val showCount = accountsCount.fold("")(" " + _)
+                    logger.info(s"Checkpoint stored for$showCount account updates in view of the full refresh.")
                   case Failure(err) =>
-                    logger.error(
-                      "I failed to store the accounts refresh updates in the checkpoint",
-                      err
-                    )
+                    logger.error("I failed to store the accounts refresh updates in the checkpoint", err)
                 }
                 .map(_ => toCome) //keep the yet unreached levels and pass them on
             case None =>
               logger.warn(
-                "I couldn't find in Conseil the block data at level {}, required for the general accounts update, and this is actually unexpected. I'll retry the whole operation at next cycle.",
-                levels.max
+                s"I couldn't find in Conseil the block data at level ${levels.max}, required for the general accounts update, and this is actually unexpected. I'll retry the whole operation at next cycle."
               )
               Future.successful(events)
           }

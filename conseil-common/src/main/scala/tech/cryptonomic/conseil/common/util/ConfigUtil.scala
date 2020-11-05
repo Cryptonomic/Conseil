@@ -1,10 +1,10 @@
 package tech.cryptonomic.conseil.common.util
 
-import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 
 object ConfigUtil {
 
-  object Csv extends LazyLogging {
+  object Csv extends ConseilLogSupport {
     import java.sql.Timestamp
     import java.time.Instant
     import java.time.format.DateTimeFormatter
@@ -120,7 +120,7 @@ object ConfigUtil {
 
         if (errors.nonEmpty) {
           val messages = errors.map(_.getMessage).mkString("\n", "\n", "\n")
-          logger.error("Error while reading registered source file {}: {}", csvSource.toExternalForm(), messages)
+          logger.error(s"Error while reading registered source file ${csvSource.toExternalForm()}: $messages")
         }
 
         rows

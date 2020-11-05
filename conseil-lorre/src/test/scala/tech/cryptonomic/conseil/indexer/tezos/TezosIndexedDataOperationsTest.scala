@@ -1,11 +1,7 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
-import com.typesafe.scalalogging.LazyLogging
 import cats.implicits._
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.OptionValues
-import org.scalatest.matchers.should.Matchers
+import org.scalatest.concurrent.IntegrationPatience
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.ScalacheckShapeless._
@@ -45,15 +41,12 @@ import scala.concurrent.duration._
 import java.{util => ju}
 import java.time.Instant
 import java.sql.Timestamp
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class TezosIndexedDataOperationsTest
-    extends AnyWordSpec
-    with Matchers
+    extends ConseilSpec
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
-    with ScalaFutures
-    with OptionValues
-    with LazyLogging
     with IntegrationPatience
     with TezosDatabaseOperationsTestFixtures {
 

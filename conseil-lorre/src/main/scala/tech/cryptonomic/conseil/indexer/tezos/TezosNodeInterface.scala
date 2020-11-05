@@ -9,7 +9,7 @@ import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.{ActorMaterializer, Attributes}
 import akka.stream.Attributes.LogLevels
 import akka.stream.scaladsl.{Flow, Source}
-import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.util.JsonUtil.JsonString
 import tech.cryptonomic.conseil.common.config.Platforms.TezosConfiguration
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
@@ -87,7 +87,7 @@ private[tezos] class TezosNodeInterface(
     streamingConfig: HttpStreamingConfiguration
 )(implicit system: ActorSystem)
     extends TezosRPCInterface
-    with LazyLogging {
+    with ConseilLogSupport {
   import config.node
 
   implicit val materializer: ActorMaterializer = ActorMaterializer()
@@ -117,7 +117,7 @@ private[tezos] class TezosNodeInterface(
   override def runGetQuery(network: String, command: String): Try[String] = withRejectionControl {
     Try {
       val url = translateCommandToUrl(command)
-      logger.debug("Querying URL {} for platform Tezos and network {}", url, config.network)
+      logger.debug(s"Querying URL $url for platform Tezos and network ${config.network}")
       val responseFuture: Future[HttpResponse] =
         Http(system).singleRequest(
           HttpRequest(
@@ -136,7 +136,7 @@ private[tezos] class TezosNodeInterface(
   override def runAsyncGetQuery(network: String, command: String): Future[String] = withRejectionControl {
     val url = translateCommandToUrl(command)
     val request = HttpRequest(HttpMethods.GET, url)
-    logger.debug("Async querying URL {} for platform Tezos and network {}", url, config.network)
+    logger.debug(s"Async querying URL $url for platform Tezos and network ${config.network}")
 
     for {
       response <- Http(system).singleRequest(request)
@@ -149,7 +149,9 @@ private[tezos] class TezosNodeInterface(
     withRejectionControl {
       Try {
         val url = translateCommandToUrl(command)
-        logger.debug("Querying URL {} for platform Tezos and network {} with payload {}", url, config.network, payload)
+        logger.debug(
+          s"Querying URL $url for platform Tezos and network ${config.network} with payload ${payload.getOrElse("missing")}"
+        )
         val postedData = payload.getOrElse(JsonString.emptyObject)
         val responseFuture: Future[HttpResponse] =
           Http(system).singleRequest(
@@ -173,10 +175,7 @@ private[tezos] class TezosNodeInterface(
     withRejectionControl {
       val url = translateCommandToUrl(command)
       logger.debug(
-        "Async querying URL {} for platform Tezos and network {} with payload {}",
-        url,
-        config.network,
-        payload
+        s"Querying URL $url for platform Tezos and network ${config.network} with payload ${payload.getOrElse("missing")}"
       )
       val postedData = payload.getOrElse(JsonString.emptyObject)
       val request = HttpRequest(
@@ -189,7 +188,7 @@ private[tezos] class TezosNodeInterface(
         strict <- response.entity.toStrict(requestConfig.POSTResponseEntityTimeout)
       } yield {
         val responseBody = strict.data.utf8String
-        logger.debug("Query results: {}", responseBody)
+        logger.debug(s"Query results: $responseBody")
         JsonString sanitize responseBody
       }
     }
@@ -269,7 +268,7 @@ private[tezos] class TezosNodeInterface(
 
     val toRequest: ((String, CID)) => (HttpRequest, CID) = {
       case (url, id) =>
-        logger.debug("Will query: " + url)
+        logger.debug(s"Will query: $url")
         (HttpRequest(uri = Uri(url)), id)
     }
 
@@ -295,12 +294,12 @@ private[tezos] class TezosNodeInterface(
       concurrencyLevel: Int
   ): Future[List[(CID, String)]] = {
     val batchId = java.util.UUID.randomUUID()
-    logger.debug("{} - New batched GET call for {} requests", batchId, ids.size)
+    logger.debug(s"$batchId - New batched GET call for ${ids.size} requests")
 
     streamedGetQuery(ids, mapToCommand, concurrencyLevel)
       .runFold(List.empty[(CID, String)])(_ :+ _)
       .andThen {
-        case _ => logger.debug("{} - Batch completed", batchId)
+        case _ => logger.debug(s"$batchId - Batch completed")
       }
   }
 

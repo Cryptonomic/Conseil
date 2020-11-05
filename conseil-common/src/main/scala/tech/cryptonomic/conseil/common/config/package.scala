@@ -1,9 +1,9 @@
 package tech.cryptonomic.conseil.common
 
-import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import pureconfig.error.ConfigReaderFailures
 
-package object config extends LazyLogging {
+package object config extends ConseilLogSupport {
 
   /** common way to print diagnostic for a configuration error on the logger */
   def printConfigurationError(context: String, details: String): Unit =

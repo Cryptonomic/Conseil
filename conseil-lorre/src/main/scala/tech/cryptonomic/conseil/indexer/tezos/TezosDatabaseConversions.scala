@@ -6,7 +6,6 @@ import java.time.{Instant, ZoneOffset}
 
 import cats.implicits._
 import cats.{Id, Show}
-import com.typesafe.scalalogging.LazyLogging
 import io.scalaland.chimney.dsl._
 import monocle.Getter
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
@@ -18,7 +17,7 @@ import tech.cryptonomic.conseil.common.util.Conversion
 import scala.util.Try
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.SmartContracts
 
-private[tezos] object TezosDatabaseConversions extends LazyLogging {
+private[tezos] object TezosDatabaseConversions {
 
   //adapts from the java timestamp to sql
   private def toSql(datetime: java.time.ZonedDateTime): Timestamp = Timestamp.from(datetime.toInstant)

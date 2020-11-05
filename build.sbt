@@ -17,6 +17,16 @@ ThisBuild / resolvers ++= Seq(
   Resolver.sonatypeRepo("snapshots")
 )
 
+/* This is meant to be added to scalacOptions in the test configuration to
+ * remove logging from tests outputs.
+ * I've tried different combinations of project/configuration/task
+ * All to no avail. The subtleties of sbt are still eluding me... =\
+ *
+ * Currently we're adding custom test logging configs and scan them in the
+ * test-suite supertrait. The test config will silence almost all logging.
+ */
+lazy val disableLogSettings = Seq("-Xmacro-settings", "wvlet.log.disable.ALL")
+
 lazy val conseil = (project in file("."))
   .aggregate(common, commonTestKit, api, lorre, schema, smokeTests)
 

@@ -1,14 +1,12 @@
 package tech.cryptonomic.conseil.indexer.config
 
 import com.typesafe.config.ConfigFactory
-import org.scalatest.EitherValues
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.config.Platforms.{TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.Loaders._
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.Natural
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class LorreAppConfigTest extends AnyWordSpec with Matchers with EitherValues {
+class LorreAppConfigTest extends ConseilSpec {
 
   "LorreAppConfig.Natural" should {
       "match a valid positive integer string" in {

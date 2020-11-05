@@ -15,7 +15,7 @@ import cats.implicits._
 import scala.collection.immutable.TreeSet
 import scala.util.Try
 import scala.concurrent.SyncVar
-import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.util.CryptoUtil
 import scorex.util.encode.{Base16 => Hex}
 
@@ -69,7 +69,7 @@ class TokenContracts(private val registry: Set[TokenContracts.TokenToolbox]) {
 }
 
 /** Collects custom token contracts structures and operations */
-object TokenContracts extends LazyLogging {
+object TokenContracts extends ConseilLogSupport {
 
   /** a key address paired with a balance */
   type BalanceUpdate = (AccountId, BigInt)
@@ -144,15 +144,19 @@ object TokenContracts extends LazyLogging {
     * @param knownTokens the pair of contract and standard used, the latter as a String
     */
   def fromConfig(knownTokens: List[(ContractId, String)]): TokenContracts = {
-    logger.info("Creating a token registry from the following values: {}", knownTokens.map {
-      case (cid, std) => cid.id -> std
-    }.mkString(","))
+    val showTokens =
+      knownTokens.map {
+        case (cid, std) => cid.id -> std
+      }.mkString(", ")
+    logger.info(s"Creating a token registry from the following values: $showTokens")
 
     val tokens = knownTokens.flatMap {
       case (cid, std) => newToolbox(cid, std)
     }
 
-    logger.info("The following token contracts were actually registered: {}", tokens.map(_.id.id).mkString(","))
+    val showRegistered = tokens.map(_.id.id).mkString(", ")
+    logger.info(s"The following token contracts were actually registered: $showRegistered")
+
     // we keep the token tools in a sorted set to speed up searching
     new TokenContracts(TreeSet(tokens: _*))
   }
@@ -161,11 +165,9 @@ object TokenContracts extends LazyLogging {
   private def mapIdsMatch(registeredId: SyncVar[BigMapId], updateId: BigDecimal, token: ContractId): Boolean = {
     if (!registeredId.isSet)
       logger.error(
-        """A token balance update was found where the map of the given token is not yet identified from contract origination
-          | map_id: {}
-          | token: {}""".stripMargin,
-        updateId,
-        token
+        s"""A token balance update was found where the map of the given token is not yet identified from contract origination
+          | map_id: $updateId
+          | token: $token""".stripMargin
       )
     registeredId.isSet && registeredId.get.id == updateId
   }
@@ -243,16 +245,15 @@ object TokenContracts extends LazyLogging {
         parsed.left.foreach(
           err =>
             logger.error(
-              """Failed to parse michelson expression for StakerDao receiver in parameters.
-                | Code was: {}
-                | Error is {}""".stripMargin,
-              paramCode.expression,
-              err.getMessage()
+              s"""Failed to parse michelson expression for StakerDao receiver in parameters.
+                | Code was: ${paramCode.expression}
+                | Error is ${err.getMessage}""".stripMargin,
+              err
             )
         )
 
         parsed.foreach(
-          michelson => logger.debug("I parsed a staker dao parameters value as {}", michelson)
+          michelson => logger.debug(s"I parsed a staker dao parameters value as $michelson")
         )
 
         /* Custom match to the contract call structure for a stakerdao transfer
@@ -331,16 +332,15 @@ object TokenContracts extends LazyLogging {
       parsed.left.foreach(
         err =>
           logger.error(
-            """Failed to parse michelson expression for token balance extraction.
-              | Code was: {}
-              | Error is {}""".stripMargin,
-            mapCode.expression,
-            err.getMessage()
+            s"""Failed to parse michelson expression for token balance extraction.
+              | Code was: ${mapCode.expression}
+              | Error is ${err.getMessage}""".stripMargin,
+            err
           )
       )
 
       parsed.foreach(
-        michelson => logger.debug("I parsed a token contract diff value as {}", michelson)
+        michelson => logger.debug(s"I parsed a token contract diff value as $michelson")
       )
 
       parsed.toOption.collect {

@@ -2,10 +2,10 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import cats.Show
 import cats.implicits._
-import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.DBIO
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.TezosOptics.Operations.extractAppliedTransactions
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, Block, ContractId, PublicKeyHash, ScriptId}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, ContractId, PublicKeyHash, ScriptId}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract.{
   BigMapId,
@@ -22,7 +22,8 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param tnsContracts custom definitions for the tns
   * @param node an operator to access data on chain node
   */
-private[tezos] class TezosNamesOperations(tnsContracts: TNSContract, node: TezosNodeOperator) extends LazyLogging {
+private[tezos] class TezosNamesOperations(tnsContracts: TNSContract, node: TezosNodeOperator)
+    extends ConseilLogSupport {
   implicit val showLookupReferences: Show[LookupMapReference] = Show.show {
     case LookupMapReference(
         ContractId(contractId),
@@ -65,12 +66,10 @@ private[tezos] class TezosNamesOperations(tnsContracts: TNSContract, node: Tezos
     mapReferences =>
       mapReferences.toList.traverse {
         case (block, references) =>
+          val showReferences = references.map(_.show).mkString("\n")
           if (references.nonEmpty)
             logger.info(
-              "About to fetch big map contents to find TNS name registrations for block {} at level {} and the following references:\n {}",
-              block.data.hash.value,
-              block.data.header.level,
-              references.map(_.show).mkString("\n")
+              s"About to fetch big map contents to find TNS name registrations for block ${block.data.hash.value} at level ${block.data.header.level} and the following references:\n $showReferences"
             )
           references.traverse { ref =>
             node.getBigMapContents(block.data.hash, ref.mapId.id, ref.mapKeyHash).map(ref -> _)
