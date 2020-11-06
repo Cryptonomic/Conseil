@@ -15,7 +15,7 @@ platforms: [
     node {
         #Replace the below entries with the address of your Tezos node
         protocol: \"https\",
-        hostname: \"tezos-prod.cryptonomic-infra.tech\",
+        hostname: \"beluga6.cryptonomic-infra.tech\",
         port: 443,
         path-prefix: \"\"
     }
