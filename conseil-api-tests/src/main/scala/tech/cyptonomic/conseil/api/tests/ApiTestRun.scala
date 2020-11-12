@@ -19,7 +19,7 @@ import scala.concurrent.ExecutionContext
 object ApiTestRun extends IOApp {
 
   val PROTOCOL: String = "http"
-  val CONSEIl_HOST: String = "localhost"
+  val CONSEIl_HOST: String = "127.0.0.1"
   val CONSEIL_PORT: Int = 443
   val CONSEIl_API_KEY: String = "hooman"
   val CONSEIL: org.http4s.Uri = Uri.unsafeFromString(PROTOCOL + "://" + CONSEIl_HOST + ":" + CONSEIL_PORT)
