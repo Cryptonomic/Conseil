@@ -57,6 +57,6 @@ java -Dconfig.file="$CONFIG_PATH" -jar /tmp/conseil-lorre.jar tezos mainnet &
 echo "Starting Conseil-API"
 java -Dconfig.file="$CONFIG_PATH" -jar /tmp/conseil-api.jar &
 
-sleep 5m
+sleep 15m
 
 sbt runApiTests
