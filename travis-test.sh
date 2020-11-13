@@ -52,11 +52,11 @@ lorre.db = \${conseil.db}
 sbt clean assembly -J-Xss32m
 
 echo "Starting Lorre:"
-java -Dconfig.file="$CONFIG_PATH" -jar /tmp/conseil-lorre.jar tezos mainnet &
+java -Dconfig.file="$CONFIG_PATH" -jar /tmp/conseil-lorre.jar -d 100 tezos mainnet &
 
 echo "Starting Conseil-API"
 java -Dconfig.file="$CONFIG_PATH" -jar /tmp/conseil-api.jar &
 
-sleep 30m
+sleep 10m
 
 sbt runApiTests
