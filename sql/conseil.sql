@@ -551,6 +551,11 @@ CREATE INDEX baking_rights_delegate_idx ON tezos.baking_rights USING btree (dele
 
 CREATE INDEX ix_delegate_priority ON tezos.baking_rights USING btree (delegate, priority);
 
+CREATE INDEX ix_cycle ON tezos.baking_rights USING btree (cycle ASC NULLS LAST);
+
+CREATE INDEX ix_delegate_priority_cycle ON tezos.baking_rights USING btree
+    (delegate ASC NULLS LAST, priority ASC NULLS LAST, cycle ASC NULLS LAST);
+
 --
 -- Name: endorsing_rights_level_idx; Type: INDEX; Schema: tezos; Owner: -
 --
@@ -560,6 +565,10 @@ CREATE INDEX endorsing_rights_level_idx ON tezos.endorsing_rights USING btree (b
 CREATE INDEX endorsing_rights_delegate_idx ON tezos.endorsing_rights USING btree (delegate);
 
 CREATE INDEX ix_delegate_slot ON tezos.endorsing_rights USING btree (delegate, slot);
+
+CREATE INDEX ix_delegate_block_level ON tezos.endorsing_rights USING btree
+    (delegate ASC NULLS LAST, block_level ASC NULLS LAST);
+
 --
 -- Name: fki_block; Type: INDEX; Schema: tezos; Owner: -
 --

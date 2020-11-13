@@ -48,7 +48,7 @@ class EthereumDataRoutesTest
   blockAttributes.foreach(platformDiscoveryOperations.addAttribute(testEntityPath, _))
 
   private val conseilOps: EthereumDataOperations = new EthereumDataOperations("ethereum") {
-    override def queryWithPredicates(prefix: String, tableName: String, query: Query)(
+    override def queryWithPredicates(prefix: String, tableName: String, query: Query, hideForkInvalid: Boolean = false)(
         implicit ec: ExecutionContext
     ): Future[List[QueryResponse]] =
       Future.successful(responseAsMap)

@@ -26,18 +26,18 @@ import scala.concurrent.{ExecutionContext, Future}
 object GenericPlatformDiscoveryOperations {
 
   def apply(
-      metadataOperations: DBIORunner,
+      dbRunner: DBIORunner,
       caching: MetadataCaching[IO],
       cacheOverrides: AttributeValuesCacheConfiguration,
       cacheTTL: FiniteDuration,
       highCardinalityLimit: Int
   )(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]): GenericPlatformDiscoveryOperations =
-    new GenericPlatformDiscoveryOperations(metadataOperations, caching, cacheOverrides, cacheTTL, highCardinalityLimit)
+    new GenericPlatformDiscoveryOperations(dbRunner, caching, cacheOverrides, cacheTTL, highCardinalityLimit)
 }
 
 /** Class providing the implementation of the metadata calls with caching */
 class GenericPlatformDiscoveryOperations(
-    metadataOperations: DBIORunner,
+    dbRunner: DBIORunner,
     caching: MetadataCaching[IO],
     cacheOverrides: AttributeValuesCacheConfiguration,
     cacheTTL: FiniteDuration,
@@ -53,9 +53,9 @@ class GenericPlatformDiscoveryOperations(
   def init(config: List[(Platform, Network)]): Future[Unit] = {
     val platforms = config.map(_._1)
 
-    val entities = IO.fromFuture(IO(metadataOperations.runQuery(preCacheEntities(config))))
-    val attributes = IO.fromFuture(IO(metadataOperations.runQuery(preCacheAttributes(platforms))))
-    val attributeValues = IO.fromFuture(IO(metadataOperations.runQuery(preCacheAttributeValues(platforms))))
+    val entities = IO.fromFuture(IO(dbRunner.runQuery(preCacheEntities(config))))
+    val attributes = IO.fromFuture(IO(dbRunner.runQuery(preCacheAttributes(platforms))))
+    val attributeValues = IO.fromFuture(IO(dbRunner.runQuery(preCacheAttributeValues(platforms))))
 
     (
       entities flatMap caching.fillEntitiesCache,
@@ -189,7 +189,7 @@ class GenericPlatformDiscoveryOperations(
               _ <- caching.putEntities(key, ent)
               _ <- contextShift.shift
               updatedEntities <- IO.fromFuture(
-                IO(metadataOperations.runQuery(preCacheEntities(networkPath.up.platform, networkPath.network)))
+                IO(dbRunner.runQuery(preCacheEntities(networkPath.up.platform, networkPath.network)))
               )
               _ <- caching.putAllEntities(updatedEntities)
             } yield ()).unsafeRunAsyncAndForget()
@@ -352,11 +352,11 @@ class GenericPlatformDiscoveryOperations(
   ): Future[List[String]] =
     withFilter match {
       case Some(filter) =>
-        metadataOperations.runQuery(
+        dbRunner.runQuery(
           selectDistinctLike(platform, tableName, column, Sanitizer.sanitizeForSql(filter))
         )
       case None =>
-        metadataOperations.runQuery(selectDistinct(platform, tableName, column))
+        dbRunner.runQuery(selectDistinct(platform, tableName, column))
     }
 
   /**
@@ -414,7 +414,7 @@ class GenericPlatformDiscoveryOperations(
 
   /** Runs query and attributes with updated counts */
   private def getUpdatedAttributes(entityPath: EntityPath, columns: List[Attribute]): Future[List[Attribute]] =
-    metadataOperations.runQuery(getUpdatedAttributesQuery(entityPath, columns))
+    dbRunner.runQuery(getUpdatedAttributesQuery(entityPath, columns))
 
   /** Query for returning partial attributes with updated counts */
   private def getUpdatedAttributesQuery(entityPath: EntityPath, columns: List[Attribute]): DBIO[List[Attribute]] =
@@ -494,7 +494,7 @@ class GenericPlatformDiscoveryOperations(
         getUpdatedAttributesQuery(entityPath, attrs).map(entityName.key -> _)
     }
     val action = DBIO.sequence(queries).map(_.toList)
-    IO.fromFuture(IO(metadataOperations.runQuery(action)))
+    IO.fromFuture(IO(dbRunner.runQuery(action)))
   }
 
 }

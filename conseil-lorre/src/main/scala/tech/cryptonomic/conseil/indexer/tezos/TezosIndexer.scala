@@ -100,7 +100,7 @@ class TezosIndexer private (
       )
       _ <- processTezosBlocks(maxLevel)
       _ <- if (iteration % lorreConf.feeUpdateInterval == 0)
-        TezosFeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
+        TezosFeeOperations.processTezosAverageFees(lorreConf.feesAverageTimeWindow)
       else
         noOp
       _ <- rightsProcessor.updateRightsTimestamps()

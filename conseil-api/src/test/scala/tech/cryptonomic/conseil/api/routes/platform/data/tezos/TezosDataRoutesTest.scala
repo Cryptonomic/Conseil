@@ -29,22 +29,11 @@ class TezosDataRoutesTest
     with TezosDataRoutesTest.Fixtures {
 
   private val conseilOps: TezosDataOperations = new TezosDataOperations {
-    override def queryWithPredicates(prefix: String, tableName: String, query: Query)(
+    override def queryWithPredicates(prefix: String, tableName: String, query: Query, hideForkInvalid: Boolean = false)(
         implicit ec: ExecutionContext
     ): Future[List[QueryResponse]] =
       Future.successful(responseAsMap)
   }
-
-  private val cfg = PlatformsConfiguration(
-    List(
-      TezosConfiguration(
-        "alphanet",
-        enabled = true,
-        TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
-        None
-      )
-    )
-  )
 
   private val testEntity = Entity("accounts", "Test Entity", 0)
   private val testNetworkPath = NetworkPath("alphanet", PlatformPath("tezos"))
