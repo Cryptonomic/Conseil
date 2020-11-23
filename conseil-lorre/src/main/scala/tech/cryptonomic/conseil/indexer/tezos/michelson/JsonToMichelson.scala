@@ -6,7 +6,7 @@ import tech.cryptonomic.conseil.indexer.tezos.michelson.parser.JsonParser.Parser
 import tech.cryptonomic.conseil.indexer.tezos.michelson.renderer.MichelsonRenderer._
 import scala.reflect.ClassTag
 import scala.util.Try
-import wvlet.log.Logger
+import scribe._
 
 /* Converts Michelson schema from JSON to its native format */
 object JsonToMichelson {

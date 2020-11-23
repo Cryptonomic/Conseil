@@ -7,7 +7,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.common.util.Conversion
-import wvlet.log.Logger
+import scribe._
 
 /** Collects specific [[Conversion]] instances to implicitly convert between
   * big-map related entries and things to be used when saving such data

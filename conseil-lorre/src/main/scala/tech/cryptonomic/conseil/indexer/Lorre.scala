@@ -12,6 +12,7 @@ import scala.concurrent.duration._
 import tech.cryptonomic.conseil.common.config.Platforms.EthereumConfiguration
 import tech.cryptonomic.conseil.indexer.ethereum.EthereumIndexer
 import tech.cryptonomic.conseil.common.config.Platforms.QuorumConfiguration
+import tech.cryptonomic.conseil.common.io.Logging
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -35,6 +36,8 @@ object Lorre extends App with LorreAppConfig with LorreInfoLogging {
     batchingConf,
     verbose
   ) = config.merge
+
+  Logging.init()
 
   //whatever happens we try to clean up
   sys.addShutdownHook(shutdown())

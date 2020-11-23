@@ -5,11 +5,11 @@ import tech.cryptonomic.conseil.common.generic.chain.DataOperations
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.OutputType.OutputType
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Field, Predicate, Query, QueryResponse, _}
 import tech.cryptonomic.conseil.api.routes.platform.Sanitizer._
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.sql.DatabaseRunner
 import tech.cryptonomic.conseil.common.util.DatabaseUtil.QueryBuilder._
 
 import scala.concurrent.{ExecutionContext, Future}
-import com.typesafe.scalalogging.LazyLogging
 
 object ApiDataOperations {
 
@@ -29,7 +29,7 @@ object ApiDataOperations {
 }
 
 /** Provides the implementation for `DataOperations` trait */
-trait ApiDataOperations extends DatabaseRunner with DataOperations with LazyLogging {
+trait ApiDataOperations extends DatabaseRunner with DataOperations with ConseilLogSupport {
   import ApiDataOperations._
 
   /** Executes the query with given predicates
@@ -116,7 +116,7 @@ trait ApiDataOperations extends DatabaseRunner with DataOperations with LazyLogg
           .addLimit(limit)
     }
 
-    logger.debug("Received an entity query as follows {}", q.queryParts.mkString(""))
+    logger.debug(s"Received an entity query as follows ${q.queryParts.mkString("")}")
 
     if (outputType == OutputType.sql) {
       DBIO.successful(List(Map("sql" -> Some(q.queryParts.mkString("")))))

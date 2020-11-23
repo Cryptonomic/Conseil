@@ -5,9 +5,9 @@ import akka.http.scaladsl.server.Route
 import cats.instances.either._
 import cats.instances.future._
 import cats.syntax.bitraverse._
-import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.metadata.MetadataService
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.ethereum.EthereumTypes.EthereumBlockHash
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
@@ -21,7 +21,7 @@ trait EthereumDataRoutesCreator
     extends EthereumDataHelpers
     with EthereumDataEndpoints
     with ApiDataRoutes
-    with LazyLogging {
+    with ConseilLogSupport {
 
   implicit def executionContext: ExecutionContext
 

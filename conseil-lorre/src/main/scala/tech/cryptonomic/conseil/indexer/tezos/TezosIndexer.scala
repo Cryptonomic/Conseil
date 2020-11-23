@@ -22,7 +22,7 @@ import tech.cryptonomic.conseil.indexer.config._
 import tech.cryptonomic.conseil.indexer.forks.ForkHandler
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors._
-import tech.cryptonomic.conseil.indexer.tezos.forks.TezosForkInvalidatingAmender
+import tech.cryptonomic.conseil.indexer.tezos.forks.{TezosForkInvalidatingAmender, TezosForkSearchEngine}
 import tech.cryptonomic.conseil.indexer.tezos.processing._
 import tech.cryptonomic.conseil.indexer.tezos.processing.AccountsResetHandler.{AccountResetEvents, UnhandledResetEvents}
 
@@ -30,7 +30,6 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-import tech.cryptonomic.conseil.indexer.tezos.forks.TezosForkSearchEngine
 
 /** Class responsible for indexing data for Tezos BlockChain
   * @param ignoreProcessFailures `true` if non-critical errors while fetchign data should simply resume the indexer logic and retry
@@ -68,8 +67,8 @@ class TezosIndexer private (
   val featureFlags = lorreConf.enabledFeatures
 
   /** Schedules method for fetching baking rights */
-  if (featureFlags.blockRightsFetchingIsOn)
-    info("I'm scheduling the concurrent tasks to update baking and endorsing rights")
+  if (featureFlags.blockRightsFetchingIsOn) {
+    logger.info("I'm scheduling the concurrent tasks to update baking and endorsing rights")
     system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
       rightsProcessor.writeFutureRights()
     )

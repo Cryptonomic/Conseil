@@ -19,7 +19,7 @@ import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 import scala.util.{Failure, Try}
 import scala.util.control.NoStackTrace
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogger
-import wvlet.log.LogLevel
+import scribe._
 import java.{util => ju}
 
 /**
@@ -100,14 +100,14 @@ private[tezos] class TezosNodeInterface(
     new IllegalStateException("Tezos node requests will no longer be accepted.") with NoStackTrace
   )
 
-  val traceLoggingGetCategory = "tech.cryptonomic.conseil.indexer.tezos.node-rpc.get"
-  val traceLoggingPostCategory = "tech.cryptonomic.conseil.indexer.tezos.node-rpc.post"
-  val traceLoggingBatchCategory = "tech.cryptonomic.conseil.indexer.tezos.node-rpc.batch"
+  final val traceLoggingGetCategory = "tech.cryptonomic.conseil.indexer.tezos.node-rpc.get"
+  final val traceLoggingPostCategory = "tech.cryptonomic.conseil.indexer.tezos.node-rpc.post"
+  final val traceLoggingBatchCategory = "tech.cryptonomic.conseil.indexer.tezos.node-rpc.batch"
 
   private lazy val asyncGetLogger =
-    ConseilLogger(traceLoggingGetCategory, Some(LogLevel.DEBUG))
+    ConseilLogger(traceLoggingGetCategory, Some(Level.Debug))
   private lazy val asyncPostLogger =
-    ConseilLogger(traceLoggingPostCategory, Some(LogLevel.DEBUG))
+    ConseilLogger(traceLoggingPostCategory, Some(Level.Debug))
   /* Defines the custom akka logging category to emit request-response traces on each stream element */
   private lazy val batchedRpcTraceLogger: LoggingAdapter =
     Logging(system.eventStream, traceLoggingBatchCategory)

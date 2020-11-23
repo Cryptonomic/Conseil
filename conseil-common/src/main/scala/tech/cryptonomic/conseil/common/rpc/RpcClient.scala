@@ -104,7 +104,7 @@ class RpcClient[F[_]: Concurrent](
 
   /**
     * Helper method to log debug information.
-    * It wraps scalalogging call into [[Concurrent]] to prevent side effects.
+    * It wraps logging call into [[Concurrent]] to prevent side effects.
     * It should be moved to separate logging util in the future.
     *
     * @param message Debug message

@@ -2,7 +2,6 @@ package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
 import java.sql.Timestamp
 
-import com.typesafe.scalalogging.LazyLogging
 import com.softwaremill.diffx.scalatest.DiffMatcher
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.OptionValues
@@ -15,6 +14,7 @@ import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{makeAccountId, TezosBlockHash}
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes
 import scala.concurrent.duration._
 import java.time.Instant
@@ -28,7 +28,7 @@ class TezosForkDataOperationsTest
     with ScalaFutures
     with OptionValues
     with DiffMatcher
-    with LazyLogging
+    with ConseilLogSupport
     with IntegrationPatience {
 
   import scala.concurrent.ExecutionContext.Implicits.global

@@ -5,7 +5,6 @@ import java.time.LocalDateTime
 
 import cats.effect.{ContextShift, IO}
 import com.softwaremill.diffx.scalatest.DiffMatcher
-import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.OptionValues
@@ -14,6 +13,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import slick.dbio
 import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.api.{BitcoinInMemoryDatabaseSetup, TezosInMemoryDatabaseSetup}
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
@@ -42,7 +42,7 @@ class GenericPlatformDiscoveryOperationsTest
     with OptionValues
     with DiffMatcher
     with IntegrationPatience
-    with LazyLogging {
+    with ConseilLogSupport {
 
   import slick.jdbc.PostgresProfile.api._
   import tech.cryptonomic.conseil.common.config.Platforms._

@@ -5,9 +5,9 @@ import java.time.Instant
 
 import cats.Id
 import cats.effect.{Concurrent, Resource}
-import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.util.Conversion
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.bitcoin.rpc.json.{Block, Transaction, TransactionInput, TransactionOutput}
@@ -16,7 +16,7 @@ import tech.cryptonomic.conseil.common.bitcoin.BitcoinPersistence._
 /**
   * Bitcoin persistence into the database using Slick.
   */
-class BitcoinPersistence[F[_]: Concurrent] extends LazyLogging {
+class BitcoinPersistence[F[_]: Concurrent] {
 
   /**
     * Create [[DBIO]] seq with block (with transactions, inputs and outputs) that can be wrap into one transaction.

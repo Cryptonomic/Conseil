@@ -18,7 +18,7 @@ import TezosOptics.Operations.{
   extractAppliedTransactions,
   extractAppliedTransactionsResults
 }
-import wvlet.log.LogLevel
+import scribe._
 
 /** Defines big-map-diffs specific handling, from block data extraction to database storage
   *
@@ -26,8 +26,6 @@ import wvlet.log.LogLevel
   */
 case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) extends ConseilLogSupport {
   import profile.api._
-
-  override protected lazy val loggerLevelEnvVarName = "LORRE_BIG_MAPS_LOG_LEVEL".some
 
   /** Create an action to find and copy big maps based on the diff contained in the blocks
     *
@@ -37,13 +35,11 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     */
   def copyContent(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
     val diffsPerBlock = blocks.map(b => b.data -> TezosOptics.Blocks.acrossBigMapDiffCopy.getAll(b))
-    if (logger.isEnabled(LogLevel.DEBUG)) {
+    if (logger.includes(Level.Debug)) {
       diffsPerBlock.foreach {
         case (blockData, diffs) if diffs.nonEmpty =>
           logger.debug(
-            "For block hash {}, I'm about to copy the following big maps data: \n\t{}",
-            blockData.hash.value,
-            diffs.mkString(", ")
+            s"For block hash ${blockData.hash.value}, I'm about to copy the following big maps data: \n\t${diffs.mkString(", ")}"
           )
         case _ =>
       }
@@ -101,7 +97,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     */
   def removeMaps(blocks: List[Block]): DBIO[Unit] = {
 
-    val removalDiffs = if (logger.isEnabled(LogLevel.DEBUG)) {
+    val removalDiffs = if (logger.includes(Level.Debug)) {
       val diffsPerBlock = blocks.map(b => b.data.hash.value -> TezosOptics.Blocks.acrossBigMapDiffRemove.getAll(b))
       diffsPerBlock.foreach {
         case (hash, diffs) if diffs.nonEmpty =>
@@ -145,7 +141,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         }
     )
 
-    val maps = if (logger.isEnabled(LogLevel.DEBUG)) {
+    val maps = if (logger.includes(Level.Debug)) {
       val rowsPerBlock = diffsPerBlock
         .map(it => it.get._1 -> it.convertToA[Option, BigMapsRow])
         .filterNot(_._2.isEmpty)
@@ -194,7 +190,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       .mapValues(entries => List.concat(entries.map(_._2.toList): _*))
       .toMap
 
-    if (logger.isEnabled(LogLevel.DEBUG)) {
+    if (logger.includes(Level.Debug)) {
       rowsPerBlock.foreach {
         case (hash, rows) =>
           val showRows = rows.mkString(", ")
@@ -244,7 +240,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     )
 
     val refs =
-      if (logger.isEnabled(LogLevel.DEBUG)) {
+      if (logger.includes(Level.Debug)) {
         val rowsPerBlock = diffsPerBlock
           .map(it => it.get._1 -> it.convertToA[List, OriginatedAccountMapsRow])
           .filterNot(_._2.isEmpty)
@@ -346,7 +342,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
 
       }
 
-      if (logger.isEnabled(LogLevel.DEBUG)) {
+      if (logger.includes(Level.Debug)) {
         val showTransactions =
           updatesMap.map {
             case (tokenId, (params, updates)) =>

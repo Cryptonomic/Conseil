@@ -7,17 +7,12 @@ object Dependencies {
     val pureConfig = "0.10.2"
     val scopt = "4.0.0-RC2"
 
-    val logback = "1.2.3"
-    val logstashLogback = "5.3"
-    val scalaLogging = "3.7.2"
-    val slf4jJdk = "1.7.30"
-
     val akka = "2.6.3"
     val akkaHttp = "10.2.1"
     val akkaHttpJson = "1.35.2"
     val akkaHttpCors = "1.1.0"
 
-    val airframeLogging = "20.10.2"
+    val scribe = "3.0.4"
 
     val slick = "3.3.0"
     val slickPG = "0.18.0"
@@ -60,15 +55,10 @@ object Dependencies {
 
   private val scopt = Seq("com.github.scopt" %% "scopt" % Versions.scopt)
 
-  private val airframe = Seq(
-    "org.wvlet.airframe" %% "airframe-log" % Versions.airframeLogging,
-    "org.slf4j"          % "slf4j-jdk14"   % Versions.slf4jJdk
-  )
-
-  private val logging = Seq(
-    "ch.qos.logback"             % "logback-classic"          % Versions.logback,
-    "net.logstash.logback"       % "logstash-logback-encoder" % Versions.logstashLogback,
-    "com.typesafe.scala-logging" %% "scala-logging"           % Versions.scalaLogging
+  private val scribe = Seq(
+    "com.outr" %% "scribe"          % Versions.scribe,
+    "com.outr" %% "scribe-slf4j"    % Versions.scribe,
+    "com.outr" %% "scribe-logstash" % Versions.scribe
   )
 
   private val akka = Seq(
@@ -183,7 +173,7 @@ object Dependencies {
   val conseilCommonInclude: Seq[ModuleID] =
     concat(
       config,
-      airframe,
+      scribe,
       pureConfig,
       slick,
       slickCodeGen,
@@ -211,11 +201,11 @@ object Dependencies {
     )
 
   val conseilCommonTestKitInclude: Seq[ModuleID] =
-    concat(config, slick, scalaTestCompile, postgresTestContainerCompile, airframe)
+    concat(config, slick, scalaTestCompile, postgresTestContainerCompile, scribe)
 
   val conseilApiInclude: Seq[ModuleID] =
     concat(
-      logging,
+      scribe,
       scopt,
       akka,
       akkaHttp,

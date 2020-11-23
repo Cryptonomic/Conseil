@@ -1,10 +1,10 @@
 package tech.cryptonomic.conseil.indexer.ethereum
 
 import cats.effect.{Concurrent, Resource}
-import com.typesafe.scalalogging.LazyLogging
 import fs2.Stream
 import slickeffect.Transactor
 
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.config.Platforms.EthereumBatchFetchConfiguration
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence
@@ -25,7 +25,7 @@ class EthereumOperations[F[_]: Concurrent](
     persistence: EthereumPersistence[F],
     tx: Transactor[F],
     batchConf: EthereumBatchFetchConfiguration
-) extends LazyLogging {
+) extends ConseilLogSupport {
 
   /**
     * Start Lorre with mode defined with [[Depth]].
@@ -106,7 +106,7 @@ class EthereumOperations[F[_]: Concurrent](
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap(contracts => tx.transact(persistence.createContracts(contracts.toList)))
             }
-      ) 
+      )
       .drain
 
   /**

@@ -93,7 +93,7 @@ class BakingAndEndorsingRightsProcessor(
 
   /** Fetches future baking and endorsing rights to insert it into the DB */
   private[tezos] def writeFutureRights()(implicit ec: ExecutionContext): Unit = {
-    val berLogger = ConseilLogger("tech.cryptonomic.conseil.indexer.tezos.RightsFetcher")
+    val berLogger = ConseilLogger("RightsFetcher")
 
     import cats.implicits._
 
@@ -141,7 +141,7 @@ class BakingAndEndorsingRightsProcessor(
 
   /** Updates timestamps in the baking/endorsing rights tables */
   private[tezos] def updateRightsTimestamps()(implicit ec: ExecutionContext): Future[Unit] = {
-    val logger = ConseilLogger("tech.cryptonomic.conseil.indexer.tezos.RightsUpdater")
+    val logger = ConseilLogger("RightsUpdater")
     import cats.implicits._
     val blockHead = nodeOperator.getBareBlockHead()
 
@@ -160,7 +160,7 @@ class BakingAndEndorsingRightsProcessor(
       }
       (br, er).mapN {
         case (bb, ee) =>
-          logger.info("Updated {} baking rights and {} endorsing rights rows", bb.sum, ee.sum)
+          logger.info(s"Updated ${bb.sum} baking rights and ${ee.sum} endorsing rights rows")
       }
     }
   }

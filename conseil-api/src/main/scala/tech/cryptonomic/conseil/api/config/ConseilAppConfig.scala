@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.api.config
 
-import com.typesafe.scalalogging.LazyLogging
 import pureconfig.error.ConfigReaderFailures
 import pureconfig.generic.auto._
 import pureconfig.{ConfigReader, _}
@@ -72,7 +71,7 @@ trait ConseilAppConfig {
 
 }
 
-object ConseilAppConfig extends LazyLogging with PlatformConfigurationHint {
+object ConseilAppConfig extends PlatformConfigurationHint {
 
   /** Collects all different aspects involved for Conseil */
   final case class CombinedConfiguration(

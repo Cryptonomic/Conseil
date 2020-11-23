@@ -10,11 +10,11 @@ import akka.http.scaladsl.server.{Directive, ExceptionHandler, Route}
 import akka.stream.Materializer
 import cats.effect.concurrent.MVar
 import cats.effect.{Concurrent, IO}
-import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import org.slf4j.MDC
 
 /** Utility class for recording responses */
-class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends LazyLogging {
+class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends ConseilLogSupport {
 
   type RequestMap = Map[UUID, RequestValues]
   private val requestInfoMap: MVar[IO, Map[UUID, RequestValues]] =

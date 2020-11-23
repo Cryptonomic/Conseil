@@ -5,7 +5,7 @@ import java.time.{Instant, ZoneOffset}
 
 import cats.effect.Async
 import cats.implicits._
-import wvlet.log.Logger
+import scribe._
 import slick.jdbc.PostgresProfile.api._
 import slick.lifted.{AbstractTable, TableQuery}
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
@@ -323,14 +323,9 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       }
     }
 
+    val showSelectors = selectors.mkString(", ")
     logger.info(
-      s"Fetching all ids for existing accounts matching ${selectors
-        .mkString(", ")} and adding them to checkpoint with block hash ${hash.value}, level $level, cycle $cycle and time $timestamp",
-      selectors.mkString(", "),
-      hash.value,
-      level,
-      cycle,
-      timestamp
+      s"Fetching all ids for existing accounts matching $showSelectors and adding them to checkpoint with block hash ${hash.value}, level $level, cycle $cycle and time $timestamp"
     )
 
     //for each pattern, create a query and then union them all

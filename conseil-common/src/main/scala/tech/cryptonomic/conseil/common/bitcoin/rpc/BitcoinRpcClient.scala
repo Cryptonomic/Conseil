@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.common.bitcoin.rpc
 
 import cats.effect.{Concurrent, Resource}
-import com.typesafe.scalalogging.LazyLogging
 import fs2.{Pipe, Stream}
 import io.circe.generic.auto._
 import org.http4s.circe.CirceEntityDecoder._
@@ -29,9 +28,7 @@ import tech.cryptonomic.conseil.common.bitcoin.rpc.json.{Block, BlockchainInfo, 
   *   val res0: List[String] = List(hash1, hash2)
   * }}}
   */
-class BitcoinClient[F[_]: Concurrent](
-    client: RpcClient[F]
-) extends LazyLogging {
+class BitcoinClient[F[_]: Concurrent](client: RpcClient[F]) {
 
   /**
     * Get blockchain info.

@@ -17,7 +17,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
 import tech.cryptonomic.conseil.common.tezos.Tables.BigMapsRow
 import tech.cryptonomic.conseil.common.util.OptionUtil.whenOpt
-import wvlet.log.LogLevel
+import scribe._
 
 import scala.concurrent.SyncVar
 
@@ -28,8 +28,6 @@ import scala.concurrent.SyncVar
   */
 trait TNSContract extends ConseilLogSupport {
   import TNSContract._
-
-  override protected lazy val loggerLevelEnvVarName: Option[String] = "LORRE_TNS_LOG_LEVEL".some
 
   /** Does the Id reference a known TNS smart contract? */
   def isKnownRegistrar(registrar: ContractId): Boolean
@@ -69,8 +67,6 @@ trait TNSContract extends ConseilLogSupport {
 }
 
 object TNSContract extends ConseilLogSupport {
-
-  override protected lazy val loggerLevelEnvVarName: Option[String] = "LORRE_TNS_LOG_LEVEL".some
 
   /** typed wrapper to clarify the meaning of the numerical id */
   case class BigMapId(id: BigDecimal) extends AnyVal
@@ -252,7 +248,7 @@ object TNSContract extends ConseilLogSupport {
           | registrar: $registrar""".stripMargin
       )
     val check = valuesAvailable && registeredIds.forall(id => updateIds.contains(id.get))
-    if (logger.isEnabled(LogLevel.DEBUG)) {
+    if (logger.includes(Level.Debug)) {
       val showIds = updateIds.mkString("{", ",", "}")
       logger.debug(
         s"Checking updated map ids $showIds, upon a call to the TNS Contract ${registrar.id}. Ids matching? $check"

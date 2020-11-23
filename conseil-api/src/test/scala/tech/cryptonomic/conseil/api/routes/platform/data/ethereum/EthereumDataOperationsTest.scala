@@ -2,7 +2,6 @@ package tech.cryptonomic.conseil.api.routes.platform.data.ethereum
 
 import java.sql.Timestamp
 
-import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.OptionValues
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
@@ -12,6 +11,7 @@ import tech.cryptonomic.conseil.api.EthereumInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.ethereum.EthereumTypes.EthereumBlockHash
 import tech.cryptonomic.conseil.common.ethereum.Tables
 import tech.cryptonomic.conseil.common.ethereum.Tables._
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.Query
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 
@@ -25,7 +25,7 @@ class EthereumDataOperationsTest
     with EthereumInMemoryDatabaseSetup
     with ScalaFutures
     with OptionValues
-    with LazyLogging
+    with ConseilLogSupport
     with IntegrationPatience
     with EthereumDataOperationsTest.Fixtures {
 

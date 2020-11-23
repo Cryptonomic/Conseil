@@ -1,119 +1,173 @@
 package tech.cryptonomic.conseil.common.io
 
-import wvlet.log._
-import wvlet.log.LogFormatter.{appendStackTrace, highlightLog, withColor, SourceCodeLogFormatter}
-import java.util.logging.ConsoleHandler
-import java.time.Instant
-import java.time.format.DateTimeFormatter
-import java.time.ZoneOffset
-import java.util.logging.Formatter
 import scala.reflect.ClassTag
-import scala.util.Try
+import scala.util.{Failure, Try}
+import java.nio.file.Paths
+import scribe._
+import scribe.format._
+import scribe.modify.LevelFilter
+import scribe.output.{Color, ColoredOutput}
+import pureconfig.generic.auto._
 
 /** Defiinitions used to configure and use logging throughout the system */
 object Logging {
 
-  /* locally simplifies output formatting via extension methods on the text to be printed */
-  implicit private class Coloured(val text: String) extends AnyVal {
-    def colored(color: String): String = withColor(color, text)
+  /* where do we search for config if none is externally provided */
+  private lazy val resourcePath = Paths.get(getClass().getResource("/logging.conf").toURI())
+
+  /* check if the user provided a custom log conf */
+  private lazy val userProvidedPath = sys.props.get("logging.conf").map(Paths.get(_))
+
+  /** We need to initialize the logging system which reads any available configuration on the resource path.
+    * The expected config file is named "logging.conf" and uses HOCON format.
+    * See lightbend logging to learn more about the format.
+    *
+    * An external config can be provided via `-Dlogging.conf=<your-file>` when running the app.
+    *
+    * The Conseil Wiki provides the details on the file content and options.
+    */
+  def init(): Unit = {
+    val showConfig =
+      userProvidedPath.fold("scanning resources for logging.conf files")(conf => s"using provided file at $conf")
+    info(s"Initializing Conseil logging from configuration: $showConfig...")
+    pureconfig
+      .loadConfig[Config](userProvidedPath getOrElse resourcePath)
+      .fold(
+        failures => {
+          error("I can't load the logging configuration")
+          failures.toList.foreach(fail => error(s"${fail.description} ${fail.location.getOrElse("")}"))
+        },
+        configure
+      )
+    info("Conseil logging configuration done")
   }
 
-  /* general initialization */
-  Logger.setDefaultFormatter(customFormatter)
+  /** Configuration for logging as read from a configuration file.
+    * We expect to load configuration from a file which reflects this class structure.
+    *
+    * @param muted when enabled, it will stop every logging from occurring, like sending to dev/null
+    * @param loggers a list of configurations for specific loggers
+    */
+  case class Config(
+      muted: Boolean = false,
+      loggers: List[LoggerConfig] = List.empty,
+      outputLevel: Option[String]
+  )
+
+  /** A single logger configuration.
+    *
+    * Levels should conform to the naming defined in [[scribe.Level]]
+    *
+    * @param name identifies the logger, usually as a FQN for a class, a package, a string
+    * @param level the minimum level assigned to that logger, everything of lower priority won't show
+    * @param fromEnv optionally read from the environment variable so named, which level to assign
+    */
+  case class LoggerConfig(
+      name: String,
+      muted: Boolean = false,
+      fromEnv: Option[String],
+      level: Option[String]
+  ) {
+
+    private def searchEnv = fromEnv.flatMap(sys.env.get(_))
+
+    /** Extracts the log-level as a typed value
+      * It will first lookup the [[fromEnv]] value and fallback to the explicit [[level]]
+      */
+    def logLevel: Try[Level] =
+      Try(
+        (searchEnv orElse level).map(Level(_)).get
+      ).recoverWith {
+        case err if (fromEnv.isEmpty && level.isEmpty) =>
+          error(
+            s"The logging configuration might be incorrect for $name. The logger level seems to be missing or incorrect. Use muted: true, to turn off a logger.",
+            err
+          )
+          Failure(err)
+      }
+  }
+
+  /* For the given config reads details about how to custom tailor individual loggers */
+  private def configure(loggingConfig: Config) = {
+    /* Assigns the same formatting to any logger by defining it on the parent root logger */
+    val formatted = Logger.root
+      .clearHandlers()
+      .withHandler(formatter = sharedFormatter, minimumLevel = loggingConfig.outputLevel.map(Level(_)))
+
+    val modified =
+      if (loggingConfig.muted)
+        formatted
+          .clearModifiers()
+          .withModifier(LevelFilter.ExcludeAll)
+      else formatted
+
+    modified.replace()
+
+    /* Apply any custom config */
+    loggingConfig.loggers.foreach {
+      case loggerConf =>
+        Logger(loggerConf.name)
+          .clearHandlers()
+          .withModifier(
+            if (loggerConf.muted) LevelFilter.ExcludeAll
+            else loggerConf.logLevel.map(LevelFilter >= _).getOrElse(LevelFilter.ExcludeAll)
+          )
+          .replace()
+    }
+
+  }
 
   /** Here we get common shared configuration for logging to
     * mix-up with other modules
     */
-  trait ConseilLogSupport extends LogSupport {
+  trait ConseilLogSupport extends scribe.Logging {
+    ConseilLogger.prepare(logger)
 
-    /** You can override this variable name to possibly override the default
-      * log level provided via configuration, specifying an environment variable
-      * with this name, and a value corresponding to a valid
-      * [[Logger.LogLevel]]
-      *
-      * Leave this empty to keep the default configuration.
-      */
-    protected def loggerLevelEnvVarName: Option[String] = None
-
-    private def envVarNameToLevel =
-      for {
-        envName <- loggerLevelEnvVarName
-        envEntry <- sys.env.get(envName)
-        envLevel <- Try(LogLevel(envEntry)).toOption
-      } yield envLevel
-
-    /** Override this to define a custom logging level programmatically
-      * for this class' logger.
-      *
-      * This will also cancel any possible effect of defining a [[loggerLevelEnvVarName]]
-      * for this class.
-      */
-    protected def loggerLevel: Option[LogLevel] = envVarNameToLevel
-
-    ConseilLogger.prepare(logger, level = loggerLevel)
-
-    if (logger.isEnabled(LogLevel.DEBUG)) logger.debug("Debug level enabled for this log category")
+    if (logger.includes(Level.Debug)) logger.debug("Debug level enabled for this logger")
   }
 
   /** Use this to build custom logger instances as an alternative to
     * mixin-in [[ConseilLogSupport]]
     */
   object ConseilLogger {
+    /* dirty trick to force initialization of logging */
+    // private val logging = Logging
 
     /** Create a logger corresponding to a class */
-    def of[A: ClassTag](level: Option[LogLevel] = None): Logger =
-      prepare(Logger.of[A], level)
+    def of[A: ClassTag](level: Option[Level] = None): Logger =
+      prepare(Logger[A], level)
 
     /** Create a logger corresponding to a simple name */
-    def apply(loggerName: String, level: Option[LogLevel] = None): Logger =
+    def apply(loggerName: String, level: Option[Level] = None): Logger =
       prepare(Logger(loggerName), level)
 
     /* Define here any logic that needs be applied to our custom version
      * of loggers for conseil.
      * Let's keep any preparation logic in a one single place.
      */
-    private[Logging] def prepare(logger: Logger, level: Option[LogLevel] = None): Logger = {
-      logger.resetHandler(new ConsoleOutHandler(customFormatter))
-      level.foreach { actualLevel =>
-        logger.setLogLevel(actualLevel)
-        logger.getHandlers.foreach(_.setLevel(actualLevel.jlLevel))
+    private[Logging] def prepare(logger: Logger, level: Option[Level] = None): Logger =
+      level match {
+        case Some(level) => logger.withMinimumLevel(level).replace()
+        case None => logger
       }
-      logger
-    }
-
   }
 
   /** Define a standard to format logging by default */
-  lazy val commonFormatter: LogFormatter = SourceCodeLogFormatter
+  lazy val sharedFormatter: Formatter =
+    formatter"$date [$threadName] $levelColoredPaddedRight $classNameAbbreviated ($position) - $messageColored$mdc$newLine"
 
-  /* Currently copies the SourceCodeLogFormatter internals but can be personalized as we move on */
-  lazy val customFormatter: LogFormatter = (r: LogRecord) => {
-    val loc =
-      r.source
-        .map(source => s"(${source.fileLoc})".colored(Console.BLUE))
-        .getOrElse("")
-
-    val logTag = highlightLog(r.level, r.level.name.toUpperCase)
-
-    // format: off
-    val log =
-      f"${formatLogTime(r.getMillis()).colored(Console.BLUE)} [${Thread.currentThread().getName()} thread#${r.getThreadID()}] ${logTag}%14s ${r.leafLoggerName.colored(Console.WHITE)} ${loc} - ${highlightLog(r.level, r.getMessage)}\n"
-    // format: on
-    appendStackTrace(log, r)
-  }
-
-  /* custom formatting of timestamps along the lines of the logback default layout
-   * we preserve the existing legacy pattern as long as it's useful
-   *
-   * Feel free to adapt this to the current application necessities
-   */
-  private def formatLogTime(time: Long): String =
-    DateTimeFormatter.ISO_DATE_TIME.format(Instant.ofEpochMilli(time).atOffset(ZoneOffset.UTC))
-
-  /** Will print on the out console channel */
-  private class ConsoleOutHandler(formatter: Formatter) extends ConsoleHandler {
-    setOutputStream(System.out)
-    setFormatter(formatter)
+  /* written based on other existing colored outputs */
+  private def messageColored: FormatBlock = FormatBlock { logRecord =>
+    val color = logRecord.level match {
+      case Level.Trace => Color.White
+      case Level.Debug => Color.Green
+      case Level.Info => Color.Blue
+      case Level.Warn => Color.Yellow
+      case Level.Error => Color.Red
+      case Level.Fatal => Color.Magenta
+      case _ => Color.Cyan
+    }
+    new ColoredOutput(color, message.format(logRecord))
   }
 
 }

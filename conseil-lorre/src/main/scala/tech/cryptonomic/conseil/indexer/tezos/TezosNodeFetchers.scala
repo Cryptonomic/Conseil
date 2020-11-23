@@ -11,13 +11,12 @@ import tech.cryptonomic.conseil.common.util.JsonUtil.{adaptManagerPubkeyField, J
 import tech.cryptonomic.conseil.common.util.CollectionOps._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.BallotCounts
-import wvlet.log.LogSupport
-import wvlet.log.Logger
+import scribe._
 
 /** Defines intances of `DataFetcher` for block-related data */
 private[tezos] trait TezosBlocksDataFetchers {
   //we require the capability to log
-  self: LogSupport =>
+  self: Logging =>
   import cats.instances.future._
   import cats.syntax.applicativeError._
   import cats.syntax.applicative._
@@ -615,7 +614,7 @@ private[tezos] trait TezosBlocksDataFetchers {
 /** Defines intances of `DataFetcher` for accounts-related data */
 trait AccountsDataFetchers {
   //we require the cabability to log
-  self: LogSupport =>
+  self: Logging =>
   import cats.instances.future._
   import cats.syntax.applicativeError._
   import cats.syntax.applicative._
