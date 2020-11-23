@@ -31,7 +31,7 @@ case class BitcoinDataRoutes(
 
   /** V2 Route implementation for query endpoint */
   override val postRoute: Route = queryEndpoint.implementedByAsync {
-    case ((platform, network, entity), apiQuery, _) =>
+    case (platform, network, entity, apiQuery, _) =>
       val path = EntityPath(entity, NetworkPath(network, PlatformPath(platform)))
 
       pathValidation(path) {

@@ -8,15 +8,14 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.util.JsonUtil._
 import tech.cryptonomic.conseil.api.routes.info.AppInfo.{GitInfo, Info}
-import io.circe._
 import io.circe.generic.extras.semiauto._
 import io.circe.generic.extras.Configuration
 
 class AppInfoRouteTest extends AnyWordSpec with Matchers with OptionValues with ScalatestRouteTest {
 
   implicit val derivation = Configuration.default
-  implicit val gitInfoDecoder = deriveDecoder[GitInfo]
-  implicit val infoDecoder = deriveDecoder[Info]
+  implicit val gitInfoDecoder = deriveConfiguredDecoder[GitInfo]
+  implicit val infoDecoder = deriveConfiguredDecoder[Info]
 
   "The application info route" should {
 

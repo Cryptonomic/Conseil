@@ -38,7 +38,7 @@ class TezosJsonDecodersTest extends AnyWordSpec with Matchers with EitherValues 
 
         case class JsonTest(field: String)
 
-        implicit val testDecoder: Decoder[JsonTest] = deriveDecoder
+        implicit val testDecoder: Decoder[JsonTest] = deriveConfiguredDecoder
 
         val duplicateDecoded = decode[JsonTest]("""{"field": "test", "field": "duplicate"}""")
         duplicateDecoded shouldBe 'right
@@ -55,7 +55,7 @@ class TezosJsonDecodersTest extends AnyWordSpec with Matchers with EitherValues 
 
         case class JsonTest(field: Option[String])
 
-        implicit val testDecoder: Decoder[JsonTest] = deriveDecoder
+        implicit val testDecoder: Decoder[JsonTest] = deriveConfiguredDecoder
 
         val valueDecoded = decode[JsonTest]("""{"field": "test"}""")
         valueDecoded.right.value shouldBe JsonTest(Some("test"))

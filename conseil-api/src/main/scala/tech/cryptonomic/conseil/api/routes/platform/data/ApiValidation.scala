@@ -5,12 +5,9 @@ import akka.http.scaladsl.server.Directives.complete
 import akka.http.scaladsl.server.Route
 import akka.util.ByteString
 import endpoints.algebra.Documentation
+import tech.cryptonomic.conseil.api.routes.validation.Validation.QueryValidating
 import tech.cryptonomic.conseil.api.routes.platform.data.CsvConversions._
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
-  OutputType,
-  QueryResponseWithOutput,
-  QueryValidationError
-}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OutputType, QueryResponseWithOutput}
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 
 /** Provides default, real validation method and everything what is related to validation */
@@ -20,7 +17,7 @@ object ApiValidation {
   def defaultValidated[A](
       response: A => Route,
       invalidDocs: Documentation
-  ): Either[List[QueryValidationError], A] => Route = {
+  ): QueryValidating[A] => Route = {
     case Left(errors) =>
       complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")
     case Right(QueryResponseWithOutput(queryResponse, OutputType.csv)) =>

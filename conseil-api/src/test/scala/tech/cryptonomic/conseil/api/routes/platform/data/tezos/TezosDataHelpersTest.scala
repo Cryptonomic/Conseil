@@ -11,7 +11,7 @@ import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BlocksRow, Ope
 class TezosDataHelpersTest extends TezosDataHelpers with AnyWordSpecLike with Matchers {
 
   "TezosDataHelpers" should {
-      val encodeAny = anySchema.encoder
+      val encodeAny = anySchema.encoder.encode _
       "encode Tezos Blocks into json properly" in {
         encodeAny(
           BlocksRow(

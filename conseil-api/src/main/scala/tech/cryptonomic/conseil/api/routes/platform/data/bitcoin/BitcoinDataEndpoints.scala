@@ -2,82 +2,87 @@ package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
 import tech.cryptonomic.conseil.api.routes.platform.data.{ApiDataEndpoints, ApiDataJsonSchemas}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
+import endpoints.algebra
 
 /** Trait containing endpoints definition */
-trait BitcoinDataEndpoints extends ApiDataEndpoints with ApiDataJsonSchemas with BitcoinFilterFromQueryString {
+trait BitcoinDataEndpoints
+    extends algebra.Endpoints
+    with ApiDataEndpoints
+    with ApiDataJsonSchemas
+    with BitcoinFilterFromQueryString {
 
   private val root = path / "v2" / "data" / "bitcoin" / segment[String](name = "network")
 
   /** V2 Blocks endpoint definition */
   def bitcoinBlocksEndpoint: Endpoint[((String, BitcoinFilter), Option[String]), Option[List[QueryResponse]]] =
     endpoint(
-      request = get(url = root / "blocks" /? bitcoinQsFilter, headers = optHeader("apiKey")),
+      request = get(url = root / "blocks" /? bitcoinQsFilter, headers = optRequestHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("blocks"),
-      tags = createTags("Blocks")
+      docs = EndpointDocs(tags = createTags("Blocks"))
     )
 
   /** V2 Blocks head endpoint definition */
   def bitcoinBlocksHeadEndpoint: Endpoint[(String, Option[String]), Option[QueryResponse]] =
     endpoint(
-      request = get(url = root / "blocks" / "head", headers = optHeader("apiKey")),
+      request = get(url = root / "blocks" / "head", headers = optRequestHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("blocks head"),
-      tags = createTags("Blocks")
+      docs = EndpointDocs(tags = createTags("Blocks"))
     )
 
   /** V2 Blocks by hash endpoint definition */
   def bitcoinBlockByHashEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
     endpoint(
-      request = get(url = root / "blocks" / segment[String](name = "hash"), headers = optHeader("apiKey")),
+      request = get(url = root / "blocks" / segment[String](name = "hash"), headers = optRequestHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("block by hash"),
-      tags = createTags("Blocks")
+      docs = EndpointDocs(tags = createTags("Blocks"))
     )
 
   /** V2 Transactions endpoint definition */
   def bitcoinTransactionsEndpoint: Endpoint[((String, BitcoinFilter), Option[String]), Option[List[QueryResponse]]] =
     endpoint(
-      request = get(url = root / "transactions" /? bitcoinQsFilter, headers = optHeader("apiKey")),
+      request = get(url = root / "transactions" /? bitcoinQsFilter, headers = optRequestHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("transactions"),
-      tags = createTags("Transactions")
+      docs = EndpointDocs(tags = createTags("Transactions"))
     )
 
   /** V2 Transaction by id endpoint definition */
   def bitcoinTransactionByIdEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
     endpoint(
-      request = get(url = root / "transactions" / segment[String](name = "id"), headers = optHeader("apiKey")),
+      request = get(url = root / "transactions" / segment[String](name = "id"), headers = optRequestHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("transaction by id"),
-      tags = createTags("Transactions")
+      docs = EndpointDocs(tags = createTags("Transactions"))
     )
 
   /** V2 Inputs for transactions endpoint definition */
   def bitcoinInputsEndpoint: Endpoint[((String, BitcoinFilter), Option[String]), Option[List[QueryResponse]]] =
     endpoint(
-      request = get(url = root / "inputs" /? bitcoinQsFilter, headers = optHeader("apiKey")),
+      request = get(url = root / "inputs" /? bitcoinQsFilter, headers = optRequestHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("inputs for transactions"),
-      tags = createTags("Inputs")
+      docs = EndpointDocs(tags = createTags("Inputs"))
     )
 
   /** V2 Outputs for transactions endpoint definition */
   def bitcoinOutputsEndpoint: Endpoint[((String, BitcoinFilter), Option[String]), Option[List[QueryResponse]]] =
     endpoint(
-      request = get(url = root / "outputs" /? bitcoinQsFilter, headers = optHeader("apiKey")),
+      request = get(url = root / "outputs" /? bitcoinQsFilter, headers = optRequestHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("outputs for transactions"),
-      tags = createTags("Outputs")
+      docs = EndpointDocs(tags = createTags("Outputs"))
     )
 
   /** V2 Accounts endpoint definition */
   def bitcoinAccountsEndpoint: Endpoint[((String, BitcoinFilter), Option[String]), Option[List[QueryResponse]]] =
     endpoint(
-      request = get(url = root / "accounts" /? bitcoinQsFilter, headers = optHeader("apiKey")),
+      request = get(url = root / "accounts" /? bitcoinQsFilter, headers = optRequestHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("accounts"),
-      tags = createTags("Accounts")
+      docs = EndpointDocs(tags = createTags("Accounts"))
     )
 
   /** V2 Accounts by address endpoint definition */
   def bitcoinAccountByAddressEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
     endpoint(
-      request = get(url = root / "accounts" / segment[String](name = "address"), headers = optHeader("apiKey")),
+      request = get(url = root / "accounts" / segment[String](name = "address"), headers = optRequestHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("account by address"),
-      tags = createTags("Accounts")
+      docs = EndpointDocs(tags = createTags("Accounts"))
     )
 
   private def createTags(entity: String): List[String] = List(s"Bitcoin $entity")

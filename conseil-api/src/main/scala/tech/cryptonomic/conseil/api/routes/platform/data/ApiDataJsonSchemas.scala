@@ -7,15 +7,19 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 /** Default json schemas for API handling */
 trait ApiDataJsonSchemas extends generic.JsonSchemas {
 
-  /** API field schema */
-  implicit val fieldSchema: JsonSchema[Field]
+  /** Any schema */
+  implicit def anySchema: JsonSchema[Any]
 
-  implicit lazy val formattedFieldSchema: JsonSchema[FormattedField] =
-    genericJsonSchema[FormattedField]
+  /** Query response schema */
+  implicit def queryResponseSchema: JsonSchema[QueryResponse]
+
+  /** API field schema */
+  implicit lazy val fieldSchema: JsonSchema[Field] =
+    genericJsonSchema[Field]
 
   /** Format types schema */
   implicit lazy val formatTypesSchema: JsonSchema[FormatType.Value] =
-    enumeration(FormatType.values.toSeq)(_.toString)
+    stringEnumeration(FormatType.values.toSeq)(_.toString)
 
   /** API query schema */
   implicit lazy val queryRequestSchema: JsonSchema[ApiQuery] =
@@ -27,7 +31,7 @@ trait ApiDataJsonSchemas extends generic.JsonSchemas {
 
   /** Query ordering operation schema */
   implicit lazy val queryOrderingOperationSchema: JsonSchema[OperationType.Value] =
-    enumeration(OperationType.values.toSeq)(_.toString)
+    stringEnumeration(OperationType.values.toSeq)(_.toString)
 
   /** API predicate schema */
   implicit lazy val apiPredicateSchema: JsonSchema[ApiPredicate] =
@@ -47,11 +51,11 @@ trait ApiDataJsonSchemas extends generic.JsonSchemas {
 
   /** Query ordering direction schema */
   implicit lazy val queryOrderingDirectionSchema: JsonSchema[OrderDirection.Value] =
-    enumeration(OrderDirection.values.toSeq)(_.toString)
+    stringEnumeration(OrderDirection.values.toSeq)(_.toString)
 
   /** Query output schema */
   implicit lazy val queryOutputSchema: JsonSchema[OutputType.Value] =
-    enumeration(OutputType.values.toSeq)(_.toString)
+    stringEnumeration(OutputType.values.toSeq)(_.toString)
 
   /** Query aggregation schema */
   implicit lazy val queryAggregationSchema: JsonSchema[Aggregation] =
@@ -63,13 +67,13 @@ trait ApiDataJsonSchemas extends generic.JsonSchemas {
 
   /** Query aggregation type schema */
   implicit lazy val queryAggregationTypeSchema: JsonSchema[AggregationType.Value] =
-    enumeration(AggregationType.values.toSeq)(_.toString)
+    stringEnumeration(AggregationType.values.toSeq)(_.toString)
 
   /** Timestamp schema */
   implicit lazy val timestampSchema: JsonSchema[java.sql.Timestamp] =
-    xmapJsonSchema[Long, java.sql.Timestamp](
-      implicitly[JsonSchema[Long]],
-      millisFromEpoch => new java.sql.Timestamp(millisFromEpoch),
+    implicitly[JsonSchema[Long]].xmap(
+      millisFromEpoch => new java.sql.Timestamp(millisFromEpoch)
+    )(
       ts => ts.getTime
     )
 
@@ -77,13 +81,10 @@ trait ApiDataJsonSchemas extends generic.JsonSchemas {
   implicit lazy val snapshotSchema: JsonSchema[Snapshot] =
     genericJsonSchema[Snapshot]
 
-  /** Any schema */
-  implicit def anySchema: JsonSchema[Any]
-
-  /** Query response schema */
-  implicit def queryResponseSchema: JsonSchema[QueryResponse]
-
   /** Query response schema with output type */
-  implicit def queryResponseSchemaWithOutputType: JsonSchema[QueryResponseWithOutput]
+  implicit def queryResponseSchemaWithOutputType: JsonSchema[QueryResponseWithOutput] =
+    (
+      field[List[QueryResponse]]("queryResponse") zip field[OutputType.Value]("output")
+    ).xmap((QueryResponseWithOutput.apply _).tupled)(Function.unlift(QueryResponseWithOutput.unapply))
 
 }

@@ -21,13 +21,13 @@ object Dependencies {
     val slickEffect = "0.3.0"
     val postgres = "42.1.4"
 
-    val endpoints = "0.10.0"
+    val endpoints = "0.15.0"
     val cats = "2.1.1"
     val catsEffect = "2.1.3"
     val mouse = "0.20"
     val monocle = "2.0.0"
-    val circe = "0.11.1"
-    val http4s = "0.20.10"
+    val circe = "0.13.0"
+    val http4s = "0.21.8"
 
     val silencer = "1.4.4"
     val kantanCsv = "0.6.0"
@@ -98,11 +98,11 @@ object Dependencies {
   private val postgres = Seq("org.postgresql" % "postgresql" % Versions.postgres)
 
   private val endpoints = Seq(
-    "org.julienrf" %% "endpoints-algebra"                % Versions.endpoints,
-    "org.julienrf" %% "endpoints-openapi"                % Versions.endpoints,
-    "org.julienrf" %% "endpoints-json-schema-generic"    % Versions.endpoints,
-    "org.julienrf" %% "endpoints-json-schema-circe"      % Versions.endpoints,
-    "org.julienrf" %% "endpoints-akka-http-server-circe" % Versions.endpoints
+    "org.julienrf" %% "endpoints-algebra"             % Versions.endpoints,
+    "org.julienrf" %% "endpoints-openapi"             % Versions.endpoints,
+    "org.julienrf" %% "endpoints-json-schema-generic" % Versions.endpoints,
+    "org.julienrf" %% "endpoints-json-schema-circe"   % Versions.endpoints,
+    "org.julienrf" %% "endpoints-akka-http-server"    % Versions.endpoints
   )
 
   private val cats = Seq(
