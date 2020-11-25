@@ -8,10 +8,12 @@ import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.BitcoinDataEndp
 import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{EthereumDataEndpoints, QuorumDataEndpoints}
 import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosDataEndpoints
 import tech.cryptonomic.conseil.api.routes.platform.discovery.PlatformDiscoveryEndpoints
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Field, QueryResponse}
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataStandardJsonCodecs.{
   anyDecoder,
   anyEncoder,
+  fieldDecoder,
+  fieldEncoder,
   queryResponseDecoder,
   queryResponseEncoder
 }
@@ -139,6 +141,19 @@ object OpenApiDoc
       ujsonSchema = new ujsonSchemas.JsonSchema[QueryResponse] {
         override def encoder = queryResponseEncoder
         override def decoder = queryResponseDecoder
+      },
+      docs = DocumentedJsonSchema.Primitive("Any - not yet supported")
+    )
+
+  /** Fields JSON schema implementation */
+  implicit override lazy val fieldSchema: JsonSchema[Field] =
+    new JsonSchema[Field](
+      ujsonSchema = new ujsonSchemas.JsonSchema[Field] {
+
+        override def encoder = fieldEncoder(formattedFieldSchema.ujsonSchema.encoder)
+
+        override def decoder = fieldDecoder(formattedFieldSchema.ujsonSchema.decoder)
+
       },
       docs = DocumentedJsonSchema.Primitive("Any - not yet supported")
     )

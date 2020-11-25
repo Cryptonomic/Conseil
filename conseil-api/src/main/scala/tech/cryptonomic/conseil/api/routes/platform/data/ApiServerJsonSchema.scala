@@ -8,8 +8,12 @@ import ApiDataStandardJsonCodecs.{
   customAnyEncoder => anyEncoder,
   queryResponseDecoder,
   queryResponseEncoder,
+  fieldDecoder,
+  fieldEncoder,
   Json
 }
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes
+import ujson.Value
 
 /** Trait with methods for converting from data types to Json */
 trait ApiServerJsonSchema extends JsonEntitiesFromSchemas with ApiDataJsonSchemas {
@@ -31,6 +35,16 @@ trait ApiServerJsonSchema extends JsonEntitiesFromSchemas with ApiDataJsonSchema
       override def encoder: Encoder[QueryResponse, Json] = queryResponseEncoder
 
       override def decoder: Decoder[Json, QueryResponse] = queryResponseDecoder
+
+    }
+
+  /** Fields JSON schema implementation */
+  implicit override lazy val fieldSchema: JsonSchema[DataTypes.Field] =
+    new JsonSchema[DataTypes.Field] {
+
+      override def encoder: Encoder[DataTypes.Field, Value] = fieldEncoder(formattedFieldSchema.encoder)
+
+      override def decoder: Decoder[Value, DataTypes.Field] = fieldDecoder(formattedFieldSchema.decoder)
 
     }
 

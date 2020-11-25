@@ -109,9 +109,11 @@ class LorreAppConfigTest extends AnyWordSpec with Matchers with EitherValues {
           "max-connections",
           "max-retries",
           "max-open-requests",
+          "max-connection-lifetime",
           "pipelining-limit",
+          "base-connection-backoff",
+          "max-connection-backoff",
           "idle-timeout",
-          "pool-implementation",
           "response-entity-subscription-timeout"
         )
 

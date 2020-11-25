@@ -14,12 +14,15 @@ trait ApiDataJsonSchemas extends generic.JsonSchemas {
   implicit def queryResponseSchema: JsonSchema[QueryResponse]
 
   /** API field schema */
-  implicit lazy val fieldSchema: JsonSchema[Field] =
-    genericJsonSchema[Field]
+  implicit def fieldSchema: JsonSchema[Field]
 
-  /** Format types schema */
+  /* needed to generically derive the formatted field schema */
   implicit lazy val formatTypesSchema: JsonSchema[FormatType.Value] =
     stringEnumeration(FormatType.values.toSeq)(_.toString)
+
+  /* derives an implementation for the formatted case class */
+  lazy val formattedFieldSchema: JsonSchema[FormattedField] =
+    genericJsonSchema[FormattedField]
 
   /** API query schema */
   implicit lazy val queryRequestSchema: JsonSchema[ApiQuery] =
@@ -83,8 +86,7 @@ trait ApiDataJsonSchemas extends generic.JsonSchemas {
 
   /** Query response schema with output type */
   implicit def queryResponseSchemaWithOutputType: JsonSchema[QueryResponseWithOutput] =
-    (
-      field[List[QueryResponse]]("queryResponse") zip field[OutputType.Value]("output")
-    ).xmap((QueryResponseWithOutput.apply _).tupled)(Function.unlift(QueryResponseWithOutput.unapply))
+    implicitly[JsonSchema[List[QueryResponse]]]
+      .xmap(QueryResponseWithOutput(_, OutputType.json))(_.queryResponse)
 
 }

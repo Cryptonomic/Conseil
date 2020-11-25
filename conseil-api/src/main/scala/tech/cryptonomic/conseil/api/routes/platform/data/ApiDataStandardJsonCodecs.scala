@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.api.routes.platform.data
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{QueryResponse}
 import endpoints.algebra.{Decoder, Encoder}
 import endpoints.{Invalid, Valid}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Field, FormattedField, SimpleField}
 
 /** Provides basic codecs from/to a specific json modeling (i.e. [[ujson]]) for specific types
   * exposed via the data api of conseil.
@@ -36,15 +37,15 @@ object ApiDataStandardJsonCodecs {
   /** Default implementation of the decoding of a totally arbitrary value */
   lazy val anyDecoder: Decoder[Json, Any] =
     // verify if strings are correclty decoded with no surroundng quotes, as "String"...
-    (json: Json) => Valid(json.value)
+    (json: Json) => Valid(json.strOpt.getOrElse(json.value))
 
   /** Default implementation to encode the [[QueryResponse]] */
   lazy val queryResponseEncoder: Encoder[QueryResponse, Json] =
     (a: QueryResponse) =>
       ujson.Obj.from(
-        a.mapValues {
-          case Some(value) => anyEncoder.encode(value)
-          case None => ujson.Null
+        a.map {
+          case (key, Some(value)) => key.toString -> anyEncoder.encode(value)
+          case (key, None) => key.toString -> ujson.Null
         }
       )
 
@@ -62,4 +63,23 @@ object ApiDataStandardJsonCodecs {
         case None =>
           Invalid(Seq(s"I can only convert proper json objects to an api query response. The input was $json"))
       }
+
+  /** Default implementation to encode a [[Field]]
+    *
+    * @param formattedEncoder an encoder specific to handle the case of a formatted (more complex) field
+    */
+  def fieldEncoder(implicit formattedEncoder: Encoder[FormattedField, Json]): Encoder[Field, Json] = {
+    case SimpleField(field) => ujson.Str(field)
+    case ff: FormattedField => formattedEncoder.encode(ff)
+  }
+
+  /** Default implementation to encode a [[Field]]
+    *
+    * @param formattedDecoder a decoder specific to handle the case of a formatted (more complex) field
+    */
+  def fieldDecoder(implicit formattedDecoder: Decoder[Json, FormattedField]): Decoder[Json, Field] = {
+    case ujson.Str(stringField) => Valid(SimpleField(stringField))
+    case formattedField => formattedDecoder.decode(formattedField)
+  }
+
 }
