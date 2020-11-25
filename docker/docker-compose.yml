@@ -94,6 +94,8 @@ services:
       # CONSEIL_LORRE_DB_PASSWORD:??? # (default bar)
       # CONSEIL_LORRE_DB_URL:???      # (default jdbc:postgresql://localhost:5432/postgres)
 
+      # CONSEIL_LORRE_FORK_DETECTION_ENABLED:true/false # (default true)
+
       # JVM_XMX:??? # (recommended -Xmx4G)
 
       # CONFIG_PATH:??? # (optional path to external configuration)
