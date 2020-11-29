@@ -9,14 +9,13 @@ import profig.JsonUtil
 import scribe.logstash.LogstashRecord
 import scribe.Execution.global
 import scribe.output.format.OutputFormat
-import scribe.output.{EmptyOutput, LogOutput}
+import scribe.output.{EmptyOutput, LogOutput, TextOutput}
 import scribe.writer.Writer
 import scribe.{LogRecord, MDC}
 import java.net.{URL => NetUrl}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scribe.output.TextOutput
 
 /** Configurations to format log entries as json.
   * It's based on the logstash schema, which we assume is in turn based on the
@@ -88,7 +87,7 @@ object JsonLogging {
       client match {
         case None =>
           Future.successful(
-            scribe.Platform.consoleWriter.write(record, new TextOutput(json), scribe.Platform.outputFormat())
+            scribe.Platform.consoleWriter.write(record, new TextOutput(json), OutputFormat.default)
           )
         case Some(cl) =>
           val content = Content.string(json, ContentType.`application/json`)
