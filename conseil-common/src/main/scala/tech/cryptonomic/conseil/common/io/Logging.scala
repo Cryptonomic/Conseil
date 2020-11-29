@@ -8,6 +8,7 @@ import scribe.format._
 import scribe.modify.LevelFilter
 import scribe.output.{Color, ColoredOutput}
 import pureconfig.generic.auto._
+import java.net.URL
 
 /** Defiinitions used to configure and use logging throughout the system */
 object Logging {
@@ -45,13 +46,41 @@ object Logging {
   /** Configuration for logging as read from a configuration file.
     * We expect to load configuration from a file which reflects this class structure.
     *
+    * Here follows a generic schema for the logging.conf file content
+    * Read the paramters detail for the meaning of the different values
+    *
+    * {{{
+    * muted: true/false
+    * output-level: "DEBUG" [OPTIONAL: if missing defaults to INFO]
+    * output-json-with-service-name: <my-application-instance-name> [OPTIONAL]
+    * ouput-to-logstash: <logstash-http-address> [OPTIONAL]
+    * loggers: [
+    *   {
+    *     name: "<logger-name>",
+    *     muted: true/false [OPTIONAL: if missing defaults to false]
+    *     from-env: "ENV_VAR_NAME_DEFINING_A_LEVEL" [OTIONAL: if missing, or if var unset, will read from level]
+    *     level: "INFO" [OPTIONAL: if missing, will read from env only, or ignore this logger]
+    *   }
+    *   , ...
+    * ]
+    * }}}
+    *
+    * The individual logger entries will override a logging threshold and is not needed to enable a logging
+    * category, which is considered on by default
+    *
+    *
     * @param muted when enabled, it will stop every logging from occurring, like sending to dev/null
     * @param loggers a list of configurations for specific loggers
+    * @param outputLevel the global threshold to append on the log
+    * @param outputJsonWithServiceName if defined, will output the log entries as json, using this name in a service attribute
+    * @param outputToLogstash when using json as output, will use this optional URL to send the entries in a logstash service
     */
   case class Config(
       muted: Boolean = false,
       loggers: List[LoggerConfig] = List.empty,
-      outputLevel: Option[String]
+      outputLevel: Option[String],
+      outputJsonWithServiceName: Option[String] = None,
+      outputToLogstash: Option[URL] = None
   )
 
   /** A single logger configuration.
@@ -90,24 +119,36 @@ object Logging {
   /* For the given config reads details about how to custom tailor individual loggers */
   private def configure(loggingConfig: Config) = {
     /* Assigns the same formatting to any logger by defining it on the parent root logger */
-    val formatted = Logger.root
-      .clearHandlers()
-      .withHandler(formatter = sharedFormatter, minimumLevel = loggingConfig.outputLevel.map(Level(_)))
+    /* Cross-check config values to assess the appropriate logging schema */
+    val configuredRootLogger =
+      (loggingConfig.muted, loggingConfig.outputJsonWithServiceName, loggingConfig.outputToLogstash) match {
+        case (true, _, _) =>
+          //remove anything
+          warn("Setting any logging to OFF")
+          Logger.root.clearHandlers().clearModifiers().withModifier(LevelFilter.ExcludeAll)
+        case (_, None, _) =>
+          //standard out logger with shared formatting for any child
+          Logger.root
+            .clearHandlers()
+            .withHandler(formatter = sharedFormatter, minimumLevel = loggingConfig.outputLevel.map(Level(_)))
+        case (_, Some(serviceName), logstashEndpoint) =>
+          //outputs json formatting, based on logstash standards, possibly sending to an external server directly
+          val jsonHandler = JsonLogging.JsonWriter(serviceName, logstash = logstashEndpoint)
+          Logger.root
+            .clearHandlers()
+            .withHandler(writer = jsonHandler, minimumLevel = loggingConfig.outputLevel.map(Level(_)))
+      }
 
-    val modified =
-      if (loggingConfig.muted)
-        formatted
-          .clearModifiers()
-          .withModifier(LevelFilter.ExcludeAll)
-      else formatted
+    configuredRootLogger.replace()
 
-    modified.replace()
-
-    /* Apply any custom config */
+    /* Apply any custom config to the individual logger */
     loggingConfig.loggers.foreach {
       case loggerConf =>
         Logger(loggerConf.name)
           .clearHandlers()
+          /* Accept an explicit flag to mute, independently of included level
+           * It can be implicitly muted if an environment value is searched and not found, with no explicit default
+           */
           .withModifier(
             if (loggerConf.muted) LevelFilter.ExcludeAll
             else loggerConf.logLevel.map(LevelFilter >= _).getOrElse(LevelFilter.ExcludeAll)
