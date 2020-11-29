@@ -2,10 +2,7 @@ package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
 import java.sql.Timestamp
 
-import org.scalatest.OptionValues
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.concurrent.IntegrationPatience
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.BitcoinInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.bitcoin.BitcoinTypes.BitcoinBlockHash
@@ -13,18 +10,15 @@ import tech.cryptonomic.conseil.common.bitcoin.Tables
 import tech.cryptonomic.conseil.common.bitcoin.Tables._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.Query
-import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
+import tech.cryptonomic.conseil.common.testkit.{ConseilSpec, InMemoryDatabase}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 class BitcoinDataOperationsTest
-    extends AnyWordSpec
-    with Matchers
+    extends ConseilSpec
     with InMemoryDatabase
     with BitcoinInMemoryDatabaseSetup
-    with ScalaFutures
-    with OptionValues
     with ConseilLogSupport
     with IntegrationPatience
     with BitcoinDataOperationsTest.Fixtures {

@@ -3,15 +3,11 @@ package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 import java.sql.Timestamp
 
 import com.softwaremill.diffx.scalatest.DiffMatcher
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.OptionValues
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
+import org.scalatest.concurrent.IntegrationPatience
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
-import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, _}
-import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
+import tech.cryptonomic.conseil.common.testkit.{ConseilSpec, InMemoryDatabase}
 import tech.cryptonomic.conseil.common.tezos.Tables.{
   AccountsHistoryRow,
   AccountsRow,
@@ -26,14 +22,10 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{makeAccountId, TezosBlo
 import scala.concurrent.duration._
 
 class TezosDataOperationsTest
-    extends AnyWordSpec
-    with Matchers
+    extends ConseilSpec
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
-    with ScalaFutures
-    with OptionValues
     with DiffMatcher
-    with ConseilLogSupport
     with IntegrationPatience {
 
   import scala.concurrent.ExecutionContext.Implicits.global

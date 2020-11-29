@@ -2,13 +2,12 @@ package tech.cryptonomic.conseil.api.routes.platform.data
 
 import java.time.Instant
 
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OutputType, QueryResponseWithOutput}
 import ujson.{Value => Json}
 import endpoints.akkahttp.server.Endpoints
 
-class ApiDataHelpersTest extends AnyWordSpec with Matchers {
+class ApiDataHelpersTest extends ConseilSpec {
 
   private case class TestEntity(value: String)
 

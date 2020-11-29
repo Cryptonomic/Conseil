@@ -12,7 +12,7 @@ object Dependencies {
     val akkaHttpJson = "1.35.2"
     val akkaHttpCors = "1.1.0"
 
-    val scribe = "3.0.4"
+    val scribe = "3.1.3"
 
     val slick = "3.3.0"
     val slickPG = "0.18.0"

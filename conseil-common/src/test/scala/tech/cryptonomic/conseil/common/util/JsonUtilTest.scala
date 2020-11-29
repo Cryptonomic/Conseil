@@ -4,8 +4,6 @@ import org.scalatest.Inspectors._
 import JsonUtil._
 import JsonUtil.JsonString.InvalidJsonString
 import com.stephenn.scalatest.jsonassert.JsonMatchers
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class JsonUtilTest extends ConseilSpec with JsonMatchers {

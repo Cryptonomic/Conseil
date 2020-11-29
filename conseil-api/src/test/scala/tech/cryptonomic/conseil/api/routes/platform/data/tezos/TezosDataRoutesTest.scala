@@ -4,25 +4,25 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.stephenn.scalatest.jsonassert.JsonMatchers
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.BeforeAndAfterEach
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
-import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, TransparentUnitTransformation}
+import tech.cryptonomic.conseil.api.metadata.{
+  AttributeValuesCacheConfiguration,
+  MetadataService,
+  TransparentUnitTransformation
+}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse, SimpleField}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 import scala.concurrent.{ExecutionContext, Future}
 
 class TezosDataRoutesTest
-    extends AnyWordSpec
-    with Matchers
+    extends ConseilSpec
     with ScalatestRouteTest
-    with ScalaFutures
     with JsonMatchers
     with MockFactory
     with BeforeAndAfterEach

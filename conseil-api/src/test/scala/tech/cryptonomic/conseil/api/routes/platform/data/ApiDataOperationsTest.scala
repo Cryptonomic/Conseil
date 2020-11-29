@@ -1,10 +1,9 @@
 package tech.cryptonomic.conseil.api.routes.platform.data
 
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OperationType, Predicate}
 
-class ApiDataOperationsTest extends AnyWordSpec with Matchers {
+class ApiDataOperationsTest extends ConseilSpec {
 
   "ApiDataOperations" should {
       "sanitizeFields" in {
