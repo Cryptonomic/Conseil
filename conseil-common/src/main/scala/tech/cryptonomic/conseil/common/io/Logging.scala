@@ -164,7 +164,8 @@ object Logging {
   trait ConseilLogSupport extends scribe.Logging {
     ConseilLogger.prepare(logger)
 
-    if (logger.includes(Level.Debug)) logger.debug("Debug level enabled for this logger")
+    if (logger.includes(Level.Debug))
+      logger.debug(s"Debug level enabled for this logger: ${getClass().getCanonicalName}")
   }
 
   /** Use this to build custom logger instances as an alternative to
