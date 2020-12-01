@@ -30,6 +30,7 @@ object SymbolSourceLabels {
 object OperationBalances {
 
   import SymbolSourceLabels._
+  import cats.implicits._
 
   //single polymorphic instance
   implicit def opsBalanceUpdatesGetter[OP <: Operation] =
@@ -37,24 +38,26 @@ object OperationBalances {
       case b: BlockTagged[OP] =>
         b.content match {
           case e: Endorsement =>
-            Map(b.updateContent(OPERATION_SOURCE) -> e.metadata.balance_updates)
+            Map(b.as(OPERATION_SOURCE) -> e.metadata.balance_updates)
           case nr: SeedNonceRevelation =>
-            Map(b.updateContent(OPERATION_SOURCE) -> nr.metadata.balance_updates)
+            Map(b.as(OPERATION_SOURCE) -> nr.metadata.balance_updates)
           case aa: ActivateAccount =>
-            Map(b.updateContent(OPERATION_SOURCE) -> aa.metadata.balance_updates)
+            Map(b.as(OPERATION_SOURCE) -> aa.metadata.balance_updates)
           case r: Reveal =>
-            Map(b.updateContent(OPERATION_SOURCE) -> r.metadata.balance_updates)
+            Map(b.as(OPERATION_SOURCE) -> r.metadata.balance_updates)
           case t: Transaction =>
             Map(
-              b.updateContent(OPERATION_SOURCE) -> t.metadata.balance_updates,
-              b.updateContent(OPERATION_RESULT_SOURCE) -> t.metadata.operation_result.balance_updates
+              b.as(OPERATION_SOURCE) -> t.metadata.balance_updates,
+              b.as(OPERATION_RESULT_SOURCE) -> t.metadata.operation_result.balance_updates
                     .getOrElse(List.empty)
+                    .filterNot(t.metadata.balance_updates.toSet)
             )
           case o: Origination =>
             Map(
-              b.updateContent(OPERATION_SOURCE) -> o.metadata.balance_updates,
-              b.updateContent(OPERATION_RESULT_SOURCE) -> o.metadata.operation_result.balance_updates
+              b.as(OPERATION_SOURCE) -> o.metadata.balance_updates,
+              b.as(OPERATION_RESULT_SOURCE) -> o.metadata.operation_result.balance_updates
                     .getOrElse(List.empty)
+                    .filterNot(o.metadata.balance_updates.toSet)
             )
           case _ =>
             Map.empty

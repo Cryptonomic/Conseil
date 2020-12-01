@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.common.tezos
 import java.time.{Instant, ZonedDateTime}
 import scala.util.Try
 import cats.Functor
+import cats.syntax.functor._
 
 /**
   * Classes used for deserializing Tezos node RPC results.
@@ -484,7 +485,10 @@ object TezosTypes {
   ) {
     val asTuple = (ref.hash, ref.level, ref.timestamp, ref.cycle, ref.period, content)
 
-    /** Helper method for updating content of the class */
+    /** Helper method for updating content of the class
+      *
+      */
+    @deprecated("Please use the cats.Functor syntax to call .as(newContent)")
     def updateContent[A](newContent: A): BlockTagged[A] = this.copy(content = newContent)
   }
 
