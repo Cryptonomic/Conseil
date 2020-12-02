@@ -7,7 +7,12 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryValidationEr
 /** Trait adding validation for query  */
 trait Validation {
   self: algebra.Responses =>
+  import Validation.QueryValidating
 
   /** Method for validating query request */
-  def validated[A](response: Response[A], invalidDocs: Documentation): Response[Either[List[QueryValidationError], A]]
+  def validated[A](response: Response[A], invalidDocs: Documentation): Response[QueryValidating[A]]
+}
+
+object Validation {
+  type QueryValidating[A] = Either[List[QueryValidationError], A]
 }

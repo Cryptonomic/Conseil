@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.api.routes.openapi
 
-import cats.Functor
 import endpoints.algebra.Documentation
 import endpoints.openapi
 import endpoints.openapi.model.{Info, MediaType, OpenApi, Schema}
@@ -9,6 +8,15 @@ import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.BitcoinDataEndp
 import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{EthereumDataEndpoints, QuorumDataEndpoints}
 import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosDataEndpoints
 import tech.cryptonomic.conseil.api.routes.platform.discovery.PlatformDiscoveryEndpoints
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Field, QueryResponse}
+import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataStandardJsonCodecs.{
+  anyDecoder,
+  anyEncoder,
+  fieldDecoder,
+  fieldEncoder,
+  queryResponseDecoder,
+  queryResponseEncoder
+}
 
 /** OpenAPI documentation object */
 object OpenApiDoc
@@ -18,8 +26,8 @@ object OpenApiDoc
     with QuorumDataEndpoints
     with PlatformDiscoveryEndpoints
     with AppInfoEndpoint
-    with openapi.model.OpenApiSchemas
-    with openapi.JsonSchemaEntities
+    with openapi.Endpoints
+    with openapi.JsonEntitiesFromSchemas
     with openapi.BasicAuthentication {
 
   /** OpenAPI definition */
@@ -78,41 +86,31 @@ object OpenApiDoc
 
   /** Function for validation definition in documentation which appends DocumentedResponse to the list of possible results from the query.
     * In this case if query fails to validate it will return 400 Bad Request.
-    * */
+    */
   override def validated[A](
       response: List[DocumentedResponse],
-      invalidDocs: Documentation
+      invalidDocs: endpoints.algebra.Documentation
   ): List[DocumentedResponse] =
-    response :+ DocumentedResponse(
-          status = 400,
-          documentation = invalidDocs.getOrElse(""),
-          content = Map(
-            "application/json" -> MediaType(schema = Some(Schema.Array(Schema.simpleString, None)))
-          )
-        ) :+ DocumentedResponse(
-          status = 200,
-          documentation = invalidDocs.getOrElse(""),
-          content = Map(
-            "application/json" -> MediaType(None),
-            "text/csv" -> MediaType(None),
-            "text/plain" -> MediaType(None)
+    response ++ List(
+          DocumentedResponse(
+            status = 400,
+            documentation = invalidDocs.getOrElse(""),
+            headers = DocumentedHeaders(List.empty),
+            content = Map(
+              "application/json" -> MediaType(schema = Some(Schema.Array(Left(Schema.simpleString), None, None)))
+            )
+          ),
+          DocumentedResponse(
+            status = 200,
+            documentation = invalidDocs.getOrElse(""),
+            headers = DocumentedHeaders(List.empty),
+            content = Map(
+              "application/json" -> MediaType(None),
+              "text/csv" -> MediaType(None),
+              "text/plain" -> MediaType(None)
+            )
           )
         )
-
-  /** Documented JSON schema for Any */
-  implicit override def anySchema: DocumentedJsonSchema = DocumentedJsonSchema.Primitive("Any - not yet supported")
-
-  /** Documented JSON schema for query response */
-  implicit override def queryResponseSchema: DocumentedJsonSchema =
-    DocumentedJsonSchema.Primitive("Any - not yet supported")
-
-  /** Documented query string for functor */
-  implicit override def qsFunctor: Functor[QueryString] = new Functor[QueryString] {
-    override def map[From, To](f: DocumentedQueryString)(map: From => To): DocumentedQueryString = f
-  }
-
-  implicit override def queryResponseSchemaWithOutputType: DocumentedJsonSchema =
-    DocumentedJsonSchema.Primitive("Any - not yet supported")
 
   override def validatedAttributes[A](
       response: List[DocumentedResponse],
@@ -121,12 +119,43 @@ object OpenApiDoc
     response :+ DocumentedResponse(
           status = 400,
           documentation = invalidDocs.getOrElse(""),
+          headers = DocumentedHeaders(List.empty),
           content = Map(
-            "application/json" -> MediaType(schema = Some(Schema.Array(Schema.simpleString, None)))
+            "application/json" -> MediaType(schema = Some(Schema.Array(Left(Schema.simpleString), None, None)))
           )
         )
 
-  /** API field schema */
-  implicit override val fieldSchema: DocumentedJsonSchema =
-    DocumentedJsonSchema.Primitive("Either String or FormattedField")
+  /** Documented JSON schema for Any */
+  implicit override lazy val anySchema: JsonSchema[Any] =
+    new JsonSchema[Any](
+      ujsonSchema = new ujsonSchemas.JsonSchema[Any] {
+        override def encoder = anyEncoder
+        override def decoder = anyDecoder
+      },
+      docs = DocumentedJsonSchema.Primitive("Any - not yet supported")
+    )
+
+  /** Documented JSON schema for query response */
+  implicit override lazy val queryResponseSchema: JsonSchema[QueryResponse] =
+    new JsonSchema[QueryResponse](
+      ujsonSchema = new ujsonSchemas.JsonSchema[QueryResponse] {
+        override def encoder = queryResponseEncoder
+        override def decoder = queryResponseDecoder
+      },
+      docs = DocumentedJsonSchema.Primitive("Any - not yet supported")
+    )
+
+  /** Fields JSON schema implementation */
+  implicit override lazy val fieldSchema: JsonSchema[Field] =
+    new JsonSchema[Field](
+      ujsonSchema = new ujsonSchemas.JsonSchema[Field] {
+
+        override def encoder = fieldEncoder(formattedFieldSchema.ujsonSchema.encoder)
+
+        override def decoder = fieldDecoder(formattedFieldSchema.ujsonSchema.decoder)
+
+      },
+      docs = DocumentedJsonSchema.Primitive("Any - not yet supported")
+    )
+
 }

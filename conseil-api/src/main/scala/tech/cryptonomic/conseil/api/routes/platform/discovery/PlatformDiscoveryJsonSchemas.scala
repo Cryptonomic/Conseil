@@ -28,9 +28,9 @@ private[discovery] trait PlatformDiscoveryJsonSchemas extends generic.JsonSchema
 
   /** Data type JSON schema */
   implicit lazy val dataTypeSchema: JsonSchema[DataType.Value] =
-    enumeration(DataType.values.toSeq)(_.toString)
+    stringEnumeration(DataType.values.toSeq)(_.toString)
 
   /** Key type JSON schema */
   implicit lazy val keyTypeSchema: JsonSchema[KeyType.Value] =
-    enumeration(KeyType.values.toSeq)(_.toString)
+    stringEnumeration(KeyType.values.toSeq)(_.toString)
 }
