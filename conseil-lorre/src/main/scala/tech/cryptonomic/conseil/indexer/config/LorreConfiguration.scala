@@ -21,7 +21,8 @@ final case class LorreConfiguration(
     depth: Depth,
     headHash: Option[String],
     chainEvents: List[ChainEvent],
-    blockRightsFetching: BakingAndEndorsingRights
+    blockRightsFetching: BakingAndEndorsingRights,
+    enabledFeatures: Features
 )
 
 /** configuration for fetching baking and endorsing rights */
@@ -31,10 +32,10 @@ final case class BakingAndEndorsingRights(
     cyclesToFetch: Int,
     cycleSize: Int,
     fetchSize: Int,
-    updateSize: Int,
-    enabled: Boolean
+    updateSize: Int
 )
 
+/** details how to handle data pagination when fetching from the chain */
 final case class BatchFetchConfiguration(
     accountConcurrencyLevel: Int,
     blockOperationsConcurrencyLevel: Int,
@@ -42,6 +43,12 @@ final case class BatchFetchConfiguration(
     blockPageProcessingTimeout: FiniteDuration,
     accountPageProcessingTimeout: FiniteDuration,
     delegatePageProcessingTimeout: FiniteDuration
+)
+
+/** custom select specific features to be enabled when chain-indexing */
+final case class Features(
+    blockRightsFetchingIsOn: Boolean,
+    forkHandlingIsOn: Boolean
 )
 
 /** sodium library references */

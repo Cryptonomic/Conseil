@@ -65,8 +65,10 @@ class TezosIndexer private (
     with LorreIndexer
     with LorreProgressLogging {
 
+  val featureFlags = lorreConf.enabledFeatures
+
   /** Schedules method for fetching baking rights */
-  if (lorreConf.blockRightsFetching.enabled)
+  if (featureFlags.blockRightsFetchingIsOn)
     system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
       rightsProcessor.writeFutureRights()
     )
@@ -145,8 +147,8 @@ class TezosIndexer private (
     */
   private def processFork(maxIndexedLevel: BlockLevel): Future[Option[AccountResetEvents]] = {
     lazy val emptyOutcome = Future.successful(Option.empty)
-    //nothing to check if no block was indexed yet
-    if (maxIndexedLevel != indexedData.defaultBlockLevel)
+    //nothing to check if no block was indexed yet or if the feature is off
+    if (featureFlags.forkHandlingIsOn && maxIndexedLevel != indexedData.defaultBlockLevel)
       forkHandler.handleFork(maxIndexedLevel).flatMap {
         case None =>
           logger.debug(s"No fork detected up to $maxIndexedLevel")
