@@ -37,6 +37,7 @@ object Lorre extends App with LorreAppConfig with LorreInfoLogging {
     verbose
   ) = config.merge
 
+  /* Sadly, we're currently forced to do this to actually configure the loggers */
   Logging.init()
 
   //whatever happens we try to clean up

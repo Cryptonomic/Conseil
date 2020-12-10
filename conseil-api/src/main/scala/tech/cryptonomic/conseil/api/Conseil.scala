@@ -18,11 +18,12 @@ import scala.util.Failure
 
 object Conseil extends App with ConseilAppConfig with FailFastCirceSupport with ConseilMainOutput {
 
+  /* Sadly, we're currently forced to do this to actually configure the loggers */
   Logging.init()
 
   loadApplicationConfiguration(args) match {
     case Left(errors) =>
-      //nothing to do
+      //nothing to do, take note that the errors were already logged in the previous call
       logger.error("There is an error in the provided configuration")
     case Right(config) =>
       implicit val system: ActorSystem = ActorSystem("conseil-system")
