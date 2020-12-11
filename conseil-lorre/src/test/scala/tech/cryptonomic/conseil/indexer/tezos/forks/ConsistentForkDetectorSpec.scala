@@ -11,12 +11,17 @@ import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.ScalacheckShapeless._
 import monocle.macros.GenLens
 import ConsistentForkDetector.ConsistentDetectionRepeatingFailure
+import tech.cryptonomic.conseil.common.testkit.LoggingTestSupport
 
 /** Here we verify the properties of the [[ConsistentForkDetector]] implementation.
   * This spec works essentially in the same way as
   * the [[tech.cryptonomic.conseil.indexer.forks.ForkDetectorSpec]]
   */
-class ConsistentForkDetectorSpec extends AnyPropSpec with ScalaCheckDrivenPropertyChecks with Matchers {
+class ConsistentForkDetectorSpec
+    extends AnyPropSpec
+    with ScalaCheckDrivenPropertyChecks
+    with Matchers
+    with LoggingTestSupport {
 
   import Fixtures._
   import TezosDataGenerationKit.DomainModelGeneration._

@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
-import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
@@ -13,13 +12,14 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.GenesisMetadata
+import tech.cryptonomic.conseil.common.testkit.LoggingTestSupport
 
 class TezosNodeOperatorTest
     extends AnyFlatSpec
     with MockFactory
     with Matchers
-    with LazyLogging
     with ScalaFutures
+    with LoggingTestSupport
     with IntegrationPatience {
   import ExecutionContext.Implicits.global
 

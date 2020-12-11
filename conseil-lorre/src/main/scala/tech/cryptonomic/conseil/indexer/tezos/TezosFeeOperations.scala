@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
-import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperations => TezosDb}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -10,7 +10,7 @@ import scala.concurrent.duration.FiniteDuration
 /**
   * Helper classes and functions used for average fee calculations.
   */
-private[tezos] object TezosFeeOperations extends LazyLogging {
+private[tezos] object TezosFeeOperations extends ConseilLogSupport {
   // We are getting access to the same database instance, but it should not be a shared object in a long-run.
   // After the splitting we should refactor this part.
   import tech.cryptonomic.conseil.common.util.DatabaseUtil.{lorreDb => db}
@@ -45,7 +45,7 @@ private[tezos] object TezosFeeOperations extends LazyLogging {
     } yield dbWrites
 
     db.run(computeAndStore).andThen {
-      case Success(Some(written)) => logger.info("Wrote {} average fees to the database.", written)
+      case Success(Some(written)) => logger.info(s"Wrote $written average fees to the database.")
       case Success(None) => logger.info("Wrote average fees to the database.")
       case Failure(e) => logger.error("Could not write average fees to the database because", e)
     }

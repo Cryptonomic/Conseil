@@ -2,12 +2,12 @@ package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.metadata.MetadataService
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.metadata
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{makeAccountId, TezosBlockHash}
@@ -28,7 +28,7 @@ case class TezosDataRoutes(
     implicit apiExecutionContext: ExecutionContext
 ) extends TezosDataHelpers
     with ApiDataRoutes
-    with LazyLogging {
+    with ConseilLogSupport {
 
   import cats.instances.either._
   import cats.instances.future._

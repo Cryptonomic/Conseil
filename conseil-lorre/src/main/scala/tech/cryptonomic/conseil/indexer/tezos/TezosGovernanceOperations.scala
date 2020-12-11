@@ -1,12 +1,12 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.VotingOperations._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
 import scala.util.Try
-import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.DBIO
 import slick.jdbc.PostgresProfile.api.Database
 import cats.implicits._
@@ -14,7 +14,7 @@ import cats.implicits._
 /** Process blocks and voting data to compute details for
   * the governance-related cycles
   */
-object TezosGovernanceOperations extends LazyLogging {
+object TezosGovernanceOperations extends ConseilLogSupport {
 
   /** Collects all relevant data for the governance
     * voting process
@@ -178,10 +178,8 @@ object TezosGovernanceOperations extends LazyLogging {
     //find blocks for a specific proposal under scrutiny, relevant for counting ballots
     val votingBlocks = activeProposalsBlocks.collect { case (block, Some(protocol)) => block }.toList
 
-    logger.info(
-      "There are {} blocks related to testing vote and proposal vote periods.",
-      if (votingBlocks.nonEmpty) String.valueOf(votingBlocks.size) else "no"
-    )
+    val logVotingSize = if (votingBlocks.nonEmpty) String.valueOf(votingBlocks.size) else "no"
+    logger.info(s"There are $logVotingSize blocks related to testing vote and proposal vote periods.")
 
     //main algorithm
     val cycles = activeProposalsBlocks.keys
@@ -332,7 +330,7 @@ object TezosGovernanceOperations extends LazyLogging {
           case Voting.Vote("nay") => (yays, nays + rolls, passes)
           case Voting.Vote("pass") => (yays, nays, passes + rolls)
           case Voting.Vote(notSupported) =>
-            logger.error("Not supported vote type {}", notSupported)
+            logger.error(s"Not supported vote type $notSupported")
             (yays, nays, passes)
         }
     }

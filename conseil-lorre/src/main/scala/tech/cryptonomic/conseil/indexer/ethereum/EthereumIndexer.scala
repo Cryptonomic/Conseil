@@ -6,7 +6,6 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 
 import cats.effect.{IO, Resource}
-import com.typesafe.scalalogging.LazyLogging
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.middleware.Retry
 import slick.jdbc.PostgresProfile.api._
@@ -30,8 +29,7 @@ import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 class EthereumIndexer(
     lorreConf: LorreConfiguration,
     ethereumConf: EthereumConfiguration
-) extends LazyLogging
-    with LorreIndexer
+) extends LorreIndexer
     with LorreProgressLogging {
 
   /**
@@ -94,7 +92,7 @@ class EthereumIndexer(
               * Currently, it only contains the blocks. But it can be extended to
               * handle multiple computations.
               */
-            IO.delay(logger.info(s"Start Lorre for Ethereum")) *>
+            IO.delay(logger.info("Start Lorre for Ethereum")) *>
               ethereumOperations.loadBlocksAndLogs(lorreConf.depth).compile.drain
           }
       )

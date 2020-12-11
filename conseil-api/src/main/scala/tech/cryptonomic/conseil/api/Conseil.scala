@@ -3,11 +3,11 @@ package tech.cryptonomic.conseil.api
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
-import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import tech.cryptonomic.conseil.api.config.{ConseilAppConfig, ConseilConfiguration}
 import tech.cryptonomic.conseil.api.util.Retry.retry
 import tech.cryptonomic.conseil.api.util.RetryStrategy.retryGiveUpStrategy
+import tech.cryptonomic.conseil.common.io.Logging
 import tech.cryptonomic.conseil.common.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.common.config._
 
@@ -16,11 +16,15 @@ import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor}
 import scala.language.postfixOps
 import scala.util.Failure
 
-object Conseil extends App with LazyLogging with ConseilAppConfig with FailFastCirceSupport with ConseilMainOutput {
+object Conseil extends App with ConseilAppConfig with FailFastCirceSupport with ConseilMainOutput {
+
+  /* Sadly, we're currently forced to do this to actually configure the loggers */
+  Logging.init()
 
   loadApplicationConfiguration(args) match {
     case Left(errors) =>
-    //nothing to do
+      //nothing to do, take note that the errors were already logged in the previous call
+      logger.error("There is an error in the provided configuration")
     case Right(config) =>
       implicit val system: ActorSystem = ActorSystem("conseil-system")
       implicit val materializer: ActorMaterializer = ActorMaterializer()

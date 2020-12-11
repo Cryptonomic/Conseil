@@ -5,12 +5,8 @@ import java.time.LocalDateTime
 
 import cats.effect.{ContextShift, IO}
 import com.softwaremill.diffx.scalatest.DiffMatcher
-import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.OptionValues
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.concurrent.IntegrationPatience
 import slick.dbio
 import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.api.{BitcoinInMemoryDatabaseSetup, TezosInMemoryDatabaseSetup}
@@ -24,7 +20,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
 import tech.cryptonomic.conseil.common.generic.chain.DBIORunner
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, _}
 import tech.cryptonomic.conseil.common.metadata._
-import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
+import tech.cryptonomic.conseil.common.testkit.{ConseilSpec, InMemoryDatabase}
 import tech.cryptonomic.conseil.common.tezos.{Fork, Tables => TezosT}
 
 import scala.concurrent.duration._
@@ -32,17 +28,13 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
 class GenericPlatformDiscoveryOperationsTest
-    extends AnyWordSpec
+    extends ConseilSpec
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
     with BitcoinInMemoryDatabaseSetup
     with MockFactory
-    with Matchers
-    with ScalaFutures
-    with OptionValues
     with DiffMatcher
-    with IntegrationPatience
-    with LazyLogging {
+    with IntegrationPatience {
 
   import slick.jdbc.PostgresProfile.api._
   import tech.cryptonomic.conseil.common.config.Platforms._

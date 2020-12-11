@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.indexer.tezos.bigmaps
 
 import java.sql.Timestamp
 
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatest.concurrent.IntegrationPatience
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
@@ -18,16 +18,13 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperationsTestFixtures, TezosInMemoryDatabaseSetup}
 import com.softwaremill.diffx.scalatest.DiffMatcher._
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class BigMapsOperationsTest
-    extends AnyWordSpec
+    extends ConseilSpec
     with TezosDatabaseOperationsTestFixtures
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
-    with Matchers
-    with ScalaFutures
     with IntegrationPatience {
 
   "The big-maps operations" should {

@@ -1,11 +1,10 @@
 package tech.cryptonomic.conseil.common.util
 
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.Predicate
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.OperationType
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class DatabaseUtilTest extends AnyWordSpec with Matchers {
+class DatabaseUtilTest extends ConseilSpec {
 
   "Database utils query builder" should {
       val sut = DatabaseUtil.QueryBuilder

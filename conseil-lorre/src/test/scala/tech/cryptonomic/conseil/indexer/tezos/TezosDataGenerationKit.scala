@@ -277,6 +277,7 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
         DBSafe(arbitraryBalance) <- databaseFriendlyBigDecimalGenerator
         arbitraryScript <- Gen.option(databaseFriendlyStringGenerator)
         arbitraryStorage <- Gen.option(databaseFriendlyStringGenerator)
+        arbitraryScriptHash <- Gen.option(databaseFriendlyStringGenerator)
       } yield
         ForkValid(
           totallyArbitrary.copy(
@@ -284,6 +285,7 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
             balance = arbitraryBalance,
             script = arbitraryScript.map(_.value),
             storage = arbitraryStorage.map(_.value),
+            scriptHash = arbitraryScriptHash.map(_.value),
             manager = arbitraryB58COption(0),
             delegateValue = arbitraryB58COption(1),
             invalidatedAsof = None,

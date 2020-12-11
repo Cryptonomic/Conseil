@@ -8,16 +8,16 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.Materializer
 import cats.effect.IO
 import cats.effect.concurrent.Ref
-import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import pureconfig.error.{ConfigReaderFailures, ThrowableFailure}
 import pureconfig.generic.auto._
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.api.config.NautilusCloudConfiguration
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-object Security extends ErrorAccumulatingCirceSupport with LazyLogging {
+object Security extends ErrorAccumulatingCirceSupport with ConseilLogSupport {
 
   /** Keys cache */
   private val nautilusCloudKeys: Ref[IO, Set[String]] = Ref.of[IO, Set[String]](Set.empty).unsafeRunSync()

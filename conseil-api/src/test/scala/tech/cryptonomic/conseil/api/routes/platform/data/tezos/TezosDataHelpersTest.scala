@@ -6,9 +6,9 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import tech.cryptonomic.conseil.common.tezos.Fork
 import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
-import ujson.{Value => Json}
+import tech.cryptonomic.conseil.common.testkit.LoggingTestSupport
 
-class TezosDataHelpersTest extends TezosDataHelpers with AnyWordSpecLike with Matchers {
+class TezosDataHelpersTest extends TezosDataHelpers with AnyWordSpecLike with Matchers with LoggingTestSupport {
 
   "TezosDataHelpers" should {
       val encodeAny = anySchema.encoder.encode _

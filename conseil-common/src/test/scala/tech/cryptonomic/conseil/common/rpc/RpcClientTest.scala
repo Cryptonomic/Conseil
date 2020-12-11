@@ -8,11 +8,10 @@ import fs2.Stream
 import io.circe.generic.auto._
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.circe.CirceEntityEncoder._
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.rpc.RpcClient._
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class RpcClientTest extends AnyWordSpec with Matchers {
+class RpcClientTest extends ConseilSpec {
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 

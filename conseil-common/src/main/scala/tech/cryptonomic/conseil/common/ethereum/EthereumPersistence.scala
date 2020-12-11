@@ -5,9 +5,9 @@ import java.time.Instant
 
 import cats.Id
 import cats.effect.{Concurrent, Resource}
-import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.util.Conversion
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction}
@@ -18,7 +18,7 @@ import tech.cryptonomic.conseil.common.ethereum.domain.{Contract, Token}
 /**
   * Ethereum persistence into the database using Slick.
   */
-class EthereumPersistence[F[_]: Concurrent] extends LazyLogging {
+class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
 
   /**
     * SHA-3 signature for: Transfer(address,address,uint256)

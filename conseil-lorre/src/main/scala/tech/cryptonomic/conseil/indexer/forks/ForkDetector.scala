@@ -2,7 +2,6 @@ package tech.cryptonomic.conseil.indexer.forks
 
 import cats._
 import cats.implicits._
-import com.typesafe.scalalogging.LazyLogging
 import ForkDetector._
 
 /** Definitions and common utilities for fork-detection */
@@ -54,7 +53,7 @@ object ForkDetector {
 class ForkDetector[Eff[_]: Monad, BlockId: Eq](
     indexerSearch: SearchBlockId[Eff, BlockId],
     nodeSearch: SearchBlockId[Eff, BlockId]
-) extends LazyLogging {
+) {
 
   /** Extract blocks information from local and remote data for a specific level
     * checking if they match.

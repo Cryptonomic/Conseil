@@ -1,13 +1,13 @@
 package tech.cryptonomic.conseil.indexer.tezos.bigmaps
 
-import com.typesafe.scalalogging.LazyLogging
 import com.github.tminglei.slickpg.ExPostgresProfile
 
 import scala.concurrent.ExecutionContext
 import scala.collection.immutable.TreeMap
 import cats.implicits._
-import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
+import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, Contract, ContractId, Decimal, ParametersCompatibility}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Contract.BigMapUpdate
 import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
@@ -18,12 +18,13 @@ import TezosOptics.Operations.{
   extractAppliedTransactions,
   extractAppliedTransactionsResults
 }
+import scribe._
 
 /** Defines big-map-diffs specific handling, from block data extraction to database storage
   *
   * @param profile is the actual profile needed to define database operations
   */
-case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) extends LazyLogging {
+case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) extends ConseilLogSupport {
   import profile.api._
 
   /** Create an action to find and copy big maps based on the diff contained in the blocks
@@ -34,13 +35,11 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     */
   def copyContent(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
     val diffsPerBlock = blocks.map(b => b.data -> TezosOptics.Blocks.acrossBigMapDiffCopy.getAll(b))
-    if (logger.underlying.isDebugEnabled()) {
+    if (logger.includes(Level.Debug)) {
       diffsPerBlock.foreach {
         case (blockData, diffs) if diffs.nonEmpty =>
           logger.debug(
-            "For block hash {}, I'm about to copy the following big maps data: \n\t{}",
-            blockData.hash.value,
-            diffs.mkString(", ")
+            s"For block hash ${blockData.hash.value}, I'm about to copy the following big maps data: \n\t${diffs.mkString(", ")}"
           )
         case _ =>
       }
@@ -83,12 +82,10 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     )
 
     DBIO.sequence(writesByLevel).map { upserts =>
-      val all = upserts.fold(Some(0))(_ |+| _)
-      logger.info(
-        "{} big maps will be actually copied in the db.",
-        all.fold("An unspecified number of")(String.valueOf)
-      )
-      all
+      val sum = upserts.fold(Some(0))(_ |+| _)
+      val showSum = sum.fold("An unspecified number of")(String.valueOf)
+      logger.info(s"$showSum big maps will be actually copied in the db.")
+      sum
     }
 
   }
@@ -100,14 +97,12 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     */
   def removeMaps(blocks: List[Block]): DBIO[Unit] = {
 
-    val removalDiffs = if (logger.underlying.isDebugEnabled()) {
+    val removalDiffs = if (logger.includes(Level.Debug)) {
       val diffsPerBlock = blocks.map(b => b.data.hash.value -> TezosOptics.Blocks.acrossBigMapDiffRemove.getAll(b))
       diffsPerBlock.foreach {
         case (hash, diffs) if diffs.nonEmpty =>
           logger.debug(
-            "For block hash {}, I'm about to delete the big maps for ids: \n\t{}",
-            hash.value,
-            diffs.mkString(", ")
+            s"For block hash ${hash.value}, I'm about to delete the big maps for ids: \n\t${diffs.mkString(", ")}"
           )
         case _ =>
       }
@@ -119,10 +114,8 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         bigMapId
     }.toSet
 
-    logger.info(
-      "{} big maps will be removed from the db.",
-      if (idsToRemove.nonEmpty) s"A total of ${idsToRemove.size}" else "No"
-    )
+    val showRemove = if (idsToRemove.nonEmpty) s"A total of ${idsToRemove.size}" else "No"
+    logger.info(s"$showRemove big maps will be removed from the db.")
 
     DBIO.seq(
       Tables.BigMapContents.filter(_.bigMapId inSet idsToRemove).delete,
@@ -148,7 +141,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         }
     )
 
-    val maps = if (logger.underlying.isDebugEnabled()) {
+    val maps = if (logger.includes(Level.Debug)) {
       val rowsPerBlock = diffsPerBlock
         .map(it => it.get._1 -> it.convertToA[Option, BigMapsRow])
         .filterNot(_._2.isEmpty)
@@ -159,16 +152,16 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       rowsPerBlock.foreach {
         case (hash, rows) =>
           logger.debug(
-            "For block hash {}, I'm about to add the following big maps: \n\t{}",
-            hash.value,
-            rows.mkString(", ")
+            s"For block hash ${hash.value}, I'm about to add the following big maps: \n\t${rows.mkString(", ")}"
           )
       }
 
       rowsPerBlock.map(_._2).flatten
     } else diffsPerBlock.flatMap(_.convertToA[Option, BigMapsRow].toList)
 
-    logger.info("{} big maps will be added to the db.", if (maps.nonEmpty) s"A total of ${maps.size}" else "No")
+    val showAdd = if (maps.nonEmpty) s"A total of ${maps.size}" else "No"
+    logger.info(s"$showAdd big maps will be added to the db.")
+
     Tables.BigMaps ++= maps
   }
 
@@ -197,13 +190,12 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       .mapValues(entries => List.concat(entries.map(_._2.toList): _*))
       .toMap
 
-    if (logger.underlying.isDebugEnabled()) {
+    if (logger.includes(Level.Debug)) {
       rowsPerBlock.foreach {
         case (hash, rows) =>
+          val showRows = rows.mkString(", ")
           logger.debug(
-            "For block hash {}, I'm about to update big map contents with the following data: \n\t{}",
-            hash.value,
-            rows.mkString(", ")
+            s"For block hash ${hash.value}, I'm about to update big map contents with the following data: \n\t$showRows"
           )
       }
     }
@@ -222,10 +214,9 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       }
       .values
 
-    logger.info(
-      "{} big map content entries will be added.",
-      if (newContent.nonEmpty) s"A total of ${newContent.size}" else "No"
-    )
+    val showAdd = if (newContent.nonEmpty) s"A total of ${newContent.size}" else "No"
+    logger.info(s"$showAdd big map content entries will be added.")
+
     Tables.BigMapContents.insertOrUpdateAll(newContent)
   }
 
@@ -248,27 +239,29 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         }
     )
 
-    val refs = if (logger.underlying.isDebugEnabled()) {
-      val rowsPerBlock = diffsPerBlock
-        .map(it => it.get._1 -> it.convertToA[List, OriginatedAccountMapsRow])
-        .filterNot(_._2.isEmpty)
-        .groupBy { case (hash, _) => hash }
-        .mapValues(entries => List.concat(entries.map(_._2): _*))
-        .toMap
+    val refs =
+      if (logger.includes(Level.Debug)) {
+        val rowsPerBlock = diffsPerBlock
+          .map(it => it.get._1 -> it.convertToA[List, OriginatedAccountMapsRow])
+          .filterNot(_._2.isEmpty)
+          .groupBy { case (hash, _) => hash }
+          .mapValues(entries => List.concat(entries.map(_._2): _*))
+          .toMap
 
-      rowsPerBlock.foreach {
-        case (hash, rows) =>
-          logger.debug(
-            "For block hash {}, I'm about to add the following links from big maps to originated accounts: \n\t{}",
-            hash.value,
-            rows.mkString(", ")
-          )
-      }
+        rowsPerBlock.foreach {
+          case (hash, rows) =>
+            val showRows = rows.mkString(", ")
+            logger.debug(
+              s"For block hash ${hash.value}, I'm about to add the following links from big maps to originated accounts: \nt$showRows"
+            )
+        }
 
-      rowsPerBlock.flatMap(_._2).toList
-    } else diffsPerBlock.flatMap(_.convertToA[List, OriginatedAccountMapsRow])
+        rowsPerBlock.flatMap(_._2).toList
+      } else diffsPerBlock.flatMap(_.convertToA[List, OriginatedAccountMapsRow])
 
-    logger.info("{} big map accounts references will be made.", if (refs.nonEmpty) s"A total of ${refs.size}" else "No")
+    val showRefs = if (refs.nonEmpty) s"A total of ${refs.size}" else "No"
+    logger.info(s"$showRefs big map accounts references will be made.")
+
     //the returned DBIOAction will provide the rows just added
     (Tables.OriginatedAccountMaps ++= refs) andThen DBIO.successful(refs)
   }
@@ -349,10 +342,8 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
 
       }
 
-      if (logger.underlying.isDebugEnabled()) {
-        logger.debug(
-          "For block hash {}, I'm about to extract the token balance updates from the following transactions' data : \n{}",
-          b.data.hash.value,
+      if (logger.includes(Level.Debug)) {
+        val showTransactions =
           updatesMap.map {
             case (tokenId, (params, updates)) =>
               val paramsValue = params.fold("missing params") {
@@ -362,6 +353,9 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
               val updateString = updates.mkString("\t", "\n\t", "\n")
               s"Token ${tokenId.id}:\n $paramsValue -> $updateString"
           }.mkString("\n")
+
+        logger.debug(
+          s"For block hash ${b.data.hash.value}, I'm about to extract the token balance updates from the following transactions' data : \n$showTransactions"
         )
       }
 
@@ -397,10 +391,9 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
 
     rowOptions.flatMap { ops =>
       val validBalances = ops.flatten
-      logger.info(
-        "{} token balance updates will be stored.",
-        if (validBalances.nonEmpty) s"A total of ${validBalances.size}" else "No"
-      )
+
+      val showUpdates = if (validBalances.nonEmpty) s"A total of ${validBalances.size}" else "No"
+      logger.info(s"$showUpdates token balance updates will be stored.")
 
       Tables.TokenBalances ++= validBalances
     }

@@ -3,8 +3,9 @@ package tech.cryptonomic.conseil.indexer.tezos.michelson
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tech.cryptonomic.conseil.indexer.tezos.michelson.dto.MichelsonSchema
+import tech.cryptonomic.conseil.common.testkit.LoggingTestSupport
 
-class JsonToMichelsonSpec extends AnyFlatSpec with Matchers {
+class JsonToMichelsonSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
 
   "A JsonToMichelson" should "convert json to michelson format" in {
       val json =

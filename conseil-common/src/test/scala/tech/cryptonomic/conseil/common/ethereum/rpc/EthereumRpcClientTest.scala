@@ -4,12 +4,11 @@ import scala.concurrent.ExecutionContext
 
 import cats.effect._
 import fs2.Stream
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
 
 import tech.cryptonomic.conseil.common.ethereum.{EthereumFixtures, EthereumStubs}
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class EthereumRpcClientTest extends AnyWordSpec with Matchers with EthereumFixtures with EthereumStubs {
+class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with EthereumStubs {
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 

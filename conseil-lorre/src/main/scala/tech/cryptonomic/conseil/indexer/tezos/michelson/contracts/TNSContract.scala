@@ -1,8 +1,8 @@
 package tech.cryptonomic.conseil.indexer.tezos.michelson.contracts
 
 import cats.implicits._
-import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.config.Platforms.TNSContractConfiguration
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   makeAccountId,
   AccountId,
@@ -17,7 +17,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
 import tech.cryptonomic.conseil.common.tezos.Tables.BigMapsRow
 import tech.cryptonomic.conseil.common.util.OptionUtil.whenOpt
-import com.typesafe.scalalogging.Logger
+import scribe._
 
 import scala.concurrent.SyncVar
 
@@ -26,7 +26,7 @@ import scala.concurrent.SyncVar
   * We don't expect more than 1 contract being available at a time, but
   * we need to consider possible upgrades to the same contract, in time.
   */
-trait TNSContract {
+trait TNSContract extends ConseilLogSupport {
   import TNSContract._
 
   /** Does the Id reference a known TNS smart contract? */
@@ -66,7 +66,7 @@ trait TNSContract {
   def readLookupMapContent(registrar: ContractId, content: String): Option[NameRecord]
 }
 
-object TNSContract extends LazyLogging {
+object TNSContract extends ConseilLogSupport {
 
   /** typed wrapper to clarify the meaning of the numerical id */
   case class BigMapId(id: BigDecimal) extends AnyVal
@@ -113,7 +113,7 @@ object TNSContract extends LazyLogging {
     * @return the new contract
     */
   def fromConfig(config: TNSContractConfiguration): TNSContract = {
-    logger.info("Creating the TNS contract object from the following values: {}", config)
+    logger.info(s"Creating the TNS contract object from the following values: $config")
     new ConfiguredContract(ContractId(config.accountId))
   }
 
@@ -206,11 +206,8 @@ object TNSContract extends LazyLogging {
       if (id == registrar) {
         lookupMapId.put(BigMapId(lookupId))
         reverseMapId.put(BigMapId(reverseId))
-        Logger[TNSContract.type].info(
-          "Registered big map references for the TNS contract {}. Lookup id {}, reverse lookup id {}.",
-          registrar.id,
-          lookupId,
-          reverseId
+        logger.info(
+          s"Registered big map references for the TNS contract ${registrar.id}. Lookup id $lookupId, reverse lookup id $reverseId."
         )
       }
 
@@ -246,21 +243,17 @@ object TNSContract extends LazyLogging {
     val valuesAvailable = registeredIds.forall(_.isSet)
     if (!valuesAvailable)
       logger.error(
-        """A name registration was found where one of the maps for [reverse] lookup is not yet identified from contract origination
-          | map_ids: {}
-          | registrar: {}""".stripMargin,
-        updateIds.mkString(","),
-        registrar
+        s"""A name registration was found where one of the maps for [reverse] lookup is not yet identified from contract origination
+          | map_ids: ${updateIds.mkString(",")}
+          | registrar: $registrar""".stripMargin
       )
     val check = valuesAvailable && registeredIds.forall(id => updateIds.contains(id.get))
-    logger.whenDebugEnabled(
+    if (logger.includes(Level.Debug)) {
+      val showIds = updateIds.mkString("{", ",", "}")
       logger.debug(
-        "Checking updated map ids {}, upon a call to the TNS Contract {}. Ids matching? {}",
-        updateIds.mkString("{", ",", "}"),
-        registrar.id,
-        check
+        s"Checking updated map ids $showIds, upon a call to the TNS Contract ${registrar.id}. Ids matching? $check"
       )
-    )
+    }
     check
   }
 
@@ -312,8 +305,7 @@ object TNSContract extends LazyLogging {
           .orElse(parseAsMicheline(michelson))
         if (extracted.isEmpty)
           logger.warn(
-            "The TNS call parameters didn't conform to the expected shape for the contract. Michelson code was {}",
-            paramCode.expression
+            s"The TNS call parameters didn't conform to the expected shape for the contract. Michelson code was ${paramCode.expression}"
           )
         extracted
       }
@@ -333,11 +325,10 @@ object TNSContract extends LazyLogging {
       parsed.left.foreach(
         err =>
           logger.error(
-            """Failed to parse michelson expression for TNS map entry.
-              | Content was: {}
-              | Error is {}""".stripMargin,
-            micheline,
-            err.getMessage()
+            s"""Failed to parse michelson expression for TNS map entry.
+              | Content was: $micheline
+              | Error is ${err.getMessage}""".stripMargin,
+            err
           )
       )
 
@@ -369,9 +360,7 @@ object TNSContract extends LazyLogging {
 
       if (extracted.isEmpty)
         logger.warn(
-          "The TNS map reverse-lookup content didn't conform to the expected shape for the contract. Micheline was {}, which parses to {}",
-          micheline,
-          parsed
+          s"The TNS map reverse-lookup content didn't conform to the expected shape for the contract. Micheline was $micheline, which parses to $parsed"
         )
       extracted
 

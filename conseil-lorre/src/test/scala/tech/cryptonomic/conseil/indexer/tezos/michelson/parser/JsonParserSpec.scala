@@ -3,9 +3,10 @@ package tech.cryptonomic.conseil.indexer.tezos.michelson.parser
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tech.cryptonomic.conseil.indexer.tezos.michelson.dto._
-import tech.cryptonomic.conseil.indexer.tezos.michelson.parser.JsonParser.{ParserError, parse}
+import tech.cryptonomic.conseil.indexer.tezos.michelson.parser.JsonParser.{parse, ParserError}
+import tech.cryptonomic.conseil.common.testkit.LoggingTestSupport
 
-class JsonParserSpec extends AnyFlatSpec with Matchers {
+class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
 
   it should "parse one-argument MichelsonType" in {
       val json = """{"prim": "contract"}"""

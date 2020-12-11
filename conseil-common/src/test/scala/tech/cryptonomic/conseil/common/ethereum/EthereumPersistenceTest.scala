@@ -4,16 +4,14 @@ import scala.concurrent.ExecutionContext
 
 import cats.effect._
 import slick.jdbc.PostgresProfile.api._
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
 
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence._
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class EthereumPersistenceTest
-    extends AnyWordSpec
-    with Matchers
+    extends ConseilSpec
     with InMemoryDatabase
     with EthereumInMemoryDatabaseSetup
     with EthereumFixtures
@@ -88,7 +86,11 @@ class EthereumPersistenceTest
           // run
           _ <- tx.transact(
             ethereumPersistenceStub
-              .createBlock(RpcFixtures.blockResult, List(RpcFixtures.transactionResult), List(RpcFixtures.transactionReceiptResult))
+              .createBlock(
+                RpcFixtures.blockResult,
+                List(RpcFixtures.transactionResult),
+                List(RpcFixtures.transactionReceiptResult)
+              )
           )
           // test results
           block <- tx.transact(Tables.Blocks.result)

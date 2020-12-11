@@ -2,12 +2,14 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import akka.NotUsed
 import akka.actor.ActorSystem
+import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.settings.ConnectionPoolSettings
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.Source
-import com.typesafe.scalalogging.LazyLogging
+import akka.stream.{ActorMaterializer, Attributes}
+import akka.stream.Attributes.LogLevels
+import akka.stream.scaladsl.{Flow, Source}
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.util.JsonUtil.JsonString
 import tech.cryptonomic.conseil.common.config.Platforms.TezosConfiguration
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
@@ -16,6 +18,9 @@ import tech.cryptonomic.conseil.indexer.config.{HttpStreamingConfiguration, Netw
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 import scala.util.{Failure, Try}
 import scala.util.control.NoStackTrace
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogger
+import scribe._
+import java.{util => ju}
 
 /**
   * Interface into the Tezos blockchain.
@@ -85,7 +90,7 @@ private[tezos] class TezosNodeInterface(
     streamingConfig: HttpStreamingConfiguration
 )(implicit system: ActorSystem)
     extends TezosRPCInterface
-    with LazyLogging {
+    with ConseilLogSupport {
   import config.node
 
   implicit val materializer: ActorMaterializer = ActorMaterializer()
@@ -94,6 +99,18 @@ private[tezos] class TezosNodeInterface(
   private[this] lazy val rejected = Failure(
     new IllegalStateException("Tezos node requests will no longer be accepted.") with NoStackTrace
   )
+
+  final val traceLoggingGetCategory = "tech.cryptonomic.conseil.indexer.tezos.node-rpc.get"
+  final val traceLoggingPostCategory = "tech.cryptonomic.conseil.indexer.tezos.node-rpc.post"
+  final val traceLoggingBatchCategory = "tech.cryptonomic.conseil.indexer.tezos.node-rpc.batch"
+
+  private lazy val asyncGetLogger =
+    ConseilLogger(traceLoggingGetCategory, Some(Level.Debug))
+  private lazy val asyncPostLogger =
+    ConseilLogger(traceLoggingPostCategory, Some(Level.Debug))
+  /* Defines the custom akka logging category to emit request-response traces on each stream element */
+  private lazy val batchedRpcTraceLogger: LoggingAdapter =
+    Logging(system.eventStream, traceLoggingBatchCategory)
 
   override def shutdown(): Future[ShutdownComplete] = {
     rejectingCalls.compareAndSet(false, true)
@@ -115,7 +132,7 @@ private[tezos] class TezosNodeInterface(
   override def runGetQuery(network: String, command: String): Try[String] = withRejectionControl {
     Try {
       val url = translateCommandToUrl(command)
-      logger.debug("Querying URL {} for platform Tezos and network {}", url, config.network)
+      logger.debug(s"Querying URL $url for platform Tezos and network ${config.network}")
       val responseFuture: Future[HttpResponse] =
         Http(system).singleRequest(
           HttpRequest(
@@ -134,12 +151,23 @@ private[tezos] class TezosNodeInterface(
   override def runAsyncGetQuery(network: String, command: String): Future[String] = withRejectionControl {
     val url = translateCommandToUrl(command)
     val request = HttpRequest(HttpMethods.GET, url)
-    logger.debug("Async querying URL {} for platform Tezos and network {}", url, config.network)
+
+    val cid = ju.UUID.randomUUID().toString()
+    if (node.traceCalls) {
+      asyncGetLogger.debug(s"Tezos node rpc request. Corr-Id $cid: ${request.uri}")
+    }
 
     for {
       response <- Http(system).singleRequest(request)
       strict <- response.entity.toStrict(requestConfig.GETResponseEntityTimeout)
-    } yield JsonString sanitize strict.data.utf8String
+    } yield {
+      val responseBody = strict.data.utf8String
+      if (node.traceCalls) {
+        asyncGetLogger.debug(s"Tezos node response. Corr-Id $cid: $response")
+        asyncGetLogger.debug(s"Tezos node rpc json payload. Corr-Id $cid: $responseBody")
+      }
+      JsonString sanitize responseBody
+    }
 
   }
 
@@ -147,7 +175,9 @@ private[tezos] class TezosNodeInterface(
     withRejectionControl {
       Try {
         val url = translateCommandToUrl(command)
-        logger.debug("Querying URL {} for platform Tezos and network {} with payload {}", url, config.network, payload)
+        logger.debug(
+          s"Querying URL $url for platform Tezos and network ${config.network} with payload ${payload.getOrElse("missing")}"
+        )
         val postedData = payload.getOrElse(JsonString.emptyObject)
         val responseFuture: Future[HttpResponse] =
           Http(system).singleRequest(
@@ -170,24 +200,25 @@ private[tezos] class TezosNodeInterface(
   override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonString] = None): Future[String] =
     withRejectionControl {
       val url = translateCommandToUrl(command)
-      logger.debug(
-        "Async querying URL {} for platform Tezos and network {} with payload {}",
-        url,
-        config.network,
-        payload
-      )
       val postedData = payload.getOrElse(JsonString.emptyObject)
       val request = HttpRequest(
         HttpMethods.POST,
         url,
         entity = HttpEntity(ContentTypes.`application/json`, postedData.json.getBytes())
       )
+      val cid = ju.UUID.randomUUID().toString()
+      if (node.traceCalls) {
+        asyncPostLogger.debug(s"Tezos node rpc request. Corr-Id $cid: ${request.uri}")
+      }
       for {
         response <- Http(system).singleRequest(request)
         strict <- response.entity.toStrict(requestConfig.POSTResponseEntityTimeout)
       } yield {
         val responseBody = strict.data.utf8String
-        logger.debug("Query results: {}", responseBody)
+        if (node.traceCalls) {
+          asyncPostLogger.debug(s"Tezos node response. Corr-Id $cid: $response")
+          asyncPostLogger.debug(s"Tezos node rpc json payload. Corr-Id $cid: $responseBody")
+        }
         JsonString sanitize responseBody
       }
     }
@@ -198,7 +229,7 @@ private[tezos] class TezosNodeInterface(
   )
 
   /* creates a connections pool based on the host network */
-  private[this] def getHostPoolFlow[T] =
+  private def getHostPoolFlow[T] =
     if (node.protocol == "https")
       Http(system).cachedHostConnectionPoolHttps[T](
         host = node.hostname,
@@ -212,6 +243,33 @@ private[tezos] class TezosNodeInterface(
         settings = streamingRequestsConnectionPooling
       )
 
+  /* Wraps the request/response flow with logging, if enabled by configuration
+   * The returned flow is the streaming req/res exchange, paired with a correlation T
+   */
+  private def loggedRpcFlow[T] =
+    if (node.traceCalls)
+      Flow[(HttpRequest, T)]
+        .log("Tezos node rpc request", { case (req, cid) => s"Corr-Id $cid: ${req.uri}" })(log = batchedRpcTraceLogger)
+        .withAttributes(
+          Attributes.logLevels(onElement = LogLevels.Info, onFinish = LogLevels.Info, onFailure = LogLevels.Error)
+        )
+        .via(getHostPoolFlow[T])
+        .log("Tezos node response", { case (res, cid) => s"Corr-id $cid: ${res}" })(log = batchedRpcTraceLogger)
+        .withAttributes(
+          Attributes.logLevels(onElement = LogLevels.Info, onFinish = LogLevels.Info, onFailure = LogLevels.Error)
+        )
+    else getHostPoolFlow[T]
+
+  private def loggedRpcResults[T] =
+    if (node.traceCalls)
+      Flow[(T, String)]
+        .log("Tezos node rpc json payload", { case (cid, json) => s"Corr-id $cid: $json" })(log = batchedRpcTraceLogger)
+        .withAttributes(
+          Attributes.logLevels(onElement = LogLevels.Info, onFinish = LogLevels.Info, onFailure = LogLevels.Error)
+        )
+    else
+      Flow[(T, String)].map(identity)
+
   /**
     * Creates a stream that will produce http response content for the
     * list of commands.
@@ -223,7 +281,7 @@ private[tezos] class TezosNodeInterface(
     * @return A stream source whose elements will be the response string, tupled with the correlation id,
     *         used to match with the corresponding request
     */
-  private[this] def streamedGetQuery[CID](
+  private def streamedGetQuery[CID](
       ids: List[CID],
       mapToCommand: CID => String,
       concurrencyLevel: Int
@@ -236,13 +294,13 @@ private[tezos] class TezosNodeInterface(
 
     val toRequest: ((String, CID)) => (HttpRequest, CID) = {
       case (url, id) =>
-        logger.debug("Will query: " + url)
+        logger.debug(s"Will query: $url")
         (HttpRequest(uri = Uri(url)), id)
     }
 
     uris
       .map(toRequest)
-      .via(getHostPoolFlow)
+      .via(loggedRpcFlow)
       .mapAsyncUnordered(concurrencyLevel) {
         case (tried, id) =>
           Future
@@ -251,6 +309,8 @@ private[tezos] class TezosNodeInterface(
             .map(entity => (entity, id))
       }
       .map { case (content: HttpEntity.Strict, id) => (id, JsonString sanitize content.data.utf8String) }
+      .via(loggedRpcResults)
+
   }
 
   override def runBatchedGetQuery[CID](
@@ -260,12 +320,12 @@ private[tezos] class TezosNodeInterface(
       concurrencyLevel: Int
   ): Future[List[(CID, String)]] = {
     val batchId = java.util.UUID.randomUUID()
-    logger.debug("{} - New batched GET call for {} requests", batchId, ids.size)
+    logger.debug(s"$batchId - New batched GET call for ${ids.size} requests")
 
     streamedGetQuery(ids, mapToCommand, concurrencyLevel)
       .runFold(List.empty[(CID, String)])(_ :+ _)
       .andThen {
-        case _ => logger.debug("{} - Batch completed", batchId)
+        case _ => logger.debug(s"$batchId - Batch completed")
       }
   }
 

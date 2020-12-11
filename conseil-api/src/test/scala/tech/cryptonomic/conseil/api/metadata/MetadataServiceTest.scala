@@ -2,26 +2,29 @@ package tech.cryptonomic.conseil.api.metadata
 
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OneInstancePerTest}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
-import tech.cryptonomic.conseil.common.config.Platforms.{BitcoinBatchFetchConfiguration, BitcoinConfiguration, BitcoinNodeConfiguration, PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
+import tech.cryptonomic.conseil.common.config.Platforms.{
+  BitcoinBatchFetchConfiguration,
+  BitcoinConfiguration,
+  BitcoinNodeConfiguration,
+  PlatformsConfiguration,
+  TezosConfiguration,
+  TezosNodeConfiguration
+}
 import tech.cryptonomic.conseil.common.config.Types.PlatformName
 import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.DataType.{Hash, Int}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
 import tech.cryptonomic.conseil.common.metadata._
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class MetadataServiceTest
-    extends AnyWordSpec
-    with Matchers
+    extends ConseilSpec
     with ScalatestRouteTest
     with MockFactory
-    with ScalaFutures
     with BeforeAndAfterEach
     with OneInstancePerTest {
 

@@ -4,9 +4,6 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.BeforeAndAfterEach
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import com.stephenn.scalatest.jsonassert.JsonMatchers
 import tech.cryptonomic.conseil.api.metadata.{
   AttributeValuesCacheConfiguration,
@@ -29,12 +26,11 @@ import scala.concurrent.duration._
 
 import java.net.URL
 import tech.cryptonomic.conseil.common.config.Platforms.EthereumRetryConfiguration
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class EthereumDataRoutesTest
-    extends AnyWordSpec
-    with Matchers
+    extends ConseilSpec
     with ScalatestRouteTest
-    with ScalaFutures
     with JsonMatchers
     with MockFactory
     with BeforeAndAfterEach

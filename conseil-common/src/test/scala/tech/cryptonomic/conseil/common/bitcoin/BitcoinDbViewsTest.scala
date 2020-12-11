@@ -2,14 +2,12 @@ package tech.cryptonomic.conseil.common.bitcoin
 
 import scala.concurrent.ExecutionContext
 import cats.effect._
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class BitcoinDbViewsTest
-    extends AnyWordSpec
-    with Matchers
+    extends ConseilSpec
     with InMemoryDatabase
     with BitcoinInMemoryDatabaseSetup
     with BitcoinFixtures
@@ -21,7 +19,7 @@ class BitcoinDbViewsTest
 
       /**
         * The logic behind the Bitcoin accounts is explained in [[Views.AccountsViewSql]]
-        * In the example below, we create two blocks with two transactions, 
+        * In the example below, we create two blocks with two transactions,
         * one of which is spent and the other is not.
         */
       "return balance for the given address" in new BitcoinPersistenceStubs(dbHandler) {

@@ -1,12 +1,12 @@
 package tech.cryptonomic.conseil.common.ethereum.rpc
 
 import cats.effect.{Concurrent, Resource}
-import com.typesafe.scalalogging.LazyLogging
 import fs2.{Pipe, Stream}
 import io.circe.generic.auto._
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.circe.CirceEntityEncoder._
 
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.ethereum.domain.{Bytecode, Contract, Token}
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumRpcCommands._
@@ -33,7 +33,7 @@ import tech.cryptonomic.conseil.common.ethereum.Utils
   */
 class EthereumClient[F[_]: Concurrent](
     client: RpcClient[F]
-) extends LazyLogging {
+) extends ConseilLogSupport {
 
   /**
     * Get the number of most recent block.

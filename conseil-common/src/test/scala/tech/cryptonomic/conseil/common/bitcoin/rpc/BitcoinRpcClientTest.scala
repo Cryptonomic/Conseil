@@ -3,11 +3,10 @@ package tech.cryptonomic.conseil.common.bitcoin.rpc
 import scala.concurrent.ExecutionContext
 import cats.effect.{ContextShift, IO}
 import fs2.Stream
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.bitcoin.{BitcoinFixtures, BitcoinStubs}
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class BitcoinRpcClientTest extends AnyWordSpec with Matchers with BitcoinFixtures with BitcoinStubs {
+class BitcoinRpcClientTest extends ConseilSpec with BitcoinFixtures with BitcoinStubs {
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 

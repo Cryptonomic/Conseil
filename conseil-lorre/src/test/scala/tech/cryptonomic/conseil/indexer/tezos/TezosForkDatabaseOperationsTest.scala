@@ -1,13 +1,9 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
 import scala.concurrent.duration._
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.OptionValues
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
+import org.scalatest.concurrent.IntegrationPatience
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary.arbitrary
-import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.DBSafe
@@ -33,19 +29,16 @@ import TezosDataGenerationKit.ForkValid
 import java.{util => ju}
 import java.time.Instant
 import java.sql.Timestamp
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 /** Here we verify that any ∂ata saved persistently, that is marked as
   * belonging to a forked branch having been invalidated by latest chain
   * evolution, will not appear when querying the [[TezosDatabaseOperations]].
   */
 class TezosForkDatabaseOperationsTest
-    extends AnyWordSpec
+    extends ConseilSpec
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
-    with Matchers
-    with ScalaFutures
-    with OptionValues
-    with LazyLogging
     with IntegrationPatience {
 
   import scala.concurrent.ExecutionContext.Implicits.global

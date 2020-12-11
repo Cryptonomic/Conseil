@@ -2,9 +2,9 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import cats.instances.future._
 import cats.syntax.applicative._
-import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.common.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.common.util.{CryptoUtil, JsonUtil}
@@ -76,9 +76,9 @@ private[tezos] class TezosNodeOperator(
     batchConf: BatchFetchConfiguration
 )(
     implicit val fetchFutureContext: ExecutionContext
-) extends LazyLogging
-    with TezosBlocksDataFetchers
-    with AccountsDataFetchers {
+) extends TezosBlocksDataFetchers
+    with AccountsDataFetchers
+    with ConseilLogSupport {
   import TezosNodeOperator.{isGenesis, LazyPages, Paginated}
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
 
@@ -277,9 +277,7 @@ private[tezos] class TezosNodeOperator(
     def notifyAnyLostIds(missing: Set[AccountId]) =
       if (missing.nonEmpty)
         logger.warn(
-          "The following account keys were not found querying the {} node: {}",
-          network,
-          missing.map(_.value).mkString("\n", ",", "\n")
+          s"The following account keys were not found querying the $network node: ${missing.map(_.value).mkString("\n", ",", "\n")}"
         )
 
     //uses the index to collect together BlockAccounts matching the same block
@@ -467,9 +465,7 @@ private[tezos] class TezosNodeOperator(
     def notifyAnyLostKeys(missing: Set[PublicKeyHash]) =
       if (missing.nonEmpty)
         logger.warn(
-          "The following delegate keys were not found querying the {} node: {}",
-          network,
-          missing.map(_.value).mkString("\n", ",", "\n")
+          s"The following delegate keys were not found querying the $network node: ${missing.map(_.value).mkString("\n", ",", "\n")}"
         )
 
     //uses the index to collect together BlockAccounts matching the same block
@@ -620,13 +616,11 @@ private[tezos] class TezosNodeOperator(
       val bootstrapping = maxIndexedLevel == -1
       if (maxIndexedLevel < headLevel) {
         //got something to load
-        if (bootstrapping) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
+        if (bootstrapping)
+          logger.warn("There were apparently no blocks in the database. Downloading the whole chain...")
         else
           logger.info(
-            "I found the new block head at level {}, the currently stored max is {}. I'll fetch the missing {} blocks.",
-            headLevel,
-            maxIndexedLevel,
-            headLevel - maxIndexedLevel
+            s"I found the new block head at level $headLevel, the currently stored max is $maxIndexedLevel. I'll fetch the missing ${headLevel - maxIndexedLevel} blocks."
           )
         val paginatedResults = partitionLevelsRange((maxIndexedLevel + 1) to headLevel).map(
           page => getBlocks((headHash, headLevel), page)
@@ -677,7 +671,7 @@ private[tezos] class TezosNodeOperator(
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.{fetch, fetchMerge}
     import tech.cryptonomic.conseil.common.tezos.TezosOptics.Blocks._
 
-    logger.info("Fetching block data in range: " + levelRange)
+    logger.info(s"Fetching block data in range: $levelRange")
 
     val (hashRef, levelRef) = reference
     require(levelRange.start >= 0 && levelRange.end <= levelRef)
@@ -778,7 +772,7 @@ class TezosNodeSenderOperator(
     sodiumConf: SodiumConfiguration
 )(implicit executionContext: ExecutionContext)
     extends TezosNodeOperator(node, network, batchConf)
-    with LazyLogging {
+    with ConseilLogSupport {
   import TezosNodeOperator._
   import TezosJsonDecoders.Circe.Operations._
   import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}

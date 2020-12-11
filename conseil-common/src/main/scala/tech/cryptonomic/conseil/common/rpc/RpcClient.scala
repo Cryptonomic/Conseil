@@ -4,7 +4,6 @@ import scala.concurrent.duration.Duration
 import scala.util.control.NoStackTrace
 
 import cats.effect.{Concurrent, Resource}
-import com.typesafe.scalalogging.LazyLogging
 import fs2.Stream
 import org.http4s.{EntityDecoder, EntityEncoder, Header, Method, Uri}
 import org.http4s.client.{Client, WaitQueueTimeoutException}
@@ -12,6 +11,7 @@ import org.http4s.client.middleware.RetryPolicy
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.Status._
 
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.rpc.RpcClient._
 
 /**
@@ -60,7 +60,7 @@ class RpcClient[F[_]: Concurrent](
     httpClient: Client[F],
     headers: Header*
 ) extends Http4sClientDsl[F]
-    with LazyLogging {
+    with ConseilLogSupport {
 
   /**
     * Method that converts [[fs2.Stream]] of JSON-RPC requests into [[fs2.Stream]]] of desired result objects,
@@ -104,7 +104,7 @@ class RpcClient[F[_]: Concurrent](
 
   /**
     * Helper method to log debug information.
-    * It wraps scalalogging call into [[Concurrent]] to prevent side effects.
+    * It wraps logging call into [[Concurrent]] to prevent side effects.
     * It should be moved to separate logging util in the future.
     *
     * @param message Debug message

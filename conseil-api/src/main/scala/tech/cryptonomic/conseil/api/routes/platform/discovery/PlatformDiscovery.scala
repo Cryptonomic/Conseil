@@ -3,9 +3,9 @@ package tech.cryptonomic.conseil.api.routes.platform.discovery
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.typesafe.scalalogging.LazyLogging
 import endpoints.akkahttp
 import endpoints.algebra.Documentation
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.api.metadata.MetadataService
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.AttributesValidationError
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
@@ -22,7 +22,7 @@ object PlatformDiscovery {
   * @param metadataService     metadata Service
   */
 class PlatformDiscovery(metadataService: MetadataService)
-    extends LazyLogging
+    extends ConseilLogSupport
     with PlatformDiscoveryEndpoints
     with akkahttp.server.Endpoints
     with akkahttp.server.JsonEntitiesFromSchemas {

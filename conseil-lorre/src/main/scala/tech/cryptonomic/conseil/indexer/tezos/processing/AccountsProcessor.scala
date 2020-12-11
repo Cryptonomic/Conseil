@@ -14,6 +14,7 @@ import tech.cryptonomic.conseil.indexer.tezos.{
   TezosDatabaseOperations => TezosDb
 }
 import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator.LazyPages
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   Account,
@@ -26,7 +27,6 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   TezosBlockHash
 }
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors.AccountsProcessingFailed
-import com.typesafe.scalalogging.LazyLogging
 
 /** Collects operations related to handling accounts from
   * the tezos node.
@@ -44,7 +44,7 @@ class AccountsProcessor(
     rightsConf: BakingAndEndorsingRights
 )(
     implicit mat: ActorMaterializer
-) extends LazyLogging {
+) extends ConseilLogSupport {
 
   /** accounts, indexed by id */
   private type AccountsIndex = Map[AccountId, Account]
@@ -66,15 +66,15 @@ class AccountsProcessor(
 
     def logWriteFailure: PartialFunction[Try[_], Unit] = {
       case Failure(e) =>
-        logger.error("Could not write accounts to the database")
+        logger.error("Could not write accounts to the database", e)
     }
 
     def logOutcome: PartialFunction[Try[(Option[Int], Option[Int], _)], Unit] = {
       case Success((accountsRows, delegateCheckpointRows, _)) =>
+        val showUpdates = accountsRows.fold("Some")(String.valueOf)
+        val showBakers = delegateCheckpointRows.fold("")(" " + _)
         logger.info(
-          "{} accounts were touched on the database. Checkpoint stored for{} bakers.",
-          accountsRows.fold("The")(String.valueOf),
-          delegateCheckpointRows.fold("")(" " + _)
+          s"$showUpdates accounts were touched on the database. Checkpoint stored for$showBakers bakers."
         )
     }
 
@@ -203,10 +203,10 @@ class AccountsProcessor(
     def cleanup = {
       //can fail with no real downsides
       val processed = Some(ids.keySet)
-      logger.info("Cleaning {} processed accounts from the checkpoint...", ids.size)
+      logger.info(s"Cleaning ${ids.size} processed accounts from the checkpoint...")
       indexedData
         .runQuery(TezosDb.cleanAccountsCheckpoint(processed))
-        .map(cleaned => logger.info("Done cleaning {} accounts checkpoint rows.", cleaned))
+        .map(cleaned => logger.info(s"Done cleaning $cleaned accounts checkpoint rows."))
     }
 
     //if needed, we get the stored levels and only keep updates that are more recent
@@ -295,8 +295,7 @@ class AccountsProcessor(
     indexedData.getLatestAccountsFromCheckpoint flatMap { checkpoints =>
       if (checkpoints.nonEmpty) {
         logger.info(
-          "I loaded all of {} checkpointed ids from the DB and will proceed to fetch updated accounts information from the chain",
-          checkpoints.size
+          s"I loaded all of ${checkpoints.size} checkpointed ids from the DB and will proceed to fetch updated accounts information from the chain"
         )
         process(checkpoints, onlyProcessLatest = true).map(_ => Done)
       } else {

@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.indexer
 
-import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.config.Platforms.{BitcoinConfiguration, TezosConfiguration}
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig
@@ -13,11 +12,12 @@ import scala.concurrent.duration._
 import tech.cryptonomic.conseil.common.config.Platforms.EthereumConfiguration
 import tech.cryptonomic.conseil.indexer.ethereum.EthereumIndexer
 import tech.cryptonomic.conseil.common.config.Platforms.QuorumConfiguration
+import tech.cryptonomic.conseil.common.io.Logging
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
-object Lorre extends App with LazyLogging with LorreAppConfig with LorreInfoLogging {
+object Lorre extends App with LorreAppConfig with LorreInfoLogging {
 
   //reads all configuration upstart, will only complete if all values are found
   val config = loadApplicationConfiguration(args)
@@ -36,6 +36,9 @@ object Lorre extends App with LazyLogging with LorreAppConfig with LorreInfoLogg
     batchingConf,
     verbose
   ) = config.merge
+
+  /* Sadly, we're currently forced to do this to actually configure the loggers */
+  Logging.init()
 
   //whatever happens we try to clean up
   sys.addShutdownHook(shutdown())

@@ -1,11 +1,9 @@
 package tech.cryptonomic.conseil.indexer.tezos.michelson.contracts
 
-import org.scalatest.OptionValues
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class StakerDaoTest extends AnyWordSpec with Matchers with OptionValues {
+class StakerDaoTest extends ConseilSpec {
 
   "The Token Contracts operations for the StakerDao contract" should {
 

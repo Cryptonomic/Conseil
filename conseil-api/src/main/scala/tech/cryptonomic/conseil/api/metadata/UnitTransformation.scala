@@ -1,13 +1,13 @@
 package tech.cryptonomic.conseil.api.metadata
 
-import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.config.{MetadataConfiguration, PlatformConfiguration}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.common.metadata._
 import tech.cryptonomic.conseil.common.util.OptionUtil.when
 
 // class for applying overrides configurations
-class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
+class UnitTransformation(overrides: MetadataConfiguration) extends ConseilLogSupport {
 
   // overrides platforms
   def overridePlatforms(platforms: List[Platform]): List[Platform] = {
@@ -104,9 +104,9 @@ class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
 
   private def logDifferences(paths: List[Path], overriddenPaths: List[Path]): Unit = {
     (paths.toSet diff overriddenPaths.toSet)
-      .foreach(logger.warn("""There're missing metadata overrides for "{}"""", _))
+      .foreach(path => logger.warn(s"""There're missing metadata overrides for "$path""""))
 
     (overriddenPaths.toSet diff paths.toSet)
-      .foreach(logger.error("""Metadata overrides "{}" override nothing""", _))
+      .foreach(path => logger.error(s"""Metadata overrides "$path" override nothing"""))
   }
 }

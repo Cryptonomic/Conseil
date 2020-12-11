@@ -1,11 +1,9 @@
 package tech.cryptonomic.conseil.common.util
 
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.{EitherValues, OptionValues}
 import tech.cryptonomic.conseil.common.tezos.Tables
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class ConfigUtilTest extends AnyWordSpec with Matchers with EitherValues with OptionValues {
+class ConfigUtilTest extends ConseilSpec {
 
   "ConfigUtil.Csv" should {
       import kantan.csv.generic._

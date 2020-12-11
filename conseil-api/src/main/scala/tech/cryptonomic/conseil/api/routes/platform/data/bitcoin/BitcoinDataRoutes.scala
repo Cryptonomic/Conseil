@@ -5,7 +5,6 @@ import akka.http.scaladsl.server.Route
 import cats.instances.either._
 import cats.instances.future._
 import cats.syntax.bitraverse._
-import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.metadata.MetadataService
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
 import tech.cryptonomic.conseil.common.bitcoin.BitcoinTypes.BitcoinBlockHash
@@ -13,6 +12,7 @@ import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.common.metadata
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -25,7 +25,7 @@ case class BitcoinDataRoutes(
     implicit apiExecutionContext: ExecutionContext
 ) extends BitcoinDataHelpers
     with ApiDataRoutes
-    with LazyLogging {
+    with ConseilLogSupport {
 
   private val platformPath = PlatformPath("bitcoin")
 

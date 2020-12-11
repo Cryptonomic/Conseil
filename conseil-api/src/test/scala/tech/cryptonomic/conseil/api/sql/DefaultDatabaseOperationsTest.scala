@@ -3,13 +3,10 @@ package tech.cryptonomic.conseil.api.sql
 import java.sql.Timestamp
 import java.time.LocalDateTime
 
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.api.sql.DefaultDatabaseOperations._
-import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
+import tech.cryptonomic.conseil.common.testkit.{ConseilSpec, InMemoryDatabase}
 import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
 import tech.cryptonomic.conseil.common.tezos.Tables.FeesRow
 
@@ -17,12 +14,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class DefaultDatabaseOperationsTest
-    extends AnyWordSpec
-    with Matchers
-    with InMemoryDatabase
-    with TezosInMemoryDatabaseSetup
-    with ScalaFutures {
+class DefaultDatabaseOperationsTest extends ConseilSpec with InMemoryDatabase with TezosInMemoryDatabaseSetup {
 
   "The default database operations" should {
       val fees: List[FeesRow] = List.tabulate(5) { i =>

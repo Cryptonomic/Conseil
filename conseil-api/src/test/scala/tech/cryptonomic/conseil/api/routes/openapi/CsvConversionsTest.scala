@@ -1,10 +1,9 @@
 package tech.cryptonomic.conseil.api.routes.openapi
 
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class CsvConversionsTest extends AnyWordSpec with Matchers {
+class CsvConversionsTest extends ConseilSpec {
 
   import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
   import tech.cryptonomic.conseil.api.routes.platform.data.CsvConversions._

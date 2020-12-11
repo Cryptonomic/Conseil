@@ -16,14 +16,15 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalamock.scalatest.MockFactory
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{Deadline, DurationLong, fromNow}
+import scala.concurrent.duration.{fromNow, Deadline, DurationLong}
 import scala.concurrent.Future
 import org.scalatest.time.{Seconds, Span}
 import org.scalamock.function.StubFunction1
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import tech.cryptonomic.conseil.common.testkit.LoggingTestSupport
 
-class RetryTest extends AnyFlatSpec with Matchers with MockFactory with ScalaFutures {
+class RetryTest extends AnyFlatSpec with Matchers with MockFactory with ScalaFutures with LoggingTestSupport {
 
   implicit override val patienceConfig = PatienceConfig(timeout = Span(4, Seconds))
   private val waitAtMost: Span = patienceConfig.timeout

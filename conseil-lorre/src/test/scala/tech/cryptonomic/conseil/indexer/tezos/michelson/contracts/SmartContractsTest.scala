@@ -1,10 +1,9 @@
 package tech.cryptonomic.conseil.indexer.tezos.michelson.contracts
 
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 /** Verifies general handling functions on micheline/michelson scripts */
-class SmartContractsTest extends AnyWordSpec with Matchers {
+class SmartContractsTest extends ConseilSpec {
 
   "The smart contract module" should {
 

@@ -2,16 +2,14 @@ package tech.cryptonomic.conseil.common.bitcoin
 
 import scala.concurrent.ExecutionContext
 import cats.effect._
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.bitcoin.BitcoinPersistence._
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class BitcoinPersistenceTest
-    extends AnyWordSpec
-    with Matchers
+    extends ConseilSpec
     with InMemoryDatabase
     with BitcoinInMemoryDatabaseSetup
     with BitcoinFixtures
