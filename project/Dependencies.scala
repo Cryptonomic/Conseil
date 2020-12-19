@@ -225,6 +225,8 @@ object Dependencies {
 
   val conseilSmokeTestsInclude: Seq[ModuleID] = concat(config, http4s, circe, cats)
 
+  val conseilApiTestsInclude: Seq[ModuleID] = concat(config, http4s, circe, cats)
+
   private def concat(xs: Seq[ModuleID]*): Seq[ModuleID] = xs.reduceLeft(_ ++ _)
 
 }
