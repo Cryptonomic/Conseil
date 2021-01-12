@@ -1,9 +1,10 @@
 package tech.cryptonomic.conseil.api.routes.platform.data
 
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{QueryResponse}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 import endpoints.algebra.{Decoder, Encoder}
 import endpoints.{Invalid, Valid}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Field, FormattedField, SimpleField}
+import ujson.{Bool, Num, Str}
 
 /** Provides basic codecs from/to a specific json modeling (i.e. [[ujson]]) for specific types
   * exposed via the data api of conseil.
@@ -36,8 +37,16 @@ object ApiDataStandardJsonCodecs {
 
   /** Default implementation of the decoding of a totally arbitrary value */
   lazy val anyDecoder: Decoder[Json, Any] =
-    // verify if strings are correclty decoded with no surroundng quotes, as "String"...
-    (json: Json) => Valid(json.strOpt.getOrElse(json.value))
+    // verify if strings are correctly decoded with no surrounding quotes, as "String"...
+    (json: Json) => {
+      val result = json match {
+        case Str(value) => value
+        case Num(value) => value.toLong
+        case bool: Bool => bool.value
+        case x => x.toString().stripPrefix("\"").stripSuffix("\"")
+      }
+      Valid(result)
+    }
 
   /** Default implementation to encode the [[QueryResponse]] */
   lazy val queryResponseEncoder: Encoder[QueryResponse, Json] =
