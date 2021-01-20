@@ -114,9 +114,9 @@ object ApiTestRun extends IOApp {
       client.expect[String](conseilRequest)
     }.unsafeRunSync()
 
-    if(validationItems.nonEmpty) validationItems.foreach(item => {
-      validateJsonByKey(item, result, true)
-    })
+    if(validationItems.nonEmpty) validationItems.foreach { item =>
+      validateJsonByKey(item, result, notNull = true)
+    }
 
     result
   }
@@ -149,25 +149,25 @@ object ApiTestRun extends IOApp {
    * @param entities The Array of entities grab attributes for
    */
   def testAttributes(httpClient: BlazeClientBuilder[IO], entities: Array[String] = Requests.TEZOS_ENTITIES): Unit = {
-    entities.foreach(entity => {
+    entities.foreach { entity =>
       println("\n\n\nTesting Tezos " + entity + " Attributes\n")
       println(sendConseilRequest(httpClient, CONSEIL.withPath(Requests.getTezosAttributePath(entity))))
-    })
+    }
   }
 
   def testMetadata(httpClient: BlazeClientBuilder[IO], entityAttributes: Map[String, Array[String]] = Requests.TEZOS_ENTITY_ATTRIBUTES): Unit = {
 
-    entityAttributes.foreach(entity => {
+    entityAttributes.foreach { entity =>
 
-      entity._2.foreach(attribute => {
+      entity._2.foreach { attribute =>
 
-        println("\n\n\nTesting Tezos " + entity._1 + " " + attribute + " Metadata\n")
+      println("\n\n\nTesting Tezos " + entity._1 + " " + attribute + " Metadata\n")
         val result: String = sendConseilRequest(httpClient, CONSEIL.withPath(Requests.getTezosMetadataPath(entity._1, attribute)))
         println(result)
 
-      })
+      }
 
-    })
+    }
 
   }
 
@@ -178,7 +178,7 @@ object ApiTestRun extends IOApp {
    */
   def testAttributeData(httpClient: BlazeClientBuilder[IO], entityAttributes: Map[String, Array[String]] = Requests.TEZOS_ENTITY_ATTRIBUTES): Unit = {
 
-    entityAttributes.foreach(entity => {
+    entityAttributes.foreach { entity =>
 
       val queryString: String =
         """
@@ -195,11 +195,11 @@ object ApiTestRun extends IOApp {
       val result: String = sendConseilQuery(httpClient, CONSEIL.withPath(Requests.getTezosQueryPath(entity._1)), queryString)
       println(result)
 
-      entity._2.foreach(attribute => {
+      entity._2.foreach { attribute =>
         validateJsonByKey(attribute, result)
-      })
+      }
 
-    })
+    }
 
   }
 
@@ -210,9 +210,9 @@ object ApiTestRun extends IOApp {
    */
   def validateAttributeData(httpClient: BlazeClientBuilder[IO], entityAttributes: Map[String, Array[String]] = Requests.TEZOS_ENTITY_ATTRIBUTES): Unit = {
 
-    entityAttributes.foreach(entity => {
+    entityAttributes.foreach { entity =>
 
-      entity._2.foreach(attribute => {
+      entity._2.foreach { attribute =>
 
         val queryString: String =
           """
@@ -222,7 +222,7 @@ object ApiTestRun extends IOApp {
             |         {
             |             "field": "%FIELD%",
             |             "operation": "isnull",
-            |             "set": [""],
+            |             "set": [],
             |             "inverse": true
             |         }
             |     ],
@@ -235,10 +235,9 @@ object ApiTestRun extends IOApp {
         println("\n\n\nValidating Tezos " + entity._1 + " " + attribute + " Data\n")
         var result: String = ""
         try {
-          result = sendConseilQuery(httpClient, CONSEIL.withPath(Requests.getTezosQueryPath(entity._1)), queryString)
+          result = sendConseilQuery(httpClient, CONSEIL.withPath(Requests.getTezosQueryPath(entity._1)), queryString).handleError
         } catch {
-          case x: org.http4s.client.UnexpectedStatus => {
-
+          case x: org.http4s.client.UnexpectedStatus =>
             val queryString: String =
               """
                 |{
@@ -251,16 +250,14 @@ object ApiTestRun extends IOApp {
                 |""".stripMargin.replace("%FIELD%", attribute)
 
             result = sendConseilQuery(httpClient, CONSEIL.withPath(Requests.getTezosQueryPath(entity._1)), queryString)
-
-          }
         }
 
         println(result)
 
         validateJsonByKey(attribute, result, notNull = true)
 
-      })
-    })
+      }
+    }
   }
 
   /**
@@ -271,10 +268,10 @@ object ApiTestRun extends IOApp {
    */
   def validateJsonByKey(key: String, result: String, notNull: Boolean = false): Unit = {
 
-    if(result.compareTo("") == 0) throw new NullPointerException("Query Returned an Empty String")
+    if(result == "") throw new NullPointerException("Query Returned an Empty String")
 
     parse(result) match {
-      case Left(failure) => throw new IllegalArgumentException("Query did not return valid JSON")
+      case Left(_) => throw new IllegalArgumentException("Query did not return valid JSON")
       case Right(json) => {
 
         if(json.findAllByKey(key).isEmpty) throw new IllegalArgumentException("Value \"" + key + "\" not found in output")
