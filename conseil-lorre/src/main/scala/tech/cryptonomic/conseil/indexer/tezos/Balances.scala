@@ -80,7 +80,7 @@ object BlockBalances {
       Map(
         BlockTagged.fromBlockData(data, BLOCK_SOURCE) -> (data.metadata match {
               case GenesisMetadata => List.empty
-              case BlockHeaderMetadata(balance_updates, _, _, _, _, _) => balance_updates
+              case BlockHeaderMetadata(balance_updates, _, _, _, _, _, _, _) => balance_updates
             })
       )
   )

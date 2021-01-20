@@ -196,22 +196,103 @@ object TezosOptics {
     //Note, cycle 0 starts at the level 2 block
     def extractCycle(block: Block): Option[Int] =
       discardGenesis(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
-        .map(_.level.cycle) //this is Option[Int]
+        .flatMap(
+          b =>
+            b.level
+              .map(_.cycle)
+              .orElse(b.level_info.map(_.cycle))
+        ) //this is Option[Int]
 
     //Note, cycle 0 starts at the level 2 block
     def extractCycle(block: BlockData): Option[Int] =
       discardGenesis(block.metadata) //this returns an Option[BlockHeaderMetadata]
-        .map(_.level.cycle) //this is Option[Int]
+        .flatMap(
+          b =>
+            b.level
+              .map(_.cycle)
+              .orElse(b.level_info.map(_.cycle))
+        ) //this is Option[Int]
+
+    //Note, cycle 0 starts at the level 2 block
+    def extractCycle(block: BlockMetadata): Option[Int] =
+      discardGenesis(block) //this returns an Option[BlockHeaderMetadata]
+        .flatMap(
+          b =>
+            b.level
+              .map(_.cycle)
+              .orElse(b.level_info.map(_.cycle))
+        ) //this is Option[Int]
 
     //Note, cycle 0 starts at the level 2 block
     def extractCyclePosition(block: BlockMetadata): Option[Int] =
       discardGenesis(block) //this returns an Option[BlockHeaderMetadata]
-        .map(_.level.cycle_position) //this is Option[Int]
+        .flatMap(
+          b =>
+            b.level
+              .map(_.cycle_position)
+              .orElse(b.level_info.map(_.cycle_position))
+        ) //this is Option[Int]
 
     //Note, cycle 0 starts at the level 2 block
     def extractPeriod(block: BlockMetadata): Option[Int] =
       discardGenesis(block)
-        .map(_.level.voting_period)
+        .flatMap(
+          b =>
+            b.level
+              .map(_.voting_period)
+              .orElse(
+                b.voting_period_info
+                  .map(_.voting_period.index)
+              )
+        )
+
+    //Note, cycle 0 starts at the level 2 block
+    def extractLevel(block: BlockMetadata): Option[BlockLevel] =
+      discardGenesis(block)
+        .flatMap(
+          b =>
+            b.level
+              .map(_.level)
+              .orElse(
+                b.level_info.map(_.level)
+              )
+        )
+
+    //Note, cycle 0 starts at the level 2 block
+    def extractLevelPosition(block: BlockMetadata): Option[Int] =
+      discardGenesis(block)
+        .flatMap(
+          b =>
+            b.level
+              .map(_.level_position)
+              .orElse(
+                b.level_info.map(_.level_position)
+              )
+        )
+
+    //Note, cycle 0 starts at the level 2 block
+    def extractVotingPeriod(block: BlockMetadata): Option[Int] =
+      discardGenesis(block)
+        .flatMap(
+          b =>
+            b.level
+              .map(_.voting_period)
+              .orElse(
+                b.voting_period_info.map(_.voting_period.index)
+              )
+        )
+
+    //Note, cycle 0 starts at the level 2 block
+    def extractVotingPeriodPosition(block: BlockMetadata): Option[Int] =
+      discardGenesis(block)
+        .flatMap(
+          b =>
+            b.level
+              .map(_.voting_period_position)
+              .orElse(
+                b.voting_period_info.map(_.position)
+              )
+        )
   }
 
   /** Provides optics to navigate across operations data structures */

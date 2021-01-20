@@ -113,12 +113,12 @@ class TezosDatabaseConversionsTest
           'activeProposal (proposal.map(_.id)),
           'periodKind (metadata.map(_.voting_period_kind.toString)),
           'baker (metadata.map(_.baker.value)),
-          'metaLevel (metadata.map(_.level.level)),
-          'metaLevelPosition (metadata.map(_.level.level_position)),
-          'metaCycle (metadata.map(_.level.cycle)),
-          'metaCyclePosition (metadata.map(_.level.cycle_position)),
-          'metaVotingPeriod (metadata.map(_.level.voting_period)),
-          'metaVotingPeriodPosition (metadata.map(_.level.voting_period_position)),
+          'metaLevel (metadata.flatMap(_.level.map(_.level))),
+          'metaLevelPosition (metadata.flatMap(_.level.map(_.level_position))),
+          'metaCycle (metadata.flatMap(_.level.map(_.cycle))),
+          'metaCyclePosition (metadata.flatMap(_.level.map(_.cycle_position))),
+          'metaVotingPeriod (metadata.flatMap(_.level.map(_.voting_period))),
+          'metaVotingPeriodPosition (metadata.flatMap(_.level.map(_.voting_period_position))),
           'priority (block.data.header.priority),
           'forkId (Fork.mainForkId)
         )

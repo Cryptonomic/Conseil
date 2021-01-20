@@ -21,8 +21,10 @@ object VotingOperations {
 
   /* Used to classify blocks by voting periods via metadata */
   private def votingPeriodIn(accept: VotingPeriod.ValueSet, metadata: BlockMetadata): Boolean = metadata match {
-    case BlockHeaderMetadata(_, _, _, _, voting_period_kind, _) =>
+    case BlockHeaderMetadata(_, _, _, _, Some(voting_period_kind), _, _, _) =>
       accept(voting_period_kind)
+    case BlockHeaderMetadata(_, _, _, _, _, Some(voting_period_info), _, _) =>
+      accept(voting_period_info.voting_period.kind)
     case GenesisMetadata =>
       false
   }

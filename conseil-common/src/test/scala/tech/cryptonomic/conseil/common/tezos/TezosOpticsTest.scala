@@ -30,10 +30,12 @@ class TezosOpticsTest extends ConseilSpec {
           metadata = BlockHeaderMetadata(
             balance_updates = List.empty,
             baker = PublicKeyHash("_"),
-            voting_period_kind = defaultVotingPeriod,
+            voting_period_kind = Some(defaultVotingPeriod),
+            voting_period_info = None,
             nonce_hash = None,
             consumed_gas = PositiveDecimal(0),
-            level = BlockHeaderMetadataLevel(0, 0, 0, 0, 0, 0, expected_commitment = false)
+            level = Some(BlockHeaderMetadataLevel(0, 0, 0, 0, 0, 0, expected_commitment = false)),
+            level_info = None
           )
         )
       val blockVotes = CurrentVotes.empty

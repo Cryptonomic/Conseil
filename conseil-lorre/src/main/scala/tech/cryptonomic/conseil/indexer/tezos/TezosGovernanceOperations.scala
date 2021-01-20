@@ -10,6 +10,7 @@ import scala.util.Try
 import slick.dbio.DBIO
 import slick.jdbc.PostgresProfile.api.Database
 import cats.implicits._
+import tech.cryptonomic.conseil.common.tezos.TezosOptics
 
 /** Process blocks and voting data to compute details for
   * the governance-related cycles
@@ -159,6 +160,7 @@ object TezosGovernanceOperations extends ConseilLogSupport {
   )(
       implicit ec: ExecutionContext
   ): Future[List[GovernanceAggregate]] = {
+    import TezosOptics.Blocks._
 
     //local functions, should simplify reading the calling code
     def countBallotsPerLevel(block: Block) =
@@ -169,8 +171,8 @@ object TezosGovernanceOperations extends ConseilLogSupport {
 
     // as stated, this is a runtime failure if the block contains the wrong metadata
     def proposalHashesPerCycle(block: Block) = block.data.metadata match {
-      case BlockHeaderMetadata(_, _, _, _, _, level) =>
-        TezosDatabaseOperations.getProposalOperationHashesByCycle(level.cycle)
+      case bh: BlockHeaderMetadata =>
+        TezosDatabaseOperations.getProposalOperationHashesByCycle(extractCycle(bh).get)
     }
 
     logger.info("Searching for governance data in voting period...")
@@ -180,13 +182,14 @@ object TezosGovernanceOperations extends ConseilLogSupport {
 
     val logVotingSize = if (votingBlocks.nonEmpty) String.valueOf(votingBlocks.size) else "no"
     logger.info(s"There are $logVotingSize blocks related to testing vote and proposal vote periods.")
+    import TezosOptics.Blocks._
 
     //main algorithm
     val cycles = activeProposalsBlocks.keys
       .filter(votingPeriodIn(ballotPeriods))
       .map(_.data.metadata)
       .collect {
-        case md: BlockHeaderMetadata => md.level.cycle
+        case md: BlockHeaderMetadata => extractCycle(md).get
       }
       .toList
       .distinct
@@ -246,7 +249,9 @@ object TezosGovernanceOperations extends ConseilLogSupport {
       ballotCountsPerCycle: Map[Int, BallotsPerCycle],
       proposalCountsByBlock: Map[Block, Map[ProtocolId, Int]], //comes from individual operations on the block
       previousBatchRolls: VoteRollsCounts
-  ): List[GovernanceAggregate] =
+  ): List[GovernanceAggregate] = {
+    import TezosOptics.Blocks._
+
     proposalsBlocks.toList.flatMap {
       case (block, currentProposal) =>
         val ballot = ballots.getOrElse(block, List.empty)
@@ -260,7 +265,7 @@ object TezosGovernanceOperations extends ConseilLogSupport {
         }
         val rollsForBlockLevel = VoteRollsCounts.subtract(rollsAtLevel, rollsAtPreviousLevel)
         val ballotCountPerCycle = block.data.metadata match {
-          case md: BlockHeaderMetadata => ballotCountsPerCycle.get(md.level.cycle).map(_.counts)
+          case md: BlockHeaderMetadata => ballotCountsPerCycle.get(extractCycle(md).get).map(_.counts)
           case GenesisMetadata => None
         }
         val ballotCountPerLevel = ballotCountsPerLevel.get(block).map(_.counts)
@@ -303,7 +308,7 @@ object TezosGovernanceOperations extends ConseilLogSupport {
                 case (proposalProtocol, count) =>
                   GovernanceAggregate(
                     block.data.hash,
-                    metadata.copy(voting_period_kind = VotingPeriod.proposal), //we know these are from operations
+                    metadata.copy(voting_period_kind = Some(VotingPeriod.proposal)), //we know these are from operations
                     Some(proposalProtocol),
                     rollsAtLevel,
                     rollsForBlockLevel,
@@ -319,6 +324,7 @@ object TezosGovernanceOperations extends ConseilLogSupport {
         }
 
     }
+  }
 
   /* Will scan the ballots to count all rolls associated with each vote outcome */
   private def countRolls(listings: List[Voting.BakerRolls], ballots: List[Voting.Ballot]): VoteRollsCounts = {

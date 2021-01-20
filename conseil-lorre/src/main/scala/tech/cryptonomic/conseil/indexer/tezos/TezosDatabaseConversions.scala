@@ -178,6 +178,7 @@ private[tezos] object TezosDatabaseConversions {
 
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) = {
+      import TezosOptics.Blocks._
       val header = from.data.header
       val metadata = discardGenesis(from.data.metadata)
       val CurrentVotes(expectedQuorum, proposal) = from.votes
@@ -199,12 +200,12 @@ private[tezos] object TezosDatabaseConversions {
         activeProposal = proposal.map(_.id),
         baker = metadata.map(_.baker.value),
         consumedGas = metadata.flatMap(md => extractBigDecimal(md.consumed_gas)),
-        metaLevel = metadata.map(_.level.level),
-        metaLevelPosition = metadata.map(_.level.level_position),
-        metaCycle = metadata.map(_.level.cycle),
-        metaCyclePosition = metadata.map(_.level.cycle_position),
-        metaVotingPeriod = metadata.map(_.level.voting_period),
-        metaVotingPeriodPosition = metadata.map(_.level.voting_period_position),
+        metaLevel = metadata.flatMap(extractLevel),
+        metaLevelPosition = metadata.flatMap(extractLevelPosition),
+        metaCycle = metadata.flatMap(extractCycle),
+        metaCyclePosition = metadata.flatMap(extractCyclePosition),
+        metaVotingPeriod = metadata.flatMap(extractVotingPeriod),
+        metaVotingPeriodPosition = metadata.flatMap(extractVotingPeriodPosition),
         priority = header.priority,
         utcYear = year,
         utcMonth = month,
@@ -893,16 +894,17 @@ private[tezos] object TezosDatabaseConversions {
       override def convert(
           from: GovernanceAggregate
       ): Tables.GovernanceRow = {
+        import TezosOptics.Blocks._
 
         val metadata = from.metadata
         val VoteRollsCounts(yayRolls, nayRolls, passRolls) = from.allRolls
         val VoteRollsCounts(yayRollsPerLevel, nayRollsPerLevel, passRollsPerLevel) = from.rollsPerLevel
 
         Tables.GovernanceRow(
-          votingPeriod = metadata.level.voting_period,
-          votingPeriodKind = metadata.voting_period_kind.toString,
-          cycle = Some(metadata.level.cycle),
-          level = Some(metadata.level.level),
+          votingPeriod = extractVotingPeriod(metadata).get,
+          votingPeriodKind = metadata.voting_period_kind.toString, //TODO
+          cycle = extractCycle(metadata),
+          level = extractLevel(metadata),
           blockHash = from.hash.value,
           proposalHash = from.proposalId.map(_.id).getOrElse(""),
           yayCount = from.ballotsPerCycle.map(_.yay),

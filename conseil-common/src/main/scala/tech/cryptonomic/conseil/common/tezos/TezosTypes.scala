@@ -93,8 +93,10 @@ object TezosTypes {
       nonce_hash: Option[NonceHash],
       consumed_gas: PositiveBigNumber,
       baker: PublicKeyHash,
-      voting_period_kind: VotingPeriod.Kind,
-      level: BlockHeaderMetadataLevel
+      voting_period_kind: Option[VotingPeriod.Kind],
+      voting_period_info: Option[VotingPeriodInfo],
+      level: Option[BlockHeaderMetadataLevel],
+      level_info: Option[BlockHeaderMetadataLevelInfo]
   ) extends BlockMetadata
 
   final case class BlockHeaderMetadataLevel(
@@ -105,6 +107,26 @@ object TezosTypes {
       voting_period: Int,
       voting_period_position: Int,
       expected_commitment: Boolean
+  )
+
+  final case class BlockHeaderMetadataLevelInfo(
+      level: BlockLevel,
+      level_position: Int,
+      cycle: Int,
+      cycle_position: Int,
+      expected_commitment: Boolean
+  )
+
+  final case class VotingPeriodInfo(
+      voting_period: VotingPeriodObject,
+      position: Int,
+      remaining: Int
+  )
+
+  final case class VotingPeriodObject(
+      index: Int,
+      kind: VotingPeriod.Kind,
+      start_position: Int
   )
 
   /** only accepts standard block metadata, discarding the genesis metadata */
