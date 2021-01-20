@@ -31,15 +31,30 @@ object Logging {
     val showConfig =
       userProvidedPath.fold("scanning resources for logging.conf files")(conf => s"using provided file at $conf")
     info(s"Initializing Conseil logging from configuration: $showConfig...")
-    pureconfig
-      .loadConfig[Config](userProvidedPath getOrElse resourcePath)
-      .fold(
-        failures => {
-          error("I can't load the logging configuration")
-          failures.toList.foreach(fail => error(s"${fail.description} ${fail.location.getOrElse("")}"))
-        },
-        configure
-      )
+
+    userProvidedPath match {
+      case Some(value) =>
+        pureconfig
+          .loadConfig[Config](value, "logging")
+          .fold(
+            failures => {
+              error("I can't load the logging configuration from path")
+              failures.toList.foreach(fail => error(s"${fail.description} ${fail.location.getOrElse("")}"))
+            },
+            configure
+          )
+      case None =>
+        pureconfig
+          .loadConfig[Config]("logging")
+          .fold(
+            failures => {
+              error("I can't load the logging configuration")
+              failures.toList.foreach(fail => error(s"${fail.description} ${fail.location.getOrElse("")}"))
+            },
+            configure
+          )
+    }
+
     info("Conseil logging configuration done")
   }
 
