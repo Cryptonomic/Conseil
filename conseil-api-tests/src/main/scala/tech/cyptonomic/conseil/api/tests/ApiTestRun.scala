@@ -1,19 +1,15 @@
 package tech.cyptonomic.conseil.api.tests
 
-import java.util.concurrent.Executors
-
-import cats.effect.{ExitCode, IO, IOApp, ContextShift}
-import io.circe.syntax._
+import cats.effect.{ExitCode, IO, IOApp}
 import io.circe.parser._
-import org.http4s.Method._
-import org.http4s.client.blaze._
-import org.http4s.client.dsl.io._
-import org.http4s.headers._
+import io.circe.syntax._
 import org.http4s.Method.GET
 import org.http4s.client.blaze.BlazeClientBuilder
+import org.http4s.client.dsl.io._
 import org.http4s.headers.{Accept, `Content-Type`}
 import org.http4s.{Header, MediaType, Method, Request, Uri}
 
+import java.util.concurrent.Executors
 import scala.concurrent.ExecutionContext
 
 object ApiTestRun extends IOApp {
@@ -23,6 +19,8 @@ object ApiTestRun extends IOApp {
   val CONSEIL_PORT: Int = 1337
   val CONSEIl_API_KEY: String = "hooman"
   val CONSEIL: org.http4s.Uri = Uri.unsafeFromString(PROTOCOL + "://" + CONSEIl_HOST + ":" + CONSEIL_PORT)
+
+  type Async[A] = (A => Unit) => Unit
 
   override def run(args: List[String]): IO[ExitCode] = {
 
@@ -128,7 +126,7 @@ object ApiTestRun extends IOApp {
    * @param queryBody The body of the query
    * @return The result of the query
    */
-  def sendConseilQuery(client: BlazeClientBuilder[IO], queryUrl: Uri, queryBody: String): String = {
+  def sendConseilQuery(client: BlazeClientBuilder[IO], queryUrl: Uri, queryBody: String): IO[String] = {
 
     val request = Request[IO](method = Method.POST, uri = queryUrl)
       .withEntity[String](queryBody)
@@ -140,7 +138,7 @@ object ApiTestRun extends IOApp {
 
     client.resource.use {client =>
       client.expect[String](request)
-    }.unsafeRunSync()
+    }
   }
 
   /**
@@ -192,7 +190,7 @@ object ApiTestRun extends IOApp {
           |""".stripMargin.replace("%FIELDS%", entity._2.asJson.toString)
 
       println("\n\n\nTesting Tezos " + entity._1 + " Query\n")
-      val result: String = sendConseilQuery(httpClient, CONSEIL.withPath(Requests.getTezosQueryPath(entity._1)), queryString)
+      val result: String = sendConseilQuery(httpClient, CONSEIL.withPath(Requests.getTezosQueryPath(entity._1)), queryString).unsafeRunSync()
       println(result)
 
       entity._2.foreach { attribute =>
@@ -233,29 +231,23 @@ object ApiTestRun extends IOApp {
             |""".stripMargin.replace("%FIELD%", attribute)
 
         println("\n\n\nValidating Tezos " + entity._1 + " " + attribute + " Data\n")
-        var result: String = ""
-        try {
-          result = sendConseilQuery(httpClient, CONSEIL.withPath(Requests.getTezosQueryPath(entity._1)), queryString).handleError
-        } catch {
-          case x: org.http4s.client.UnexpectedStatus =>
-            val queryString: String =
-              """
-                |{
-                |     "field": ["%FIELD%"],
-                |     "predicates": [],
-                |     "orderBy": [],
-                |     "aggregation": [],
-                |     "limit": 1
-                |}
-                |""".stripMargin.replace("%FIELD%", attribute)
-
-            result = sendConseilQuery(httpClient, CONSEIL.withPath(Requests.getTezosQueryPath(entity._1)), queryString)
-        }
-
+        val result: String = sendConseilQuery(httpClient, CONSEIL.withPath(Requests.getTezosQueryPath(entity._1)), queryString).handleErrorWith(_ => {
+          val queryString: String = {
+            """
+              |{
+              |     "field": ["%FIELD%"],
+              |     "predicates": [],
+              |     "orderBy": [],
+              |     "aggregation": [],
+              |     "limit": 1
+              |}
+              |""".stripMargin.replace("%FIELD%", attribute)
+          }
+          sendConseilQuery(httpClient, CONSEIL.withPath(Requests.getTezosQueryPath(entity._1)), queryString)
+        }).unsafeRunSync()
         println(result)
 
         validateJsonByKey(attribute, result, notNull = true)
-
       }
     }
   }
