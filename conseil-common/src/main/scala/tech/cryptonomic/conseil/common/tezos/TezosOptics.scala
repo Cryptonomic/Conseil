@@ -283,6 +283,17 @@ object TezosOptics {
         )
 
     //Note, cycle 0 starts at the level 2 block
+    def extractVotingPeriodKind(block: BlockMetadata): Option[VotingPeriod.Kind] =
+      discardGenesis(block)
+        .flatMap(
+          b =>
+            b.voting_period_kind
+              .orElse(
+                b.voting_period_info.map(_.voting_period.kind)
+              )
+        )
+
+    //Note, cycle 0 starts at the level 2 block
     def extractVotingPeriodPosition(block: BlockMetadata): Option[Int] =
       discardGenesis(block)
         .flatMap(

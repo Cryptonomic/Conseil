@@ -902,7 +902,7 @@ private[tezos] object TezosDatabaseConversions {
 
         Tables.GovernanceRow(
           votingPeriod = extractVotingPeriod(metadata).get,
-          votingPeriodKind = metadata.voting_period_kind.toString, //TODO
+          votingPeriodKind = extractVotingPeriodKind(metadata).get.toString,
           cycle = extractCycle(metadata),
           level = extractLevel(metadata),
           blockHash = from.hash.value,
