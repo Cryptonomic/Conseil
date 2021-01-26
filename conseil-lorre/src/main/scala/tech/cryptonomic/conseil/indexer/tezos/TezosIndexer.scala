@@ -231,18 +231,12 @@ class TezosIndexer private (
 
   override def start(): Unit = {
     checkTezosConnection()
-    Await.result(
-      accountsResetHandler
-        .unprocessedResetRequestLevels(lorreConf.chainEvents)
-        .transform(
-          accountResets => mainLoop(0, accountResets),
-          error => {
-            logger.error("Could not get the unprocessed events block levels for this chain network", error)
-            throw error
-          }
-        ),
-      Duration.Inf
-    )
+    val accountResetsToHandle =
+      Await.result(
+        accountsResetHandler.unprocessedResetRequestLevels(lorreConf.chainEvents),
+        atMost = 5.seconds
+      )
+    mainLoop(0, accountResetsToHandle)
   }
 
   override def stop(): Future[ShutdownComplete] = terminationSequence()
