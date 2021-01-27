@@ -238,7 +238,7 @@ class TezosIndexer private (
           accountResets => mainLoop(0, accountResets),
           error => {
             logger.error("Could not get the unprocessed events block levels for this chain network", error)
-            throw error
+            error
           }
         ),
       Duration.Inf
