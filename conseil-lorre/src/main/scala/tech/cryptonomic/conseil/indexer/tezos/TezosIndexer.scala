@@ -403,8 +403,9 @@ object TezosIndexer extends ConseilLogSupport {
     val gracefulTermination = () =>
       for {
         _ <- Future.successful(db.close())
-        _: ShutdownComplete <- nodeOperator.node.shutdown()
+        _ = materializer.shutdown()
         _: Terminated <- system.terminate()
+        _: ShutdownComplete <- nodeOperator.node.shutdown()
       } yield ShutdownComplete
 
     new TezosIndexer(
