@@ -238,7 +238,7 @@ class TezosIndexer private (
           accountResets => mainLoop(0, accountResets),
           error => {
             logger.error("Could not get the unprocessed events block levels for this chain network", error)
-            throw error
+            error
           }
         ),
       Duration.Inf
@@ -403,8 +403,9 @@ object TezosIndexer extends ConseilLogSupport {
     val gracefulTermination = () =>
       for {
         _ <- Future.successful(db.close())
-        _: ShutdownComplete <- nodeOperator.node.shutdown()
+        _ = materializer.shutdown()
         _: Terminated <- system.terminate()
+        _: ShutdownComplete <- nodeOperator.node.shutdown()
       } yield ShutdownComplete
 
     new TezosIndexer(

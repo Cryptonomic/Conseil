@@ -7,8 +7,8 @@ object Dependencies {
     val pureConfig = "0.10.2"
     val scopt = "4.0.0-RC2"
 
-    val akka = "2.6.3"
-    val akkaHttp = "10.2.1"
+    val akka = "2.6.11"
+    val akkaHttp = "10.2.3"
     val akkaHttpJson = "1.35.2"
     val akkaHttpCors = "1.1.0"
 
