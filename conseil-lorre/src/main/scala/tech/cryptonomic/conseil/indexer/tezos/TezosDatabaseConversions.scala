@@ -195,7 +195,7 @@ private[tezos] object TezosDatabaseConversions {
         chainId = from.data.chain_id,
         hash = from.data.hash.value,
         operationsHash = header.operations_hash,
-        periodKind = metadata.map(_.voting_period_kind.toString),
+        periodKind = metadata.flatMap(extractVotingPeriodKind).map(_.toString),
         currentExpectedQuorum = expectedQuorum,
         activeProposal = proposal.map(_.id),
         baker = metadata.map(_.baker.value),
