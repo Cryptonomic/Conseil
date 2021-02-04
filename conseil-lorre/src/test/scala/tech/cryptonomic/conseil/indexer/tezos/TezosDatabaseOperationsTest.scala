@@ -108,7 +108,7 @@ class TezosDatabaseOperationsTest
               row.chainId shouldEqual block.data.chain_id
               row.hash shouldEqual block.data.hash.value
               row.operationsHash shouldEqual block.data.header.operations_hash
-              row.periodKind shouldEqual metadata.map(_.voting_period_kind.toString)
+              row.periodKind shouldEqual metadata.flatMap(_.voting_period_kind).map(_.toString)
               row.currentExpectedQuorum shouldEqual block.votes.quorum
               row.activeProposal shouldEqual block.votes.active.map(_.id)
               row.baker shouldEqual metadata.map(_.baker.value)

@@ -157,6 +157,9 @@ private[tezos] object TezosJsonDecoders {
       val genesisMetadataDecoder: Decoder[GenesisMetadata.type] = deriveConfiguredDecoder
       implicit val metadataLevelDecoder: Decoder[BlockHeaderMetadataLevel] = deriveConfiguredDecoder
       val blockMetadataDecoder: Decoder[BlockHeaderMetadata] = deriveConfiguredDecoder
+      implicit val votingPeriodInfoDecoder: Decoder[VotingPeriodInfo] = deriveConfiguredDecoder
+      implicit val votingPeriodObjectDecoder: Decoder[VotingPeriodObject] = deriveConfiguredDecoder
+      implicit val blockHeaderMetadataLevelInfoDecoder: Decoder[BlockHeaderMetadataLevelInfo] = deriveConfiguredDecoder
       implicit val metadataDecoder: Decoder[BlockMetadata] = blockMetadataDecoder.widen or genesisMetadataDecoder.widen
       implicit val headerDecoder: Decoder[BlockHeader] = deriveConfiguredDecoder
       implicit val mainDecoder: Decoder[BlockData] = deriveConfiguredDecoder //remember to add ISO-control filtering

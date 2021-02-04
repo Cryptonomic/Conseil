@@ -432,8 +432,8 @@ trait Tables {
   )
 
   /** GetResult implicit for fetching ReceiptsRow objects using plain SQL queries */
-  implicit def GetResultReceiptsRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Option[String]]): GR[ReceiptsRow] = GR {
-    prs =>
+  implicit def GetResultReceiptsRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Option[String]]): GR[ReceiptsRow] =
+    GR { prs =>
       import prs._
       ReceiptsRow.tupled(
         (
@@ -449,7 +449,7 @@ trait Tables {
           <<?[String]
         )
       )
-  }
+    }
 
   /** Table description of table receipts. Objects of this class serve as prototypes for rows in queries. */
   class Receipts(_tableTag: Tag) extends profile.api.Table[ReceiptsRow](_tableTag, Some("ethereum"), "receipts") {

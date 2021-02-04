@@ -1,13 +1,12 @@
 package tech.cryptonomic.conseil.indexer.tezos.processing
 
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogger
-import tech.cryptonomic.conseil.common.tezos.TezosOptics
+import tech.cryptonomic.conseil.common.tezos.{TezosOptics, TezosTypes}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   Block,
   BlockHeaderMetadata,
   Endorsement,
   EndorsingRights,
-  GenesisMetadata,
   RightsFetchKey
 }
 import tech.cryptonomic.conseil.indexer.config
@@ -22,6 +21,7 @@ import akka.stream.scaladsl.Source
 import akka.stream.scaladsl.Sink
 import akka.stream.ActorMaterializer
 import slick.jdbc.PostgresProfile.api._
+
 import scala.concurrent.Future
 
 /** Takes care of fetching and processing rights to bake/endorse blocks,
@@ -50,10 +50,15 @@ class BakingAndEndorsingRightsProcessor(
     val blockHashesWithCycleAndGovernancePeriod = fetchingResults.map {
       case (Block(data, _, _), _) => {
         data.metadata match {
-          case GenesisMetadata =>
+          case TezosTypes.GenesisMetadata =>
             RightsFetchKey(data.hash, None, None)
-          case BlockHeaderMetadata(_, _, _, _, _, level) =>
-            RightsFetchKey(data.hash, Some(level.cycle), Some(level.voting_period))
+          case BlockHeaderMetadata(_, _, _, _, _, voting_period_info, level, level_info) =>
+            RightsFetchKey(
+              data.hash,
+              level.map(_.cycle).orElse(level_info.map(_.cycle)),
+              level.map(_.voting_period).orElse(voting_period_info.map(_.voting_period.index))
+            )
+
         }
       }
     }
