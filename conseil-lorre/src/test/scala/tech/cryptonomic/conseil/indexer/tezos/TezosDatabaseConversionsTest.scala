@@ -111,7 +111,7 @@ class TezosDatabaseConversionsTest
           'operationsHash (header.operations_hash),
           'currentExpectedQuorum (expectedQuorum),
           'activeProposal (proposal.map(_.id)),
-          'periodKind (metadata.map(_.voting_period_kind.toString)),
+          'periodKind (metadata.flatMap(_.voting_period_kind).map(_.toString)),
           'baker (metadata.map(_.baker.value)),
           'metaLevel (metadata.flatMap(_.level.map(_.level))),
           'metaLevelPosition (metadata.flatMap(_.level.map(_.level_position))),
