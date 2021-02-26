@@ -571,7 +571,9 @@ private[tezos] class TezosNodeOperator(
 
     val offsetString = offset.map(_.toString).getOrElse("")
 
+    logger.debug(s"Running query \"blocks/${hash.value}~$offsetString\"")
     node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString") flatMap { json =>
+      logger.debug(json)
       decodeLiftingTo[Future, BlockData](JS.sanitize(json))
     }
   }
