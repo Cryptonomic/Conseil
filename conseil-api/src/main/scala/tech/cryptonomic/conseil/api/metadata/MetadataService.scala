@@ -18,10 +18,10 @@ class MetadataService(
     platformDiscoveryOperations: PlatformDiscoveryOperations
 )(implicit apiExecutionContext: ExecutionContext) {
 
-  private val platforms = transformation.overridePlatforms(config.getPlatforms())
+  private val platforms = transformation.overridePlatforms(config.getPlatforms(), shouldLog = false)
 
   private val networks = platforms.map { platform =>
-    platform.path -> transformation.overrideNetworks(platform.path, config.getNetworks(platform.name))
+    platform.path -> transformation.overrideNetworks(platform.path, config.getNetworks(platform.name), shouldLog = false)
   }.toMap
 
   private val entities = {
@@ -31,7 +31,7 @@ class MetadataService(
     networks.values.flatten
       .map(_.path)
       .map(
-        networkPath => networkPath -> transformation.overrideEntities(networkPath, futureEntities(networkPath))
+        networkPath => networkPath -> transformation.overrideEntities(networkPath, futureEntities(networkPath), shouldLog = false)
       )
       .toMap
   }
@@ -45,7 +45,7 @@ class MetadataService(
     val result = Future.traverse(entityPaths) { path =>
       platformDiscoveryOperations
         .getTableAttributes(path)
-        .map(attributes => path -> transformation.overrideAttributes(path, attributes.getOrElse(List.empty)))
+        .map(attributes => path -> transformation.overrideAttributes(path, attributes.getOrElse(List.empty), shouldLog = false))
     }
 
     Await.result(result.map(_.toMap), 10 seconds)
@@ -127,7 +127,7 @@ class MetadataService(
   ): Future[Option[List[Attribute]]] =
     if (exists(path))
       getAttributes(path).map(
-        _.map(attributes => transformation.overrideAttributes(path, attributes))
+        _.map(attributes => transformation.overrideAttributes(path, attributes, shouldLog = false))
       )
     else
       Future.successful(None)
