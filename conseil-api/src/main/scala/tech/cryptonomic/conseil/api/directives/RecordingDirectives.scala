@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.directives.BasicDirectives
 import akka.http.scaladsl.server.{Directive, ExceptionHandler, Route}
 import akka.stream.Materializer
 import cats.effect.concurrent.MVar
-import cats.effect.{Concurrent, IO}
+import cats.effect.{Concurrent, ContextShift, IO}
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import org.slf4j.MDC
 
@@ -30,16 +30,17 @@ class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends ConseilLo
 
   /** Directive adding recorded values to the MDC */
   def recordResponseValues(
-      ip: RemoteAddress
+      ip: RemoteAddress,
+      stringEntity: String
   )(implicit materializer: Materializer, correlationId: UUID): Directive[Unit] =
     BasicDirectives.extractRequest.flatMap { request =>
       (for {
         requestMap <- requestInfoMap.take
-        value = RequestValues.fromHttpRequestAndIp(request, ip)
+        value = RequestValues.fromHttpRequestAndIp(request, ip, stringEntity)
         _ <- requestInfoMap.put(requestMap.updated(correlationId, value))
       } yield ()).unsafeRunSync()
 
-      requestMapModify(map => map.updated(correlationId, RequestValues.fromHttpRequestAndIp(request, ip)))(_ => ())
+      requestMapModify(map => map.updated(correlationId, RequestValues.fromHttpRequestAndIp(request, ip, stringEntity)))(_ => ())
         .unsafeRunSync()
 
       val response = BasicDirectives.mapResponse { resp =>
@@ -115,19 +116,18 @@ class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends ConseilLo
   object RequestValues {
 
     /** Extracts Request values from request context and ip address */
-    def fromHttpRequestAndIp(request: HttpRequest, ip: RemoteAddress)(
+    def fromHttpRequestAndIp(request: HttpRequest, ip: RemoteAddress, stringEntity: String)(
         implicit materializer: Materializer
     ): RequestValues = {
-      import scala.concurrent.duration._
-      RequestValues(
-        httpMethod = request.method.value,
-        requestBody = request.entity.toStrict(1000.millis).value.get.get.data.utf8String,
-        clientIp = ip.toOption.map(_.toString).getOrElse("unknown"),
-        path = request.uri.path.toString(),
-        apiVersion = if (request.uri.path.toString().startsWith("/v2")) "v2" else "v1",
-        apiKey = request.headers.find(_.is("apikey")).map(_.value()).getOrElse(""),
-        startTime = System.nanoTime()
-      )
+        RequestValues(
+          httpMethod = request.method.value,
+          requestBody = stringEntity,
+          clientIp = ip.toOption.map(_.toString).getOrElse("unknown"),
+          path = request.uri.path.toString(),
+          apiVersion = if (request.uri.path.toString().startsWith("/v2")) "v2" else "v1",
+          apiKey = request.headers.find(_.is("apikey")).map(_.value()).getOrElse(""),
+          startTime = System.nanoTime()
+        )
     }
   }
 }

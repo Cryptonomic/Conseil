@@ -18,11 +18,7 @@ import tech.cryptonomic.conseil.api.routes.Docs
 import tech.cryptonomic.conseil.api.routes.info.AppInfo
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
 import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.{BitcoinDataOperations, BitcoinDataRoutes}
-import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{
-  EthereumDataOperations,
-  EthereumDataRoutes,
-  QuorumDataRoutes
-}
+import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{EthereumDataOperations, EthereumDataRoutes, QuorumDataRoutes}
 import tech.cryptonomic.conseil.api.routes.platform.data.tezos.{TezosDataOperations, TezosDataRoutes}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.{GenericPlatformDiscoveryOperations, PlatformDiscovery}
 import tech.cryptonomic.conseil.api.security.Security
@@ -34,6 +30,7 @@ import tech.cryptonomic.conseil.common.sql.DatabaseRunner
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
 
 object ConseilApi {
@@ -48,6 +45,8 @@ object ConseilApi {
 class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
     extends EnableCORSDirectives
     with ConseilLogSupport {
+
+  import scala.collection.JavaConverters._
 
   private val transformation = new UnitTransformation(config.metadata)
   private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
@@ -102,30 +101,32 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
           handleExceptions(loggingExceptionHandler) {
             extractClientIP {
               ip =>
-                recordResponseValues(ip)(mat, correlationId) {
-                  timeoutHandler {
-                    concat(
-                      validateApiKey { _ =>
-                        concat(
-                          logRequest("Conseil", Logging.DebugLevel) {
-                            AppInfo.route
-                          },
-                          logRequest("Metadata Route", Logging.DebugLevel) {
-                            platformDiscovery.route
-                          },
-                          concat(ApiCache.cachedDataEndpoints.map {
-                            case (platform, routes) =>
-                              logRequest(s"$platform Data Route", Logging.DebugLevel) {
-                                routes.getRoute ~ routes.postRoute
-                              }
-                          }.toSeq: _*)
-                        )
-                      },
-                      options {
-                        // Support for CORS pre-flight checks.
-                        complete("Supported methods : GET and POST.")
-                      }
-                    )
+                extractStrictEntity(10.seconds) { ent =>
+                  recordResponseValues(ip, ent.data.utf8String)(mat, correlationId) {
+                    timeoutHandler {
+                      concat(
+                        validateApiKey { _ =>
+                          concat(
+                            logRequest("Conseil", Logging.DebugLevel) {
+                              AppInfo.route
+                            },
+                            logRequest("Metadata Route", Logging.DebugLevel) {
+                              platformDiscovery.route
+                            },
+                            concat(ApiCache.cachedDataEndpoints.map {
+                              case (platform, routes) =>
+                                logRequest(s"$platform Data Route", Logging.DebugLevel) {
+                                  routes.getRoute ~ routes.postRoute
+                                }
+                            }.toSeq: _*)
+                          )
+                        },
+                        options {
+                          // Support for CORS pre-flight checks.
+                          complete("Supported methods : GET and POST.")
+                        }
+                      )
+                    }
                   }
                 }
             }
