@@ -7,12 +7,14 @@ import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, Platfo
 /* UnitTransformation implementation for test purposes. It overrides nothing. */
 object TransparentUnitTransformation extends UnitTransformation(MetadataConfiguration(Map.empty)) {
   override def overridePlatforms(
-      platforms: List[PlatformDiscoveryTypes.Platform]
+      platforms: List[PlatformDiscoveryTypes.Platform],
+      shouldLog: Boolean
   ): List[PlatformDiscoveryTypes.Platform] = platforms
 
   override def overrideNetworks(
       platformPath: PlatformPath,
-      networks: List[PlatformDiscoveryTypes.Network]
+      networks: List[PlatformDiscoveryTypes.Network],
+      shouldLog: Boolean
   ): List[PlatformDiscoveryTypes.Network] = networks
 
   override def overrideEntities(
