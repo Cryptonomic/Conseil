@@ -1268,8 +1268,14 @@ trait Tables {
     /** Index over (blockHash) (database name fki_fk_block_hash) */
     val index3 = index("fki_fk_block_hash", blockHash)
 
+    /** Index over (cycle) (database name ix_cycle) */
+    val index4 = index("ix_cycle", cycle)
+
     /** Index over (delegate,priority) (database name ix_delegate_priority) */
-    val index4 = index("ix_delegate_priority", (delegate, priority))
+    val index5 = index("ix_delegate_priority", (delegate, priority))
+
+    /** Index over (delegate,priority,cycle) (database name ix_delegate_priority_cycle) */
+    val index6 = index("ix_delegate_priority_cycle", (delegate, priority, cycle))
   }
 
   /** Collection-like TableQuery object for table BakingRights */
@@ -1472,35 +1478,63 @@ trait Tables {
     *  @param key Database column key SqlType(varchar)
     *  @param keyHash Database column key_hash SqlType(varchar), Default(None)
     *  @param operationGroupId Database column operation_group_id SqlType(varchar), Default(None)
-    *  @param value Database column value SqlType(varchar), Default(None) */
+    *  @param value Database column value SqlType(varchar), Default(None)
+    *  @param blockLevel Database column block_level SqlType(int8), Default(None)
+    *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
+    *  @param cycle Database column cycle SqlType(int4), Default(None)
+    *  @param period Database column period SqlType(int4), Default(None) */
   case class BigMapContentsRow(
       bigMapId: scala.math.BigDecimal,
       key: String,
       keyHash: Option[String] = None,
       operationGroupId: Option[String] = None,
-      value: Option[String] = None
+      value: Option[String] = None,
+      blockLevel: Option[Long] = None,
+      timestamp: Option[java.sql.Timestamp] = None,
+      cycle: Option[Int] = None,
+      period: Option[Int] = None
   )
 
   /** GetResult implicit for fetching BigMapContentsRow objects using plain SQL queries */
   implicit def GetResultBigMapContentsRow(
       implicit e0: GR[scala.math.BigDecimal],
       e1: GR[String],
-      e2: GR[Option[String]]
+      e2: GR[Option[String]],
+      e3: GR[Option[Long]],
+      e4: GR[Option[java.sql.Timestamp]],
+      e5: GR[Option[Int]]
   ): GR[BigMapContentsRow] = GR { prs =>
     import prs._
-    BigMapContentsRow.tupled((<<[scala.math.BigDecimal], <<[String], <<?[String], <<?[String], <<?[String]))
+    BigMapContentsRow.tupled(
+      (
+        <<[scala.math.BigDecimal],
+        <<[String],
+        <<?[String],
+        <<?[String],
+        <<?[String],
+        <<?[Long],
+        <<?[java.sql.Timestamp],
+        <<?[Int],
+        <<?[Int]
+      )
+    )
   }
 
   /** Table description of table big_map_contents. Objects of this class serve as prototypes for rows in queries. */
   class BigMapContents(_tableTag: Tag)
       extends profile.api.Table[BigMapContentsRow](_tableTag, Some("tezos"), "big_map_contents") {
-    def * = (bigMapId, key, keyHash, operationGroupId, value) <> (BigMapContentsRow.tupled, BigMapContentsRow.unapply)
+    def * =
+      (bigMapId, key, keyHash, operationGroupId, value, blockLevel, timestamp, cycle, period) <> (BigMapContentsRow.tupled, BigMapContentsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(bigMapId), Rep.Some(key), keyHash, operationGroupId, value)).shaped.<>({ r =>
-        import r._; _1.map(_ => BigMapContentsRow.tupled((_1.get, _2.get, _3, _4, _5)))
-      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
+      ((Rep.Some(bigMapId), Rep.Some(key), keyHash, operationGroupId, value, blockLevel, timestamp, cycle, period)).shaped
+        .<>(
+          { r =>
+            import r._; _1.map(_ => BigMapContentsRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8, _9)))
+          },
+          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        )
 
     /** Database column big_map_id SqlType(numeric) */
     val bigMapId: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("big_map_id")
@@ -1516,6 +1550,18 @@ trait Tables {
 
     /** Database column value SqlType(varchar), Default(None) */
     val value: Rep[Option[String]] = column[Option[String]]("value", O.Default(None))
+
+    /** Database column block_level SqlType(int8), Default(None) */
+    val blockLevel: Rep[Option[Long]] = column[Option[Long]]("block_level", O.Default(None))
+
+    /** Database column timestamp SqlType(timestamp), Default(None) */
+    val timestamp: Rep[Option[java.sql.Timestamp]] = column[Option[java.sql.Timestamp]]("timestamp", O.Default(None))
+
+    /** Database column cycle SqlType(int4), Default(None) */
+    val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
+
+    /** Database column period SqlType(int4), Default(None) */
+    val period: Rep[Option[Int]] = column[Option[Int]]("period", O.Default(None))
 
     /** Primary key of BigMapContents (database name big_map_contents_pkey) */
     val pk = primaryKey("big_map_contents_pkey", (bigMapId, key))
@@ -1959,8 +2005,11 @@ trait Tables {
     /** Index over (blockHash) (database name fki_fk_block_hash2) */
     val index3 = index("fki_fk_block_hash2", blockHash)
 
+    /** Index over (delegate,blockLevel) (database name ix_delegate_block_level) */
+    val index4 = index("ix_delegate_block_level", (delegate, blockLevel))
+
     /** Index over (delegate,slot) (database name ix_delegate_slot) */
-    val index4 = index("ix_delegate_slot", (delegate, slot))
+    val index5 = index("ix_delegate_slot", (delegate, slot))
   }
 
   /** Collection-like TableQuery object for table EndorsingRights */

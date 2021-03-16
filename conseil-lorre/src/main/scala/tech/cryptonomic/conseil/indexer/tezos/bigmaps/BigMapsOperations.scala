@@ -19,6 +19,7 @@ import TezosOptics.Operations.{
   extractAppliedTransactionsResults
 }
 import scribe._
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockTagged.fromBlockData
 
 /** Defines big-map-diffs specific handling, from block data extraction to database storage
   *
@@ -57,7 +58,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
             case Contract.BigMapCopy(_, Decimal(sourceId), Decimal(destinationId)) =>
               Tables.BigMapContents
                 .filter(_.bigMapId === sourceId)
-                .map(it => (destinationId, it.key, it.keyHash, it.operationGroupId, it.value))
+                .map(it => (destinationId, it.key, it.keyHash, it.operationGroupId, it.value, it.blockLevel, it.timestamp, it.cycle, it.period))
                 .result
                 .headOption
           }
@@ -137,13 +138,13 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
           case (groupHash, op) => op.big_map_diff.toList.flatMap(keepLatestDiffsFormat).map(groupHash -> _)
         }.map {
           case (groupHash, diff) =>
-            BigMapsConversions.BlockBigMapDiff(b.data.hash, Some(groupHash), diff)
+            BigMapsConversions.BlockBigMapDiff(fromBlockData(b.data, (b.data.hash, Some(groupHash), diff)))
         }
     )
 
     val maps = if (logger.includes(Level.Debug)) {
       val rowsPerBlock = diffsPerBlock
-        .map(it => it.get._1 -> it.convertToA[Option, BigMapsRow])
+        .map(it => it.get.content._1 -> it.convertToA[Option, BigMapsRow])
         .filterNot(_._2.isEmpty)
         .groupBy { case (hash, _) => hash }
         .mapValues(entries => List.concat(entries.map(_._2.toList): _*))
@@ -173,18 +174,19 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     */
   def upsertContent(blocks: List[Block]): DBIO[Option[Int]] = {
 
+    import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockTagged._
     val diffsPerBlock = blocks.flatMap(
       b =>
         extractAppliedTransactionsResults(b).flatMap {
           case (groupHash, op) => op.big_map_diff.toList.flatMap(keepLatestDiffsFormat).map(groupHash -> _)
         }.map {
           case (groupHash, diff) =>
-            BigMapsConversions.BlockBigMapDiff(b.data.hash, Some(groupHash), diff)
+            BigMapsConversions.BlockBigMapDiff(fromBlockData(b.data, (b.data.hash, Some(groupHash), diff)))
         }
     )
 
     val rowsPerBlock = diffsPerBlock
-      .map(it => it.get._1 -> it.convertToA[Option, BigMapContentsRow])
+      .map(it => it.get.content._1 -> it.convertToA[Option, BigMapContentsRow])
       .filterNot(_._2.isEmpty)
       .groupBy { case (hash, _) => hash }
       .mapValues(entries => List.concat(entries.map(_._2.toList): _*))
