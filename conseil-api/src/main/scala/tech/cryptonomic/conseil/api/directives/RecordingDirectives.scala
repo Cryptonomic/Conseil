@@ -40,7 +40,9 @@ class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends ConseilLo
         _ <- requestInfoMap.put(requestMap.updated(correlationId, value))
       } yield ()).unsafeRunSync()
 
-      requestMapModify(map => map.updated(correlationId, RequestValues.fromHttpRequestAndIp(request, ip, stringEntity)))(_ => ())
+      requestMapModify(
+        map => map.updated(correlationId, RequestValues.fromHttpRequestAndIp(request, ip, stringEntity))
+      )(_ => ())
         .unsafeRunSync()
 
       val response = BasicDirectives.mapResponse { resp =>
@@ -118,16 +120,15 @@ class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends ConseilLo
     /** Extracts Request values from request context and ip address */
     def fromHttpRequestAndIp(request: HttpRequest, ip: RemoteAddress, stringEntity: String)(
         implicit materializer: Materializer
-    ): RequestValues = {
-        RequestValues(
-          httpMethod = request.method.value,
-          requestBody = stringEntity,
-          clientIp = ip.toOption.map(_.toString).getOrElse("unknown"),
-          path = request.uri.path.toString(),
-          apiVersion = if (request.uri.path.toString().startsWith("/v2")) "v2" else "v1",
-          apiKey = request.headers.find(_.is("apikey")).map(_.value()).getOrElse(""),
-          startTime = System.nanoTime()
-        )
-    }
+    ): RequestValues =
+      RequestValues(
+        httpMethod = request.method.value,
+        requestBody = stringEntity,
+        clientIp = ip.toOption.map(_.toString).getOrElse("unknown"),
+        path = request.uri.path.toString(),
+        apiVersion = if (request.uri.path.toString().startsWith("/v2")) "v2" else "v1",
+        apiKey = request.headers.find(_.is("apikey")).map(_.value()).getOrElse(""),
+        startTime = System.nanoTime()
+      )
   }
 }

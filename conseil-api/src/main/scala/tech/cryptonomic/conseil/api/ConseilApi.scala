@@ -18,7 +18,11 @@ import tech.cryptonomic.conseil.api.routes.Docs
 import tech.cryptonomic.conseil.api.routes.info.AppInfo
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
 import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.{BitcoinDataOperations, BitcoinDataRoutes}
-import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{EthereumDataOperations, EthereumDataRoutes, QuorumDataRoutes}
+import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{
+  EthereumDataOperations,
+  EthereumDataRoutes,
+  QuorumDataRoutes
+}
 import tech.cryptonomic.conseil.api.routes.platform.data.tezos.{TezosDataOperations, TezosDataRoutes}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.{GenericPlatformDiscoveryOperations, PlatformDiscovery}
 import tech.cryptonomic.conseil.api.security.Security
@@ -101,33 +105,34 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
           handleExceptions(loggingExceptionHandler) {
             extractClientIP {
               ip =>
-                extractStrictEntity(10.seconds) { ent =>
-                  recordResponseValues(ip, ent.data.utf8String)(mat, correlationId) {
-                    timeoutHandler {
-                      concat(
-                        validateApiKey { _ =>
-                          concat(
-                            logRequest("Conseil", Logging.DebugLevel) {
-                              AppInfo.route
-                            },
-                            logRequest("Metadata Route", Logging.DebugLevel) {
-                              platformDiscovery.route
-                            },
-                            concat(ApiCache.cachedDataEndpoints.map {
-                              case (platform, routes) =>
-                                logRequest(s"$platform Data Route", Logging.DebugLevel) {
-                                  routes.getRoute ~ routes.postRoute
-                                }
-                            }.toSeq: _*)
-                          )
-                        },
-                        options {
-                          // Support for CORS pre-flight checks.
-                          complete("Supported methods : GET and POST.")
-                        }
-                      )
+                extractStrictEntity(10.seconds) {
+                  ent =>
+                    recordResponseValues(ip, ent.data.utf8String)(mat, correlationId) {
+                      timeoutHandler {
+                        concat(
+                          validateApiKey { _ =>
+                            concat(
+                              logRequest("Conseil", Logging.DebugLevel) {
+                                AppInfo.route
+                              },
+                              logRequest("Metadata Route", Logging.DebugLevel) {
+                                platformDiscovery.route
+                              },
+                              concat(ApiCache.cachedDataEndpoints.map {
+                                case (platform, routes) =>
+                                  logRequest(s"$platform Data Route", Logging.DebugLevel) {
+                                    routes.getRoute ~ routes.postRoute
+                                  }
+                              }.toSeq: _*)
+                            )
+                          },
+                          options {
+                            // Support for CORS pre-flight checks.
+                            complete("Supported methods : GET and POST.")
+                          }
+                        )
+                      }
                     }
-                  }
                 }
             }
           }

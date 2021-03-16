@@ -18,7 +18,11 @@ class UnitTransformation(overrides: MetadataConfiguration) extends ConseilLogSup
   }
 
   // overrides networks
-  def overrideNetworks(platformPath: PlatformPath, networks: List[Network], shouldLog: Boolean = true): List[Network] = {
+  def overrideNetworks(
+      platformPath: PlatformPath,
+      networks: List[Network],
+      shouldLog: Boolean = true
+  ): List[Network] = {
     if (shouldLog) {
       logDifferences(networks.map(_.path), overrides.networks(platformPath).keys.toList)
     }
