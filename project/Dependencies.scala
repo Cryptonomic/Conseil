@@ -36,7 +36,7 @@ object Dependencies {
     val scalaTestScalaCheck = "3.1.2.0"
     val scalaTestJson = "0.0.3"
     val scalaMock = "4.1.0"
-    val testContainerPostgres = "1.14.3"
+    val testContainerPostgres = "1.15.2"
     val diffX = "0.3.3"
     val scalaCheckShapeless = "1.2.5"
 

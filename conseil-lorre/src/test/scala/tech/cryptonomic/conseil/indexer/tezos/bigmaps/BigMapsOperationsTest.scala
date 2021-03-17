@@ -7,13 +7,8 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
-import tech.cryptonomic.conseil.common.tezos.Tables.{
-  BigMapContentsRow,
-  BigMapsRow,
-  OriginatedAccountMapsRow,
-  TokenBalancesRow
-}
-import tech.cryptonomic.conseil.common.tezos.{Fork, Tables, TezosTypes}
+import tech.cryptonomic.conseil.common.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow, TokenBalancesRow}
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables, TezosOptics, TezosTypes}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperationsTestFixtures, TezosInMemoryDatabaseSetup}
@@ -125,7 +120,11 @@ class BigMapsOperationsTest
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
             value = Some("Pair 20 {}"),
-            operationGroupId = Some(opGroupHash.value)
+            operationGroupId = Some(opGroupHash.value),
+            blockLevel = Some(block.data.header.level),
+            timestamp = Some(Timestamp.from(block.data.header.timestamp.toInstant)),
+            cycle = TezosOptics.Blocks.extractCycle(block),
+            period = TezosOptics.Blocks.extractPeriod(block.data.metadata)
           )
         )
 
@@ -314,7 +313,11 @@ class BigMapsOperationsTest
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
             value = Some("Pair 50 {}"),
-            operationGroupId = Some(opGroupHash.value)
+            operationGroupId = Some(opGroupHash.value),
+            blockLevel = Some(block.data.header.level),
+            timestamp = Some(Timestamp.from(block.data.header.timestamp.toInstant)),
+            cycle = TezosOptics.Blocks.extractCycle(block),
+            period = TezosOptics.Blocks.extractPeriod(block.data.metadata)
           )
         )
       }
@@ -398,7 +401,11 @@ class BigMapsOperationsTest
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
             value = Some("Pair 50 {}"),
-            operationGroupId = Some(opGroupHashes(0).value)
+            operationGroupId = Some(opGroupHashes(0).value),
+            blockLevel = Some(reverted.head.data.header.level),
+            timestamp = Some(Timestamp.from(reverted.head.data.header.timestamp.toInstant)),
+            cycle = TezosOptics.Blocks.extractCycle(reverted.head),
+            period = TezosOptics.Blocks.extractPeriod(reverted.head.data.metadata)
           )
         )
 

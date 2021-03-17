@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.indexer.tezos.bigmaps
 
+import java.sql.Timestamp
+
 import cats.implicits._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.Tables
@@ -16,7 +18,8 @@ import scribe._
 object BigMapsConversions extends ConseilLogSupport {
 
   // Simplify understanding in parts of the code
-  case class BlockBigMapDiff(get: (TezosBlockHash, Option[OperationHash], Contract.BigMapDiff)) extends AnyVal
+  case class BlockBigMapDiff(get: BlockTagged[(TezosBlockHash, Option[OperationHash], Contract.BigMapDiff)])
+      extends AnyVal
   case class BlockContractIdsBigMapDiff(get: (TezosBlockHash, List[ContractId], Contract.BigMapDiff)) extends AnyVal
 
   //input to collect token data to convert
@@ -37,7 +40,7 @@ object BigMapsConversions extends ConseilLogSupport {
       implicit lazy val _: Logger = logger
 
       def convert(from: BlockBigMapDiff) = from.get match {
-        case (_, _, BigMapAlloc(_, Decimal(id), key_type, value_type)) =>
+        case BlockTagged(ref, (_, _, BigMapAlloc(_, Decimal(id), key_type, value_type))) =>
           Some(
             Tables.BigMapsRow(
               bigMapId = id,
@@ -45,12 +48,12 @@ object BigMapsConversions extends ConseilLogSupport {
               valueType = Some(toMichelsonScript[MichelsonExpression](value_type.expression))
             )
           )
-        case (hash, _, BigMapAlloc(_, InvalidDecimal(json), _, _)) =>
+        case BlockTagged(ref, (hash, _, BigMapAlloc(_, InvalidDecimal(json), _, _))) =>
           logger.warn(
             s"Big Map Allocations: A big_map_diff allocation hasn't been converted to a BigMap on db, because the map id '$json' is not a valid number. The block containing the Origination operation is ${hash.value}"
           )
           None
-        case (_, opHash, diffAction) =>
+        case BlockTagged(ref, (_, opHash, diffAction)) =>
           logger.warn(
             s"Big Map Allocations: A big_map_diff result will be ignored by the allocation conversion to BigMap on db, because the diff action is not supported: $diffAction for operation $opHash"
           )
@@ -71,22 +74,26 @@ object BigMapsConversions extends ConseilLogSupport {
       implicit lazy val _: Logger = logger
 
       def convert(from: BlockBigMapDiff) = from.get match {
-        case (_, opGroupHash, BigMapUpdate(_, key, keyHash, Decimal(id), value)) =>
+        case BlockTagged(ref, (_, opGroupHash, BigMapUpdate(_, key, keyHash, Decimal(id), value))) =>
           Some(
             Tables.BigMapContentsRow(
               bigMapId = id,
               key = toMichelsonScript[MichelsonInstruction](key.expression), //we're using instructions to represent data values
               keyHash = Some(keyHash.value),
               operationGroupId = opGroupHash.map(_.value),
-              value = value.map(it => toMichelsonScript[MichelsonInstruction](it.expression)) //we're using instructions to represent data values
+              value = value.map(it => toMichelsonScript[MichelsonInstruction](it.expression)), //we're using instructions to represent data values
+              blockLevel = Some(ref.level),
+              timestamp = ref.timestamp.map(Timestamp.from),
+              cycle = ref.cycle,
+              period = ref.period
             )
           )
-        case (hash, _, BigMapUpdate(_, _, _, InvalidDecimal(json), _)) =>
+        case BlockTagged(ref, (hash, _, BigMapUpdate(_, _, _, InvalidDecimal(json), _))) =>
           logger.warn(
             s"Big Map Updates: A big_map_diff update hasn't been converted to a BigMapContent on db, because the map id '$json' is not a valid number. The block containing the Transation operation is ${hash.value}"
           )
           None
-        case (_, opHash, diffAction) =>
+        case BlockTagged(ref, (_, opHash, diffAction)) =>
           logger.warn(
             s"Big Map Updates: A big_map_diff result will be ignored by the update conversion to BigMapContent on db, because the diff action is not supported: $diffAction for operation $opHash"
           )

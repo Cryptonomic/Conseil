@@ -510,6 +510,10 @@ CREATE TABLE tezos.big_map_contents (
     key_hash character varying,
     operation_group_id character varying,
     value character varying,
+    block_level bigint,
+    "timestamp" timestamp without time zone,
+    cycle integer,
+    period integer,
     PRIMARY KEY (big_map_id, key)
 );
 

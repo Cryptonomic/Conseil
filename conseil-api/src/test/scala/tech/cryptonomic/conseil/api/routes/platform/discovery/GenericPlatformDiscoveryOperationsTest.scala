@@ -441,7 +441,11 @@ class GenericPlatformDiscoveryOperationsTest
               KeyType.NonKey,
               "big_map_contents"
             ),
-            Attribute("value", "Value", DataType.String, None, KeyType.NonKey, "big_map_contents")
+            Attribute("value", "Value", DataType.String, None, KeyType.NonKey, "big_map_contents"),
+            Attribute("block_level", "Block level", DataType.LargeInt, None, KeyType.NonKey, "big_map_contents"),
+            Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "big_map_contents"),
+            Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "big_map_contents"),
+            Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "big_map_contents")
           )
         )
       }
