@@ -34,6 +34,7 @@ import tech.cryptonomic.conseil.common.sql.DatabaseRunner
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
 
 object ConseilApi {
@@ -48,6 +49,8 @@ object ConseilApi {
 class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
     extends EnableCORSDirectives
     with ConseilLogSupport {
+
+  import scala.collection.JavaConverters._
 
   private val transformation = new UnitTransformation(config.metadata)
   private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
@@ -102,31 +105,34 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
           handleExceptions(loggingExceptionHandler) {
             extractClientIP {
               ip =>
-                recordResponseValues(ip)(mat, correlationId) {
-                  timeoutHandler {
-                    concat(
-                      validateApiKey { _ =>
+                extractStrictEntity(10.seconds) {
+                  ent =>
+                    recordResponseValues(ip, ent.data.utf8String)(mat, correlationId) {
+                      timeoutHandler {
                         concat(
-                          logRequest("Conseil", Logging.DebugLevel) {
-                            AppInfo.route
+                          validateApiKey { _ =>
+                            concat(
+                              logRequest("Conseil", Logging.DebugLevel) {
+                                AppInfo.route
+                              },
+                              logRequest("Metadata Route", Logging.DebugLevel) {
+                                platformDiscovery.route
+                              },
+                              concat(ApiCache.cachedDataEndpoints.map {
+                                case (platform, routes) =>
+                                  logRequest(s"$platform Data Route", Logging.DebugLevel) {
+                                    routes.getRoute ~ routes.postRoute
+                                  }
+                              }.toSeq: _*)
+                            )
                           },
-                          logRequest("Metadata Route", Logging.DebugLevel) {
-                            platformDiscovery.route
-                          },
-                          concat(ApiCache.cachedDataEndpoints.map {
-                            case (platform, routes) =>
-                              logRequest(s"$platform Data Route", Logging.DebugLevel) {
-                                routes.getRoute ~ routes.postRoute
-                              }
-                          }.toSeq: _*)
+                          options {
+                            // Support for CORS pre-flight checks.
+                            complete("Supported methods : GET and POST.")
+                          }
                         )
-                      },
-                      options {
-                        // Support for CORS pre-flight checks.
-                        complete("Supported methods : GET and POST.")
                       }
-                    )
-                  }
+                    }
                 }
             }
           }

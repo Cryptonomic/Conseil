@@ -10,14 +10,22 @@ import tech.cryptonomic.conseil.common.util.OptionUtil.when
 class UnitTransformation(overrides: MetadataConfiguration) extends ConseilLogSupport {
 
   // overrides platforms
-  def overridePlatforms(platforms: List[Platform]): List[Platform] = {
-    logDifferences(platforms.map(_.path), overrides.allPlatforms.keys.toList)
+  def overridePlatforms(platforms: List[Platform], shouldLog: Boolean = true): List[Platform] = {
+    if (shouldLog) {
+      logDifferences(platforms.map(_.path), overrides.allPlatforms.keys.toList)
+    }
     platforms.flatMap(platform => overridePlatform(platform, PlatformPath(platform.name)))
   }
 
   // overrides networks
-  def overrideNetworks(platformPath: PlatformPath, networks: List[Network]): List[Network] = {
-    logDifferences(networks.map(_.path), overrides.networks(platformPath).keys.toList)
+  def overrideNetworks(
+      platformPath: PlatformPath,
+      networks: List[Network],
+      shouldLog: Boolean = true
+  ): List[Network] = {
+    if (shouldLog) {
+      logDifferences(networks.map(_.path), overrides.networks(platformPath).keys.toList)
+    }
     networks.flatMap(network => overrideNetwork(network, network.path))
   }
 
