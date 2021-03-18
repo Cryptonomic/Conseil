@@ -517,6 +517,10 @@ CREATE TABLE tezos.big_map_contents (
     PRIMARY KEY (big_map_id, key)
 );
 
+CREATE INDEX big_map_id_idx ON tezos.big_map_contents USING btree (big_map_id);
+CREATE INDEX operation_group_id_idx ON tezos.big_map_contents USING btree (operation_group_id);
+CREATE INDEX combined_big_map_operation_group_ids_idx ON tezos.big_map_contents USING btree (big_map_id, operation_group_id);
+
 CREATE TABLE tezos.originated_account_maps (
     big_map_id numeric,
     account_id character varying,

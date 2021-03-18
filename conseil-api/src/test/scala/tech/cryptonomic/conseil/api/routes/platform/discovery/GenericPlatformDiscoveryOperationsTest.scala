@@ -438,7 +438,7 @@ class GenericPlatformDiscoveryOperationsTest
               "Operation group id",
               DataType.String,
               None,
-              KeyType.NonKey,
+              KeyType.UniqueKey,
               "big_map_contents"
             ),
             Attribute("value", "Value", DataType.String, None, KeyType.NonKey, "big_map_contents"),

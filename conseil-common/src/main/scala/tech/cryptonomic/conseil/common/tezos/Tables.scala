@@ -1565,6 +1565,15 @@ trait Tables {
 
     /** Primary key of BigMapContents (database name big_map_contents_pkey) */
     val pk = primaryKey("big_map_contents_pkey", (bigMapId, key))
+
+    /** Index over (bigMapId) (database name big_map_id_idx) */
+    val index1 = index("big_map_id_idx", bigMapId)
+
+    /** Index over (bigMapId,operationGroupId) (database name combined_big_map_operation_group_ids_idx) */
+    val index2 = index("combined_big_map_operation_group_ids_idx", (bigMapId, operationGroupId))
+
+    /** Index over (operationGroupId) (database name operation_group_id_idx) */
+    val index3 = index("operation_group_id_idx", operationGroupId)
   }
 
   /** Collection-like TableQuery object for table BigMapContents */

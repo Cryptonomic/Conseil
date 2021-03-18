@@ -58,7 +58,20 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
             case Contract.BigMapCopy(_, Decimal(sourceId), Decimal(destinationId)) =>
               Tables.BigMapContents
                 .filter(_.bigMapId === sourceId)
-                .map(it => (destinationId, it.key, it.keyHash, it.operationGroupId, it.value, it.blockLevel, it.timestamp, it.cycle, it.period))
+                .map(
+                  it =>
+                    (
+                      destinationId,
+                      it.key,
+                      it.keyHash,
+                      it.operationGroupId,
+                      it.value,
+                      it.blockLevel,
+                      it.timestamp,
+                      it.cycle,
+                      it.period
+                    )
+                )
                 .result
                 .headOption
           }
