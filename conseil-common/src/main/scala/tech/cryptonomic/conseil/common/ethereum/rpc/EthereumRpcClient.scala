@@ -77,7 +77,7 @@ class EthereumClient[F[_]: Concurrent](
       stream
         .map(_.hash)
         .map(EthGetTransactionReceipt.request)
-        .through(client.stream[EthGetTransactionReceipt.Params, TransactionReceipt](batchSize = 1))
+        .through(client.stream[EthGetTransactionReceipt.Params, TransactionReceipt](batchSize = 10))
 
   /**
     * Returns contract from a given transaction receipt.

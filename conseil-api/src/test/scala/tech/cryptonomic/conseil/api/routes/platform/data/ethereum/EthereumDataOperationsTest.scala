@@ -145,6 +145,19 @@ class EthereumDataOperationsTest
         }
       }
 
+      "return proper token balances, while fetching all token balances" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Tokens ++= tokens).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.TokensHistory ++= tokenBalances).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchTokensHistory(Query.empty)) { result =>
+          result.value.size shouldBe 3
+        }
+      }
+
       "return proper number of accounts, while fetching all of accounts" in {
         // given
         dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
