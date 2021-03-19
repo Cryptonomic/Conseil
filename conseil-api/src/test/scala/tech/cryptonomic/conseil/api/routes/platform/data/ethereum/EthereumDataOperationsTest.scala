@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.ethereum
 
 import java.sql.Timestamp
-
 import org.scalatest.concurrent.IntegrationPatience
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.EthereumInMemoryDatabaseSetup
@@ -129,6 +128,19 @@ class EthereumDataOperationsTest
         dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
 
         whenReady(sut.fetchTokenTransfers(Query.empty)) { result =>
+          result.value.size shouldBe 3
+        }
+      }
+
+      "return proper token balances, while fetching all token balances" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Tokens ++= tokens).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.TokensHistory ++= tokenBalances).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchTokensHistory(Query.empty)) { result =>
           result.value.size shouldBe 3
         }
       }
@@ -318,6 +330,7 @@ object EthereumDataOperationsTest {
     private val defaultTokenTransfer =
       (block: BlocksRow, transaction: TransactionsRow) =>
         TokenTransfersRow(
+          tokenAddress = "0x1",
           blockNumber = block.number,
           transactionHash = transaction.hash,
           fromAddress = "0x0",
@@ -331,5 +344,23 @@ object EthereumDataOperationsTest {
     val tokenTransfer3: TokenTransfersRow =
       defaultTokenTransfer(block3, transaction3).copy(fromAddress = "0x5", toAddress = "0x6")
     val tokenTransfers: Seq[TokenTransfersRow] = List(tokenTransfer1, tokenTransfer2, tokenTransfer3)
+
+    private val defaultTokenBalance =
+      (block: BlocksRow, transaction: TransactionsRow) =>
+        TokensHistoryRow(
+          tokenAddress = "0x1",
+          blockNumber = block.number,
+          transactionHash = transaction.hash,
+          accountAddress = "0x0",
+          value = BigDecimal("1.0"),
+          asof = block.timestamp
+        )
+    val tokenBalance1: TokensHistoryRow =
+      defaultTokenBalance(block1, transaction1).copy(accountAddress = "0x1")
+    val tokenBalance2: TokensHistoryRow =
+      defaultTokenBalance(block2, transaction2).copy(accountAddress = "0x3")
+    val tokenBalance3: TokensHistoryRow =
+      defaultTokenBalance(block3, transaction3).copy(accountAddress = "0x5")
+    val tokenBalances: Seq[TokensHistoryRow] = List(tokenBalance1, tokenBalance2, tokenBalance3)
   }
 }

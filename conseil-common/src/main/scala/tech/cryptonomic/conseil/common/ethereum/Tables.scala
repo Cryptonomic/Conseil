@@ -21,6 +21,7 @@ trait Tables {
     Receipts.schema,
     Tokens.schema,
     TokenTransfers.schema,
+    TokensHistory.schema,
     Transactions.schema
   ).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
@@ -598,12 +599,14 @@ trait Tables {
   lazy val Tokens = new TableQuery(tag => new Tokens(tag))
 
   /** Entity class storing rows of table TokenTransfers
+    *  @param tokenAddress Database column token_address SqlType(text)
     *  @param blockNumber Database column block_number SqlType(int4)
     *  @param transactionHash Database column transaction_hash SqlType(text)
     *  @param fromAddress Database column from_address SqlType(text)
     *  @param toAddress Database column to_address SqlType(text)
     *  @param value Database column value SqlType(numeric) */
   case class TokenTransfersRow(
+      tokenAddress: String,
       blockNumber: Int,
       transactionHash: String,
       fromAddress: String,
@@ -618,24 +621,36 @@ trait Tables {
       e2: GR[scala.math.BigDecimal]
   ): GR[TokenTransfersRow] = GR { prs =>
     import prs._
-    TokenTransfersRow.tupled((<<[Int], <<[String], <<[String], <<[String], <<[scala.math.BigDecimal]))
+    TokenTransfersRow.tupled((<<[String], <<[Int], <<[String], <<[String], <<[String], <<[scala.math.BigDecimal]))
   }
 
   /** Table description of table token_transfers. Objects of this class serve as prototypes for rows in queries. */
   class TokenTransfers(_tableTag: Tag)
       extends profile.api.Table[TokenTransfersRow](_tableTag, Some("ethereum"), "token_transfers") {
     def * =
-      (blockNumber, transactionHash, fromAddress, toAddress, value) <> (TokenTransfersRow.tupled, TokenTransfersRow.unapply)
+      (tokenAddress, blockNumber, transactionHash, fromAddress, toAddress, value) <> (TokenTransfersRow.tupled, TokenTransfersRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(blockNumber), Rep.Some(transactionHash), Rep.Some(fromAddress), Rep.Some(toAddress), Rep.Some(value))).shaped
+      (
+        (
+          Rep.Some(tokenAddress),
+          Rep.Some(blockNumber),
+          Rep.Some(transactionHash),
+          Rep.Some(fromAddress),
+          Rep.Some(toAddress),
+          Rep.Some(value)
+        )
+      ).shaped
         .<>(
           { r =>
-            import r._; _1.map(_ => TokenTransfersRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))
+            import r._; _1.map(_ => TokenTransfersRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))
           },
           (_: Any) => throw new Exception("Inserting into ? projection not supported.")
         )
+
+    /** Database column token_address SqlType(text) */
+    val tokenAddress: Rep[String] = column[String]("token_address")
 
     /** Database column block_number SqlType(int4) */
     val blockNumber: Rep[Int] = column[Int]("block_number")
@@ -655,6 +670,81 @@ trait Tables {
 
   /** Collection-like TableQuery object for table TokenTransfers */
   lazy val TokenTransfers = new TableQuery(tag => new TokenTransfers(tag))
+
+  /**
+    *
+    * @param accountAddress Database column account_address SqlType(text)
+    * @param blockNumber Database column block_number SqlType(int4)
+    * @param transactionHash Database column transaction_hash SqlType(text)
+    * @param tokenAddress Database column token_address SqlType(text)
+    * @param value Database column value SqlType(numeric)
+    * @param asof Database column asof SqlType(timestamp)
+    */
+  case class TokensHistoryRow(
+      accountAddress: String,
+      blockNumber: Int,
+      transactionHash: String,
+      tokenAddress: String,
+      value: scala.math.BigDecimal,
+      asof: java.sql.Timestamp
+  )
+
+  implicit def GetResultTokensHistoryRow(
+      implicit e0: GR[Int],
+      e1: GR[String],
+      e2: GR[scala.math.BigDecimal],
+      e3: GR[java.sql.Timestamp]
+  ): GR[TokensHistoryRow] = GR { prs =>
+    import prs._
+    TokensHistoryRow.tupled(
+      (<<[String], <<[Int], <<[String], <<[String], <<[scala.math.BigDecimal], <<[java.sql.Timestamp])
+    )
+  }
+
+  class TokensHistory(_tableTag: Tag)
+      extends profile.api.Table[TokensHistoryRow](_tableTag, Some("ethereum"), "tokens_history") {
+    def * =
+      (accountAddress, blockNumber, transactionHash, tokenAddress, value, asof) <> (TokensHistoryRow.tupled, TokensHistoryRow.unapply)
+
+    def ? =
+      (
+        (
+          Rep.Some(tokenAddress),
+          Rep.Some(blockNumber),
+          Rep.Some(transactionHash),
+          Rep.Some(tokenAddress),
+          Rep.Some(value),
+          Rep.Some(asof)
+        )
+      ).shaped
+        .<>(
+          { r =>
+            import r._; _1.map(_ => TokensHistoryRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))
+          },
+          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        )
+
+    /** Database column account_address SqlType(text) */
+    val accountAddress: Rep[String] = column[String]("account_address")
+
+    /** Database column block_number SqlType(int4) */
+    val blockNumber: Rep[Int] = column[Int]("block_number")
+
+    /** Database column transaction_hash SqlType(text) */
+    val transactionHash: Rep[String] = column[String]("transaction_hash")
+
+    /** Database column token_address SqlType(text) */
+    val tokenAddress: Rep[String] = column[String]("token_address")
+
+    /** Database column value SqlType(numeric) */
+    val value: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("value")
+
+    /** Database column asof SqlType(timestamp) */
+    val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
+  }
+
+  /** Collection-like TableQuery object for table TokensHistory */
+  lazy val TokensHistory = new TableQuery(tag => new TokensHistory(tag))
 
   /** Entity class storing rows of table Transactions
     *  @param hash Database column hash SqlType(text), PrimaryKey

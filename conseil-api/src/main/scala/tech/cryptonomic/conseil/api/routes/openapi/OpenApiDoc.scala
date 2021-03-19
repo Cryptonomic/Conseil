@@ -60,6 +60,7 @@ object OpenApiDoc
     ethereumReceiptsEndpoint,
     ethereumTokensEndpoint,
     ethereumTokenTransfersEndpoint,
+    ethereumTokensHistoryEndpoint,
     ethereumContractsEndpoint,
     ethereumAccountsEndpoint,
     ethereumAccountByAddressEndpoint,
