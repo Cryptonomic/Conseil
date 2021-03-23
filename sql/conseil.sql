@@ -971,6 +971,7 @@ CREATE TABLE ethereum.token_transfers (
   token_address text NOT NULL,
   block_number integer NOT NULL,
   transaction_hash text NOT NULL,
+  log_index text NOT NULL,
   from_address text NOT NULL,
   to_address text NOT NULL,
   value numeric NOT NULL

@@ -243,6 +243,7 @@ object EthereumPersistence {
           tokenAddress = from.address,
           blockNumber = Integer.decode(from.blockNumber),
           transactionHash = from.transactionHash,
+          logIndex = from.logIndex,
           fromAddress = from.topics(1),
           toAddress = from.topics(2),
           value = Utils.hexStringToBigDecimal(from.data)
@@ -261,6 +262,7 @@ object EthereumPersistence {
           tokenAddress = from.tokenAddress,
           blockNumber = from.blockNumber,
           transactionHash = from.transactionHash,
+          logIndex = from.logIndex,
           fromAddress = from.fromAddress,
           toAddress = from.toAddress,
           value = from.value

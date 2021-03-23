@@ -608,6 +608,7 @@ trait Tables {
     *  @param tokenAddress Database column token_address SqlType(text)
     *  @param blockNumber Database column block_number SqlType(int4)
     *  @param transactionHash Database column transaction_hash SqlType(text)
+    *  @param logIndex Database column log_index SqlType(text)
     *  @param fromAddress Database column from_address SqlType(text)
     *  @param toAddress Database column to_address SqlType(text)
     *  @param value Database column value SqlType(numeric) */
@@ -615,6 +616,7 @@ trait Tables {
       tokenAddress: String,
       blockNumber: Int,
       transactionHash: String,
+      logIndex: String,
       fromAddress: String,
       toAddress: String,
       value: scala.math.BigDecimal
@@ -627,14 +629,16 @@ trait Tables {
       e2: GR[scala.math.BigDecimal]
   ): GR[TokenTransfersRow] = GR { prs =>
     import prs._
-    TokenTransfersRow.tupled((<<[String], <<[Int], <<[String], <<[String], <<[String], <<[scala.math.BigDecimal]))
+    TokenTransfersRow.tupled(
+      (<<[String], <<[Int], <<[String], <<[String], <<[String], <<[String], <<[scala.math.BigDecimal])
+    )
   }
 
   /** Table description of table token_transfers. Objects of this class serve as prototypes for rows in queries. */
   class TokenTransfers(_tableTag: Tag)
       extends profile.api.Table[TokenTransfersRow](_tableTag, Some("ethereum"), "token_transfers") {
     def * =
-      (tokenAddress, blockNumber, transactionHash, fromAddress, toAddress, value) <> (TokenTransfersRow.tupled, TokenTransfersRow.unapply)
+      (tokenAddress, blockNumber, transactionHash, logIndex, fromAddress, toAddress, value) <> (TokenTransfersRow.tupled, TokenTransfersRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -643,6 +647,7 @@ trait Tables {
           Rep.Some(tokenAddress),
           Rep.Some(blockNumber),
           Rep.Some(transactionHash),
+          Rep.Some(logIndex),
           Rep.Some(fromAddress),
           Rep.Some(toAddress),
           Rep.Some(value)
@@ -650,7 +655,7 @@ trait Tables {
       ).shaped
         .<>(
           { r =>
-            import r._; _1.map(_ => TokenTransfersRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))
+            import r._; _1.map(_ => TokenTransfersRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get)))
           },
           (_: Any) => throw new Exception("Inserting into ? projection not supported.")
         )
@@ -663,6 +668,9 @@ trait Tables {
 
     /** Database column transaction_hash SqlType(text) */
     val transactionHash: Rep[String] = column[String]("transaction_hash")
+
+    /** Database column log_index SqlType(text) */
+    val logIndex: Rep[String] = column[String]("log_index")
 
     /** Database column from_address SqlType(text) */
     val fromAddress: Rep[String] = column[String]("from_address")

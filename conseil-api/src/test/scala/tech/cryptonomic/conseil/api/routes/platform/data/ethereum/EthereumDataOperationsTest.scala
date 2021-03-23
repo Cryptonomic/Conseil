@@ -503,6 +503,7 @@ object EthereumDataOperationsTest {
           tokenAddress = "0x1",
           blockNumber = block.level,
           transactionHash = transaction.hash,
+          logIndex = "0x1",
           fromAddress = "0x0",
           toAddress = "0x0",
           value = 1.0
