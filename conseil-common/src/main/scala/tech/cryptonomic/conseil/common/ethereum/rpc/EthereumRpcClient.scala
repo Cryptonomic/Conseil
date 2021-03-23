@@ -142,6 +142,7 @@ class EthereumClient[F[_]: Concurrent](
           tokenAddress = log.address,
           blockNumber = Integer.decode(log.blockNumber),
           transactionHash = log.transactionHash,
+          logIndex = log.logIndex,
           fromAddress = log.topics(1),
           toAddress = log.topics(2),
           value = Utils.hexStringToBigDecimal(log.data)

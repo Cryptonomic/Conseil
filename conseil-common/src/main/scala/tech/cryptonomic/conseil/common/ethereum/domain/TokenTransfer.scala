@@ -5,6 +5,7 @@ case class TokenTransfer(
     tokenAddress: String,
     blockNumber: Int,
     transactionHash: String,
+    logIndex: String,
     fromAddress: String,
     toAddress: String,
     value: scala.math.BigDecimal
