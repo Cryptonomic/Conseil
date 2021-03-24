@@ -2,11 +2,9 @@ package tech.cryptonomic.conseil.common.ethereum
 
 import java.sql.Timestamp
 import java.time.Instant
-
 import cats.Id
 import cats.effect.{Concurrent, Resource}
 import slick.jdbc.PostgresProfile.api._
-
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.util.Conversion
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
@@ -30,13 +28,17 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
       block: Block,
       transactions: List[Transaction],
       receipts: List[TransactionReceipt]
-  ): DBIOAction[Unit, NoStream, Effect.Write] =
+  ): DBIOAction[Unit, NoStream, Effect.Write] = {
+    val timestamp = Timestamp.from(Instant.ofEpochSecond(Integer.decode(block.timestamp).toLong))
     DBIO.seq(
       Tables.Blocks += block.convertTo[Tables.BlocksRow],
-      Tables.Transactions ++= transactions.map(_.convertTo[Tables.TransactionsRow]),
-      Tables.Receipts ++= receipts.map(_.convertTo[Tables.ReceiptsRow]),
-      Tables.Logs ++= receipts.flatMap(_.logs).map(_.convertTo[Tables.LogsRow])
+      Tables.Transactions ++= transactions
+            .map(_.convertTo[Tables.TransactionsRow])
+            .map(_.copy(timestamp = timestamp)),
+      Tables.Receipts ++= receipts.map(_.convertTo[Tables.ReceiptsRow]).map(_.copy(timestamp = timestamp)),
+      Tables.Logs ++= receipts.flatMap(_.logs).map(_.convertTo[Tables.LogsRow]).map(_.copy(timestamp = timestamp))
     )
+  }
 
   /**
     * Create [[DBIO]] seq with token transfers.
@@ -204,6 +206,7 @@ object EthereumPersistence {
           address = from.address,
           blockHash = from.blockHash,
           blockNumber = Integer.decode(from.blockNumber),
+          timestamp = Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong)),
           data = from.data,
           logIndex = from.logIndex,
           removed = from.removed,
@@ -241,7 +244,9 @@ object EthereumPersistence {
       override def convert(from: Log) =
         Tables.TokenTransfersRow(
           tokenAddress = from.address,
+          blockHash = from.blockHash,
           blockNumber = Integer.decode(from.blockNumber),
+          timestamp = Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong)),
           transactionHash = from.transactionHash,
           logIndex = from.logIndex,
           fromAddress = from.topics(1),
@@ -260,7 +265,9 @@ object EthereumPersistence {
       override def convert(from: TokenTransfer) =
         Tables.TokenTransfersRow(
           tokenAddress = from.tokenAddress,
+          blockHash = from.blockHash,
           blockNumber = from.blockNumber,
+          timestamp = Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong)),
           transactionHash = from.transactionHash,
           logIndex = from.logIndex,
           fromAddress = from.fromAddress,
@@ -279,6 +286,7 @@ object EthereumPersistence {
       override def convert(from: TokenBalance) =
         Tables.TokensHistoryRow(
           accountAddress = from.accountAddress,
+          blockHash = from.blockHash,
           blockNumber = from.blockNumber,
           transactionHash = from.transactionHash,
           tokenAddress = from.tokenAddress,

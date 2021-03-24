@@ -72,7 +72,7 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
       "return a token transfer for the given log" in new EthereumClientStubs {
         Stream(RpcFixtures.logResult)
           .through(
-            ethereumClientStub(JsonFixtures.callResponse).getTokenTransfer
+            ethereumClientStub(JsonFixtures.callResponse).getTokenTransfer(RpcFixtures.blockResult)
           )
           .compile
           .toList

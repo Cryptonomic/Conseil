@@ -135,12 +135,14 @@ class EthereumClient[F[_]: Concurrent](
   /**
     * Extract token transfers from log
     */
-  def getTokenTransfer: Pipe[F, Log, TokenTransfer] =
+  def getTokenTransfer(block: Block): Pipe[F, Log, TokenTransfer] =
     stream =>
       stream.map { log =>
         TokenTransfer(
           tokenAddress = log.address,
+          blockHash = log.blockHash,
           blockNumber = Integer.decode(log.blockNumber),
+          timestamp = block.timestamp,
           transactionHash = log.transactionHash,
           logIndex = log.logIndex,
           fromAddress = log.topics(1),
@@ -176,6 +178,7 @@ class EthereumClient[F[_]: Concurrent](
             case (address, balance) =>
               TokenBalance(
                 accountAddress = address,
+                blockHash = tokenTransfer.blockHash,
                 blockNumber = tokenTransfer.blockNumber,
                 transactionHash = tokenTransfer.transactionHash,
                 tokenAddress = tokenTransfer.tokenAddress,

@@ -222,6 +222,7 @@ object EthereumDataOperationsTest {
       hash = "hash",
       blockHash = "blockHash",
       blockNumber = 0,
+      timestamp = Timestamp.valueOf("2020-01-01 00:00:00"),
       from = "from",
       gas = "1",
       gasPrice = "1",
@@ -238,6 +239,7 @@ object EthereumDataOperationsTest {
       hash = "hash1",
       blockHash = block1.hash,
       blockNumber = block1.number,
+      timestamp = block1.timestamp,
       from = "from1",
       to = Some("to"),
       transactionIndex = "1",
@@ -246,7 +248,8 @@ object EthereumDataOperationsTest {
     val transaction2: TransactionsRow = defaultTransaction.copy(
       hash = "hash2",
       blockHash = block2.hash,
-      blockNumber = block3.number,
+      blockNumber = block2.number,
+      timestamp = block2.timestamp,
       from = "from1",
       to = Some("to"),
       transactionIndex = "2",
@@ -255,7 +258,8 @@ object EthereumDataOperationsTest {
     val transaction3: TransactionsRow = defaultTransaction.copy(
       hash = "hash3",
       blockHash = block3.hash,
-      blockNumber = block2.number,
+      blockNumber = block3.number,
+      timestamp = block3.timestamp,
       from = "from2",
       to = Some("to3"),
       transactionIndex = "3",
@@ -269,6 +273,7 @@ object EthereumDataOperationsTest {
           address = "address",
           blockHash = block.hash,
           blockNumber = block.number,
+          timestamp = block.timestamp,
           data = "data",
           logIndex = "0",
           removed = false,
@@ -288,6 +293,7 @@ object EthereumDataOperationsTest {
           transactionIndex = transaction.transactionIndex,
           blockHash = block.hash,
           blockNumber = block.number,
+          timestamp = block.timestamp,
           contractAddress = Some("0x1"),
           cumulativeGasUsed = "0x1",
           gasUsed = "0x1",
@@ -331,7 +337,9 @@ object EthereumDataOperationsTest {
       (block: BlocksRow, transaction: TransactionsRow) =>
         TokenTransfersRow(
           tokenAddress = "0x1",
+          blockHash = block.hash,
           blockNumber = block.number,
+          timestamp = block.timestamp,
           transactionHash = transaction.hash,
           logIndex = "0x1",
           fromAddress = "0x0",
@@ -350,6 +358,7 @@ object EthereumDataOperationsTest {
       (block: BlocksRow, transaction: TransactionsRow) =>
         TokensHistoryRow(
           tokenAddress = "0x1",
+          blockHash = block.hash,
           blockNumber = block.number,
           transactionHash = transaction.hash,
           accountAddress = "0x0",

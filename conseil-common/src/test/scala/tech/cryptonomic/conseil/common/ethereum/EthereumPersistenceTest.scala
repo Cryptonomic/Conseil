@@ -1,10 +1,8 @@
 package tech.cryptonomic.conseil.common.ethereum
 
 import scala.concurrent.ExecutionContext
-
 import cats.effect._
 import slick.jdbc.PostgresProfile.api._
-
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence._
@@ -18,6 +16,8 @@ class EthereumPersistenceTest
     with EthereumStubs {
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
+
+  private val epoch = java.sql.Timestamp.from(java.time.Instant.EPOCH)
 
   "Ethereum persistence" should {
       "save block from the JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {
@@ -33,7 +33,7 @@ class EthereumPersistenceTest
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
           _ <- tx.transact(Tables.Transactions += RpcFixtures.transactionResult.convertTo[Tables.TransactionsRow])
           result <- tx.transact(Tables.Transactions.result)
-        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.transactionRow)
+        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.transactionRow.copy(timestamp = epoch))
       }
 
       "save log from the JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {
@@ -51,7 +51,7 @@ class EthereumPersistenceTest
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
           _ <- tx.transact(Tables.Receipts += RpcFixtures.transactionReceiptResult.convertTo[Tables.ReceiptsRow])
           result <- tx.transact(Tables.Receipts.result)
-        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.transactionReceiptRow)
+        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.transactionReceiptRow.copy(timestamp = epoch))
       }
 
       "save token transfer from the log JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {

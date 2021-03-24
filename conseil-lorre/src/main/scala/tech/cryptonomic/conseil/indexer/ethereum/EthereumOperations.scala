@@ -121,7 +121,7 @@ class EthereumOperations[F[_]: Concurrent](
                       log.topics.size == 3 && log.topics
                           .contains(tokenTransferSignature)
                   )
-                  .through(ethereumClient.getTokenTransfer)
+                  .through(ethereumClient.getTokenTransfer(block))
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap(tokenTransfers => tx.transact(persistence.createTokenTransfers(tokenTransfers.toList)))
                   .map(tokenTransfers => (block, txs, receipts, tokenTransfers.toList))

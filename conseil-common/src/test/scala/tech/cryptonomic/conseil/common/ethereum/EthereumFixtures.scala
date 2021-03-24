@@ -186,6 +186,7 @@ trait EthereumFixtures {
       address = "0xdac17f958d2ee523a2206206994597c13d831ec7",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
       blockNumber = "0x18e70",
+      timestamp = "0x55d21481",
       data = "0x000000000000000000000000000000000000000000000000000000003b9aca00",
       logIndex = "0x0",
       removed = false,
@@ -236,7 +237,9 @@ trait EthereumFixtures {
 
     val tokenTransferResult = TokenTransfer(
       tokenAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
       blockNumber = 102000,
+      timestamp = "0x55d21481",
       transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
       logIndex = "0x0",
       fromAddress = "0x000000000000000000000000fdb16996831753d5331ff813c29a93c76834a0ad",
@@ -246,6 +249,7 @@ trait EthereumFixtures {
 
     val tokenBalanceFromResult = TokenBalance(
       tokenAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
       blockNumber = 102000,
       transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
       accountAddress = "0x000000000000000000000000fdb16996831753d5331ff813c29a93c76834a0ad",
@@ -255,6 +259,7 @@ trait EthereumFixtures {
 
     val tokenBalanceToResult = TokenBalance(
       tokenAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
       blockNumber = 102000,
       transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
       accountAddress = "0x0000000000000000000000000f4a253ee5a63bb4b23a360ad52d69c86bc9fe97",
@@ -294,6 +299,7 @@ trait EthereumFixtures {
       hash = "0x3cfcdc56f1ecf4aef8b95dddc9f5b727593b56238bfad7b1932efdfdf9e49fcd",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
       blockNumber = 102000,
+      timestamp = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z")),
       from = "0xd9666150a9da92d9108198a4072970805a8b3428",
       gas = "0x5208",
       gasPrice = "0xce52b27b5",
@@ -311,6 +317,7 @@ trait EthereumFixtures {
       address = "0xdac17f958d2ee523a2206206994597c13d831ec7",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
       blockNumber = 102000,
+      timestamp = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z")),
       data = "0x000000000000000000000000000000000000000000000000000000003b9aca00",
       logIndex = "0x0",
       removed = false,
@@ -325,6 +332,7 @@ trait EthereumFixtures {
       transactionIndex = "0x0",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
       blockNumber = 102000,
+      timestamp = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z")),
       contractAddress = Some("0x123"),
       cumulativeGasUsed = "0x5208",
       gasUsed = "0x5208",
@@ -336,7 +344,9 @@ trait EthereumFixtures {
 
     val tokenTransferRow = Tables.TokenTransfersRow(
       tokenAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
       blockNumber = 102000,
+      timestamp = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z")),
       transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
       logIndex = "0x0",
       fromAddress = "0x000000000000000000000000fdb16996831753d5331ff813c29a93c76834a0ad",
@@ -346,6 +356,7 @@ trait EthereumFixtures {
 
     val tokenBalanceFromRow = Tables.TokensHistoryRow(
       tokenAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
       blockNumber = 102000,
       transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
       accountAddress = "0x000000000000000000000000fdb16996831753d5331ff813c29a93c76834a0ad",

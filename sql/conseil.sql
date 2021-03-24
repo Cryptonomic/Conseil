@@ -902,6 +902,7 @@ CREATE TABLE ethereum.transactions (
   hash text NOT NULL PRIMARY KEY,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
+  timestamp timestamp without time zone NOT NULL,
   "from" text NOT NULL,
   gas text NOT NULL,
   gas_price text NOT NULL,
@@ -924,6 +925,7 @@ CREATE TABLE ethereum.receipts (
   transaction_index text NOT NULL,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
+  timestamp timestamp without time zone NOT NULL,
   contract_address text,
   cumulative_gas_used text NOT NULL,
   gas_used text NOT NULL,
@@ -937,6 +939,7 @@ CREATE TABLE ethereum.logs (
   address text NOT NULL,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
+  timestamp timestamp without time zone NOT NULL,
   data text NOT NULL,
   log_index text NOT NULL,
   removed boolean NOT NULL,
@@ -969,7 +972,9 @@ CREATE TABLE ethereum.tokens (
 
 CREATE TABLE ethereum.token_transfers (
   token_address text NOT NULL,
+  block_hash text NOT NULL,
   block_number integer NOT NULL,
+  timestamp timestamp without time zone NOT NULL,
   transaction_hash text NOT NULL,
   log_index text NOT NULL,
   from_address text NOT NULL,
@@ -978,12 +983,13 @@ CREATE TABLE ethereum.token_transfers (
 );
 
 CREATE TABLE ethereum.tokens_history (
-    account_address text NOT NULL,
-    block_number integer NOT NULL,
-    transaction_hash text NOT NULL,
-    token_address text NOT NULL,
-    value numeric NOT NULL,
-    asof timestamp without time zone NOT NULL
+  account_address text NOT NULL,
+  block_hash text NOT NULL,
+  block_number integer NOT NULL,
+  transaction_hash text NOT NULL,
+  token_address text NOT NULL,
+  value numeric NOT NULL,
+  asof timestamp without time zone NOT NULL
 );
 
 CREATE INDEX ix_account_address ON ethereum.tokens_history USING btree (account_address);

@@ -13,6 +13,8 @@ trait Tables {
   // NOTE: GetResult mappers for plain SQL are only generated for tables where Slick knows how to map the types of all columns.
   import slick.jdbc.{GetResult => GR}
 
+  private val epoch = java.sql.Timestamp.from(java.time.Instant.EPOCH)
+
   /** DDL for all tables. Call .create to execute. */
   lazy val schema: profile.SchemaDescription = Array(
     Blocks.schema,
@@ -317,6 +319,7 @@ trait Tables {
     *  @param address Database column address SqlType(text)
     *  @param blockHash Database column block_hash SqlType(text)
     *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param timestamp Database column timestamp SqlType(timestamp)
     *  @param data Database column data SqlType(text)
     *  @param logIndex Database column log_index SqlType(text)
     *  @param removed Database column removed SqlType(bool)
@@ -327,6 +330,7 @@ trait Tables {
       address: String,
       blockHash: String,
       blockNumber: Int,
+      timestamp: java.sql.Timestamp = epoch,
       data: String,
       logIndex: String,
       removed: Boolean,
@@ -336,17 +340,33 @@ trait Tables {
   )
 
   /** GetResult implicit for fetching LogsRow objects using plain SQL queries */
-  implicit def GetResultLogsRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Boolean]): GR[LogsRow] = GR { prs =>
+  implicit def GetResultLogsRow(
+      implicit e0: GR[String],
+      e1: GR[Int],
+      e2: GR[Boolean],
+      e3: GR[java.sql.Timestamp]
+  ): GR[LogsRow] = GR { prs =>
     import prs._
     LogsRow.tupled(
-      (<<[String], <<[String], <<[Int], <<[String], <<[String], <<[Boolean], <<[String], <<[String], <<[String])
+      (
+        <<[String],
+        <<[String],
+        <<[Int],
+        <<[java.sql.Timestamp],
+        <<[String],
+        <<[String],
+        <<[Boolean],
+        <<[String],
+        <<[String],
+        <<[String]
+      )
     )
   }
 
   /** Table description of table logs. Objects of this class serve as prototypes for rows in queries. */
   class Logs(_tableTag: Tag) extends profile.api.Table[LogsRow](_tableTag, Some("ethereum"), "logs") {
     def * =
-      (address, blockHash, blockNumber, data, logIndex, removed, topics, transactionHash, transactionIndex) <> (LogsRow.tupled, LogsRow.unapply)
+      (address, blockHash, blockNumber, timestamp, data, logIndex, removed, topics, transactionHash, transactionIndex) <> (LogsRow.tupled, LogsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -355,6 +375,7 @@ trait Tables {
           Rep.Some(address),
           Rep.Some(blockHash),
           Rep.Some(blockNumber),
+          Rep.Some(timestamp),
           Rep.Some(data),
           Rep.Some(logIndex),
           Rep.Some(removed),
@@ -365,7 +386,7 @@ trait Tables {
       ).shaped.<>(
         { r =>
           import r._;
-          _1.map(_ => LogsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get)))
+          _1.map(_ => LogsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get, _10.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -378,6 +399,9 @@ trait Tables {
 
     /** Database column block_number SqlType(int4) */
     val blockNumber: Rep[Int] = column[Int]("block_number")
+
+    /** Database column timestamp SqlType(timestamp) */
+    val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
 
     /** Database column data SqlType(text) */
     val data: Rep[String] = column[String]("data")
@@ -413,6 +437,7 @@ trait Tables {
     *  @param transactionIndex Database column transaction_index SqlType(text)
     *  @param blockHash Database column block_hash SqlType(text)
     *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param timestamp Database column timestamp SqlType(timestamp)
     *  @param contractAddress Database column contract_address SqlType(text), Default(None)
     *  @param cumulativeGasUsed Database column cumulative_gas_used SqlType(text)
     *  @param gasUsed Database column gas_used SqlType(text)
@@ -424,6 +449,7 @@ trait Tables {
       transactionIndex: String,
       blockHash: String,
       blockNumber: Int,
+      timestamp: java.sql.Timestamp = epoch,
       contractAddress: Option[String] = None,
       cumulativeGasUsed: String,
       gasUsed: String,
@@ -433,7 +459,12 @@ trait Tables {
   )
 
   /** GetResult implicit for fetching ReceiptsRow objects using plain SQL queries */
-  implicit def GetResultReceiptsRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Option[String]]): GR[ReceiptsRow] =
+  implicit def GetResultReceiptsRow(
+      implicit e0: GR[String],
+      e1: GR[Int],
+      e2: GR[Option[String]],
+      e3: GR[java.sql.Timestamp]
+  ): GR[ReceiptsRow] =
     GR { prs =>
       import prs._
       ReceiptsRow.tupled(
@@ -442,6 +473,7 @@ trait Tables {
           <<[String],
           <<[String],
           <<[Int],
+          <<[java.sql.Timestamp],
           <<?[String],
           <<[String],
           <<[String],
@@ -460,6 +492,7 @@ trait Tables {
         transactionIndex,
         blockHash,
         blockNumber,
+        timestamp,
         contractAddress,
         cumulativeGasUsed,
         gasUsed,
@@ -476,6 +509,7 @@ trait Tables {
           Rep.Some(transactionIndex),
           Rep.Some(blockHash),
           Rep.Some(blockNumber),
+          Rep.Some(timestamp),
           contractAddress,
           Rep.Some(cumulativeGasUsed),
           Rep.Some(gasUsed),
@@ -486,7 +520,9 @@ trait Tables {
       ).shaped.<>(
         { r =>
           import r._;
-          _1.map(_ => ReceiptsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5, _6.get, _7.get, _8.get, _9, _10)))
+          _1.map(
+            _ => ReceiptsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8.get, _9.get, _10, _11))
+          )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -502,6 +538,9 @@ trait Tables {
 
     /** Database column block_number SqlType(int4) */
     val blockNumber: Rep[Int] = column[Int]("block_number")
+
+    /** Database column timestamp SqlType(timestamp) */
+    val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
 
     /** Database column contract_address SqlType(text), Default(None) */
     val contractAddress: Rep[Option[String]] = column[Option[String]]("contract_address", O.Default(None))
@@ -600,7 +639,9 @@ trait Tables {
 
   /** Entity class storing rows of table TokenTransfers
     *  @param tokenAddress Database column token_address SqlType(text)
+    *  @param blockHash Database column block_hash SqlType(text)
     *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param timestamp Database column timestamp SqlType(timestamp)
     *  @param transactionHash Database column transaction_hash SqlType(text)
     *  @param logIndex Database column log_index SqlType(text)
     *  @param fromAddress Database column from_address SqlType(text)
@@ -608,7 +649,9 @@ trait Tables {
     *  @param value Database column value SqlType(numeric) */
   case class TokenTransfersRow(
       tokenAddress: String,
+      blockHash: String,
       blockNumber: Int,
+      timestamp: java.sql.Timestamp,
       transactionHash: String,
       logIndex: String,
       fromAddress: String,
@@ -620,11 +663,22 @@ trait Tables {
   implicit def GetResultTokenTransfersRow(
       implicit e0: GR[Int],
       e1: GR[String],
-      e2: GR[scala.math.BigDecimal]
+      e2: GR[scala.math.BigDecimal],
+      e3: GR[java.sql.Timestamp]
   ): GR[TokenTransfersRow] = GR { prs =>
     import prs._
     TokenTransfersRow.tupled(
-      (<<[String], <<[Int], <<[String], <<[String], <<[String], <<[String], <<[scala.math.BigDecimal])
+      (
+        <<[String],
+        <<[String],
+        <<[Int],
+        <<[java.sql.Timestamp],
+        <<[String],
+        <<[String],
+        <<[String],
+        <<[String],
+        <<[scala.math.BigDecimal]
+      )
     )
   }
 
@@ -632,14 +686,16 @@ trait Tables {
   class TokenTransfers(_tableTag: Tag)
       extends profile.api.Table[TokenTransfersRow](_tableTag, Some("ethereum"), "token_transfers") {
     def * =
-      (tokenAddress, blockNumber, transactionHash, logIndex, fromAddress, toAddress, value) <> (TokenTransfersRow.tupled, TokenTransfersRow.unapply)
+      (tokenAddress, blockHash, blockNumber, timestamp, transactionHash, logIndex, fromAddress, toAddress, value) <> (TokenTransfersRow.tupled, TokenTransfersRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       (
         (
           Rep.Some(tokenAddress),
+          Rep.Some(blockHash),
           Rep.Some(blockNumber),
+          Rep.Some(timestamp),
           Rep.Some(transactionHash),
           Rep.Some(logIndex),
           Rep.Some(fromAddress),
@@ -649,7 +705,10 @@ trait Tables {
       ).shaped
         .<>(
           { r =>
-            import r._; _1.map(_ => TokenTransfersRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get)))
+            import r._;
+            _1.map(
+              _ => TokenTransfersRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get))
+            )
           },
           (_: Any) => throw new Exception("Inserting into ? projection not supported.")
         )
@@ -657,8 +716,14 @@ trait Tables {
     /** Database column token_address SqlType(text) */
     val tokenAddress: Rep[String] = column[String]("token_address")
 
+    /** Database column block_hash SqlType(text) */
+    val blockHash: Rep[String] = column[String]("block_hash")
+
     /** Database column block_number SqlType(int4) */
     val blockNumber: Rep[Int] = column[Int]("block_number")
+
+    /** Database column timestamp SqlType(timestamp) */
+    val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
 
     /** Database column transaction_hash SqlType(text) */
     val transactionHash: Rep[String] = column[String]("transaction_hash")
@@ -682,6 +747,7 @@ trait Tables {
   /**
     *
     * @param accountAddress Database column account_address SqlType(text)
+    * @param blockHash Database column block_hash SqlType(text)
     * @param blockNumber Database column block_number SqlType(int4)
     * @param transactionHash Database column transaction_hash SqlType(text)
     * @param tokenAddress Database column token_address SqlType(text)
@@ -690,6 +756,7 @@ trait Tables {
     */
   case class TokensHistoryRow(
       accountAddress: String,
+      blockHash: String,
       blockNumber: Int,
       transactionHash: String,
       tokenAddress: String,
@@ -705,19 +772,20 @@ trait Tables {
   ): GR[TokensHistoryRow] = GR { prs =>
     import prs._
     TokensHistoryRow.tupled(
-      (<<[String], <<[Int], <<[String], <<[String], <<[scala.math.BigDecimal], <<[java.sql.Timestamp])
+      (<<[String], <<[String], <<[Int], <<[String], <<[String], <<[scala.math.BigDecimal], <<[java.sql.Timestamp])
     )
   }
 
   class TokensHistory(_tableTag: Tag)
       extends profile.api.Table[TokensHistoryRow](_tableTag, Some("ethereum"), "tokens_history") {
     def * =
-      (accountAddress, blockNumber, transactionHash, tokenAddress, value, asof) <> (TokensHistoryRow.tupled, TokensHistoryRow.unapply)
+      (accountAddress, blockHash, blockNumber, transactionHash, tokenAddress, value, asof) <> (TokensHistoryRow.tupled, TokensHistoryRow.unapply)
 
     def ? =
       (
         (
           Rep.Some(tokenAddress),
+          Rep.Some(blockHash),
           Rep.Some(blockNumber),
           Rep.Some(transactionHash),
           Rep.Some(tokenAddress),
@@ -727,13 +795,16 @@ trait Tables {
       ).shaped
         .<>(
           { r =>
-            import r._; _1.map(_ => TokensHistoryRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))
+            import r._; _1.map(_ => TokensHistoryRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get)))
           },
           (_: Any) => throw new Exception("Inserting into ? projection not supported.")
         )
 
     /** Database column account_address SqlType(text) */
     val accountAddress: Rep[String] = column[String]("account_address")
+
+    /** Database column block_hash SqlTypew(text) */
+    val blockHash: Rep[String] = column[String]("block_hash")
 
     /** Database column block_number SqlType(int4) */
     val blockNumber: Rep[Int] = column[Int]("block_number")
@@ -758,6 +829,7 @@ trait Tables {
     *  @param hash Database column hash SqlType(text), PrimaryKey
     *  @param blockHash Database column block_hash SqlType(text)
     *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param timestamp Database column timestamp SqlType(timestamp)
     *  @param from Database column from SqlType(text)
     *  @param gas Database column gas SqlType(text)
     *  @param gasPrice Database column gas_price SqlType(text)
@@ -773,6 +845,7 @@ trait Tables {
       hash: String,
       blockHash: String,
       blockNumber: Int,
+      timestamp: java.sql.Timestamp = epoch,
       from: String,
       gas: String,
       gasPrice: String,
@@ -791,7 +864,8 @@ trait Tables {
       implicit e0: GR[String],
       e1: GR[Int],
       e2: GR[Option[String]],
-      e3: GR[scala.math.BigDecimal]
+      e3: GR[scala.math.BigDecimal],
+      e4: GR[java.sql.Timestamp]
   ): GR[TransactionsRow] = GR { prs =>
     import prs._
     TransactionsRow.tupled(
@@ -799,6 +873,7 @@ trait Tables {
         <<[String],
         <<[String],
         <<[Int],
+        <<[java.sql.Timestamp],
         <<[String],
         <<[String],
         <<[String],
@@ -818,7 +893,7 @@ trait Tables {
   class Transactions(_tableTag: Tag)
       extends profile.api.Table[TransactionsRow](_tableTag, Some("ethereum"), "transactions") {
     def * =
-      (hash, blockHash, blockNumber, from, gas, gasPrice, input, nonce, to, transactionIndex, value, v, r, s) <> (TransactionsRow.tupled, TransactionsRow.unapply)
+      (hash, blockHash, blockNumber, timestamp, from, gas, gasPrice, input, nonce, to, transactionIndex, value, v, r, s) <> (TransactionsRow.tupled, TransactionsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -827,6 +902,7 @@ trait Tables {
           Rep.Some(hash),
           Rep.Some(blockHash),
           Rep.Some(blockNumber),
+          Rep.Some(timestamp),
           Rep.Some(from),
           Rep.Some(gas),
           Rep.Some(gasPrice),
@@ -854,12 +930,13 @@ trait Tables {
                   _6.get,
                   _7.get,
                   _8.get,
-                  _9,
-                  _10.get,
+                  _9.get,
+                  _10,
                   _11.get,
                   _12.get,
                   _13.get,
-                  _14.get
+                  _14.get,
+                  _15.get
                 )
               )
           )
@@ -875,6 +952,9 @@ trait Tables {
 
     /** Database column block_number SqlType(int4) */
     val blockNumber: Rep[Int] = column[Int]("block_number")
+
+    /** Database column timestamp SqlType(timestamp) */
+    val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
 
     /** Database column from SqlType(text) */
     val from: Rep[String] = column[String]("from")
