@@ -986,6 +986,7 @@ CREATE TABLE ethereum.tokens_history (
 );
 
 CREATE INDEX ix_account_address ON ethereum.tokens_history USING btree (account_address);
+CREATE INDEX ix_token_address ON ethereum.tokens_history USING btree (token_address);
 
 CREATE OR REPLACE VIEW ethereum.accounts AS
 SELECT

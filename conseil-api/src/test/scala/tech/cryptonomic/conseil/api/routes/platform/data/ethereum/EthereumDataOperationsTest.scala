@@ -7,7 +7,7 @@ import tech.cryptonomic.conseil.api.EthereumInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.ethereum.EthereumTypes.EthereumBlockHash
 import tech.cryptonomic.conseil.common.ethereum.Tables
 import tech.cryptonomic.conseil.common.ethereum.Tables._
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.Query
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OutputType, Query, SimpleField, Snapshot}
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -173,9 +173,166 @@ class EthereumDataOperationsTest
           def convertAndScale(v: BigDecimal, s: Int): java.math.BigDecimal = v.bigDecimal.setScale(s)
         }
       }
+
+      "correctly use query on tempotal tokens_history" in {
+
+        val tokensHistoryRow = TokensHistoryRow(
+          tokenAddress = "0x1",
+          blockNumber = 1,
+          transactionHash = "0x1",
+          accountAddress = "0x0",
+          value = BigDecimal("1.0"),
+          asof = new Timestamp(1)
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.TokensHistory += tokensHistoryRow
+          found <- sut.selectWithPredicates(
+            "ethereum",
+            table = Tables.TokensHistory.baseTableRow.tableName,
+            columns = List(SimpleField("account_address"), SimpleField("block_number"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("account_address"),
+            snapshot = Some(Snapshot("asof", new Timestamp(1))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "account_address" -> Some("0x0"),
+            "block_number" -> Some(1),
+            "asof" -> Some(new Timestamp(1)),
+            "r" -> Some(1)
+          )
+        )
+
+      }
+
+      "get the balance of a token at a specific timestamp there there are multiple entitioes for given account" in {
+        val tokensHistoryRows = List(
+          TokensHistoryRow(
+            tokenAddress = "0x1",
+            blockNumber = 1,
+            transactionHash = "0x1",
+            accountAddress = "0x0",
+            value = BigDecimal("1.0"),
+            asof = new Timestamp(1)
+          ),
+          TokensHistoryRow(
+            tokenAddress = "0x1",
+            blockNumber = 2,
+            transactionHash = "0x1",
+            accountAddress = "0x0",
+            value = BigDecimal("2.0"),
+            asof = new Timestamp(2)
+          ),
+          TokensHistoryRow(
+            tokenAddress = "0x1",
+            blockNumber = 3,
+            transactionHash = "0x1",
+            accountAddress = "0x0",
+            value = BigDecimal("3.0"),
+            asof = new Timestamp(3)
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.TokensHistory ++= tokensHistoryRows
+          found <- sut.selectWithPredicates(
+            "ethereum",
+            table = Tables.TokensHistory.baseTableRow.tableName,
+            columns = List(SimpleField("account_address"), SimpleField("block_number"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("account_address"),
+            snapshot = Some(Snapshot("asof", new Timestamp(2))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "account_address" -> Some("0x0"),
+            "block_number" -> Some(2),
+            "asof" -> Some(new Timestamp(2)),
+            "r" -> Some(1)
+          )
+        )
+      }
+
+      "get the token balance of an account at a specific timestamp" in {
+        val tokensHistoryRows = List(
+          TokensHistoryRow(
+            tokenAddress = "0x1",
+            blockNumber = 1,
+            transactionHash = "0x1",
+            accountAddress = "0x1",
+            value = BigDecimal("1.0"),
+            asof = new Timestamp(1)
+          ),
+          TokensHistoryRow(
+            tokenAddress = "0x1",
+            blockNumber = 2,
+            transactionHash = "0x1",
+            accountAddress = "0x2",
+            value = BigDecimal("2.0"),
+            asof = new Timestamp(2)
+          ),
+          TokensHistoryRow(
+            tokenAddress = "0x1",
+            blockNumber = 3,
+            transactionHash = "0x1",
+            accountAddress = "0x3",
+            value = BigDecimal("3.0"),
+            asof = new Timestamp(3)
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.TokensHistory ++= tokensHistoryRows
+          found <- sut.selectWithPredicates(
+            "ethereum",
+            table = Tables.TokensHistory.baseTableRow.tableName,
+            columns = List(SimpleField("account_address"), SimpleField("block_number"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("account_address"),
+            snapshot = Some(Snapshot("asof", new Timestamp(2))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "account_address" -> Some("0x1"),
+            "block_number" -> Some(1),
+            "asof" -> Some(new Timestamp(1)),
+            "r" -> Some(1)
+          ),
+          Map(
+            "account_address" -> Some("0x2"),
+            "block_number" -> Some(2),
+            "asof" -> Some(new Timestamp(2)),
+            "r" -> Some(1)
+          )
+        )
+      }
     }
 }
-
 object EthereumDataOperationsTest {
   trait Fixtures {
 

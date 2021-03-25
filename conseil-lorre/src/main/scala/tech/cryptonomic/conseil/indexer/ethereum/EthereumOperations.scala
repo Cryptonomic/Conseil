@@ -45,7 +45,7 @@ class EthereumOperations[F[_]: Concurrent](
         case (latestIndexedBlock, mostRecentBlockNumber) =>
           val range = depth match {
             case Newest => latestIndexedBlock.map(_.number + 1).getOrElse(1) to mostRecentBlockNumber
-            case Everything => mostRecentBlockNumber - 10 to mostRecentBlockNumber
+            case Everything => 1 to mostRecentBlockNumber
             case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.isEmpty =>
               1 to mostRecentBlockNumber
             case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.nonEmpty =>
@@ -65,14 +65,6 @@ class EthereumOperations[F[_]: Concurrent](
   def loadBlocksWithTransactions(range: Range.Inclusive): Stream[F, Unit] =
     Stream
       .eval(tx.transact(persistence.getIndexedBlockHeights(range)))
-      .evalTap(
-        _ =>
-          Concurrent[F].delay(
-            logger.info(
-              s"Block range: $range"
-            )
-          )
-      )
       .flatMap(
         existingBlocks =>
           Stream
