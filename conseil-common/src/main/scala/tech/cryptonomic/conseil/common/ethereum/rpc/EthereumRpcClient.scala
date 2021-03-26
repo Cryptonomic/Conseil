@@ -5,9 +5,8 @@ import fs2.{Pipe, Stream}
 import io.circe.generic.auto._
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.circe.CirceEntityEncoder._
-
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
-import tech.cryptonomic.conseil.common.ethereum.domain.{Bytecode, Contract, Token, TokenBalance, TokenTransfer}
+import tech.cryptonomic.conseil.common.ethereum.domain.{Account, Bytecode, Contract, Token, TokenBalance, TokenTransfer}
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumRpcCommands._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction, TransactionReceipt}
@@ -188,6 +187,48 @@ class EthereumClient[F[_]: Concurrent](
               )
           }
 
+      }
+
+  def getAccountBalance: Pipe[F, Transaction, Account] =
+    stream =>
+      stream.flatMap { transaction =>
+        Stream
+          .emits(Seq(Some(transaction.from), transaction.to).flatten)
+          .flatMap { address =>
+            Stream
+              .emit(address)
+              .map(EthGetBalance.request)
+              .through(client.stream[EthGetBalance.Params, String](batchSize = 1))
+              .map(balance => (address, balance))
+          }
+          .map {
+            case (address, balance) =>
+              Account(
+                address,
+                transaction.blockHash,
+                transaction.blockNumber,
+                "123",
+                Utils.hexStringToBigDecimal(balance)
+              )
+          }
+      }
+
+  def getContractBalance: Pipe[F, Contract, Account] =
+    stream =>
+      stream.flatMap { contract =>
+        Stream
+          .emit(contract.address)
+          .map(EthGetBalance.request)
+          .through(client.stream[EthGetBalance.Params, String](batchSize = 1))
+          .map { balance =>
+            Account(
+              contract.address,
+              contract.blockHash,
+              contract.blockNumber,
+              "123",
+              Utils.hexStringToBigDecimal(balance)
+            )
+          }
       }
 }
 

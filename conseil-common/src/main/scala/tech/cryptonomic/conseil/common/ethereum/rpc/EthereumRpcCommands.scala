@@ -62,6 +62,21 @@ object EthereumRpcCommands {
   }
 
   /**
+    * `eth_getBalance` Ethereum JSON-RPC api method.
+    * Returns the balance of the account of given address.
+    */
+  object EthGetBalance extends EthereumRpcMethod {
+    val rpcMethod = "eth_getBalance"
+    case class Params(address: String)
+    def request(address: String) = RpcRequest("2.0", rpcMethod, Params(address), s"egb_$address")
+
+    implicit val encodeParams: Encoder[Params] = (params: Params) =>
+      Json.arr(
+        Json.fromString(params.address)
+      )
+  }
+
+  /**
     * `eth_getTransactionReceipt` Ethereum JSON-RPC api method.
     * Returns the transaction receipt requested.
     */

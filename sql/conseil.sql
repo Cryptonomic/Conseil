@@ -995,6 +995,21 @@ CREATE TABLE ethereum.tokens_history (
 CREATE INDEX ix_account_address ON ethereum.tokens_history USING btree (account_address);
 CREATE INDEX ix_token_address ON ethereum.tokens_history USING btree (token_address);
 
+CREATE TABLE ethereum.new_accounts (
+  address text NOT NULL,
+  block_hash text NOT NULL,
+  block_number integer NOT NULL,
+  timestamp timestamp without time zone NOT NULL,
+  balance numeric NOT NULL,
+  bytecode text,
+  tokenStandard text,
+  name text,
+  symbol text,
+  decimals text,
+  total_supply text,
+  PRIMARY KEY (address)
+);
+
 CREATE OR REPLACE VIEW ethereum.accounts AS
 SELECT
   destination AS address,

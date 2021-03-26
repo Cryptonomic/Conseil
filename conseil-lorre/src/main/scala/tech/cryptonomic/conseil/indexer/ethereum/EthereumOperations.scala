@@ -98,6 +98,14 @@ class EthereumOperations[F[_]: Concurrent](
               case (block, txs) => Stream.emit((block, txs, Nil, Nil))
             }
             .flatMap {
+              case (block, txs, receipts) =>
+                Stream
+                  .emits(txs)
+                  .through(ethereumClient.getAccountBalance)
+                  .chunkN(Integer.MAX_VALUE)
+                  .map(_ => (block, txs, receipts))
+            }
+            .flatMap {
               case (block, txs, receipts, logs)
                   if logs.size > 0 && logs
                       .exists(log => log.topics.size == 3 && log.topics.contains(tokenTransferSignature)) =>
