@@ -148,6 +148,7 @@ class EthereumOperations[F[_]: Concurrent](
                 Stream
                   .emits(contracts)
                   .through(ethereumClient.getContractBalance)
+                  .through(ethereumClient.addTokenInfo)
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap(accounts => tx.transact(persistence.createContractAccounts(accounts.toList)))
                   .map(_ => (block, txs, receipts))

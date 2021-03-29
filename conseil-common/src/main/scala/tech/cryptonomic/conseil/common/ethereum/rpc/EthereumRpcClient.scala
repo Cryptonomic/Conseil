@@ -6,7 +6,15 @@ import io.circe.generic.auto._
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.circe.CirceEntityEncoder._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
-import tech.cryptonomic.conseil.common.ethereum.domain.{Account, Bytecode, Contract, Token, TokenBalance, TokenTransfer}
+import tech.cryptonomic.conseil.common.ethereum.domain.{
+  Account,
+  Bytecode,
+  Contract,
+  Token,
+  TokenBalance,
+  TokenStandards,
+  TokenTransfer
+}
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumRpcCommands._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction, TransactionReceipt}
@@ -226,9 +234,38 @@ class EthereumClient[F[_]: Concurrent](
               contract.blockHash,
               contract.blockNumber,
               "123",
-              Utils.hexStringToBigDecimal(balance)
+              Utils.hexStringToBigDecimal(balance),
+              bytecode = Some(contract.bytecode),
+              tokenStandard = (contract.isErc20, contract.isErc721) match {
+                case (true, false) => Some(TokenStandards.ERC20)
+                case (false, true) => Some(TokenStandards.ERC721)
+                case _ => None
+              }
             )
           }
+      }
+
+  def addTokenInfo: Pipe[F, Account, Account] =
+    stream =>
+      stream.flatMap {
+        case token if token.tokenStandard.isDefined =>
+          Stream
+            .emits(Seq("name", "symbol", "decimals", "totalSupply"))
+            .map(f => EthCall.request(token.blockNumber, token.address, s"0x${Utils.keccak(s"$f()")}"))
+            .through(client.stream[EthCall.Params, String](batchSize = 1))
+            .chunkN(4)
+            .map(_.toList)
+            .collect {
+              case name :: symbol :: decimals :: totalSupply :: Nil =>
+                token.copy(
+                  name = Some(name),
+                  symbol = Some(symbol),
+                  decimals = Some(decimals),
+                  totalSupply = Some(totalSupply)
+                )
+            }
+
+        case account => Stream.emit(account)
       }
 }
 
