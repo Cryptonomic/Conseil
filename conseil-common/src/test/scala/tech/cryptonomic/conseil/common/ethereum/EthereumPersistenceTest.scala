@@ -139,6 +139,42 @@ class EthereumPersistenceTest
           result <- tx.transact(ethereumPersistenceStub.getLatestIndexedBlock)
         } yield result).unsafeRunSync() shouldBe Some(DbFixtures.blockRow.copy(hash = "hash2", level = 2))
       }
+
+      "save account from transaction" in new EthereumPersistenceStubs(dbHandler) {
+        (for {
+          _ <- tx.transact(
+            ethereumPersistenceStub
+              .upsertAccounts(List(RpcFixtures.accountFromResult, RpcFixtures.accountToResult))(ExecutionContext.global)
+          )
+          result <- tx.transact(Tables.Accounts.result)
+        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.accountFromRow, DbFixtures.accountToRow)
+      }
+
+      "upsert account from transaction" in new EthereumPersistenceStubs(dbHandler) {
+        val existingAccount = RpcFixtures.accountToResult.copy(
+          blockHash = "0x0",
+          blockNumber = "0x10000",
+          timestamp = "0x55d21480",
+          balance = BigDecimal("0.0")
+        )
+        (for {
+          _ <- tx.transact(Tables.Accounts += existingAccount.convertTo[Tables.AccountsRow])
+          _ <- tx.transact(
+            ethereumPersistenceStub
+              .upsertAccounts(List(RpcFixtures.accountFromResult, RpcFixtures.accountToResult))(ExecutionContext.global)
+          )
+          result <- tx.transact(Tables.Accounts.result)
+        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.accountFromRow, DbFixtures.accountToRow)
+      }
     }
 
+  "save account from contract" in new EthereumPersistenceStubs(dbHandler) {
+        (for {
+          _ <- tx.transact(
+            ethereumPersistenceStub
+              .upsertAccounts(List(RpcFixtures.accountFromResult, RpcFixtures.accountToResult))(ExecutionContext.global)
+          )
+          result <- tx.transact(Tables.Accounts.result)
+        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.accountFromRow, DbFixtures.accountToRow)
+      }
 }

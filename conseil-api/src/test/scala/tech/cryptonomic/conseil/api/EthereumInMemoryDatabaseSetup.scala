@@ -15,6 +15,7 @@ trait EthereumInMemoryDatabaseSetup extends InMemoryDatabaseSetup {
       Fixture.table(Tables.Tokens),
       Fixture.table(Tables.TokenTransfers),
       Fixture.table(Tables.TokensHistory),
+      Fixture.table(Tables.Accounts),
       Fixture.view(Views.AccountsViewSql)
     )
   )

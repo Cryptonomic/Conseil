@@ -216,6 +216,28 @@ trait EthereumFixtures {
       transactionIndex = "0x0"
     )
 
+    val accountFromResult = Account(
+      address = "0xd9666150a9da92d9108198a4072970805a8b3428",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = "0x18e70",
+      timestamp = "0x55d21481",
+      balance = BigDecimal("1.0")
+    )
+
+    val accountToResult = Account(
+      address = "0x32be343b94f860124dc4fee278fdcbd38c102d88",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = "0x18e70",
+      timestamp = "0x55d21481",
+      balance = BigDecimal("10.0"),
+      bytecode = Some(Bytecode("0x0")),
+      tokenStandard = Some(TokenStandards.ERC20),
+      name = Some(""),
+      symbol = Some(""),
+      decimals = Some("0x0"),
+      totalSupply = Some("0x0")
+    )
+
     val contractResult = Contract(
       address = "0x123",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
@@ -340,6 +362,34 @@ trait EthereumFixtures {
         "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
       status = None,
       root = Some("0x86bb2ce193e0c440bd7137a860531031af5f40d80ba1281dd3e91093243a1974")
+    )
+
+    val accountFromRow = Tables.AccountsRow(
+      address = "0xd9666150a9da92d9108198a4072970805a8b3428",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = 102000,
+      timestamp = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z")),
+      balance = BigDecimal("1.0"),
+      bytecode = None,
+      tokenStandard = None,
+      name = None,
+      symbol = None,
+      decimals = None,
+      totalSupply = None
+    )
+
+    val accountToRow = Tables.AccountsRow(
+      address = "0x32be343b94f860124dc4fee278fdcbd38c102d88",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = 102000,
+      timestamp = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z")),
+      balance = BigDecimal("10.0"),
+      bytecode = Some("0x0"),
+      tokenStandard = Some("ERC20"),
+      name = Some(""),
+      symbol = Some(""),
+      decimals = Some("0x0"),
+      totalSupply = Some("0x0")
     )
 
     val tokenTransferRow = Tables.TokenTransfersRow(

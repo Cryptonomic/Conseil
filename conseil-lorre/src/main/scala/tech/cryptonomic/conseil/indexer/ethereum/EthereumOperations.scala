@@ -11,6 +11,8 @@ import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumClient
 import tech.cryptonomic.conseil.indexer.config.{Custom, Depth, Everything, Newest}
 import tech.cryptonomic.conseil.common.ethereum.domain.{Bytecode, Contract}
 
+import scala.concurrent.ExecutionContext
+
 /**
   * Ethereum operations for Lorre.
   *
@@ -103,6 +105,7 @@ class EthereumOperations[F[_]: Concurrent](
                   .emits(txs)
                   .through(ethereumClient.getAccountBalance)
                   .chunkN(Integer.MAX_VALUE)
+                  .evalTap(accounts => tx.transact(persistence.upsertAccounts(accounts.toList)(ExecutionContext.global)))
                   .map(_ => (block, txs, receipts))
             }
             .flatMap {
@@ -136,9 +139,18 @@ class EthereumOperations[F[_]: Concurrent](
                   .through(ethereumClient.getContract(batchConf.contractsBatchSize))
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap(contracts => tx.transact(persistence.createContracts(contracts.toList)))
-                  .map(_ => (block, txs, receipts))
-              case (block, txs, receipts) => Stream.emit((block, txs, receipts))
+                  .map(contracts => (block, txs, receipts, contracts))
+              case (block, txs, receipts) => Stream.emit((block, txs, receipts, Nil))
 
+            }
+            .flatMap {
+              case (block, txs, receipts, contracts) =>
+                Stream
+                  .emits(contracts)
+                  .through(ethereumClient.getContractBalance)
+                  .chunkN(Integer.MAX_VALUE)
+                  .evalTap(accounts => tx.transact(persistence.createContractAccounts(accounts.toList)))
+                  .map(_ => (block, txs, receipts))
             }
             .evalTap { // log every 10 block
               case (block, txs, receipts) if Integer.decode(block.number) % 10 == 0 =>
