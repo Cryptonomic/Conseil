@@ -44,12 +44,12 @@ class EthereumOperations[F[_]: Concurrent](
       .flatMap {
         case (latestIndexedBlock, mostRecentBlockNumber) =>
           val range = depth match {
-            case Newest => latestIndexedBlock.map(_.number + 1).getOrElse(1) to mostRecentBlockNumber
+            case Newest => latestIndexedBlock.map(_.level + 1).getOrElse(1) to mostRecentBlockNumber
             case Everything => 1 to mostRecentBlockNumber
             case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.isEmpty =>
               1 to mostRecentBlockNumber
             case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.nonEmpty =>
-              latestIndexedBlock.map(_.number + 1).getOrElse(1) to mostRecentBlockNumber
+              latestIndexedBlock.map(_.level + 1).getOrElse(1) to mostRecentBlockNumber
             case Custom(depth) => (mostRecentBlockNumber - depth) to mostRecentBlockNumber
           }
 

@@ -36,11 +36,11 @@ trait Views {
   lazy val AccountsViewSql: SqlAction[Int, NoStream, Effect] = sqlu"""
     CREATE OR REPLACE VIEW ethereum.accounts AS
       SELECT
-        "to" AS address,
-        SUM(value) AS value
+        destination AS address,
+        SUM(amount) AS value
       FROM
         ethereum.transactions
       GROUP BY
-        "to"
+        destination
     """
 }

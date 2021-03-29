@@ -877,11 +877,11 @@ CREATE SCHEMA ethereum;
 -- Table is based on eth_getBlockByHash from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.blocks (
   hash text NOT NULL PRIMARY KEY,
-  number integer NOT NULL,
-  difficulty text NOT NULL,
+  level integer NOT NULL, -- number
+  difficulty numeric NOT NULL,
   extra_data text NOT NULL,
-  gas_limit text NOT NULL,
-  gas_used text NOT NULL,
+  gas_limit numeric NOT NULL,
+  gas_used numeric NOT NULL,
   logs_bloom text NOT NULL,
   miner text NOT NULL,
   mix_hash text NOT NULL,
@@ -889,9 +889,9 @@ CREATE TABLE ethereum.blocks (
   parent_hash text,
   receipts_root text NOT NULL,
   sha3_uncles text NOT NULL,
-  size text NOT NULL,
+  size integer NOT NULL,
   state_root text NOT NULL,
-  total_difficulty text NOT NULL,
+  total_difficulty numeric NOT NULL,
   transactions_root text NOT NULL,
   uncles text,
   timestamp timestamp without time zone NOT NULL
@@ -902,14 +902,14 @@ CREATE TABLE ethereum.transactions (
   hash text NOT NULL PRIMARY KEY,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
-  "from" text NOT NULL,
-  gas text NOT NULL,
-  gas_price text NOT NULL,
+  source text NOT NULL, -- from
+  gas numeric NOT NULL,
+  gas_price numeric NOT NULL,
   input text NOT NULL,
   nonce text NOT NULL,
-  "to" text,
-  transaction_index text NOT NULL,
-  value numeric NOT NULL, -- value in wei
+  destination text, -- to
+  transaction_index integer NOT NULL,
+  amount numeric NOT NULL, -- value in wei
   v text NOT NULL,
   r text NOT NULL,
   s text NOT NULL
@@ -990,12 +990,12 @@ CREATE INDEX ix_token_address ON ethereum.tokens_history USING btree (token_addr
 
 CREATE OR REPLACE VIEW ethereum.accounts AS
 SELECT
-  "to" AS address,
-  SUM(value) AS value
+  destination AS address,
+  SUM(amount) AS value
 FROM
   ethereum.transactions
 GROUP BY
-  "to";
+  destination;
 
 -- The schema for Quorum is duplicated from Ethereum.
 -- TODO: This is a temporary solution, in the future we intend to generate the schema automatically to avoid duplication,
