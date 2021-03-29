@@ -30,7 +30,7 @@ trait Tables {
   /** Entity class storing rows of table Blocks
     *  @param hash Database column hash SqlType(text), PrimaryKey
     *  @param level Database column level SqlType(int4)
-    *  @param difficulty Database column difficulty SqlType(numericd)
+    *  @param difficulty Database column difficulty SqlType(numeric)
     *  @param extraData Database column extra_data SqlType(text)
     *  @param gasLimit Database column gas_limit SqlType(numeric)
     *  @param gasUsed Database column gas_used SqlType(numeric)
@@ -319,28 +319,28 @@ trait Tables {
     *  @param blockHash Database column block_hash SqlType(text)
     *  @param blockNumber Database column block_number SqlType(int4)
     *  @param data Database column data SqlType(text)
-    *  @param logIndex Database column log_index SqlType(text)
+    *  @param logIndex Database column log_index SqlType(int4)
     *  @param removed Database column removed SqlType(bool)
     *  @param topics Database column topics SqlType(text)
     *  @param transactionHash Database column transaction_hash SqlType(text)
-    *  @param transactionIndex Database column transaction_index SqlType(text) */
+    *  @param transactionIndex Database column transaction_index SqlType(int4) */
   case class LogsRow(
       address: String,
       blockHash: String,
       blockNumber: Int,
       data: String,
-      logIndex: String,
+      logIndex: Int,
       removed: Boolean,
       topics: String,
       transactionHash: String,
-      transactionIndex: String
+      transactionIndex: Int
   )
 
   /** GetResult implicit for fetching LogsRow objects using plain SQL queries */
   implicit def GetResultLogsRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Boolean]): GR[LogsRow] = GR { prs =>
     import prs._
     LogsRow.tupled(
-      (<<[String], <<[String], <<[Int], <<[String], <<[String], <<[Boolean], <<[String], <<[String], <<[String])
+      (<<[String], <<[String], <<[Int], <<[String], <<[Int], <<[Boolean], <<[String], <<[String], <<[Int])
     )
   }
 
@@ -383,8 +383,8 @@ trait Tables {
     /** Database column data SqlType(text) */
     val data: Rep[String] = column[String]("data")
 
-    /** Database column log_index SqlType(text) */
-    val logIndex: Rep[String] = column[String]("log_index")
+    /** Database column log_index SqlType(int4) */
+    val logIndex: Rep[Int] = column[Int]("log_index")
 
     /** Database column removed SqlType(bool) */
     val removed: Rep[Boolean] = column[Boolean]("removed")
@@ -395,8 +395,8 @@ trait Tables {
     /** Database column transaction_hash SqlType(text) */
     val transactionHash: Rep[String] = column[String]("transaction_hash")
 
-    /** Database column transaction_index SqlType(text) */
-    val transactionIndex: Rep[String] = column[String]("transaction_index")
+    /** Database column transaction_index SqlType(int4) */
+    val transactionIndex: Rep[Int] = column[Int]("transaction_index")
 
     /** Foreign key referencing Blocks (database name ethereum_logs_block_hash_fkey) */
     lazy val blocksFk = foreignKey("ethereum_logs_block_hash_fkey", blockHash, Blocks)(
@@ -411,41 +411,46 @@ trait Tables {
 
   /** Entity class storing rows of table Receipts
     *  @param transactionHash Database column transaction_hash SqlType(text)
-    *  @param transactionIndex Database column transaction_index SqlType(text)
+    *  @param transactionIndex Database column transaction_index SqlType(int4)
     *  @param blockHash Database column block_hash SqlType(text)
     *  @param blockNumber Database column block_number SqlType(int4)
     *  @param contractAddress Database column contract_address SqlType(text), Default(None)
-    *  @param cumulativeGasUsed Database column cumulative_gas_used SqlType(text)
-    *  @param gasUsed Database column gas_used SqlType(text)
+    *  @param cumulativeGasUsed Database column cumulative_gas_used SqlType(numeric)
+    *  @param gasUsed Database column gas_used SqlType(numeric)
     *  @param logsBloom Database column logs_bloom SqlType(text)
     *  @param status Database column status SqlType(text), Default(None)
     *  @param root Database column root SqlType(text), Default(None) */
   case class ReceiptsRow(
       transactionHash: String,
-      transactionIndex: String,
+      transactionIndex: Int,
       blockHash: String,
       blockNumber: Int,
       contractAddress: Option[String] = None,
-      cumulativeGasUsed: String,
-      gasUsed: String,
+      cumulativeGasUsed: scala.math.BigDecimal,
+      gasUsed: scala.math.BigDecimal,
       logsBloom: String,
       status: Option[String] = None,
       root: Option[String] = None
   )
 
   /** GetResult implicit for fetching ReceiptsRow objects using plain SQL queries */
-  implicit def GetResultReceiptsRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Option[String]]): GR[ReceiptsRow] =
+  implicit def GetResultReceiptsRow(
+      implicit e0: GR[String],
+      e1: GR[Int],
+      e2: GR[Option[String]],
+      e3: GR[scala.math.BigDecimal]
+  ): GR[ReceiptsRow] =
     GR { prs =>
       import prs._
       ReceiptsRow.tupled(
         (
           <<[String],
-          <<[String],
+          <<[Int],
           <<[String],
           <<[Int],
           <<?[String],
-          <<[String],
-          <<[String],
+          <<[scala.math.BigDecimal],
+          <<[scala.math.BigDecimal],
           <<[String],
           <<?[String],
           <<?[String]
@@ -495,8 +500,8 @@ trait Tables {
     /** Database column transaction_hash SqlType(text) */
     val transactionHash: Rep[String] = column[String]("transaction_hash")
 
-    /** Database column transaction_index SqlType(text) */
-    val transactionIndex: Rep[String] = column[String]("transaction_index")
+    /** Database column transaction_index SqlType(int4) */
+    val transactionIndex: Rep[Int] = column[Int]("transaction_index")
 
     /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
@@ -507,11 +512,11 @@ trait Tables {
     /** Database column contract_address SqlType(text), Default(None) */
     val contractAddress: Rep[Option[String]] = column[Option[String]]("contract_address", O.Default(None))
 
-    /** Database column cumulative_gas_used SqlType(text) */
-    val cumulativeGasUsed: Rep[String] = column[String]("cumulative_gas_used")
+    /** Database column cumulative_gas_used SqlType(numeric) */
+    val cumulativeGasUsed: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("cumulative_gas_used")
 
-    /** Database column gas_used SqlType(text) */
-    val gasUsed: Rep[String] = column[String]("gas_used")
+    /** Database column gas_used SqlType(numeric) */
+    val gasUsed: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("gas_used")
 
     /** Database column logs_bloom SqlType(text) */
     val logsBloom: Rep[String] = column[String]("logs_bloom")

@@ -427,11 +427,11 @@ object EthereumDataOperationsTest {
           blockHash = block.hash,
           blockNumber = block.level,
           data = "data",
-          logIndex = "0",
+          logIndex = 0,
           removed = false,
           topics = "t0",
           transactionHash = transaction.hash,
-          transactionIndex = transaction.transactionIndex.toString
+          transactionIndex = transaction.transactionIndex
         )
     val log1: LogsRow = defaultLogs(block1, transaction1).copy(address = "address1", topics = "t1")
     val log2: LogsRow = defaultLogs(block2, transaction2).copy(address = "address2", topics = "t2")
@@ -442,12 +442,12 @@ object EthereumDataOperationsTest {
       (block: BlocksRow, transaction: TransactionsRow) =>
         ReceiptsRow(
           transactionHash = transaction.hash,
-          transactionIndex = transaction.transactionIndex.toString,
+          transactionIndex = transaction.transactionIndex,
           blockHash = block.hash,
           blockNumber = block.level,
           contractAddress = Some("0x1"),
-          cumulativeGasUsed = "0x1",
-          gasUsed = "0x1",
+          cumulativeGasUsed = BigDecimal("1.0"),
+          gasUsed = BigDecimal("1.0"),
           logsBloom = "0x0",
           status = None,
           root = Some("0x1")

@@ -182,10 +182,10 @@ object EthereumPersistence {
           blockHash = from.blockHash,
           blockNumber = Integer.decode(from.blockNumber),
           transactionHash = from.transactionHash,
-          transactionIndex = from.transactionIndex,
+          transactionIndex = Integer.decode(from.transactionIndex),
           contractAddress = from.contractAddress,
-          cumulativeGasUsed = from.cumulativeGasUsed,
-          gasUsed = from.gasUsed,
+          cumulativeGasUsed = Utils.hexStringToBigDecimal(from.cumulativeGasUsed),
+          gasUsed = Utils.hexStringToBigDecimal(from.gasUsed),
           logsBloom = from.logsBloom,
           status = from.status,
           root = from.root
@@ -205,11 +205,11 @@ object EthereumPersistence {
           blockHash = from.blockHash,
           blockNumber = Integer.decode(from.blockNumber),
           data = from.data,
-          logIndex = from.logIndex,
+          logIndex = Integer.decode(from.logIndex),
           removed = from.removed,
           topics = from.topics.mkString(","),
           transactionHash = from.transactionHash,
-          transactionIndex = from.transactionIndex
+          transactionIndex = Integer.decode(from.transactionIndex)
         )
     }
 

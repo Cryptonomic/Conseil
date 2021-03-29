@@ -921,12 +921,12 @@ ALTER TABLE ONLY ethereum.transactions
 -- Table is based on eth_getTransactionReceipt from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.receipts (
   transaction_hash text NOT NULL,
-  transaction_index text NOT NULL,
+  transaction_index integer NOT NULL,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
   contract_address text,
-  cumulative_gas_used text NOT NULL,
-  gas_used text NOT NULL,
+  cumulative_gas_used numeric NOT NULL,
+  gas_used numeric NOT NULL,
   logs_bloom text NOT NULL,
   status text,
   root text
@@ -938,11 +938,11 @@ CREATE TABLE ethereum.logs (
   block_hash text NOT NULL,
   block_number integer NOT NULL,
   data text NOT NULL,
-  log_index text NOT NULL,
+  log_index integer NOT NULL,
   removed boolean NOT NULL,
   topics text NOT NULL,
   transaction_hash text NOT NULL,
-  transaction_index text NOT NULL
+  transaction_index integer NOT NULL
 );
 
 ALTER TABLE ONLY ethereum.logs
