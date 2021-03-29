@@ -39,6 +39,9 @@ trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
     Option[List[QueryResponse]]
   ] = tokenTransfersEndpoint(platform)
 
+  def ethereumTokensHistoryEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
+    tokensHistoryEndpoint(platform)
+
   def ethereumAccountsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
     accountsEndpoint(platform)
 

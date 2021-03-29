@@ -69,6 +69,25 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
           .unsafeRunSync() shouldBe List(RpcFixtures.tokenResult)
       }
 
+      "return a token transfer for the given log" in new EthereumClientStubs {
+        Stream(RpcFixtures.logResult)
+          .through(
+            ethereumClientStub(JsonFixtures.callResponse).getTokenTransfer
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.tokenTransferResult)
+      }
+
+      "return a tokens history for the given token transfer" in new EthereumClientStubs {
+        Stream(RpcFixtures.tokenTransferResult)
+          .through(
+            ethereumClientStub(JsonFixtures.callResponse).getTokenBalance(RpcFixtures.blockResult)
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.tokenBalanceFromResult, RpcFixtures.tokenBalanceToResult)
+      }
     }
 
 }

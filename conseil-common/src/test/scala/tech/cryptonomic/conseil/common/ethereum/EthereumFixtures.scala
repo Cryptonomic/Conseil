@@ -233,6 +233,33 @@ trait EthereumFixtures {
       decimals = "0x0",
       totalSupply = "0x0"
     )
+
+    val tokenTransferResult = TokenTransfer(
+      tokenAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      blockNumber = 102000,
+      transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
+      fromAddress = "0x000000000000000000000000fdb16996831753d5331ff813c29a93c76834a0ad",
+      toAddress = "0x0000000000000000000000000f4a253ee5a63bb4b23a360ad52d69c86bc9fe97",
+      value = BigDecimal("1000000000.0")
+    )
+
+    val tokenBalanceFromResult = TokenBalance(
+      tokenAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      blockNumber = 102000,
+      transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
+      accountAddress = "0x000000000000000000000000fdb16996831753d5331ff813c29a93c76834a0ad",
+      value = BigDecimal("0.0"),
+      asof = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))
+    )
+
+    val tokenBalanceToResult = TokenBalance(
+      tokenAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      blockNumber = 102000,
+      transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
+      accountAddress = "0x0000000000000000000000000f4a253ee5a63bb4b23a360ad52d69c86bc9fe97",
+      value = BigDecimal("0.0"),
+      asof = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))
+    )
   }
 
   /**
@@ -307,11 +334,21 @@ trait EthereumFixtures {
     )
 
     val tokenTransferRow = Tables.TokenTransfersRow(
+      tokenAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
       blockNumber = 102000,
       transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
       fromAddress = "0x000000000000000000000000fdb16996831753d5331ff813c29a93c76834a0ad",
       toAddress = "0x0000000000000000000000000f4a253ee5a63bb4b23a360ad52d69c86bc9fe97",
       value = BigDecimal("1000000000.0")
+    )
+
+    val tokenBalanceFromRow = Tables.TokensHistoryRow(
+      tokenAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      blockNumber = 102000,
+      transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
+      accountAddress = "0x000000000000000000000000fdb16996831753d5331ff813c29a93c76834a0ad",
+      value = BigDecimal("0.0"),
+      asof = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))
     )
 
     val contractRow = Tables.ContractsRow(

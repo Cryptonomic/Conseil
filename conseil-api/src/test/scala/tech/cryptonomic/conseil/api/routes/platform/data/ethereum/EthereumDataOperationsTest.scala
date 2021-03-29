@@ -1,14 +1,13 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.ethereum
 
 import java.sql.Timestamp
-
 import org.scalatest.concurrent.IntegrationPatience
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.EthereumInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.ethereum.EthereumTypes.EthereumBlockHash
 import tech.cryptonomic.conseil.common.ethereum.Tables
 import tech.cryptonomic.conseil.common.ethereum.Tables._
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.Query
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OutputType, Query, SimpleField, Snapshot}
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -133,6 +132,19 @@ class EthereumDataOperationsTest
         }
       }
 
+      "return proper token balances, while fetching all token balances" in {
+        // given
+        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Tokens ++= tokens).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.TokensHistory ++= tokenBalances).isReadyWithin(5.seconds) shouldBe true
+
+        whenReady(sut.fetchTokensHistory(Query.empty)) { result =>
+          result.value.size shouldBe 3
+        }
+      }
+
       "return proper number of accounts, while fetching all of accounts" in {
         // given
         dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
@@ -161,9 +173,166 @@ class EthereumDataOperationsTest
           def convertAndScale(v: BigDecimal, s: Int): java.math.BigDecimal = v.bigDecimal.setScale(s)
         }
       }
+
+      "correctly use query on tempotal tokens_history" in {
+
+        val tokensHistoryRow = TokensHistoryRow(
+          tokenAddress = "0x1",
+          blockNumber = 1,
+          transactionHash = "0x1",
+          accountAddress = "0x0",
+          value = BigDecimal("1.0"),
+          asof = new Timestamp(1)
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.TokensHistory += tokensHistoryRow
+          found <- sut.selectWithPredicates(
+            "ethereum",
+            table = Tables.TokensHistory.baseTableRow.tableName,
+            columns = List(SimpleField("account_address"), SimpleField("block_number"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("account_address"),
+            snapshot = Some(Snapshot("asof", new Timestamp(1))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "account_address" -> Some("0x0"),
+            "block_number" -> Some(1),
+            "asof" -> Some(new Timestamp(1)),
+            "r" -> Some(1)
+          )
+        )
+
+      }
+
+      "get the balance of a token at a specific timestamp there there are multiple entitioes for given account" in {
+        val tokensHistoryRows = List(
+          TokensHistoryRow(
+            tokenAddress = "0x1",
+            blockNumber = 1,
+            transactionHash = "0x1",
+            accountAddress = "0x0",
+            value = BigDecimal("1.0"),
+            asof = new Timestamp(1)
+          ),
+          TokensHistoryRow(
+            tokenAddress = "0x1",
+            blockNumber = 2,
+            transactionHash = "0x1",
+            accountAddress = "0x0",
+            value = BigDecimal("2.0"),
+            asof = new Timestamp(2)
+          ),
+          TokensHistoryRow(
+            tokenAddress = "0x1",
+            blockNumber = 3,
+            transactionHash = "0x1",
+            accountAddress = "0x0",
+            value = BigDecimal("3.0"),
+            asof = new Timestamp(3)
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.TokensHistory ++= tokensHistoryRows
+          found <- sut.selectWithPredicates(
+            "ethereum",
+            table = Tables.TokensHistory.baseTableRow.tableName,
+            columns = List(SimpleField("account_address"), SimpleField("block_number"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("account_address"),
+            snapshot = Some(Snapshot("asof", new Timestamp(2))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "account_address" -> Some("0x0"),
+            "block_number" -> Some(2),
+            "asof" -> Some(new Timestamp(2)),
+            "r" -> Some(1)
+          )
+        )
+      }
+
+      "get the token balance of an account at a specific timestamp" in {
+        val tokensHistoryRows = List(
+          TokensHistoryRow(
+            tokenAddress = "0x1",
+            blockNumber = 1,
+            transactionHash = "0x1",
+            accountAddress = "0x1",
+            value = BigDecimal("1.0"),
+            asof = new Timestamp(1)
+          ),
+          TokensHistoryRow(
+            tokenAddress = "0x1",
+            blockNumber = 2,
+            transactionHash = "0x1",
+            accountAddress = "0x2",
+            value = BigDecimal("2.0"),
+            asof = new Timestamp(2)
+          ),
+          TokensHistoryRow(
+            tokenAddress = "0x1",
+            blockNumber = 3,
+            transactionHash = "0x1",
+            accountAddress = "0x3",
+            value = BigDecimal("3.0"),
+            asof = new Timestamp(3)
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.TokensHistory ++= tokensHistoryRows
+          found <- sut.selectWithPredicates(
+            "ethereum",
+            table = Tables.TokensHistory.baseTableRow.tableName,
+            columns = List(SimpleField("account_address"), SimpleField("block_number"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("account_address"),
+            snapshot = Some(Snapshot("asof", new Timestamp(2))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "account_address" -> Some("0x1"),
+            "block_number" -> Some(1),
+            "asof" -> Some(new Timestamp(1)),
+            "r" -> Some(1)
+          ),
+          Map(
+            "account_address" -> Some("0x2"),
+            "block_number" -> Some(2),
+            "asof" -> Some(new Timestamp(2)),
+            "r" -> Some(1)
+          )
+        )
+      }
     }
 }
-
 object EthereumDataOperationsTest {
   trait Fixtures {
 
@@ -318,6 +487,7 @@ object EthereumDataOperationsTest {
     private val defaultTokenTransfer =
       (block: BlocksRow, transaction: TransactionsRow) =>
         TokenTransfersRow(
+          tokenAddress = "0x1",
           blockNumber = block.number,
           transactionHash = transaction.hash,
           fromAddress = "0x0",
@@ -331,5 +501,23 @@ object EthereumDataOperationsTest {
     val tokenTransfer3: TokenTransfersRow =
       defaultTokenTransfer(block3, transaction3).copy(fromAddress = "0x5", toAddress = "0x6")
     val tokenTransfers: Seq[TokenTransfersRow] = List(tokenTransfer1, tokenTransfer2, tokenTransfer3)
+
+    private val defaultTokenBalance =
+      (block: BlocksRow, transaction: TransactionsRow) =>
+        TokensHistoryRow(
+          tokenAddress = "0x1",
+          blockNumber = block.number,
+          transactionHash = transaction.hash,
+          accountAddress = "0x0",
+          value = BigDecimal("1.0"),
+          asof = block.timestamp
+        )
+    val tokenBalance1: TokensHistoryRow =
+      defaultTokenBalance(block1, transaction1).copy(accountAddress = "0x1")
+    val tokenBalance2: TokensHistoryRow =
+      defaultTokenBalance(block2, transaction2).copy(accountAddress = "0x3")
+    val tokenBalance3: TokensHistoryRow =
+      defaultTokenBalance(block3, transaction3).copy(accountAddress = "0x5")
+    val tokenBalances: Seq[TokensHistoryRow] = List(tokenBalance1, tokenBalance2, tokenBalance3)
   }
 }

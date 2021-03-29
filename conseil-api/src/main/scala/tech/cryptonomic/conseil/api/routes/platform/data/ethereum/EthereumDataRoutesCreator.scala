@@ -104,6 +104,11 @@ trait EthereumDataRoutesCreator
     filter => operations.fetchTokenTransfers(filter.toQuery.withLimitCap(maxQueryResultSize))
   )
 
+  /** V2 Route implementation for tokens history endpoint */
+  private val tokensHistoryRoute: Route = delegateCall(ethereumTokensHistoryEndpoint)(
+    filter => operations.fetchTokensHistory(filter.toQuery.withLimitCap(maxQueryResultSize))
+  )
+
   /** V2 Route implementation for accounts endpoint */
   private val accountsRoute: Route = delegateCall(ethereumAccountsEndpoint)(
     filter => operations.fetchAccounts(filter.toQuery.withLimitCap(maxQueryResultSize))
@@ -148,6 +153,7 @@ trait EthereumDataRoutesCreator
       contractsRoute,
       tokensRoute,
       tokenTransfersRoute,
+      tokensHistoryRoute,
       accountsRoute,
       accountsByAddressRoute
     )

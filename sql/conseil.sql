@@ -968,12 +968,25 @@ CREATE TABLE ethereum.tokens (
 );
 
 CREATE TABLE ethereum.token_transfers (
+  token_address text NOT NULL,
   block_number integer NOT NULL,
   transaction_hash text NOT NULL,
   from_address text NOT NULL,
   to_address text NOT NULL,
   value numeric NOT NULL
 );
+
+CREATE TABLE ethereum.tokens_history (
+    account_address text NOT NULL,
+    block_number integer NOT NULL,
+    transaction_hash text NOT NULL,
+    token_address text NOT NULL,
+    value numeric NOT NULL,
+    asof timestamp without time zone NOT NULL
+);
+
+CREATE INDEX ix_account_address ON ethereum.tokens_history USING btree (account_address);
+CREATE INDEX ix_token_address ON ethereum.tokens_history USING btree (token_address);
 
 CREATE OR REPLACE VIEW ethereum.accounts AS
 SELECT

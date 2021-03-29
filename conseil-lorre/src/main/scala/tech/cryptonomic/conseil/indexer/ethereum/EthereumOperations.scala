@@ -28,6 +28,11 @@ class EthereumOperations[F[_]: Concurrent](
 ) extends ConseilLogSupport {
 
   /**
+    * SHA-3 signature for: Transfer(address,address,uint256)
+    */
+  private val tokenTransferSignature = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+
+  /**
     * Start Lorre with mode defined with [[Depth]].
     *
     * @param depth Can be: Newest, Everything or Custom
@@ -97,6 +102,30 @@ class EthereumOperations[F[_]: Concurrent](
             .evalTap {
               case (block, txs, receipts) =>
                 tx.transact(persistence.createBlock(block, txs, receipts))
+            }
+            .flatMap {
+              case (block, txs, receipts) =>
+                Stream
+                  .emits(receipts.map(_.logs))
+                  .flatMap(Stream.emits)
+                  .filter(
+                    log =>
+                      log.topics.size == 3 && log.topics
+                          .contains(tokenTransferSignature)
+                  )
+                  .through(ethereumClient.getTokenTransfer)
+                  .chunkN(Integer.MAX_VALUE)
+                  .evalTap(tokenTransfers => tx.transact(persistence.createTokenTransfers(tokenTransfers.toList)))
+                  .map(tokenTransfers => (block, txs, receipts, tokenTransfers.toList))
+            }
+            .flatMap {
+              case (block, txs, receipts, tokenTransfers) =>
+                Stream
+                  .emits(tokenTransfers)
+                  .through(ethereumClient.getTokenBalance(block))
+                  .chunkN(Integer.MAX_VALUE)
+                  .evalTap(tokenBalances => tx.transact(persistence.createTokenBalances(tokenBalances.toList)))
+                  .map(_ => (block, txs, receipts))
             }
             .flatMap {
               case (block, txs, receipts) =>

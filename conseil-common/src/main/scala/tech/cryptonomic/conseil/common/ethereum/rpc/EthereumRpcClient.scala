@@ -7,11 +7,14 @@ import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.circe.CirceEntityEncoder._
 
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
-import tech.cryptonomic.conseil.common.ethereum.domain.{Bytecode, Contract, Token}
+import tech.cryptonomic.conseil.common.ethereum.domain.{Bytecode, Contract, Token, TokenBalance, TokenTransfer}
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumRpcCommands._
-import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Transaction, TransactionReceipt}
+import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction, TransactionReceipt}
 import tech.cryptonomic.conseil.common.ethereum.Utils
+
+import java.sql.Timestamp
+import java.time.Instant
 
 /**
   * Ethereum JSON-RPC client according to the specification at https://eth.wiki/json-rpc/API
@@ -34,6 +37,8 @@ import tech.cryptonomic.conseil.common.ethereum.Utils
 class EthereumClient[F[_]: Concurrent](
     client: RpcClient[F]
 ) extends ConseilLogSupport {
+
+  private val nullAddress = "0x0000000000000000000000000000000000000000000000000000000000000000"
 
   /**
     * Get the number of most recent block.
@@ -127,6 +132,58 @@ class EthereumClient[F[_]: Concurrent](
           }
       }
 
+  /**
+    * Extract token transfers from log
+    */
+  def getTokenTransfer: Pipe[F, Log, TokenTransfer] =
+    stream =>
+      stream.map { log =>
+        TokenTransfer(
+          tokenAddress = log.address,
+          blockNumber = Integer.decode(log.blockNumber),
+          transactionHash = log.transactionHash,
+          fromAddress = log.topics(1),
+          toAddress = log.topics(2),
+          value = Utils.hexStringToBigDecimal(log.data)
+        )
+      }
+
+  /**
+    * Get token balances for at given block number from token transfer
+    *
+    * @param block Block at which we extract the account token balance
+    */
+  def getTokenBalance(block: Block): Pipe[F, TokenTransfer, TokenBalance] =
+    stream =>
+      stream.flatMap { tokenTransfer =>
+        Stream
+          .emits(Seq(tokenTransfer.fromAddress, tokenTransfer.toAddress))
+          .filter(address => address != nullAddress)
+          .flatMap { address =>
+            Stream
+              .emit(
+                EthCall.request(
+                  s"0x${tokenTransfer.blockNumber.toHexString}",
+                  tokenTransfer.tokenAddress,
+                  s"0x${Utils.keccak(s"balanceOf(address)")}${address.stripPrefix("0x")}"
+                )
+              )
+              .through(client.stream[EthCall.Params, String](batchSize = 1))
+              .map(balance => (address, balance))
+          }
+          .map {
+            case (address, balance) =>
+              TokenBalance(
+                accountAddress = address,
+                blockNumber = tokenTransfer.blockNumber,
+                transactionHash = tokenTransfer.transactionHash,
+                tokenAddress = tokenTransfer.tokenAddress,
+                value = Utils.hexStringToBigDecimal(balance),
+                asof = Timestamp.from(Instant.ofEpochSecond(Integer.decode(block.timestamp).toLong))
+              )
+          }
+
+      }
 }
 
 object EthereumClient {

@@ -13,17 +13,12 @@ import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction}
 import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.TransactionReceipt
-import tech.cryptonomic.conseil.common.ethereum.domain.{Contract, Token}
+import tech.cryptonomic.conseil.common.ethereum.domain.{Contract, Token, TokenBalance, TokenTransfer}
 
 /**
   * Ethereum persistence into the database using Slick.
   */
 class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
-
-  /**
-    * SHA-3 signature for: Transfer(address,address,uint256)
-    */
-  private val tokenTransferSignature = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
   /**
     * Create [[DBIO]] seq with blocks and transactions that can be wrap into one transaction.
@@ -40,21 +35,35 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
       Tables.Blocks += block.convertTo[Tables.BlocksRow],
       Tables.Transactions ++= transactions.map(_.convertTo[Tables.TransactionsRow]),
       Tables.Receipts ++= receipts.map(_.convertTo[Tables.ReceiptsRow]),
-      Tables.Logs ++= receipts.flatMap(_.logs).map(_.convertTo[Tables.LogsRow]),
-      Tables.TokenTransfers ++= receipts
-            .flatMap(_.logs)
-            .filter(
-              log =>
-                log.topics.size == 3 && log.topics
-                    .contains(tokenTransferSignature)
-            )
+      Tables.Logs ++= receipts.flatMap(_.logs).map(_.convertTo[Tables.LogsRow])
+    )
+
+  /**
+    * Create [[DBIO]] seq with token transfers.
+    *
+    * @param tokenTransfers token transfer events data
+    */
+  def createTokenTransfers(tokenTransfers: List[TokenTransfer]): DBIOAction[Unit, NoStream, Effect.Write] =
+    DBIO.seq(
+      Tables.TokenTransfers ++= tokenTransfers
             .map(_.convertTo[Tables.TokenTransfersRow])
+    )
+
+  /**
+    * Create [[DBIO]] seq with token balances.
+    *
+    * @param tokenBalances token balanceOf() data
+    */
+  def createTokenBalances(tokenBalances: List[TokenBalance]): DBIOAction[Unit, NoStream, Effect.Write] =
+    DBIO.seq(
+      Tables.TokensHistory ++= tokenBalances
+            .map(_.convertTo[Tables.TokensHistoryRow])
     )
 
   /**
     * Create [[DBIO]] seq with contracts.
     *
-    * @param logs JSON_RPC contract
+    * @param contracts JSON_RPC contract
     */
   def createContracts(contracts: List[Contract]) =
     DBIO.seq(
@@ -231,11 +240,48 @@ object EthereumPersistence {
     new Conversion[Id, Log, Tables.TokenTransfersRow] {
       override def convert(from: Log) =
         Tables.TokenTransfersRow(
+          tokenAddress = from.address,
           blockNumber = Integer.decode(from.blockNumber),
           transactionHash = from.transactionHash,
           fromAddress = from.topics(1),
           toAddress = from.topics(2),
           value = Utils.hexStringToBigDecimal(from.data)
+        )
+    }
+
+  /**
+    * Convert form [[TokenTransfer]] to [[Tables.TokenTransfersRow]]
+    * TODO: This conversion should be done with the Chimney,
+    *       but it's blocked due to the https://github.com/scala/bug/issues/11157
+    */
+  implicit val tokenTransferToTokenTransfersRow: Conversion[Id, TokenTransfer, Tables.TokenTransfersRow] =
+    new Conversion[Id, TokenTransfer, Tables.TokenTransfersRow] {
+      override def convert(from: TokenTransfer) =
+        Tables.TokenTransfersRow(
+          tokenAddress = from.tokenAddress,
+          blockNumber = from.blockNumber,
+          transactionHash = from.transactionHash,
+          fromAddress = from.fromAddress,
+          toAddress = from.toAddress,
+          value = from.value
+        )
+    }
+
+  /**
+    * Convert form [[TokenBalance]] to [[Tables.TokensHistoryRow]]
+    * TODO: This conversion should be done with the Chimney,
+    *       but it's blocked due to the https://github.com/scala/bug/issues/11157
+    */
+  implicit val tokenBalanceToTokensHistoryRow: Conversion[Id, TokenBalance, Tables.TokensHistoryRow] =
+    new Conversion[Id, TokenBalance, Tables.TokensHistoryRow] {
+      override def convert(from: TokenBalance) =
+        Tables.TokensHistoryRow(
+          accountAddress = from.accountAddress,
+          blockNumber = from.blockNumber,
+          transactionHash = from.transactionHash,
+          tokenAddress = from.tokenAddress,
+          value = from.value,
+          asof = from.asof
         )
     }
 
