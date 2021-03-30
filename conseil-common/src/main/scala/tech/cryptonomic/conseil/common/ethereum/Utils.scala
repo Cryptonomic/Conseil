@@ -27,4 +27,12 @@ object Utils {
   def hexStringToBigDecimal(value: String): BigDecimal =
     BigDecimal(Try(BigInt(value.stripPrefix("0x"), 16)).getOrElse(BigInt(0)))
 
+  /**
+    * Truncate empty hex string '0x'
+    */
+  def truncateEmptyHexString(value: String): String = value match {
+    case s if s.endsWith("0x") => ""
+    case s => s
+  }
+
 }

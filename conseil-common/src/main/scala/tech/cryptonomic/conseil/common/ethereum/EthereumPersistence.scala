@@ -159,7 +159,7 @@ object EthereumPersistence {
           source = from.from,
           gas = Utils.hexStringToBigDecimal(from.gas),
           gasPrice = Utils.hexStringToBigDecimal(from.gasPrice),
-          input = from.input,
+          input = Utils.truncateEmptyHexString(from.input),
           nonce = from.nonce,
           destination = from.to,
           transactionIndex = Integer.decode(from.transactionIndex),

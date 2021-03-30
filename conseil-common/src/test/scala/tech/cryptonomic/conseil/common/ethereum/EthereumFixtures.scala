@@ -296,7 +296,7 @@ trait EthereumFixtures {
       source = "0xd9666150a9da92d9108198a4072970805a8b3428",
       gas = Utils.hexStringToBigDecimal("0x5208"),
       gasPrice = Utils.hexStringToBigDecimal("0xce52b27b5"),
-      input = "0x",
+      input = "",
       nonce = "0x36",
       destination = Some("0x32be343b94f860124dc4fee278fdcbd38c102d88"),
       transactionIndex = 0,
