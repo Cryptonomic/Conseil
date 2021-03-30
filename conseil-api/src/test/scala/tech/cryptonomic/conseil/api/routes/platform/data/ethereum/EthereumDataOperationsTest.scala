@@ -160,24 +160,20 @@ class EthereumDataOperationsTest
 
       "return proper number of accounts, while fetching all of accounts" in {
         // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Accounts ++= accounts).isReadyWithin(5.seconds) shouldBe true
 
         whenReady(sut.fetchAccounts(Query.empty)) { result =>
-          result.value.size shouldBe 2
+          result.value.size shouldBe 3
         }
       }
 
       "return proper account by address" in {
         // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Accounts ++= accounts).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchAccountByAddress("to")) { result =>
-          result.value should (contain key "address" and contain value transaction1.destination)
-          result.value should (contain key "value" and contain value Some(
-            convertAndScale(transaction2.amount + transaction3.amount, 2)
-          ))
+        whenReady(sut.fetchAccountByAddress("0x3")) { result =>
+          result.value should (contain key "token_standard" and contain value account3.tokenStandard)
+          result.value should (contain key "balance" and contain value Some(convertAndScale(account3.balance, 2)))
 
           // Since we are getting data for QueryResponse in generic way,
           // we are accessing Java API which returns java data types.
@@ -542,5 +538,32 @@ object EthereumDataOperationsTest {
     val tokenBalance3: TokensHistoryRow =
       defaultTokenBalance(block3, transaction3).copy(accountAddress = "0x5")
     val tokenBalances: Seq[TokensHistoryRow] = List(tokenBalance1, tokenBalance2, tokenBalance3)
+
+    private val defaultAccount =
+      (block: BlocksRow, transaction: TransactionsRow) =>
+        AccountsRow(
+          address = transaction.from,
+          blockHash = transaction.blockHash,
+          blockNumber = transaction.blockNumber,
+          timestamp = block.timestamp,
+          balance = BigDecimal("1.0")
+        )
+    val account1: AccountsRow =
+      defaultAccount(block1, transaction1).copy(address = "0x1", balance = BigDecimal("1.0"))
+    val account2: AccountsRow =
+      defaultAccount(block2, transaction3).copy(address = "0x2", balance = BigDecimal("2.0"))
+    val account3: AccountsRow =
+      defaultAccount(block3, transaction3).copy(
+        address = "0x3",
+        balance = BigDecimal("3.0"),
+        bytecode = Some("0x0"),
+        tokenStandard = Some("ERC20"),
+        name = Some("name"),
+        symbol = Some("SYM"),
+        decimals = Some("18"),
+        totalSupply = Some("100")
+      )
+    val accounts: Seq[AccountsRow] = List(account1, account2, account3)
+
   }
 }

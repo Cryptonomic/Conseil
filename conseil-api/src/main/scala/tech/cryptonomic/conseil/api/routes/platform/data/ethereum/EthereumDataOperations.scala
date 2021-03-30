@@ -68,12 +68,12 @@ class EthereumDataOperations(prefix: String) extends ApiDataOperations {
 
   /** Fetches the list of accounts for given query */
   def fetchAccounts(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =
-    queryWithPredicates(prefix, "accounts", query).map(Some(_))
+    queryWithPredicates(prefix, "new_accounts", query).map(Some(_))
 
   /** Fetches the list of accounts for given query */
   def fetchAccountByAddress(address: String)(implicit ec: ExecutionContext): Future[Option[QueryResponse]] = {
     val filter = EthereumFilter(accountAddresses = Set(address))
-    queryWithPredicates(prefix, "accounts", filter.toQuery).map(_.headOption)
+    queryWithPredicates(prefix, "new_accounts", filter.toQuery).map(_.headOption)
   }
 
 }
