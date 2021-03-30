@@ -10,7 +10,6 @@ case class Log(
     transactionHash: String,
     blockHash: String,
     blockNumber: String,
-    timestamp: String,
     address: String,
     data: String,
     topics: Seq[String],

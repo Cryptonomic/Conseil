@@ -88,6 +88,36 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
           .toList
           .unsafeRunSync() shouldBe List(RpcFixtures.tokenBalanceFromResult, RpcFixtures.tokenBalanceToResult)
       }
+
+      "return account balances for transaction sides" in new EthereumClientStubs {
+        Stream(RpcFixtures.transactionResult)
+          .through(
+            ethereumClientStub(JsonFixtures.getBalanceResponse).getAccountBalance
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.accountFromResult, RpcFixtures.accountToResult)
+      }
+
+      "return contract account balances for created contract" in new EthereumClientStubs {
+        Stream(RpcFixtures.contractResult)
+          .through(
+            ethereumClientStub(JsonFixtures.getBalanceResponse).getContractBalance
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.contractAccountResult)
+      }
+
+      "return contract account data with token info" in new EthereumClientStubs {
+        Stream(RpcFixtures.contractAccountResult)
+          .through(
+            ethereumClientStub(JsonFixtures.callResponse).addTokenInfo
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.contractAccountResult)
+      }
     }
 
 }

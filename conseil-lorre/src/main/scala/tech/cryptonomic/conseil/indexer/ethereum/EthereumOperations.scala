@@ -46,7 +46,7 @@ class EthereumOperations[F[_]: Concurrent](
         case (latestIndexedBlock, mostRecentBlockNumber) =>
           val range = depth match {
             case Newest => latestIndexedBlock.map(_.level + 1).getOrElse(1) to mostRecentBlockNumber
-            case Everything => mostRecentBlockNumber - 10 to mostRecentBlockNumber
+            case Everything => 1 to mostRecentBlockNumber
             case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.isEmpty =>
               1 to mostRecentBlockNumber
             case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.nonEmpty =>

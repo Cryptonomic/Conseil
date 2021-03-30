@@ -123,6 +123,13 @@ trait EthereumFixtures {
       |  "result": "0x0",
       |  "id": "requestId"
       |}]""".stripMargin
+
+    // Json result for the: eth_getBalance
+    val getBalanceResponse =
+      """[{
+        |  "result": "0x1",
+        |  "id": "requestId"
+        |}]""".stripMargin
   }
 
   /**
@@ -186,7 +193,6 @@ trait EthereumFixtures {
       address = "0xdac17f958d2ee523a2206206994597c13d831ec7",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
       blockNumber = "0x18e70",
-      timestamp = "0x55d21481",
       data = "0x000000000000000000000000000000000000000000000000000000003b9aca00",
       logIndex = "0x0",
       removed = false,
@@ -229,13 +235,35 @@ trait EthereumFixtures {
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
       blockNumber = "0x18e70",
       timestamp = "0x55d21481",
-      balance = BigDecimal("10.0"),
+      balance = BigDecimal("1.0")
+    )
+
+    val contractAccountResult = Account(
+      address = "0x123",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = "0x18e70",
+      timestamp = "123",
+      balance = BigDecimal("1.0"),
       bytecode = Some(Bytecode("0x0")),
-      tokenStandard = Some(TokenStandards.ERC20),
-      name = Some(""),
-      symbol = Some(""),
-      decimals = Some("0x0"),
-      totalSupply = Some("0x0")
+      tokenStandard = None,
+      name = None,
+      symbol = None,
+      decimals = None,
+      totalSupply = None
+    )
+
+    val contractTokenAccountResult = Account(
+      address = "0x123",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = "0x18e70",
+      timestamp = "123",
+      balance = BigDecimal("1.0"),
+      bytecode = Some(Bytecode("0x0")),
+      tokenStandard = None,
+      name = None,
+      symbol = None,
+      decimals = None,
+      totalSupply = None
     )
 
     val contractResult = Contract(
@@ -339,7 +367,7 @@ trait EthereumFixtures {
       address = "0xdac17f958d2ee523a2206206994597c13d831ec7",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
       blockNumber = 102000,
-      timestamp = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z")),
+      timestamp = Timestamp.from(Instant.EPOCH),
       data = "0x000000000000000000000000000000000000000000000000000000003b9aca00",
       logIndex = 0,
       removed = false,
@@ -383,13 +411,13 @@ trait EthereumFixtures {
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
       blockNumber = 102000,
       timestamp = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z")),
-      balance = BigDecimal("10.0"),
-      bytecode = Some("0x0"),
-      tokenStandard = Some("ERC20"),
-      name = Some(""),
-      symbol = Some(""),
-      decimals = Some("0x0"),
-      totalSupply = Some("0x0")
+      balance = BigDecimal("1.0"),
+      bytecode = None,
+      tokenStandard = None,
+      name = None,
+      symbol = None,
+      decimals = None,
+      totalSupply = None
     )
 
     val tokenTransferRow = Tables.TokenTransfersRow(

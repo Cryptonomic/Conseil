@@ -197,6 +197,10 @@ class EthereumClient[F[_]: Concurrent](
 
       }
 
+  /**
+    * Get account balance at given block number from transaction
+    *
+    */
   def getAccountBalance: Pipe[F, Transaction, Account] =
     stream =>
       stream.flatMap { transaction =>
@@ -205,7 +209,7 @@ class EthereumClient[F[_]: Concurrent](
           .flatMap { address =>
             Stream
               .emit(address)
-              .map(EthGetBalance.request)
+              .map(addr => EthGetBalance.request(addr, transaction.blockNumber))
               .through(client.stream[EthGetBalance.Params, String](batchSize = 1))
               .map(balance => (address, balance))
           }
@@ -215,18 +219,22 @@ class EthereumClient[F[_]: Concurrent](
                 address,
                 transaction.blockHash,
                 transaction.blockNumber,
-                "123",
+                "0x55d21481",
                 Utils.hexStringToBigDecimal(balance)
               )
           }
       }
 
+  /**
+    * Get contract account balance at given block number from transaction
+    *
+    */
   def getContractBalance: Pipe[F, Contract, Account] =
     stream =>
       stream.flatMap { contract =>
         Stream
           .emit(contract.address)
-          .map(EthGetBalance.request)
+          .map(addr => EthGetBalance.request(addr, contract.blockNumber))
           .through(client.stream[EthGetBalance.Params, String](batchSize = 1))
           .map { balance =>
             Account(
@@ -236,7 +244,7 @@ class EthereumClient[F[_]: Concurrent](
               "123",
               Utils.hexStringToBigDecimal(balance),
               bytecode = Some(contract.bytecode),
-              tokenStandard = (contract.isErc20, contract.isErc721) match {
+              tokenStandard = (contract.bytecode.isErc20, contract.bytecode.isErc721) match {
                 case (true, false) => Some(TokenStandards.ERC20)
                 case (false, true) => Some(TokenStandards.ERC721)
                 case _ => None
@@ -245,6 +253,10 @@ class EthereumClient[F[_]: Concurrent](
           }
       }
 
+  /**
+    * Add token info for contract address implementing ERC20 or ERC721
+    *
+    */
   def addTokenInfo: Pipe[F, Account, Account] =
     stream =>
       stream.flatMap {

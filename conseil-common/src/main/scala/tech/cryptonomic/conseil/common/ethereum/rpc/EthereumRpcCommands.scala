@@ -67,12 +67,14 @@ object EthereumRpcCommands {
     */
   object EthGetBalance extends EthereumRpcMethod {
     val rpcMethod = "eth_getBalance"
-    case class Params(address: String)
-    def request(address: String) = RpcRequest("2.0", rpcMethod, Params(address), s"egb_$address")
+    case class Params(address: String, blockNumber: String)
+    def request(address: String, blockNumber: String) =
+      RpcRequest("2.0", rpcMethod, Params(address, blockNumber), s"egb_$address")
 
     implicit val encodeParams: Encoder[Params] = (params: Params) =>
       Json.arr(
-        Json.fromString(params.address)
+        Json.fromString(params.address),
+        Json.fromString(params.blockNumber)
       )
   }
 

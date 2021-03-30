@@ -1002,7 +1002,7 @@ CREATE TABLE ethereum.new_accounts (
   timestamp timestamp without time zone NOT NULL,
   balance numeric NOT NULL,
   bytecode text,
-  tokenStandard text,
+  token_standard text,
   name text,
   symbol text,
   decimals text,

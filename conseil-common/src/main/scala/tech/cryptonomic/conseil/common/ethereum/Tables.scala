@@ -654,7 +654,7 @@ trait Tables {
       tokenAddress: String,
       blockHash: String,
       blockNumber: Int,
-      timestamp: java.sql.Timestamp,
+      timestamp: java.sql.Timestamp = epoch,
       transactionHash: String,
       logIndex: String,
       fromAddress: String,
