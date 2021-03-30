@@ -15,5 +15,14 @@ class UtilsTest extends ConseilSpec {
       "convert hex string to big decimal" in {
         Utils.hexStringToBigDecimal("0x1") shouldBe 0x1
       }
+
+      "truncate empty hex string" in {
+        Utils.truncateEmptyHexString("0x") shouldBe ""
+      }
+
+      "not truncate valid hex string" in {
+        Utils.truncateEmptyHexString("0x1") shouldBe "0x1"
+      }
+
     }
 }

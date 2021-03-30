@@ -86,13 +86,13 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
     * @param range Inclusive range of the block's height
     */
   def getIndexedBlockHeights(range: Range.Inclusive): DBIO[Seq[Int]] =
-    Tables.Blocks.filter(_.number between (range.start, range.end)).map(_.number).result
+    Tables.Blocks.filter(_.level between (range.start, range.end)).map(_.level).result
 
   /**
     * Get the latest block from the database.
     */
   def getLatestIndexedBlock: DBIO[Option[Tables.BlocksRow]] =
-    Tables.Blocks.sortBy(_.number.desc).take(1).result.headOption
+    Tables.Blocks.sortBy(_.level.desc).take(1).result.headOption
 
   /**
     * Get a list of contract in a given block number range.
@@ -123,11 +123,11 @@ object EthereumPersistence {
     override def convert(from: Block) =
       Tables.BlocksRow(
         hash = from.hash,
-        number = Integer.decode(from.number),
-        difficulty = from.difficulty,
+        level = Integer.decode(from.number),
+        difficulty = Utils.hexStringToBigDecimal(from.difficulty),
         extraData = from.extraData,
-        gasLimit = from.gasLimit,
-        gasUsed = from.gasUsed,
+        gasLimit = Utils.hexStringToBigDecimal(from.gasLimit),
+        gasUsed = Utils.hexStringToBigDecimal(from.gasUsed),
         logsBloom = from.logsBloom,
         miner = from.miner,
         mixHash = from.mixHash,
@@ -135,9 +135,9 @@ object EthereumPersistence {
         parentHash = from.parentHash,
         receiptsRoot = from.receiptsRoot,
         sha3Uncles = from.sha3Uncles,
-        size = from.size,
+        size = Integer.decode(from.size),
         stateRoot = from.stateRoot,
-        totalDifficulty = from.totalDifficulty,
+        totalDifficulty = Utils.hexStringToBigDecimal(from.totalDifficulty),
         transactionsRoot = from.transactionsRoot,
         uncles = Option(from.uncles).filter(_.nonEmpty).map(_.mkString(",")),
         timestamp = Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong))
@@ -156,14 +156,14 @@ object EthereumPersistence {
           hash = from.hash,
           blockHash = from.blockHash,
           blockNumber = Integer.decode(from.blockNumber),
-          from = from.from,
-          gas = from.gas,
-          gasPrice = from.gasPrice,
-          input = from.input,
+          source = from.from,
+          gas = Utils.hexStringToBigDecimal(from.gas),
+          gasPrice = Utils.hexStringToBigDecimal(from.gasPrice),
+          input = Utils.truncateEmptyHexString(from.input),
           nonce = from.nonce,
-          to = from.to,
-          transactionIndex = from.transactionIndex,
-          value = Utils.hexStringToBigDecimal(from.value),
+          destination = from.to,
+          transactionIndex = Integer.decode(from.transactionIndex),
+          amount = Utils.hexStringToBigDecimal(from.value),
           v = from.v,
           r = from.r,
           s = from.s
@@ -182,10 +182,10 @@ object EthereumPersistence {
           blockHash = from.blockHash,
           blockNumber = Integer.decode(from.blockNumber),
           transactionHash = from.transactionHash,
-          transactionIndex = from.transactionIndex,
+          transactionIndex = Integer.decode(from.transactionIndex),
           contractAddress = from.contractAddress,
-          cumulativeGasUsed = from.cumulativeGasUsed,
-          gasUsed = from.gasUsed,
+          cumulativeGasUsed = Utils.hexStringToBigDecimal(from.cumulativeGasUsed),
+          gasUsed = Utils.hexStringToBigDecimal(from.gasUsed),
           logsBloom = from.logsBloom,
           status = from.status,
           root = from.root
@@ -205,11 +205,11 @@ object EthereumPersistence {
           blockHash = from.blockHash,
           blockNumber = Integer.decode(from.blockNumber),
           data = from.data,
-          logIndex = from.logIndex,
+          logIndex = Integer.decode(from.logIndex),
           removed = from.removed,
           topics = from.topics.mkString(","),
           transactionHash = from.transactionHash,
-          transactionIndex = from.transactionIndex
+          transactionIndex = Integer.decode(from.transactionIndex)
         )
     }
 
