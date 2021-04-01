@@ -442,24 +442,6 @@ trait EthereumFixtures {
       asof = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))
     )
 
-    val contractRow = Tables.ContractsRow(
-      address = "0x123",
-      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      blockNumber = 102000,
-      bytecode = "0x0",
-      isErc20 = false,
-      isErc721 = false
-    )
-
-    val tokenRow = Tables.TokensRow(
-      address = "0x123",
-      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      blockNumber = 102000,
-      name = "",
-      symbol = "",
-      decimals = "0x0",
-      totalSupply = "0x0"
-    )
   }
 
   /**

@@ -9,7 +9,6 @@ import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence
 import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumClient
 import tech.cryptonomic.conseil.indexer.config.{Custom, Depth, Everything, Newest}
-import tech.cryptonomic.conseil.common.ethereum.domain.{Bytecode, Contract}
 
 import scala.concurrent.ExecutionContext
 
@@ -54,7 +53,7 @@ class EthereumOperations[F[_]: Concurrent](
             case Custom(depth) => (mostRecentBlockNumber - depth) to mostRecentBlockNumber
           }
 
-          loadBlocksWithTransactions(range) ++ extractTokens(range)
+          loadBlocksWithTransactions(range)
       }
 
   /**
@@ -100,13 +99,14 @@ class EthereumOperations[F[_]: Concurrent](
               case (block, txs) => Stream.emit((block, txs, Nil, Nil))
             }
             .flatMap {
-              case (block, txs, receipts) =>
+              case (block, txs, receipts, logs) if txs.size > 0 =>
                 Stream
                   .emits(txs)
                   .through(ethereumClient.getAccountBalance)
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap(accounts => tx.transact(persistence.upsertAccounts(accounts.toList)(ExecutionContext.global)))
-                  .map(_ => (block, txs, receipts))
+                  .map(_ => (block, txs, receipts, logs))
+              case (block, txs, receipts, logs) => Stream.emit((block, txs, receipts, logs))
             }
             .flatMap {
               case (block, txs, receipts, logs)
@@ -137,16 +137,6 @@ class EthereumOperations[F[_]: Concurrent](
                   .emits(receipts)
                   .filter(_.contractAddress.isDefined)
                   .through(ethereumClient.getContract(batchConf.contractsBatchSize))
-                  .chunkN(Integer.MAX_VALUE)
-                  .evalTap(contracts => tx.transact(persistence.createContracts(contracts.toList)))
-                  .map(contracts => (block, txs, receipts, contracts))
-              case (block, txs, receipts) => Stream.emit((block, txs, receipts, Nil))
-
-            }
-            .flatMap {
-              case (block, txs, receipts, contracts) =>
-                Stream
-                  .emits(contracts)
                   .through(ethereumClient.getContractBalance)
                   .through(ethereumClient.addTokenInfo)
                   .chunkN(Integer.MAX_VALUE)
@@ -168,33 +158,6 @@ class EthereumOperations[F[_]: Concurrent](
             }
       )
       .drain
-
-  /**
-    * Get tokens created in the given block number range.
-    *
-    * @param range Inclusive range of the block's height
-    */
-  def extractTokens(range: Range.Inclusive): Stream[F, Unit] =
-    Stream
-      .eval(tx.transact(persistence.getContracts(range)))
-      .flatMap(Stream.emits)
-      .map(
-        row =>
-          Contract(
-            address = row.address,
-            blockHash = row.blockHash,
-            blockNumber = s"0x${row.blockNumber.toHexString}",
-            isErc20 = row.isErc20,
-            isErc721 = row.isErc721,
-            bytecode = Bytecode(row.bytecode)
-          )
-      )
-      .through(ethereumClient.getTokenInfo)
-      .evalTap(token => Concurrent[F].delay(logger.info(s"Save token: ${token.name}")))
-      .chunkN(batchConf.tokensBatchSize)
-      .evalTap(tokens => tx.transact(persistence.createTokens(tokens.toList)))
-      .drain
-
 }
 
 object EthereumOperations {

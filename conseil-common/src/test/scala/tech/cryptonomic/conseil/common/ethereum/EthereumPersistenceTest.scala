@@ -71,23 +71,6 @@ class EthereumPersistenceTest
           result <- tx.transact(Tables.TokensHistory.result)
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.tokenBalanceFromRow)
       }
-      "save contract from the JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {
-        (for {
-          // we have to have block row to save the transaction (due to the foreign key)
-          _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
-          _ <- tx.transact(ethereumPersistenceStub.createContracts(List(RpcFixtures.contractResult)))
-          result <- tx.transact(Tables.Contracts.result)
-        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.contractRow)
-      }
-
-      "save token from the JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {
-        (for {
-          // we have to have block row to save the transaction (due to the foreign key)
-          _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
-          _ <- tx.transact(ethereumPersistenceStub.createTokens(List(RpcFixtures.tokenResult)))
-          result <- tx.transact(Tables.Tokens.result)
-        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.tokenRow)
-      }
 
       "save block with transactions using persistence (integration test)" in new EthereumPersistenceStubs(dbHandler) {
         (for {

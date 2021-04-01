@@ -10,7 +10,6 @@ import tech.cryptonomic.conseil.common.ethereum.domain.{
   Account,
   Bytecode,
   Contract,
-  Token,
   TokenBalance,
   TokenStandards,
   TokenTransfer
@@ -109,36 +108,6 @@ class EthereumClient[F[_]: Concurrent](
                 )
             )
         }
-
-  /**
-    * Get token information from given contract.
-    */
-  def getTokenInfo: Pipe[F, Contract, Token] =
-    stream =>
-      stream.flatMap { contract =>
-        stream
-          .map(
-            contract =>
-              Seq("name", "symbol", "decimals", "totalSupply")
-                .map(f => EthCall.request(contract.blockNumber, contract.address, s"0x${Utils.keccak(s"$f()")}"))
-          )
-          .flatMap(Stream.emits)
-          .through(client.stream[EthCall.Params, String](batchSize = 1))
-          .chunkN(4)
-          .map(_.toList)
-          .collect {
-            case name :: symbol :: decimals :: totalSupply :: Nil =>
-              Token(
-                address = contract.address,
-                blockHash = contract.blockHash,
-                blockNumber = contract.blockNumber,
-                name = Utils.hexToString(name),
-                symbol = Utils.hexToString(symbol),
-                decimals = decimals,
-                totalSupply = totalSupply
-              )
-          }
-      }
 
   /**
     * Extract token transfers from log

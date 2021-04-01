@@ -98,33 +98,10 @@ class EthereumDataOperationsTest
         }
       }
 
-      "return proper contracts, while fetching all contracts" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Contracts ++= contracts).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchContracts(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
-      }
-
-      "return proper tokens, while fetching all tokens" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Tokens ++= tokens).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchTokens(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
-      }
-
       "return proper token transfers, while fetching all token transfers" in {
         // given
         dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Tokens ++= tokens).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
 
         whenReady(sut.fetchTokenTransfers(Query.empty)) { result =>
@@ -136,20 +113,6 @@ class EthereumDataOperationsTest
         // given
         dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Tokens ++= tokens).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.TokensHistory ++= tokenBalances).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchTokensHistory(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
-      }
-
-      "return proper token balances, while fetching all token balances" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Tokens ++= tokens).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.TokensHistory ++= tokenBalances).isReadyWithin(5.seconds) shouldBe true
 
@@ -187,6 +150,7 @@ class EthereumDataOperationsTest
 
         val tokensHistoryRow = TokensHistoryRow(
           tokenAddress = "0x1",
+          blockHash = "0x1",
           blockNumber = 1,
           transactionHash = "0x1",
           accountAddress = "0x0",
@@ -227,6 +191,7 @@ class EthereumDataOperationsTest
         val tokensHistoryRows = List(
           TokensHistoryRow(
             tokenAddress = "0x1",
+            blockHash = "0x1",
             blockNumber = 1,
             transactionHash = "0x1",
             accountAddress = "0x0",
@@ -235,6 +200,7 @@ class EthereumDataOperationsTest
           ),
           TokensHistoryRow(
             tokenAddress = "0x1",
+            blockHash = "0x2",
             blockNumber = 2,
             transactionHash = "0x1",
             accountAddress = "0x0",
@@ -243,6 +209,7 @@ class EthereumDataOperationsTest
           ),
           TokensHistoryRow(
             tokenAddress = "0x1",
+            blockHash = "0x3",
             blockNumber = 3,
             transactionHash = "0x1",
             accountAddress = "0x0",
@@ -283,6 +250,7 @@ class EthereumDataOperationsTest
         val tokensHistoryRows = List(
           TokensHistoryRow(
             tokenAddress = "0x1",
+            blockHash = "0x1",
             blockNumber = 1,
             transactionHash = "0x1",
             accountAddress = "0x1",
@@ -291,6 +259,7 @@ class EthereumDataOperationsTest
           ),
           TokensHistoryRow(
             tokenAddress = "0x1",
+            blockHash = "0x2",
             blockNumber = 2,
             transactionHash = "0x1",
             accountAddress = "0x2",
@@ -299,6 +268,7 @@ class EthereumDataOperationsTest
           ),
           TokensHistoryRow(
             tokenAddress = "0x1",
+            blockHash = "0x3",
             blockNumber = 3,
             transactionHash = "0x1",
             accountAddress = "0x3",
@@ -472,33 +442,6 @@ object EthereumDataOperationsTest {
     val receipt3: ReceiptsRow = defaultReceipt(block3, transaction3)
     val receipts: Seq[ReceiptsRow] = List(receipt1, receipt2, receipt3)
 
-    private val defaultContract = (block: BlocksRow) =>
-      ContractsRow(
-        address = "0x0",
-        blockHash = block.hash,
-        blockNumber = block.level,
-        bytecode = "0x0"
-      )
-    val contract1: ContractsRow = defaultContract(block1).copy(address = "0x1")
-    val contract2: ContractsRow = defaultContract(block2).copy(address = "0x2")
-    val contract3: ContractsRow = defaultContract(block3).copy(address = "0x3")
-    val contracts: Seq[ContractsRow] = List(contract1, contract2, contract3)
-
-    private val defaultToken = (block: BlocksRow) =>
-      TokensRow(
-        address = "0x1",
-        blockHash = block.hash,
-        blockNumber = block.level,
-        name = "token",
-        symbol = "symbol",
-        decimals = "0x0",
-        totalSupply = "0x0"
-      )
-    val token1: TokensRow = defaultToken(block1).copy(address = "0x1")
-    val token2: TokensRow = defaultToken(block2).copy(address = "0x2")
-    val token3: TokensRow = defaultToken(block3).copy(address = "0x3")
-    val tokens: Seq[TokensRow] = List(token1, token2, token3)
-
     private val defaultTokenTransfer =
       (block: BlocksRow, transaction: TransactionsRow) =>
         TokenTransfersRow(
@@ -542,7 +485,7 @@ object EthereumDataOperationsTest {
     private val defaultAccount =
       (block: BlocksRow, transaction: TransactionsRow) =>
         AccountsRow(
-          address = transaction.from,
+          address = transaction.source,
           blockHash = transaction.blockHash,
           blockNumber = transaction.blockNumber,
           timestamp = block.timestamp,

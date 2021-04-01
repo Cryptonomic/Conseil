@@ -951,25 +951,6 @@ CREATE TABLE ethereum.logs (
 ALTER TABLE ONLY ethereum.logs
   ADD CONSTRAINT ethereum_logs_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES ethereum.blocks(hash);
 
-CREATE TABLE ethereum.contracts (
-  address text NOT NULL,
-  block_hash text NOT NULL,
-  block_number integer NOT NULL,
-  bytecode text NOT NULL,
-  is_erc20 boolean NOT NULL DEFAULT false,
-  is_erc721 boolean NOT NULL DEFAULT false
-);
-
-CREATE TABLE ethereum.tokens (
-  address text NOT NULL,
-  block_hash text NOT NULL,
-  block_number integer NOT NULL,
-  name text NOT NULL,
-  symbol text NOT NULL,
-  decimals text NOT NULL,
-  total_supply text NOT NULL
-);
-
 CREATE TABLE ethereum.token_transfers (
   token_address text NOT NULL,
   block_hash text NOT NULL,
@@ -995,7 +976,7 @@ CREATE TABLE ethereum.tokens_history (
 CREATE INDEX ix_account_address ON ethereum.tokens_history USING btree (account_address);
 CREATE INDEX ix_token_address ON ethereum.tokens_history USING btree (token_address);
 
-CREATE TABLE ethereum.new_accounts (
+CREATE TABLE ethereum.accounts (
   address text NOT NULL,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
@@ -1010,14 +991,6 @@ CREATE TABLE ethereum.new_accounts (
   PRIMARY KEY (address)
 );
 
-CREATE OR REPLACE VIEW ethereum.accounts AS
-SELECT
-  destination AS address,
-  SUM(amount) AS value
-FROM
-  ethereum.transactions
-GROUP BY
-  destination;
 
 -- The schema for Quorum is duplicated from Ethereum.
 -- TODO: This is a temporary solution, in the future we intend to generate the schema automatically to avoid duplication,

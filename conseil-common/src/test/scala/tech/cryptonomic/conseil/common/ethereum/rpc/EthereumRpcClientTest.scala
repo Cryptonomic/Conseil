@@ -59,16 +59,6 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
           .unsafeRunSync() shouldBe List(RpcFixtures.contractResult)
       }
 
-      "return a token info for the given contract" in new EthereumClientStubs {
-        Stream(RpcFixtures.contractResult)
-          .through(
-            ethereumClientStub(JsonFixtures.callResponse).getTokenInfo
-          )
-          .compile
-          .toList
-          .unsafeRunSync() shouldBe List(RpcFixtures.tokenResult)
-      }
-
       "return a token transfer for the given log" in new EthereumClientStubs {
         Stream(RpcFixtures.logResult)
           .through(
