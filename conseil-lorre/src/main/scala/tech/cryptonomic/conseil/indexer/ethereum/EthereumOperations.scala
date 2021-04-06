@@ -102,9 +102,11 @@ class EthereumOperations[F[_]: Concurrent](
               case (block, txs, receipts, logs) if txs.size > 0 =>
                 Stream
                   .emits(txs)
-                  .through(ethereumClient.getAccountBalance)
+                  .through(ethereumClient.getAccountBalance(block))
                   .chunkN(Integer.MAX_VALUE)
-                  .evalTap(accounts => tx.transact(persistence.upsertAccounts(accounts.toList)(ExecutionContext.global)))
+                  .evalTap(
+                    accounts => tx.transact(persistence.upsertAccounts(accounts.toList)(ExecutionContext.global))
+                  )
                   .map(_ => (block, txs, receipts, logs))
               case (block, txs, receipts, logs) => Stream.emit((block, txs, receipts, logs))
             }
@@ -137,17 +139,18 @@ class EthereumOperations[F[_]: Concurrent](
                   .emits(receipts)
                   .filter(_.contractAddress.isDefined)
                   .through(ethereumClient.getContract(batchConf.contractsBatchSize))
-                  .through(ethereumClient.getContractBalance)
+                  .through(ethereumClient.getContractBalance(block))
                   .through(ethereumClient.addTokenInfo)
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap(accounts => tx.transact(persistence.createContractAccounts(accounts.toList)))
                   .map(_ => (block, txs, receipts))
+              case (block, txs, receipts) => Stream.emit((block, txs, receipts))
             }
-            .evalTap { // log every 10 block
+            .evalTap {
               case (block, txs, receipts) if Integer.decode(block.number) % 10 == 0 =>
                 Concurrent[F].delay(
                   logger.info(
-                    s"Save block with height: ${block.number} txs: ${txs.size} logs: ${receipts.map(_.logs.size).sum}"
+                    s"Save block with number: ${block.number} txs: ${txs.size} logs: ${receipts.map(_.logs.size).sum}"
                   )
                 )
               case _ => Concurrent[F].unit

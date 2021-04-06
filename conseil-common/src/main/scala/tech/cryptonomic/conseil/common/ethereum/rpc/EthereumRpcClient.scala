@@ -170,7 +170,7 @@ class EthereumClient[F[_]: Concurrent](
     * Get account balance at given block number from transaction
     *
     */
-  def getAccountBalance: Pipe[F, Transaction, Account] =
+  def getAccountBalance(block: Block): Pipe[F, Transaction, Account] =
     stream =>
       stream.flatMap { transaction =>
         Stream
@@ -188,7 +188,7 @@ class EthereumClient[F[_]: Concurrent](
                 address,
                 transaction.blockHash,
                 transaction.blockNumber,
-                "0x55d21481",
+                timestamp = block.timestamp,
                 Utils.hexStringToBigDecimal(balance)
               )
           }
@@ -198,7 +198,7 @@ class EthereumClient[F[_]: Concurrent](
     * Get contract account balance at given block number from transaction
     *
     */
-  def getContractBalance: Pipe[F, Contract, Account] =
+  def getContractBalance(block: Block): Pipe[F, Contract, Account] =
     stream =>
       stream.flatMap { contract =>
         Stream
@@ -210,7 +210,7 @@ class EthereumClient[F[_]: Concurrent](
               contract.address,
               contract.blockHash,
               contract.blockNumber,
-              "123",
+              timestamp = block.timestamp,
               Utils.hexStringToBigDecimal(balance),
               bytecode = Some(contract.bytecode),
               tokenStandard = (contract.bytecode.isErc20, contract.bytecode.isErc721) match {

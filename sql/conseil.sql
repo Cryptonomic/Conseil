@@ -902,7 +902,7 @@ CREATE TABLE ethereum.transactions (
   hash text NOT NULL PRIMARY KEY,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
-  timestamp timestamp without time zone NOT NULL,
+  timestamp timestamp without time zone,
   source text NOT NULL, -- from
   gas numeric NOT NULL,
   gas_price numeric NOT NULL,
@@ -925,7 +925,7 @@ CREATE TABLE ethereum.receipts (
   transaction_index integer NOT NULL,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
-  timestamp timestamp without time zone NOT NULL,
+  timestamp timestamp without time zone,
   contract_address text,
   cumulative_gas_used numeric NOT NULL,
   gas_used numeric NOT NULL,
@@ -939,7 +939,7 @@ CREATE TABLE ethereum.logs (
   address text NOT NULL,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
-  timestamp timestamp without time zone NOT NULL,
+  timestamp timestamp without time zone,
   data text NOT NULL,
   log_index integer NOT NULL,
   removed boolean NOT NULL,
@@ -955,7 +955,7 @@ CREATE TABLE ethereum.token_transfers (
   token_address text NOT NULL,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
-  timestamp timestamp without time zone NOT NULL,
+  timestamp timestamp without time zone,
   transaction_hash text NOT NULL,
   log_index text NOT NULL,
   from_address text NOT NULL,
@@ -980,7 +980,7 @@ CREATE TABLE ethereum.accounts (
   address text NOT NULL,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
-  timestamp timestamp without time zone NOT NULL,
+  timestamp timestamp without time zone,
   balance numeric NOT NULL,
   bytecode text,
   token_standard text,
@@ -990,6 +990,36 @@ CREATE TABLE ethereum.accounts (
   total_supply text,
   PRIMARY KEY (address)
 );
+
+CREATE OR REPLACE VIEW ethereum.tokens AS
+SELECT
+  address,
+  block_hash,
+  block_number,
+  timestamp,
+  name,
+  symbol,
+  decimals,
+  total_supply
+FROM
+  ethereum.accounts
+WHERE
+  token_standard IS NOT NULL
+;
+
+CREATE OR REPLACE VIEW ethereum.contracts AS
+SELECT
+  address,
+  block_hash,
+  block_number,
+  timestamp,
+  bytecode,
+  token_standard
+FROM
+  ethereum.accounts
+WHERE
+  bytecode IS NOT NULL
+;
 
 
 -- The schema for Quorum is duplicated from Ethereum.

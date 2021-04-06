@@ -36,9 +36,9 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
       Tables.Blocks += block.convertTo[Tables.BlocksRow],
       Tables.Transactions ++= transactions
             .map(_.convertTo[Tables.TransactionsRow])
-            .map(_.copy(timestamp = timestamp)),
-      Tables.Receipts ++= receipts.map(_.convertTo[Tables.ReceiptsRow]).map(_.copy(timestamp = timestamp)),
-      Tables.Logs ++= receipts.flatMap(_.logs).map(_.convertTo[Tables.LogsRow]).map(_.copy(timestamp = timestamp))
+            .map(_.copy(timestamp = Some(timestamp))),
+      Tables.Receipts ++= receipts.map(_.convertTo[Tables.ReceiptsRow]).map(_.copy(timestamp = Some(timestamp))),
+      Tables.Logs ++= receipts.flatMap(_.logs).map(_.convertTo[Tables.LogsRow]).map(_.copy(timestamp = Some(timestamp)))
     )
   }
 
@@ -79,7 +79,7 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
             _.copy(
               blockHash = account.blockHash,
               blockNumber = Integer.decode(account.blockNumber),
-              timestamp = Timestamp.from(Instant.ofEpochSecond(Integer.decode(account.timestamp).toLong)),
+              timestamp = Some(Timestamp.from(Instant.ofEpochSecond(Integer.decode(account.timestamp).toLong))),
               balance = account.balance
             )
           ) getOrElse account.convertTo[Tables.AccountsRow]
@@ -245,7 +245,7 @@ object EthereumPersistence {
           tokenAddress = from.tokenAddress,
           blockHash = from.blockHash,
           blockNumber = from.blockNumber,
-          timestamp = Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong)),
+          timestamp = Some(Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong))),
           transactionHash = from.transactionHash,
           logIndex = from.logIndex,
           fromAddress = from.fromAddress,
@@ -285,7 +285,7 @@ object EthereumPersistence {
           address = from.address,
           blockHash = from.blockHash,
           blockNumber = Integer.decode(from.blockNumber),
-          timestamp = Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong)),
+          timestamp = Some(Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong))),
           balance = from.balance,
           bytecode = from.bytecode.map(_.value),
           tokenStandard = from.tokenStandard.map(_.value),

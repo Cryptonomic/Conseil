@@ -82,7 +82,7 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
       "return account balances for transaction sides" in new EthereumClientStubs {
         Stream(RpcFixtures.transactionResult)
           .through(
-            ethereumClientStub(JsonFixtures.getBalanceResponse).getAccountBalance
+            ethereumClientStub(JsonFixtures.getBalanceResponse).getAccountBalance(RpcFixtures.blockResult)
           )
           .compile
           .toList
@@ -92,7 +92,7 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
       "return contract account balances for created contract" in new EthereumClientStubs {
         Stream(RpcFixtures.contractResult)
           .through(
-            ethereumClientStub(JsonFixtures.getBalanceResponse).getContractBalance
+            ethereumClientStub(JsonFixtures.getBalanceResponse).getContractBalance(RpcFixtures.blockResult)
           )
           .compile
           .toList

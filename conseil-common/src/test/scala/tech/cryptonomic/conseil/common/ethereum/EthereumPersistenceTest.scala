@@ -17,8 +17,6 @@ class EthereumPersistenceTest
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
-  private val epoch = java.sql.Timestamp.from(java.time.Instant.EPOCH)
-
   "Ethereum persistence" should {
       "save block from the JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {
         (for {
@@ -33,7 +31,9 @@ class EthereumPersistenceTest
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
           _ <- tx.transact(Tables.Transactions += RpcFixtures.transactionResult.convertTo[Tables.TransactionsRow])
           result <- tx.transact(Tables.Transactions.result)
-        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.transactionRow.copy(timestamp = epoch))
+        } yield result).unsafeRunSync() shouldBe Vector(
+              DbFixtures.transactionRow.copy(timestamp = None)
+            )
       }
 
       "save log from the JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {
@@ -51,7 +51,9 @@ class EthereumPersistenceTest
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
           _ <- tx.transact(Tables.Receipts += RpcFixtures.transactionReceiptResult.convertTo[Tables.ReceiptsRow])
           result <- tx.transact(Tables.Receipts.result)
-        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.transactionReceiptRow.copy(timestamp = epoch))
+        } yield result).unsafeRunSync() shouldBe Vector(
+              DbFixtures.transactionReceiptRow.copy(timestamp = None)
+            )
       }
 
       "save token transfer from the log JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {
