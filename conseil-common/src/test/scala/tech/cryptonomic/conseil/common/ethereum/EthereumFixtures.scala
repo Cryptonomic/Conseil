@@ -450,7 +450,7 @@ trait EthereumFixtures {
       blockNumber = 102000,
       timestamp = Some(Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))),
       transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
-      logIndex = "0x0",
+      logIndex = 0,
       fromAddress = "0x000000000000000000000000fdb16996831753d5331ff813c29a93c76834a0ad",
       toAddress = "0x0000000000000000000000000f4a253ee5a63bb4b23a360ad52d69c86bc9fe97",
       value = BigDecimal("1000000000.0")

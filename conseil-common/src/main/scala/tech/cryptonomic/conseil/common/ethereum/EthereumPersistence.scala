@@ -249,7 +249,7 @@ object EthereumPersistence {
           blockHash = from.blockHash,
           blockNumber = Integer.decode(from.blockNumber),
           transactionHash = from.transactionHash,
-          logIndex = from.logIndex,
+          logIndex = Integer.decode(from.logIndex),
           fromAddress = from.topics(1),
           toAddress = from.topics(2),
           value = Utils.hexStringToBigDecimal(from.data)
@@ -270,7 +270,7 @@ object EthereumPersistence {
           blockNumber = from.blockNumber,
           timestamp = Some(Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong))),
           transactionHash = from.transactionHash,
-          logIndex = from.logIndex,
+          logIndex = Integer.decode(from.logIndex),
           fromAddress = from.fromAddress,
           toAddress = from.toAddress,
           value = from.value

@@ -788,7 +788,7 @@ trait Tables {
     *  @param blockNumber Database column block_number SqlType(int4)
     *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
     *  @param transactionHash Database column transaction_hash SqlType(text)
-    *  @param logIndex Database column log_index SqlType(text)
+    *  @param logIndex Database column log_index SqlType(int4)
     *  @param fromAddress Database column from_address SqlType(text)
     *  @param toAddress Database column to_address SqlType(text)
     *  @param value Database column value SqlType(numeric) */
@@ -798,7 +798,7 @@ trait Tables {
       blockNumber: Int,
       timestamp: Option[java.sql.Timestamp] = None,
       transactionHash: String,
-      logIndex: String,
+      logIndex: Int,
       fromAddress: String,
       toAddress: String,
       value: scala.math.BigDecimal
@@ -819,7 +819,7 @@ trait Tables {
         <<[Int],
         <<?[java.sql.Timestamp],
         <<[String],
-        <<[String],
+        <<[Int],
         <<[String],
         <<[String],
         <<[scala.math.BigDecimal]
@@ -870,8 +870,8 @@ trait Tables {
     /** Database column transaction_hash SqlType(text) */
     val transactionHash: Rep[String] = column[String]("transaction_hash")
 
-    /** Database column log_index SqlType(text) */
-    val logIndex: Rep[String] = column[String]("log_index")
+    /** Database column log_index SqlType(int4) */
+    val logIndex: Rep[Int] = column[Int]("log_index")
 
     /** Database column from_address SqlType(text) */
     val fromAddress: Rep[String] = column[String]("from_address")

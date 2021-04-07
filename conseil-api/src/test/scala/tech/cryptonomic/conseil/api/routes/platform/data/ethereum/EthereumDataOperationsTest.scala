@@ -600,7 +600,7 @@ object EthereumDataOperationsTest {
           blockNumber = block.level,
           timestamp = Some(block.timestamp),
           transactionHash = transaction.hash,
-          logIndex = "0x1",
+          logIndex = 0,
           fromAddress = "0x0",
           toAddress = "0x0",
           value = 1.0
