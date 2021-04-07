@@ -105,9 +105,10 @@ class EthereumOperations[F[_]: Concurrent](
                   .through(ethereumClient.getAccountBalance(block))
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap(
-                    accounts => tx.transact(persistence.upsertAccounts(accounts.toList)(ExecutionContext.global))
+                    accounts =>
+                      tx.transact(persistence.upsertAccounts(accounts.toList.distinct)(ExecutionContext.global))
                   )
-                  .evalTap(accounts => tx.transact(persistence.createAccountBalances(accounts.toList)))
+                  .evalTap(accounts => tx.transact(persistence.createAccountBalances(accounts.toList.distinct)))
                   .map(_ => (block, txs, receipts, logs))
               case (block, txs, receipts, logs) => Stream.emit((block, txs, receipts, logs))
             }
