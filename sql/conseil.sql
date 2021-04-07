@@ -983,6 +983,7 @@ CREATE TABLE ethereum.accounts (
   timestamp timestamp without time zone,
   balance numeric NOT NULL,
   bytecode text,
+  bytecode_hash text,
   token_standard text,
   name text,
   symbol text,
@@ -1027,6 +1028,7 @@ SELECT
   block_number,
   timestamp,
   bytecode,
+  bytecode_hash,
   token_standard
 FROM
   ethereum.accounts

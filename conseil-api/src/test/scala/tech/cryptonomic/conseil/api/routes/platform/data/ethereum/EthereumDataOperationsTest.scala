@@ -650,6 +650,7 @@ object EthereumDataOperationsTest {
         address = "0x3",
         balance = BigDecimal("3.0"),
         bytecode = Some("0x0"),
+        bytecodeHash = Some("0x0"),
         tokenStandard = Some("ERC20"),
         name = Some("name"),
         symbol = Some("SYM"),

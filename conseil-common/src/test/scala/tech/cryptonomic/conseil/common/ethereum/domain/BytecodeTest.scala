@@ -10,6 +10,11 @@ class BytecodeTest extends ConseilSpec with EthereumFixtures {
         Bytecode("0x60").normalized shouldBe "60"
       }
 
+      "return SHA-1 hash of normalized bytecode" in {
+        Bytecode("0xabc").hash shouldBe "0xa9993e364706816aba3e25717850c26c9cd0d89d"
+        Bytecode(BytecodeFixtures.erc721).hash shouldBe "0x3ca107ba452ff04fee86aa755f151f6b4752338a"
+      }
+
       "return opcodes from bytecode" in {
         Bytecode("60406318160ddd00").opcodes shouldBe Seq(
           Opcode(0x0, Instructions.PUSH1, BigInt(0x40)),

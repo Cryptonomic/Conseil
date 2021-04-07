@@ -34,6 +34,7 @@ trait Tables {
     *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
     *  @param balance Database column balance SqlType(numeric)
     *  @param bytecode Database column bytecode SqlType(text), Default(None)
+    *  @param bytecodeHash Database column bytecode_hash SqlType(text), Default(None)
     *  @param tokenStandard Database column token_standard SqlType(text), Default(None)
     *  @param name Database column name SqlType(text), Default(None)
     *  @param symbol Database column symbol SqlType(text), Default(None)
@@ -46,6 +47,7 @@ trait Tables {
       timestamp: Option[java.sql.Timestamp] = None,
       balance: scala.math.BigDecimal,
       bytecode: Option[String] = None,
+      bytecodeHash: Option[String] = None,
       tokenStandard: Option[String] = None,
       name: Option[String] = None,
       symbol: Option[String] = None,
@@ -74,6 +76,7 @@ trait Tables {
         <<?[String],
         <<?[String],
         <<?[String],
+        <<?[String],
         <<?[String]
       )
     )
@@ -89,6 +92,7 @@ trait Tables {
         timestamp,
         balance,
         bytecode,
+        bytecodeHash,
         tokenStandard,
         name,
         symbol,
@@ -106,6 +110,7 @@ trait Tables {
           timestamp,
           Rep.Some(balance),
           bytecode,
+          bytecodeHash,
           tokenStandard,
           name,
           symbol,
@@ -114,7 +119,8 @@ trait Tables {
         )
       ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => AccountsRow.tupled((_1.get, _2.get, _3.get, _4, _5.get, _6, _7, _8, _9, _10, _11)))
+          import r._;
+          _1.map(_ => AccountsRow.tupled((_1.get, _2.get, _3.get, _4, _5.get, _6, _7, _8, _9, _10, _11, _12)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -136,6 +142,9 @@ trait Tables {
 
     /** Database column bytecode SqlType(text), Default(None) */
     val bytecode: Rep[Option[String]] = column[Option[String]]("bytecode", O.Default(None))
+
+    /** Database column bytecode_hash SqlType(text), Default(None) */
+    val bytecodeHash: Rep[Option[String]] = column[Option[String]]("bytecode_hash", O.Default(None))
 
     /** Database column token_standard SqlType(text), Default(None) */
     val tokenStandard: Rep[Option[String]] = column[Option[String]]("token_standard", O.Default(None))
