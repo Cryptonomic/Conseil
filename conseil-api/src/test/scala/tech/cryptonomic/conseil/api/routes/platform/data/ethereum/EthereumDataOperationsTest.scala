@@ -146,7 +146,7 @@ class EthereumDataOperationsTest
         }
       }
 
-      "correctly use query on tempotal tokens_history" in {
+      "correctly use query on temporal tokens_history" in {
 
         val tokensHistoryRow = TokensHistoryRow(
           tokenAddress = "0x1",
@@ -187,7 +187,7 @@ class EthereumDataOperationsTest
 
       }
 
-      "get the balance of a token at a specific timestamp there there are multiple entitioes for given account" in {
+      "get the balance of a token at a specific timestamp there there are multiple entities for given account" in {
         val tokensHistoryRows = List(
           TokensHistoryRow(
             tokenAddress = "0x1",
@@ -304,6 +304,156 @@ class EthereumDataOperationsTest
           ),
           Map(
             "account_address" -> Some("0x2"),
+            "block_number" -> Some(2),
+            "asof" -> Some(new Timestamp(2)),
+            "r" -> Some(1)
+          )
+        )
+      }
+
+      "correctly use query on temporal accounts_history" in {
+
+        val accountsHistoryRow = AccountsHistoryRow(
+          address = "0x1",
+          blockHash = "0x1",
+          blockNumber = 1,
+          balance = BigDecimal("1.0"),
+          asof = new Timestamp(1)
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.AccountsHistory += accountsHistoryRow
+          found <- sut.selectWithPredicates(
+            "ethereum",
+            table = Tables.AccountsHistory.baseTableRow.tableName,
+            columns = List(SimpleField("address"), SimpleField("block_number"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("address"),
+            snapshot = Some(Snapshot("asof", new Timestamp(1))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "address" -> Some("0x1"),
+            "block_number" -> Some(1),
+            "asof" -> Some(new Timestamp(1)),
+            "r" -> Some(1)
+          )
+        )
+      }
+
+      "get the balance of an account at a specific timestamp there there are multiple entities for given account" in {
+        val accountsHistoryRows = List(
+          AccountsHistoryRow(
+            address = "0x1",
+            blockHash = "0x1",
+            blockNumber = 1,
+            balance = BigDecimal("1.0"),
+            asof = new Timestamp(1)
+          ),
+          AccountsHistoryRow(
+            address = "0x1",
+            blockHash = "0x2",
+            blockNumber = 2,
+            balance = BigDecimal("2.0"),
+            asof = new Timestamp(2)
+          ),
+          AccountsHistoryRow(
+            address = "0x1",
+            blockHash = "0x3",
+            blockNumber = 3,
+            balance = BigDecimal("3.0"),
+            asof = new Timestamp(3)
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.AccountsHistory ++= accountsHistoryRows
+          found <- sut.selectWithPredicates(
+            "ethereum",
+            table = Tables.AccountsHistory.baseTableRow.tableName,
+            columns = List(SimpleField("address"), SimpleField("block_number"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("address"),
+            snapshot = Some(Snapshot("asof", new Timestamp(2))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "address" -> Some("0x1"),
+            "block_number" -> Some(2),
+            "asof" -> Some(new Timestamp(2)),
+            "r" -> Some(1)
+          )
+        )
+      }
+
+      "get the accounts balance of an account at a specific timestamp" in {
+        val accountsHistoryRows = List(
+          AccountsHistoryRow(
+            address = "0x1",
+            blockHash = "0x1",
+            blockNumber = 1,
+            balance = BigDecimal("1.0"),
+            asof = new Timestamp(1)
+          ),
+          AccountsHistoryRow(
+            address = "0x2",
+            blockHash = "0x2",
+            blockNumber = 2,
+            balance = BigDecimal("2.0"),
+            asof = new Timestamp(2)
+          ),
+          AccountsHistoryRow(
+            address = "0x1",
+            blockHash = "0x3",
+            blockNumber = 3,
+            balance = BigDecimal("3.0"),
+            asof = new Timestamp(3)
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.AccountsHistory ++= accountsHistoryRows
+          found <- sut.selectWithPredicates(
+            "ethereum",
+            table = Tables.AccountsHistory.baseTableRow.tableName,
+            columns = List(SimpleField("address"), SimpleField("block_number"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("address"),
+            snapshot = Some(Snapshot("asof", new Timestamp(2))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "address" -> Some("0x1"),
+            "block_number" -> Some(1),
+            "asof" -> Some(new Timestamp(1)),
+            "r" -> Some(1)
+          ),
+          Map(
+            "address" -> Some("0x2"),
             "block_number" -> Some(2),
             "asof" -> Some(new Timestamp(2)),
             "r" -> Some(1)

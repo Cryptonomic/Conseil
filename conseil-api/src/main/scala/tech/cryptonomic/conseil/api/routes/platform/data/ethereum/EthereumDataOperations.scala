@@ -76,4 +76,8 @@ class EthereumDataOperations(prefix: String) extends ApiDataOperations {
     queryWithPredicates(prefix, "accounts", filter.toQuery).map(_.headOption)
   }
 
+  /** Fetches the list of account balances for given query */
+  def fetchAccountsHistory(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =
+    queryWithPredicates(prefix, "accounts_history", query).map(Some(_))
+
 }

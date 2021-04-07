@@ -16,6 +16,7 @@ trait Tables {
   /** DDL for all tables. Call .create to execute. */
   lazy val schema: profile.SchemaDescription = Array(
     Accounts.schema,
+    AccountsHistory.schema,
     Blocks.schema,
     Logs.schema,
     Receipts.schema,
@@ -154,6 +155,70 @@ trait Tables {
 
   /** Collection-like TableQuery object for table Accounts */
   lazy val Accounts = new TableQuery(tag => new Accounts(tag))
+
+  /** Entity class storing rows of table AccountsHistory
+    *  @param address Database column address SqlType(text)
+    *  @param blockHash Database column block_hash SqlType(text)
+    *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param balance Database column balance SqlType(numeric)
+    *  @param asof Database column asof SqlType(timestamp) */
+  case class AccountsHistoryRow(
+      address: String,
+      blockHash: String,
+      blockNumber: Int,
+      balance: scala.math.BigDecimal,
+      asof: java.sql.Timestamp
+  )
+
+  /** GetResult implicit for fetching AccountsHistoryRow objects using plain SQL queries */
+  implicit def GetResultAccountsHistoryRow(
+      implicit e0: GR[String],
+      e1: GR[Int],
+      e2: GR[scala.math.BigDecimal],
+      e3: GR[java.sql.Timestamp]
+  ): GR[AccountsHistoryRow] = GR { prs =>
+    import prs._
+    AccountsHistoryRow.tupled((<<[String], <<[String], <<[Int], <<[scala.math.BigDecimal], <<[java.sql.Timestamp]))
+  }
+
+  /** Table description of table accounts_history. Objects of this class serve as prototypes for rows in queries. */
+  class AccountsHistory(_tableTag: Tag)
+      extends profile.api.Table[AccountsHistoryRow](_tableTag, Some("ethereum"), "accounts_history") {
+    def * = (address, blockHash, blockNumber, balance, asof) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      ((Rep.Some(address), Rep.Some(blockHash), Rep.Some(blockNumber), Rep.Some(balance), Rep.Some(asof))).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => AccountsHistoryRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    /** Database column address SqlType(text) */
+    val address: Rep[String] = column[String]("address")
+
+    /** Database column block_hash SqlType(text) */
+    val blockHash: Rep[String] = column[String]("block_hash")
+
+    /** Database column block_number SqlType(int4) */
+    val blockNumber: Rep[Int] = column[Int]("block_number")
+
+    /** Database column balance SqlType(numeric) */
+    val balance: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("balance")
+
+    /** Database column asof SqlType(timestamp) */
+    val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
+
+    /** Primary key of AccountsHistory (database name accounts_history_pkey) */
+    val pk = primaryKey("accounts_history_pkey", (address, blockNumber))
+
+    /** Index over (address) (database name ix_accounts_history_address) */
+    val index1 = index("ix_accounts_history_address", address)
+  }
+
+  /** Collection-like TableQuery object for table AccountsHistory */
+  lazy val AccountsHistory = new TableQuery(tag => new AccountsHistory(tag))
 
   /** Entity class storing rows of table Blocks
     *  @param hash Database column hash SqlType(text), PrimaryKey

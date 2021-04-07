@@ -64,6 +64,7 @@ object OpenApiDoc
     ethereumContractsEndpoint,
     ethereumAccountsEndpoint,
     ethereumAccountByAddressEndpoint,
+    ethereumAccountsHistoryEndpoint,
     quorumBlocksEndpoint,
     quorumBlocksHeadEndpoint,
     quorumBlockByHashEndpoint,

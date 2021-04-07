@@ -420,6 +420,30 @@ trait EthereumFixtures {
       totalSupply = None
     )
 
+    val accountHistoryFromRow = Tables.AccountsHistoryRow(
+      address = "0xd9666150a9da92d9108198a4072970805a8b3428",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = 102000,
+      balance = BigDecimal("1.0"),
+      asof = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))
+    )
+
+    val accountHistoryToRow = Tables.AccountsHistoryRow(
+      address = "0x32be343b94f860124dc4fee278fdcbd38c102d88",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = 102000,
+      balance = BigDecimal("1.0"),
+      asof = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))
+    )
+
+    val contractTokenAccountHistoryRow = Tables.AccountsHistoryRow(
+      address = "0x123",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = 102000,
+      balance = BigDecimal("1.0"),
+      asof = Timestamp.from(Instant.parse("1970-01-01T00:02:03.00Z"))
+    )
+
     val tokenTransferRow = Tables.TokenTransfersRow(
       tokenAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",

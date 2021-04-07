@@ -25,6 +25,7 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
     *
     * @param block        JSON_RPC block
     * @param transactions JSON_RPC block's transactions
+    * @param receipts     JSON_RPC block's transactions receipts
     */
   def createBlock(
       block: Block,
@@ -64,12 +65,34 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
             .map(_.convertTo[Tables.TokensHistoryRow])
     )
 
-  def createContractAccounts(contractAccounts: List[Account]) =
+  /**
+    * Create [[DBIO]] seq with contract account balances.
+    *
+    * @param contractAccounts contract account eth_getBalance data
+    */
+  def createContractAccounts(contractAccounts: List[Account]): DBIOAction[Unit, NoStream, Effect.Write] =
     DBIO.seq(
       Tables.Accounts ++= contractAccounts.map(_.convertTo[Tables.AccountsRow])
     )
 
-  def upsertAccounts(accounts: List[Account])(implicit ec: ExecutionContext) = {
+  /**
+    * Create [[DBIO]] seq with account balances.
+    *
+    * @param accounts account eth_getBalance data
+    */
+  def createAccountBalances(accounts: List[Account]): DBIOAction[Unit, NoStream, Effect.Write] =
+    DBIO.seq(
+      Tables.AccountsHistory ++= accounts.map(_.convertTo[Tables.AccountsHistoryRow])
+    )
+
+  /**
+    * Create [[DBIO]] seq with updated account balances.
+    *
+    * @param accounts account eth_getBalance data
+    */
+  def upsertAccounts(accounts: List[Account])(
+      implicit ec: ExecutionContext
+  ): DBIOAction[List[Unit], NoStream, Effect.Read with Effect.Write with Effect.Transactional] = {
     import tech.cryptonomic.conseil.common.sql.CustomProfileExtension.api._
     DBIO.sequence(
       accounts.map { account =>
@@ -293,6 +316,23 @@ object EthereumPersistence {
           symbol = from.symbol,
           decimals = from.decimals,
           totalSupply = from.totalSupply
+        )
+    }
+
+  /**
+    * Convert form [[Account]] to [[Tables.AccountsHistoryRow]]
+    * TODO: This conversion should be done with the Chimney,
+    *       but it's blocked due to the https://github.com/scala/bug/issues/11157
+    */
+  implicit val accountToAccountsHistoryRow: Conversion[Id, Account, Tables.AccountsHistoryRow] =
+    new Conversion[Id, Account, Tables.AccountsHistoryRow] {
+      override def convert(from: Account) =
+        Tables.AccountsHistoryRow(
+          address = from.address,
+          blockHash = from.blockHash,
+          blockNumber = Integer.decode(from.blockNumber),
+          balance = from.balance,
+          asof = Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong))
         )
     }
 }

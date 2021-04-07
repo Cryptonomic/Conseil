@@ -161,6 +161,19 @@ trait EthereumDataEndpointsCreator
       docs = EndpointDocs(tags = createTags(platform, "Accounts"))
     )
 
+  /** V2 Accounts history endpoint definition */
+  private[ethereum] def accountsHistoryEndpoint(
+      platform: String
+  ): Endpoint[((String, EthereumFilter), Option[String]), Option[
+    List[QueryResponse]
+  ]] =
+    endpoint(
+      request =
+        get(url = createPath(platform) / "accounts_history" /? ethereumQsFilter, headers = optRequestHeader("apiKey")),
+      response = compatibilityQuery[List[QueryResponse]]("accounts history"),
+      docs = EndpointDocs(tags = createTags(platform, "Accounts history"))
+    )
+
   private def createPath(platform: String): Path[String] =
     path / "v2" / "data" / platform / segment[String](name = "network")
 
