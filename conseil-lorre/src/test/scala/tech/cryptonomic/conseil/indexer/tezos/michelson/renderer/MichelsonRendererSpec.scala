@@ -4,8 +4,9 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tech.cryptonomic.conseil.indexer.tezos.michelson.dto._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.renderer.MichelsonRenderer._
+import tech.cryptonomic.conseil.common.testkit.LoggingTestSupport
 
-class MichelsonRendererSpec extends AnyFlatSpec with Matchers {
+class MichelsonRendererSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
 
   it should "render single MichelsonType" in {
       MichelsonType("contract").render() shouldBe "contract"

@@ -5,6 +5,7 @@ import scala.util.{Failure, Success, Try}
 import akka.Done
 import akka.stream.scaladsl.Source
 import tech.cryptonomic.conseil.indexer.config.{BakingAndEndorsingRights, BatchFetchConfiguration}
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   Block,
@@ -19,7 +20,6 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
 import tech.cryptonomic.conseil.indexer.tezos.{TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator.LazyPages
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors.BakersProcessingFailed
-import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import akka.stream.ActorMaterializer
 
@@ -37,7 +37,7 @@ class BakersProcessor(
     batchingConf: BatchFetchConfiguration,
     rightsConf: BakingAndEndorsingRights
 )(implicit mat: ActorMaterializer)
-    extends LazyLogging {
+    extends ConseilLogSupport {
 
   /* Fetches the data from the chain node and stores bakers into the data store.
    * @param ids a pre-filtered map of delegate hashes with latest block referring to them
@@ -59,16 +59,18 @@ class BakersProcessor(
 
     def logOutcome: PartialFunction[Try[(Option[Int], Option[Int])], Unit] = {
       case Success((rows, historyRows)) =>
-        logger.info("{} bakers were touched on the database.", rows.fold("The")(String.valueOf))
-        logger.info("{} baker history rows were added to the database.", historyRows.fold("The")(String.valueOf))
+        val showRows = rows.fold("Some")(String.valueOf)
+        val showHistoryRows = historyRows.fold("Some")(String.valueOf)
+        logger.info(s"$showRows bakers were touched on the database.")
+        logger.info(s"$showHistoryRows baker history rows were added to the database.")
     }
 
     def cleanup = {
       //can fail with no real downsides
       val processed = Some(ids.keySet)
-      logger.info("Cleaning {} processed bakers from the checkpoint...", ids.size)
+      logger.info(s"Cleaning ${ids.size} processed bakers from the checkpoint...")
       db.run(TezosDb.cleanBakersCheckpoint(processed))
-        .map(cleaned => logger.info("Done cleaning {} bakers checkpoint rows.", cleaned))
+        .map(cleaned => logger.info(s"Done cleaning $cleaned bakers checkpoint rows."))
     }
 
     //if needed, we get the stored levels and only keep updates that are more recent
@@ -156,8 +158,7 @@ class BakersProcessor(
     db.run(TezosDb.getLatestBakersFromCheckpoint) flatMap { checkpoints =>
       if (checkpoints.nonEmpty) {
         logger.info(
-          "I loaded all of {} checkpointed ids from the DB and will proceed to fetch updated bakers information from the chain",
-          checkpoints.size
+          s"I loaded all of ${checkpoints.size} checkpointed ids from the DB and will proceed to fetch updated bakers information from the chain"
         )
         process(checkpoints, onlyProcessLatest = true)
       } else {

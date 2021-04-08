@@ -1,13 +1,11 @@
 package tech.cryptonomic.conseil.api.security
 
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.api.security.Security.SecurityApi
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class SecurityTest extends AnyWordSpec with Matchers with ScalatestRouteTest with ScalaFutures {
+class SecurityTest extends ConseilSpec with ScalatestRouteTest {
 
   implicit override val patienceConfig = PatienceConfig(timeout = Span(2, Seconds), interval = Span(20, Millis))
 

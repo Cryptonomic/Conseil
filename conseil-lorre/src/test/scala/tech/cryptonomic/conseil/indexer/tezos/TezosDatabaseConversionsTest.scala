@@ -3,20 +3,15 @@ package tech.cryptonomic.conseil.indexer.tezos
 import java.sql.Timestamp
 
 import org.scalatest.Inspectors._
-import org.scalatest.{EitherValues, OptionValues}
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
 import TezosDatabaseConversions._
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class TezosDatabaseConversionsTest
-    extends AnyWordSpec
-    with Matchers
-    with OptionValues
-    with EitherValues
+    extends ConseilSpec
     with TezosDatabaseOperationsTestFixtures
     with TezosDatabaseConversionsTestFixtures {
 
@@ -116,14 +111,14 @@ class TezosDatabaseConversionsTest
           'operationsHash (header.operations_hash),
           'currentExpectedQuorum (expectedQuorum),
           'activeProposal (proposal.map(_.id)),
-          'periodKind (metadata.map(_.voting_period_kind.toString)),
+          'periodKind (metadata.flatMap(_.voting_period_kind).map(_.toString)),
           'baker (metadata.map(_.baker.value)),
-          'metaLevel (metadata.map(_.level.level)),
-          'metaLevelPosition (metadata.map(_.level.level_position)),
-          'metaCycle (metadata.map(_.level.cycle)),
-          'metaCyclePosition (metadata.map(_.level.cycle_position)),
-          'metaVotingPeriod (metadata.map(_.level.voting_period)),
-          'metaVotingPeriodPosition (metadata.map(_.level.voting_period_position)),
+          'metaLevel (metadata.flatMap(_.level.map(_.level))),
+          'metaLevelPosition (metadata.flatMap(_.level.map(_.level_position))),
+          'metaCycle (metadata.flatMap(_.level.map(_.cycle))),
+          'metaCyclePosition (metadata.flatMap(_.level.map(_.cycle_position))),
+          'metaVotingPeriod (metadata.flatMap(_.level.map(_.voting_period))),
+          'metaVotingPeriodPosition (metadata.flatMap(_.level.map(_.voting_period_position))),
           'priority (block.data.header.priority),
           'forkId (Fork.mainForkId)
         )

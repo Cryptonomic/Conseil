@@ -510,8 +510,16 @@ CREATE TABLE tezos.big_map_contents (
     key_hash character varying,
     operation_group_id character varying,
     value character varying,
+    block_level bigint,
+    "timestamp" timestamp without time zone,
+    cycle integer,
+    period integer,
     PRIMARY KEY (big_map_id, key)
 );
+
+CREATE INDEX big_map_id_idx ON tezos.big_map_contents USING btree (big_map_id);
+CREATE INDEX operation_group_id_idx ON tezos.big_map_contents USING btree (operation_group_id);
+CREATE INDEX combined_big_map_operation_group_ids_idx ON tezos.big_map_contents USING btree (big_map_id, operation_group_id);
 
 CREATE TABLE tezos.originated_account_maps (
     big_map_id numeric,
@@ -869,11 +877,11 @@ CREATE SCHEMA ethereum;
 -- Table is based on eth_getBlockByHash from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.blocks (
   hash text NOT NULL PRIMARY KEY,
-  number integer NOT NULL,
-  difficulty text NOT NULL,
+  level integer NOT NULL, -- number
+  difficulty numeric NOT NULL,
   extra_data text NOT NULL,
-  gas_limit text NOT NULL,
-  gas_used text NOT NULL,
+  gas_limit numeric NOT NULL,
+  gas_used numeric NOT NULL,
   logs_bloom text NOT NULL,
   miner text NOT NULL,
   mix_hash text NOT NULL,
@@ -881,9 +889,9 @@ CREATE TABLE ethereum.blocks (
   parent_hash text,
   receipts_root text NOT NULL,
   sha3_uncles text NOT NULL,
-  size text NOT NULL,
+  size integer NOT NULL,
   state_root text NOT NULL,
-  total_difficulty text NOT NULL,
+  total_difficulty numeric NOT NULL,
   transactions_root text NOT NULL,
   uncles text,
   timestamp timestamp without time zone NOT NULL
@@ -894,14 +902,14 @@ CREATE TABLE ethereum.transactions (
   hash text NOT NULL PRIMARY KEY,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
-  "from" text NOT NULL,
-  gas text NOT NULL,
-  gas_price text NOT NULL,
+  source text NOT NULL, -- from
+  gas numeric NOT NULL,
+  gas_price numeric NOT NULL,
   input text NOT NULL,
   nonce text NOT NULL,
-  "to" text,
-  transaction_index text NOT NULL,
-  value numeric NOT NULL, -- value in wei
+  destination text, -- to
+  transaction_index integer NOT NULL,
+  amount numeric NOT NULL, -- value in wei
   v text NOT NULL,
   r text NOT NULL,
   s text NOT NULL
@@ -913,12 +921,12 @@ ALTER TABLE ONLY ethereum.transactions
 -- Table is based on eth_getTransactionReceipt from https://eth.wiki/json-rpc/API
 CREATE TABLE ethereum.receipts (
   transaction_hash text NOT NULL,
-  transaction_index text NOT NULL,
+  transaction_index integer NOT NULL,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
   contract_address text,
-  cumulative_gas_used text NOT NULL,
-  gas_used text NOT NULL,
+  cumulative_gas_used numeric NOT NULL,
+  gas_used numeric NOT NULL,
   logs_bloom text NOT NULL,
   status text,
   root text
@@ -930,11 +938,11 @@ CREATE TABLE ethereum.logs (
   block_hash text NOT NULL,
   block_number integer NOT NULL,
   data text NOT NULL,
-  log_index text NOT NULL,
+  log_index integer NOT NULL,
   removed boolean NOT NULL,
   topics text NOT NULL,
   transaction_hash text NOT NULL,
-  transaction_index text NOT NULL
+  transaction_index integer NOT NULL
 );
 
 ALTER TABLE ONLY ethereum.logs
@@ -960,6 +968,7 @@ CREATE TABLE ethereum.tokens (
 );
 
 CREATE TABLE ethereum.token_transfers (
+  token_address text NOT NULL,
   block_number integer NOT NULL,
   transaction_hash text NOT NULL,
   from_address text NOT NULL,
@@ -967,14 +976,26 @@ CREATE TABLE ethereum.token_transfers (
   value numeric NOT NULL
 );
 
+CREATE TABLE ethereum.tokens_history (
+    account_address text NOT NULL,
+    block_number integer NOT NULL,
+    transaction_hash text NOT NULL,
+    token_address text NOT NULL,
+    value numeric NOT NULL,
+    asof timestamp without time zone NOT NULL
+);
+
+CREATE INDEX ix_account_address ON ethereum.tokens_history USING btree (account_address);
+CREATE INDEX ix_token_address ON ethereum.tokens_history USING btree (token_address);
+
 CREATE OR REPLACE VIEW ethereum.accounts AS
 SELECT
-  "to" AS address,
-  SUM(value) AS value
+  destination AS address,
+  SUM(amount) AS value
 FROM
   ethereum.transactions
 GROUP BY
-  "to";
+  destination;
 
 -- The schema for Quorum is duplicated from Ethereum.
 -- TODO: This is a temporary solution, in the future we intend to generate the schema automatically to avoid duplication,

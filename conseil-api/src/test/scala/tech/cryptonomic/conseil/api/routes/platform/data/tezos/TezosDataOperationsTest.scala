@@ -2,16 +2,12 @@ package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
 import java.sql.Timestamp
 
-import com.typesafe.scalalogging.LazyLogging
 import com.softwaremill.diffx.scalatest.DiffMatcher
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.OptionValues
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
+import org.scalatest.concurrent.IntegrationPatience
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, _}
-import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
+import tech.cryptonomic.conseil.common.testkit.{ConseilSpec, InMemoryDatabase}
 import tech.cryptonomic.conseil.common.tezos.Tables.{
   AccountsHistoryRow,
   AccountsRow,
@@ -26,14 +22,10 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{makeAccountId, TezosBlo
 import scala.concurrent.duration._
 
 class TezosDataOperationsTest
-    extends AnyWordSpec
-    with Matchers
+    extends ConseilSpec
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
-    with ScalaFutures
-    with OptionValues
     with DiffMatcher
-    with LazyLogging
     with IntegrationPatience {
 
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -1690,7 +1682,7 @@ class TezosDataOperationsTest
         )
       }
 
-      "should aggregate with COUNT function" in {
+      "aggregate with COUNT function" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
           FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
@@ -1725,7 +1717,7 @@ class TezosDataOperationsTest
         )
       }
 
-      "should aggregate with MAX function" in {
+      "aggregate with MAX function" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
           FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
@@ -1760,7 +1752,7 @@ class TezosDataOperationsTest
         )
       }
 
-      "should aggregate with MIN function" in {
+      "aggregate with MIN function" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
           FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
@@ -1795,7 +1787,7 @@ class TezosDataOperationsTest
         )
       }
 
-      "should aggregate with SUM function" in {
+      "aggregate with SUM function" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
           FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
@@ -1830,7 +1822,7 @@ class TezosDataOperationsTest
         )
       }
 
-      "should aggregate with SUM function and order by SUM()" in {
+      "aggregate with SUM function and order by SUM()" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
           FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
@@ -1865,7 +1857,7 @@ class TezosDataOperationsTest
         )
       }
 
-      "should order correctly by the field not existing in query)" in {
+      "order correctly by the field not existing in query)" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
           FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
@@ -1897,7 +1889,7 @@ class TezosDataOperationsTest
         )
       }
 
-      "should correctly check use between in the timestamps" in {
+      "correctly check use between in the timestamps" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
           FeesRow(0, 4, 8, new Timestamp(2), "kind", forkId = Fork.mainForkId),
@@ -1936,7 +1928,7 @@ class TezosDataOperationsTest
         )
       }
 
-      "should correctly execute BETWEEN operation using numeric comparison instead of lexicographical" in {
+      "correctly execute BETWEEN operation using numeric comparison instead of lexicographical" in {
         val feesTmp = List(
           FeesRow(0, 0, 0, new Timestamp(0), "kind", forkId = Fork.mainForkId),
           FeesRow(0, 0, 10, new Timestamp(3), "kind", forkId = Fork.mainForkId),
@@ -1971,7 +1963,7 @@ class TezosDataOperationsTest
         result shouldBe List(Map("high" -> Some(2)))
       }
 
-      "should return correct query when asked for SQL" in {
+      "return correct query when asked for SQL" in {
         val predicates = List(
           Predicate(
             field = "medium",
@@ -2022,7 +2014,7 @@ class TezosDataOperationsTest
         result shouldBe List(Map("sql" -> Some(expectedQuery)))
       }
 
-      "should aggregate with multiple aggregations on the same field" in {
+      "aggregate with multiple aggregations on the same field" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
           FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
@@ -2058,7 +2050,7 @@ class TezosDataOperationsTest
         )
       }
 
-      "should aggregate with single aggegation when there is only one field" in {
+      "aggregate with single aggegation when there is only one field" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind", forkId = Fork.mainForkId),
           FeesRow(0, 4, 8, new Timestamp(1), "kind", forkId = Fork.mainForkId),
@@ -2107,7 +2099,7 @@ class TezosDataOperationsTest
         )
       }
 
-      "should aggregate with correct predicate field when aggregation is using predicate" in {
+      "aggregate with correct predicate field when aggregation is using predicate" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind1", forkId = Fork.mainForkId),
           FeesRow(0, 4, 8, new Timestamp(1), "kind2", forkId = Fork.mainForkId),
@@ -2164,7 +2156,7 @@ class TezosDataOperationsTest
         )
       }
 
-      "should aggregate correctly with multiple aggregation fields with predicate" in {
+      "aggregate correctly with multiple aggregation fields with predicate" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind1", forkId = Fork.mainForkId),
           FeesRow(0, 4, 8, new Timestamp(1), "kind2", forkId = Fork.mainForkId),
@@ -2239,14 +2231,14 @@ class TezosDataOperationsTest
         )
       }
 
-      "should aggregate with datePart aggregation" in {
+      "aggregate with datePart aggregation" in {
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(100, 0, 1, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
-          FeesRow(0, 4, 8, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
-          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
-          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
-          FeesRow(0, 3, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
-          FeesRow(0, 3, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId)
+          FeesRow(0, 2, 4, Timestamp.valueOf("2000-01-01 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 8, Timestamp.valueOf("2000-01-02 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, Timestamp.valueOf("2000-01-02 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, Timestamp.valueOf("2000-01-02 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, Timestamp.valueOf("2000-01-03 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, Timestamp.valueOf("2000-01-03 00:00:00"), "kind", forkId = Fork.mainForkId)
         )
 
         val aggregate = List(
@@ -2279,14 +2271,14 @@ class TezosDataOperationsTest
 
       }
 
-      "should map date with datePart aggregation when it is only type of aggregation" in {
+      "map date with datePart aggregation when it is only type of aggregation" in {
         val feesTmp = List(
-          FeesRow(0, 1, 4, new Timestamp(100, 0, 1, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
-          FeesRow(0, 2, 8, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
-          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
-          FeesRow(0, 4, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
-          FeesRow(0, 5, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId),
-          FeesRow(0, 6, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind", forkId = Fork.mainForkId)
+          FeesRow(0, 1, 4, Timestamp.valueOf("2000-01-01 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 2, 8, Timestamp.valueOf("2000-01-02 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 3, 4, Timestamp.valueOf("2000-01-02 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 4, 4, Timestamp.valueOf("2000-01-02 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 5, 4, Timestamp.valueOf("2000-01-03 00:00:00"), "kind", forkId = Fork.mainForkId),
+          FeesRow(0, 6, 4, Timestamp.valueOf("2000-01-03 00:00:00"), "kind", forkId = Fork.mainForkId)
         )
 
         val populateAndTest = for {
@@ -2317,7 +2309,7 @@ class TezosDataOperationsTest
         )
       }
 
-      "should correctly use query on temporal table" in {
+      "correctly use query on temporal table" in {
 
         val accountsHistoryRow = AccountsHistoryRow(
           accountId = "id",
@@ -2357,7 +2349,7 @@ class TezosDataOperationsTest
 
       }
 
-      "should get the balance of an account at a specific timestamp where there are multiple entities for given account_id" in {
+      "get the balance of an account at a specific timestamp where there are multiple entities for given account_id" in {
 
         val accountsHistoryRows = List(
           AccountsHistoryRow(
@@ -2414,7 +2406,7 @@ class TezosDataOperationsTest
         )
       }
 
-      "should get the balance of an account at a specific timestamp" in {
+      "get the balance of an account at a specific timestamp" in {
 
         val accountsHistoryRows = List(
           AccountsHistoryRow(

@@ -3,6 +3,7 @@ import sbt._
 import sbtassembly.AssemblyKeys._
 import sbtassembly.{AssemblyPlugin, MergeStrategy}
 import sbtassembly.Assembly.isConfigFile
+import sbtassembly.PathList
 
 object Assembly {
 
@@ -15,7 +16,9 @@ object Assembly {
           assemblyOutputPath in assembly := file(s"/tmp/${name.value}.jar"),
           test in assembly := {},
           assemblyMergeStrategy in assembly := {
-              case "application.conf" => MergeStrategy.concat
+              case "application.conf" | "moduload.list"  => MergeStrategy.concat
+	            case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
+	            case x if x.endsWith("/module-info.class") => MergeStrategy.discard
               case x => (assemblyMergeStrategy in assembly).value(x)
             }
         )
@@ -27,3 +30,6 @@ object Assembly {
   }
 
 }
+
+
+

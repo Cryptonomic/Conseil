@@ -1,23 +1,31 @@
 package tech.cryptonomic.conseil.api.metadata
 
-import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.config.{MetadataConfiguration, PlatformConfiguration}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.common.metadata._
 import tech.cryptonomic.conseil.common.util.OptionUtil.when
 
 // class for applying overrides configurations
-class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
+class UnitTransformation(overrides: MetadataConfiguration) extends ConseilLogSupport {
 
   // overrides platforms
-  def overridePlatforms(platforms: List[Platform]): List[Platform] = {
-    logDifferences(platforms.map(_.path), overrides.allPlatforms.keys.toList)
+  def overridePlatforms(platforms: List[Platform], shouldLog: Boolean = true): List[Platform] = {
+    if (shouldLog) {
+      logDifferences(platforms.map(_.path), overrides.allPlatforms.keys.toList)
+    }
     platforms.flatMap(platform => overridePlatform(platform, PlatformPath(platform.name)))
   }
 
   // overrides networks
-  def overrideNetworks(platformPath: PlatformPath, networks: List[Network]): List[Network] = {
-    logDifferences(networks.map(_.path), overrides.networks(platformPath).keys.toList)
+  def overrideNetworks(
+      platformPath: PlatformPath,
+      networks: List[Network],
+      shouldLog: Boolean = true
+  ): List[Network] = {
+    if (shouldLog) {
+      logDifferences(networks.map(_.path), overrides.networks(platformPath).keys.toList)
+    }
     networks.flatMap(network => overrideNetwork(network, network.path))
   }
 
@@ -104,9 +112,9 @@ class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
 
   private def logDifferences(paths: List[Path], overriddenPaths: List[Path]): Unit = {
     (paths.toSet diff overriddenPaths.toSet)
-      .foreach(logger.warn("""There're missing metadata overrides for "{}"""", _))
+      .foreach(path => logger.warn(s"""There're missing metadata overrides for "$path""""))
 
     (overriddenPaths.toSet diff paths.toSet)
-      .foreach(logger.error("""Metadata overrides "{}" override nothing""", _))
+      .foreach(path => logger.error(s"""Metadata overrides "$path" override nothing"""))
   }
 }

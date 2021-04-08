@@ -1,10 +1,10 @@
 package tech.cryptonomic.conseil.indexer.ethereum
 
 import cats.effect.{Concurrent, Resource}
-import com.typesafe.scalalogging.LazyLogging
 import fs2.Stream
 import slickeffect.Transactor
 
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.config.Platforms.EthereumBatchFetchConfiguration
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence
@@ -25,7 +25,12 @@ class EthereumOperations[F[_]: Concurrent](
     persistence: EthereumPersistence[F],
     tx: Transactor[F],
     batchConf: EthereumBatchFetchConfiguration
-) extends LazyLogging {
+) extends ConseilLogSupport {
+
+  /**
+    * SHA-3 signature for: Transfer(address,address,uint256)
+    */
+  private val tokenTransferSignature = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
   /**
     * Start Lorre with mode defined with [[Depth]].
@@ -39,12 +44,12 @@ class EthereumOperations[F[_]: Concurrent](
       .flatMap {
         case (latestIndexedBlock, mostRecentBlockNumber) =>
           val range = depth match {
-            case Newest => latestIndexedBlock.map(_.number + 1).getOrElse(1) to mostRecentBlockNumber
+            case Newest => latestIndexedBlock.map(_.level + 1).getOrElse(1) to mostRecentBlockNumber
             case Everything => 1 to mostRecentBlockNumber
             case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.isEmpty =>
               1 to mostRecentBlockNumber
             case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.nonEmpty =>
-              latestIndexedBlock.map(_.number + 1).getOrElse(1) to mostRecentBlockNumber
+              latestIndexedBlock.map(_.level + 1).getOrElse(1) to mostRecentBlockNumber
             case Custom(depth) => (mostRecentBlockNumber - depth) to mostRecentBlockNumber
           }
 
@@ -101,12 +106,36 @@ class EthereumOperations[F[_]: Concurrent](
             .flatMap {
               case (block, txs, receipts) =>
                 Stream
+                  .emits(receipts.map(_.logs))
+                  .flatMap(Stream.emits)
+                  .filter(
+                    log =>
+                      log.topics.size == 3 && log.topics
+                          .contains(tokenTransferSignature)
+                  )
+                  .through(ethereumClient.getTokenTransfer)
+                  .chunkN(Integer.MAX_VALUE)
+                  .evalTap(tokenTransfers => tx.transact(persistence.createTokenTransfers(tokenTransfers.toList)))
+                  .map(tokenTransfers => (block, txs, receipts, tokenTransfers.toList))
+            }
+            .flatMap {
+              case (block, txs, receipts, tokenTransfers) =>
+                Stream
+                  .emits(tokenTransfers)
+                  .through(ethereumClient.getTokenBalance(block))
+                  .chunkN(Integer.MAX_VALUE)
+                  .evalTap(tokenBalances => tx.transact(persistence.createTokenBalances(tokenBalances.toList)))
+                  .map(_ => (block, txs, receipts))
+            }
+            .flatMap {
+              case (block, txs, receipts) =>
+                Stream
                   .emits(receipts.filter(_.contractAddress.isDefined))
                   .through(ethereumClient.getContract(batchConf.contractsBatchSize))
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap(contracts => tx.transact(persistence.createContracts(contracts.toList)))
             }
-      ) 
+      )
       .drain
 
   /**

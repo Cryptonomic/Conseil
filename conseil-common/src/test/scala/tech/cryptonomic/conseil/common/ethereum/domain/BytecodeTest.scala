@@ -1,11 +1,9 @@
 package tech.cryptonomic.conseil.common.ethereum.domain
 
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
-
 import tech.cryptonomic.conseil.common.ethereum.EthereumFixtures
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class BytecodeTest extends AnyWordSpec with Matchers with EthereumFixtures {
+class BytecodeTest extends ConseilSpec with EthereumFixtures {
   "Bytecode" should {
       "normalize bytecode" in {
         Bytecode("60").normalized shouldBe "60"

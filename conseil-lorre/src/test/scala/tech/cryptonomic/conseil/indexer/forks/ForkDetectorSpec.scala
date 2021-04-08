@@ -7,6 +7,7 @@ import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.ScalacheckShapeless._
 import cats.implicits._
+import tech.cryptonomic.conseil.common.testkit.LoggingTestSupport
 
 /** Here we verify the properties of the [[ForkDetector]] implementation.
   * We use the Property-based-testing approach, where pseudo-random values are
@@ -15,7 +16,7 @@ import cats.implicits._
   * We want to generate arbitrary ranges of levels to test our detector, and
   * guarantee that it will find the forking point independently of the test values.
   */
-class ForkDetectorSpec extends AnyPropSpec with ScalaCheckDrivenPropertyChecks with Matchers {
+class ForkDetectorSpec extends AnyPropSpec with ScalaCheckDrivenPropertyChecks with Matchers with LoggingTestSupport {
 
   import Fixtures._
 

@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.indexer.tezos.processing
 
-import com.typesafe.scalalogging.LazyLogging
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.{ExecutionContext, Future}
 import slick.jdbc.PostgresProfile.api._
@@ -12,6 +11,7 @@ import tech.cryptonomic.conseil.indexer.tezos.{
   TezosGovernanceOperations,
   TezosDatabaseOperations => TezosDb
 }
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, Voting}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
@@ -35,7 +35,7 @@ class BlocksProcessor(
     accountsProcessor: AccountsProcessor,
     bakersProcessor: BakersProcessor
 )(implicit tokens: TokenContracts, tns: TNSContract)
-    extends LazyLogging {
+    extends ConseilLogSupport {
 
   /* will store a single page of block results */
   private[tezos] def processBlocksPage(results: nodeOperator.BlockFetchingResults)(
@@ -43,11 +43,8 @@ class BlocksProcessor(
   ): Future[Int] = {
     def logBlockOutcome[A]: PartialFunction[Try[Option[A]], Unit] = {
       case Success(accountsCount) =>
-        logger.info(
-          "Wrote {} blocks to the database, checkpoint stored for{} account updates",
-          results.size,
-          accountsCount.fold("")(" " + _)
-        )
+        val showCount = accountsCount.fold("")(" " + _)
+        logger.info(s"Wrote ${results.size} blocks to the database, checkpoint stored for$showCount account updates")
       case Failure(e) =>
         logger.error("Could not write blocks or accounts checkpoints to the database.", e)
     }

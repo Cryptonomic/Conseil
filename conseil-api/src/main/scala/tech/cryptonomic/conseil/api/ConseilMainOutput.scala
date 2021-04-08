@@ -1,53 +1,47 @@
 package tech.cryptonomic.conseil.api
 
-import com.typesafe.scalalogging.Logger
+import scribe._
 import tech.cryptonomic.conseil.BuildInfo
 import tech.cryptonomic.conseil.api.config.ConseilConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms.{PlatformConfiguration, PlatformsConfiguration}
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.io.MainOutputs._
 
 /** Defines what to print when starting Conseil */
-trait ConseilMainOutput {
-
-  /** we need to have a logger */
-  protected[this] def logger: Logger
+trait ConseilMainOutput extends ConseilLogSupport {
 
   /** Shows the main application info
     * @param serverConf configuration of the http server
     */
-  protected[this] def displayInfo(serverConf: ConseilConfiguration): Unit =
+  protected[this] def displayInfo(serverConf: ConseilConfiguration): Unit = {
+    val showCommit = BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]")
     logger.info(
-      """
+      s"""
         | ==================================***==================================
-        |  Conseil v.{}
-        |  {}
+        |  Conseil v.${BuildInfo.version}
+        |  $showCommit
         | ==================================***==================================
         |
-        | Server started on {} at port {}
+        | Server started on ${serverConf.hostname} at port ${serverConf.port}
         | Bonjour...
         |
-        |""".stripMargin,
-      BuildInfo.version,
-      BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]"),
-      serverConf.hostname,
-      serverConf.port
+        |""".stripMargin
     )
+  }
 
   /** Shows details on the current configuration */
   protected[this] def displayConfiguration(platformConfigs: PlatformsConfiguration): Unit =
     logger.info(
-      """
+      s"""
         | ==================================***==================================
         | Configuration details
         |
-        | {}
-        | {}
+        | ${showAvailablePlatforms(platformConfigs)}
+        | ${showDatabaseConfiguration("conseil")}
         |
         | ==================================***==================================
         |
-        """.stripMargin,
-      showAvailablePlatforms(platformConfigs),
-      showDatabaseConfiguration("conseil")
+        """.stripMargin
     )
 
   /* prepare output to display existing platforms and networks */

@@ -1,14 +1,12 @@
 package tech.cryptonomic.conseil.indexer.tezos.michelson.contracts
 
 import com.softwaremill.diffx.scalatest.DiffMatcher._
-import org.scalatest.OptionValues
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Contract.CompatBigMapDiff
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract.LookupMapReference
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class TNSContractsTest extends AnyWordSpec with Matchers with OptionValues {
+class TNSContractsTest extends ConseilSpec {
 
   "The TNS Contract operations for a known configured contract" should {
 

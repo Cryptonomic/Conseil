@@ -3,12 +3,13 @@ package tech.cryptonomic.conseil.api.routes.platform.data
 import java.sql.Timestamp
 
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{BeforeAndAfterEach, EitherValues, OneInstancePerTest}
+import org.scalatest.{BeforeAndAfterEach, OneInstancePerTest}
 import org.scalatest.LoneElement._
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
-import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, TransparentUnitTransformation}
+import tech.cryptonomic.conseil.api.metadata.{
+  AttributeValuesCacheConfiguration,
+  MetadataService,
+  TransparentUnitTransformation
+}
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataTypes.ApiQuery
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
@@ -16,17 +17,11 @@ import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.common.metadata._
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class ApiDataTypesTest
-    extends AnyWordSpec
-    with Matchers
-    with ScalaFutures
-    with EitherValues
-    with MockFactory
-    with BeforeAndAfterEach
-    with OneInstancePerTest {
+class ApiDataTypesTest extends ConseilSpec with MockFactory with BeforeAndAfterEach with OneInstancePerTest {
 
   val platformDiscoveryOperations = new TestPlatformDiscoveryOperations
   val cacheOverrides: AttributeValuesCacheConfiguration = stub[AttributeValuesCacheConfiguration]

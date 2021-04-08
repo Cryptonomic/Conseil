@@ -3,31 +3,29 @@ import sbt._
 object Dependencies {
 
   private object Versions {
-    val typesafeConfig = "1.3.3"
+    val typesafeConfig = "1.4.0"
     val pureConfig = "0.10.2"
     val scopt = "4.0.0-RC2"
 
-    val logback = "1.2.3"
-    val logstashLogback = "5.3"
-    val scalaLogging = "3.7.2"
+    val akka = "2.6.11"
+    val akkaHttp = "10.2.3"
+    val akkaHttpJson = "1.35.2"
+    val akkaHttpCors = "1.1.0"
 
-    val akka = "2.5.21"
-    val akkaHttp = "10.1.8"
-    val akkaHttpJson = "1.26.0"
-    val akkaHttpCors = "0.3.4"
+    val scribe = "3.1.3"
 
     val slick = "3.3.0"
     val slickPG = "0.18.0"
     val slickEffect = "0.3.0"
     val postgres = "42.1.4"
 
-    val endpoints = "0.10.0"
+    val endpoints = "0.15.0"
     val cats = "2.1.1"
     val catsEffect = "2.1.3"
-    val mouse = "0.20"
+    val mouse = "0.25"
     val monocle = "2.0.0"
-    val circe = "0.11.1"
-    val http4s = "0.20.10"
+    val circe = "0.13.0"
+    val http4s = "0.21.8"
 
     val silencer = "1.4.4"
     val kantanCsv = "0.6.0"
@@ -38,7 +36,7 @@ object Dependencies {
     val scalaTestScalaCheck = "3.1.2.0"
     val scalaTestJson = "0.0.3"
     val scalaMock = "4.1.0"
-    val testContainerPostgres = "1.14.3"
+    val testContainerPostgres = "1.15.2"
     val diffX = "0.3.3"
     val scalaCheckShapeless = "1.2.5"
 
@@ -57,10 +55,10 @@ object Dependencies {
 
   private val scopt = Seq("com.github.scopt" %% "scopt" % Versions.scopt)
 
-  private val logging = Seq(
-    "ch.qos.logback"             % "logback-classic"          % Versions.logback,
-    "net.logstash.logback"       % "logstash-logback-encoder" % Versions.logstashLogback,
-    "com.typesafe.scala-logging" %% "scala-logging"           % Versions.scalaLogging
+  private val scribe = Seq(
+    "com.outr" %% "scribe"          % Versions.scribe,
+    "com.outr" %% "scribe-slf4j"    % Versions.scribe,
+    "com.outr" %% "scribe-logstash" % Versions.scribe
   )
 
   private val akka = Seq(
@@ -76,8 +74,7 @@ object Dependencies {
   )
 
   private val akkaHttpJson = Seq(
-    "de.heikoseeberger" %% "akka-http-circe"   % Versions.akkaHttpJson exclude ("com.typesafe.akka", "akka-http"),
-    "de.heikoseeberger" %% "akka-http-jackson" % Versions.akkaHttpJson exclude ("com.fasterxml.jackson.core", "jackson-databind") exclude ("com.typesafe.akka", "akka-http")
+    "de.heikoseeberger" %% "akka-http-circe" % Versions.akkaHttpJson exclude ("com.typesafe.akka", "akka-http")
   )
 
   private val akkaHttpCors = Seq(
@@ -98,11 +95,11 @@ object Dependencies {
   private val postgres = Seq("org.postgresql" % "postgresql" % Versions.postgres)
 
   private val endpoints = Seq(
-    "org.julienrf" %% "endpoints-algebra"                % Versions.endpoints,
-    "org.julienrf" %% "endpoints-openapi"                % Versions.endpoints,
-    "org.julienrf" %% "endpoints-json-schema-generic"    % Versions.endpoints,
-    "org.julienrf" %% "endpoints-json-schema-circe"      % Versions.endpoints,
-    "org.julienrf" %% "endpoints-akka-http-server-circe" % Versions.endpoints
+    "org.julienrf" %% "endpoints-algebra"             % Versions.endpoints,
+    "org.julienrf" %% "endpoints-openapi"             % Versions.endpoints,
+    "org.julienrf" %% "endpoints-json-schema-generic" % Versions.endpoints,
+    "org.julienrf" %% "endpoints-json-schema-circe"   % Versions.endpoints,
+    "org.julienrf" %% "endpoints-akka-http-server"    % Versions.endpoints
   )
 
   private val cats = Seq(
@@ -176,7 +173,7 @@ object Dependencies {
   val conseilCommonInclude: Seq[ModuleID] =
     concat(
       config,
-      logging,
+      scribe,
       pureConfig,
       slick,
       slickCodeGen,
@@ -203,11 +200,12 @@ object Dependencies {
       scorex
     )
 
-  val conseilCommonTestKitInclude: Seq[ModuleID] = concat(config, slick, scalaTestCompile, postgresTestContainerCompile)
+  val conseilCommonTestKitInclude: Seq[ModuleID] =
+    concat(config, slick, scalaTestCompile, postgresTestContainerCompile, scribe)
 
   val conseilApiInclude: Seq[ModuleID] =
     concat(
-      logging,
+      scribe,
       scopt,
       akka,
       akkaHttp,
@@ -221,7 +219,7 @@ object Dependencies {
     )
 
   val conseilLorreInclude: Seq[ModuleID] =
-    concat(config, logging, pureConfig, scopt, silencer, akka, akkaHttp, scalaTest, scalaMock, diffX)
+    concat(config, pureConfig, scopt, silencer, akka, akkaHttp, scalaTest, scalaMock, diffX)
 
   val conseilSchemaInclude: Seq[ModuleID] = concat(config, pureConfig)
 

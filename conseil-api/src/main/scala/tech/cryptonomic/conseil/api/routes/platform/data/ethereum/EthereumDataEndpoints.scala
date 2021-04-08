@@ -34,12 +34,17 @@ trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
   def ethereumTokensEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
     tokensEndpoint(platform)
 
-  def ethereumTokenTransfersEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
-    tokenTransfersEndpoint(platform)
+  def ethereumTokenTransfersEndpoint: Endpoint[
+    ((String, EthereumFilter), Option[String]),
+    Option[List[QueryResponse]]
+  ] = tokenTransfersEndpoint(platform)
+
+  def ethereumTokensHistoryEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
+    tokensHistoryEndpoint(platform)
 
   def ethereumAccountsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
     accountsEndpoint(platform)
-  
+
   def ethereumAccountByAddressEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
     accountByAddressEndpoint(platform)
 
@@ -82,7 +87,7 @@ trait QuorumDataEndpoints extends EthereumDataEndpointsCreator {
 
   def quorumAccountsEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
     accountsEndpoint(platform)
-  
+
   def quorumAccountByAddressEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
     accountByAddressEndpoint(platform)
 

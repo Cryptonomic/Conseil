@@ -3,9 +3,9 @@ package tech.cryptonomic.conseil.api.routes.platform.discovery
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.typesafe.scalalogging.LazyLogging
 import endpoints.akkahttp
 import endpoints.algebra.Documentation
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.api.metadata.MetadataService
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.AttributesValidationError
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
@@ -22,10 +22,10 @@ object PlatformDiscovery {
   * @param metadataService     metadata Service
   */
 class PlatformDiscovery(metadataService: MetadataService)
-    extends LazyLogging
+    extends ConseilLogSupport
     with PlatformDiscoveryEndpoints
     with akkahttp.server.Endpoints
-    with akkahttp.server.circe.JsonSchemaEntities {
+    with akkahttp.server.JsonEntitiesFromSchemas {
 
   /** Metadata route implementation for platforms endpoint */
   private lazy val platformsRoute = platformsEndpoint.implementedBy(_ => metadataService.getPlatforms)
@@ -48,13 +48,13 @@ class PlatformDiscovery(metadataService: MetadataService)
 
   /** Metadata route implementation for attributes values endpoint */
   private lazy val attributesValuesRoute = attributesValuesEndpoint.implementedByAsync {
-    case (((platform, network, entity), attribute), _) =>
+    case ((platform, network, entity, attribute), _) =>
       metadataService.getAttributeValues(platform, network, entity, attribute)
   }
 
   /** Metadata route implementation for attributes values with filter endpoint */
   private lazy val attributesValuesWithFilterRoute = attributesValuesWithFilterEndpoint.implementedByAsync {
-    case (((platform, network, entity), attribute, filter), _) =>
+    case ((platform, network, entity, attribute, filter), _) =>
       metadataService.getAttributeValues(platform, network, entity, attribute, Some(filter))
   }
 

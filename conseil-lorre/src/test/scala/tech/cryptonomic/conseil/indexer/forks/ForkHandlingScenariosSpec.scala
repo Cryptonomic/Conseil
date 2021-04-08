@@ -6,6 +6,7 @@ import org.scalacheck.commands.Commands
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatestplus.scalacheck.Checkers
+import tech.cryptonomic.conseil.common.testkit.LoggingTestSupport
 
 /** Runs random scenarios that simulate a fork on the chain.
   * We make use of stateful property testing as provided by the
@@ -16,7 +17,7 @@ import org.scalatestplus.scalacheck.Checkers
   * For a more detailed explanation,
   * see: https://github.com/typelevel/scalacheck/blob/master/doc/UserGuide.md#stateful-testing
   */
-class ForkHandlingScenariosSpec extends AnyFlatSpec with Checkers with Matchers {
+class ForkHandlingScenariosSpec extends AnyFlatSpec with Checkers with Matchers with LoggingTestSupport {
 
   "The forks scenarios" should "simulate multiple fork changes" in {
       check(ForkHandlingScenariosSpec.property())

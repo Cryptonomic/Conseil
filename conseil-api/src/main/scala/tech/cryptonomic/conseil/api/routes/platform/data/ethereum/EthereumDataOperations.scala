@@ -62,6 +62,10 @@ class EthereumDataOperations(prefix: String) extends ApiDataOperations {
   def fetchTokenTransfers(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =
     queryWithPredicates(prefix, "token_transfers", query).map(Some(_))
 
+  /** Fetches the list of token balances for given query */
+  def fetchTokensHistory(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =
+    queryWithPredicates(prefix, "tokens_history", query).map(Some(_))
+
   /** Fetches the list of accounts for given query */
   def fetchAccounts(query: Query)(implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] =
     queryWithPredicates(prefix, "accounts", query).map(Some(_))

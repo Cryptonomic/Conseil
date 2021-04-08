@@ -2,30 +2,24 @@ package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
 import java.sql.Timestamp
 
-import com.typesafe.scalalogging.LazyLogging
-import org.scalatest.OptionValues
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.concurrent.IntegrationPatience
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.BitcoinInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.bitcoin.BitcoinTypes.BitcoinBlockHash
 import tech.cryptonomic.conseil.common.bitcoin.Tables
 import tech.cryptonomic.conseil.common.bitcoin.Tables._
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.Query
-import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
+import tech.cryptonomic.conseil.common.testkit.{ConseilSpec, InMemoryDatabase}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 class BitcoinDataOperationsTest
-    extends AnyWordSpec
-    with Matchers
+    extends ConseilSpec
     with InMemoryDatabase
     with BitcoinInMemoryDatabaseSetup
-    with ScalaFutures
-    with OptionValues
-    with LazyLogging
+    with ConseilLogSupport
     with IntegrationPatience
     with BitcoinDataOperationsTest.Fixtures {
 
@@ -176,19 +170,20 @@ object BitcoinDataOperationsTest {
     val blocks: Seq[BlocksRow] = List(block1, block2, block3)
 
     private val defaultTransaction: BlocksRow => TransactionsRow =
-      block => TransactionsRow(
-        txid = "0",
-        blockhash = block.hash,
-        hash = "txhash0",
-        hex = "hex",
-        size = block.size,
-        weight = block.weight,
-        vsize = 1,
-        version = 1,
-        lockTime = block.time,
-        blockTime = block.time,
-        time = block.time
-      )
+      block =>
+        TransactionsRow(
+          txid = "0",
+          blockhash = block.hash,
+          hash = "txhash0",
+          hex = "hex",
+          size = block.size,
+          weight = block.weight,
+          vsize = 1,
+          version = 1,
+          lockTime = block.time,
+          blockTime = block.time,
+          time = block.time
+        )
     val transaction1: TransactionsRow = defaultTransaction(block1).copy(txid = "1", hash = "txhash1")
     val transaction2: TransactionsRow = defaultTransaction(block2).copy(txid = "2", hash = "txhash1")
     val transaction3: TransactionsRow = defaultTransaction(block3).copy(txid = "3", hash = "txhash1")

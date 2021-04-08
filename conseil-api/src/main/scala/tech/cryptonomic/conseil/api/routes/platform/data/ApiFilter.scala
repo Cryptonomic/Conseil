@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.api.routes.platform.data
 
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OrderDirection, QueryOrdering}
+import endpoints.{Invalid, Valid, Validated}
 
 /** Trait which provides common elements for creating filters in API */
 trait ApiFilter {
@@ -10,6 +11,15 @@ trait ApiFilter {
   case object AscendingSort extends Sorting
   case object DescendingSort extends Sorting
   object Sorting {
+
+    /** Read an input string (`asc` or `desc`) to return a
+      * (possibly invalid) [[ApiFilter.Sorting]] value
+      */
+    def fromValidString(s: String): Validated[Sorting] = s.toLowerCase match {
+      case "asc" => Valid(AscendingSort)
+      case "desc" => Valid(DescendingSort)
+      case _ => Invalid(Seq(s"No valid sorting can be inferred from $s. Try any of: asc, desc"))
+    }
 
     /** Read an input string (`asc` or `desc`) to return a
       * (possible) [[ApiFilter.Sorting]] value

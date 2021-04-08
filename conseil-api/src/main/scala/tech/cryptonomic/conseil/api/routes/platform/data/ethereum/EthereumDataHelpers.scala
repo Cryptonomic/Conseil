@@ -1,35 +1,33 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.ethereum
 
 import akka.http.scaladsl.server.Route
-import cats.Functor
+import endpoints.akkahttp.server.Endpoints
 import endpoints.algebra.Documentation
-import io.circe._
+
+import tech.cryptonomic.conseil.api.routes.validation.Validation.QueryValidating
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiValidation.defaultValidated
 import tech.cryptonomic.conseil.api.routes.platform.data.{
-  ApiCirceJsonSchema,
   ApiDataEndpoints,
   ApiDataJsonSchemas,
-  ApiFilterQueryString
+  ApiFilterQueryString,
+  ApiServerJsonSchema
 }
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryValidationError
 
 /** Represents helper for Data Endpoints that can be used to implement custom encoder for Ethereum specific types */
 private[ethereum] class EthereumDataHelpers
-    extends ApiDataEndpoints
+    extends Endpoints
+    with ApiDataEndpoints
     with ApiDataJsonSchemas
     with ApiFilterQueryString
-    with ApiCirceJsonSchema {
+    with ApiServerJsonSchema {
 
   /** Method for validating query request */
   override def validated[A](
       response: A => Route,
       invalidDocs: Documentation
-  ): Either[List[QueryValidationError], A] => Route = defaultValidated(response, invalidDocs)
-
-  /** Query string functor adding map operation */
-  implicit override def qsFunctor: Functor[QueryString] = defaultQsFunctor
+  ): QueryValidating[A] => Route = defaultValidated(response, invalidDocs)
 
   /** Represents the function, that is going to encode the blockchain specific data types */
-  override protected def customAnyEncoder: PartialFunction[Any, Json] = PartialFunction.empty
+  override protected def customAnyEncoder = PartialFunction.empty
 
 }

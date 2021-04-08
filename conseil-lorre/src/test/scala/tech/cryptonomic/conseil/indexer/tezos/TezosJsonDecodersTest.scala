@@ -1,14 +1,12 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
 import com.github.ghik.silencer.silent
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.{EitherValues, OptionValues}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.JsonUtil.adaptManagerPubkeyField
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 @silent("local val derivationConf")
-class TezosJsonDecodersTest extends AnyWordSpec with Matchers with EitherValues with OptionValues {
+class TezosJsonDecodersTest extends ConseilSpec {
 
   import TezosJsonDecoders.Circe.Accounts._
   import TezosJsonDecoders.Circe.Numbers._
@@ -38,7 +36,7 @@ class TezosJsonDecodersTest extends AnyWordSpec with Matchers with EitherValues 
 
         case class JsonTest(field: String)
 
-        implicit val testDecoder: Decoder[JsonTest] = deriveDecoder
+        implicit val testDecoder: Decoder[JsonTest] = deriveConfiguredDecoder
 
         val duplicateDecoded = decode[JsonTest]("""{"field": "test", "field": "duplicate"}""")
         duplicateDecoded shouldBe 'right
@@ -55,7 +53,7 @@ class TezosJsonDecodersTest extends AnyWordSpec with Matchers with EitherValues 
 
         case class JsonTest(field: Option[String])
 
-        implicit val testDecoder: Decoder[JsonTest] = deriveDecoder
+        implicit val testDecoder: Decoder[JsonTest] = deriveConfiguredDecoder
 
         val valueDecoded = decode[JsonTest]("""{"field": "test"}""")
         valueDecoded.right.value shouldBe JsonTest(Some("test"))

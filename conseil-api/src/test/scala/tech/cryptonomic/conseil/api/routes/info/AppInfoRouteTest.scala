@@ -3,20 +3,17 @@ package tech.cryptonomic.conseil.api.routes.info
 import akka.http.scaladsl.model.{ContentTypes, StatusCodes}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import org.scalatest.OptionValues
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 import tech.cryptonomic.conseil.common.util.JsonUtil._
 import tech.cryptonomic.conseil.api.routes.info.AppInfo.{GitInfo, Info}
-import io.circe._
 import io.circe.generic.extras.semiauto._
 import io.circe.generic.extras.Configuration
 
-class AppInfoRouteTest extends AnyWordSpec with Matchers with OptionValues with ScalatestRouteTest {
+class AppInfoRouteTest extends ConseilSpec with ScalatestRouteTest {
 
   implicit val derivation = Configuration.default
-  implicit val gitInfoDecoder = deriveDecoder[GitInfo]
-  implicit val infoDecoder = deriveDecoder[Info]
+  implicit val gitInfoDecoder = deriveConfiguredDecoder[GitInfo]
+  implicit val infoDecoder = deriveConfiguredDecoder[Info]
 
   "The application info route" should {
 

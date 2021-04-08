@@ -4,16 +4,14 @@ import scala.concurrent.ExecutionContext
 
 import cats.effect._
 import slick.jdbc.PostgresProfile.api._
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
 
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence._
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class EthereumPersistenceTest
-    extends AnyWordSpec
-    with Matchers
+    extends ConseilSpec
     with InMemoryDatabase
     with EthereumInMemoryDatabaseSetup
     with EthereumFixtures
@@ -60,11 +58,19 @@ class EthereumPersistenceTest
         (for {
           // we have to have block row to save the transaction (due to the foreign key)
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
-          _ <- tx.transact(Tables.TokenTransfers += RpcFixtures.logResult.convertTo[Tables.TokenTransfersRow])
+          _ <- tx.transact(ethereumPersistenceStub.createTokenTransfers(List(RpcFixtures.tokenTransferResult)))
           result <- tx.transact(Tables.TokenTransfers.result)
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.tokenTransferRow)
       }
 
+      "save token balances from the log JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {
+        (for {
+          // we have to have block row to save the transaction (due to the foreign key)
+          _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
+          _ <- tx.transact(ethereumPersistenceStub.createTokenBalances(List(RpcFixtures.tokenBalanceFromResult)))
+          result <- tx.transact(Tables.TokensHistory.result)
+        } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.tokenBalanceFromRow)
+      }
       "save contract from the JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {
         (for {
           // we have to have block row to save the transaction (due to the foreign key)
@@ -88,7 +94,11 @@ class EthereumPersistenceTest
           // run
           _ <- tx.transact(
             ethereumPersistenceStub
-              .createBlock(RpcFixtures.blockResult, List(RpcFixtures.transactionResult), List(RpcFixtures.transactionReceiptResult))
+              .createBlock(
+                RpcFixtures.blockResult,
+                List(RpcFixtures.transactionResult),
+                List(RpcFixtures.transactionReceiptResult)
+              )
           )
           // test results
           block <- tx.transact(Tables.Blocks.result)
@@ -127,7 +137,7 @@ class EthereumPersistenceTest
           )
           // test results
           result <- tx.transact(ethereumPersistenceStub.getLatestIndexedBlock)
-        } yield result).unsafeRunSync() shouldBe Some(DbFixtures.blockRow.copy(hash = "hash2", number = 2))
+        } yield result).unsafeRunSync() shouldBe Some(DbFixtures.blockRow.copy(hash = "hash2", level = 2))
       }
     }
 

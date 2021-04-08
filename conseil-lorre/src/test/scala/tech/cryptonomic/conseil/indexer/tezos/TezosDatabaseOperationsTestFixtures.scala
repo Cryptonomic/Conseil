@@ -157,10 +157,12 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
               BlockHeaderMetadata(
                 balance_updates = List.empty,
                 baker = PublicKeyHash(generateHash(10)),
-                voting_period_kind = VotingPeriod.proposal,
+                voting_period_kind = Some(VotingPeriod.proposal),
                 nonce_hash = Some(NonceHash(generateHash(10))),
                 consumed_gas = PositiveDecimal(0),
-                level = randomMetadataLevel()
+                level = Some(randomMetadataLevel()),
+                voting_period_info = None,
+                level_info = None
               )
         ),
         operationGroups = List.empty,

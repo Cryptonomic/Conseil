@@ -6,7 +6,6 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 
 import cats.effect.{IO, Resource}
-import com.typesafe.scalalogging.LazyLogging
 import org.http4s.headers.Authorization
 import org.http4s.BasicCredentials
 import org.http4s.client.blaze.BlazeClientBuilder
@@ -14,6 +13,7 @@ import slick.jdbc.PostgresProfile.api._
 import slickeffect.Transactor
 import slickeffect.transactor.{config => transactorConfig}
 
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.indexer.config.LorreConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms
@@ -31,9 +31,9 @@ import tech.cryptonomic.conseil.common.rpc.RpcClient
 class BitcoinIndexer(
     lorreConf: LorreConfiguration,
     bitcoinConf: BitcoinConfiguration
-) extends LazyLogging
-    with LorreIndexer
-    with LorreProgressLogging {
+) extends LorreIndexer
+    with LorreProgressLogging
+    with ConseilLogSupport {
 
   /**
     * Executor for the rpc client, timer and to handle stop method.
@@ -95,7 +95,7 @@ class BitcoinIndexer(
               * Currently, it only contains the blocks. But it can be extended to
               * handle multiple computations.
               */
-            IO.delay(logger.info(s"Start Lorre for Bitcoin")) *>
+            IO.delay(logger.info("Start Lorre for Bitcoin")) *>
               bitcoinOperations.loadBlocks(lorreConf.depth).compile.drain
           }
       )

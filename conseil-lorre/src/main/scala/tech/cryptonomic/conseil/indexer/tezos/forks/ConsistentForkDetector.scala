@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.indexer.tezos.forks
 
 import cats._
 import cats.implicits._
-import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.indexer.forks.ForkDetector
 import tech.cryptonomic.conseil.indexer.forks.ForkDetector.SearchBlockId
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BlockData, TezosBlockHash}
@@ -36,7 +36,7 @@ class ConsistentForkDetector[Eff[_]: Monad](
     nodeData: SearchBlockData[Eff],
     maxAttempts: Int
 ) extends ForkDetector[Eff, TezosBlockHash](indexerSearch, nodeSearch)
-    with LazyLogging {
+    with ConseilLogSupport {
 
   /* validate early */
   assert(

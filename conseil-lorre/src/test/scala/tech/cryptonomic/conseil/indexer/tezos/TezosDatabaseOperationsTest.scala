@@ -3,13 +3,9 @@ package tech.cryptonomic.conseil.indexer.tezos
 import java.sql.Timestamp
 import java.time.Instant
 
-import com.typesafe.scalalogging.LazyLogging
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.OptionValues
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
+import org.scalatest.concurrent.IntegrationPatience
 import org.scalacheck.Arbitrary.arbitrary
-import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.common.sql.CustomProfileExtension.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics}
@@ -20,16 +16,13 @@ import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Random
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class TezosDatabaseOperationsTest
-    extends AnyWordSpec
+    extends ConseilSpec
     with TezosDatabaseOperationsTestFixtures
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
-    with Matchers
-    with ScalaFutures
-    with OptionValues
-    with LazyLogging
     with IntegrationPatience {
 
   "The database api" should {
@@ -44,7 +37,7 @@ class TezosDatabaseOperationsTest
 
       val sut = TezosDatabaseOperations
       val indexed = new TezosIndexedDataOperations(dbHandler)
-      val feesToConsider = 1000
+      val feesSelectionWindowInDays = 100
 
       "use the right collation" in {
         val ordered =
@@ -115,7 +108,7 @@ class TezosDatabaseOperationsTest
               row.chainId shouldEqual block.data.chain_id
               row.hash shouldEqual block.data.hash.value
               row.operationsHash shouldEqual block.data.header.operations_hash
-              row.periodKind shouldEqual metadata.map(_.voting_period_kind.toString)
+              row.periodKind shouldEqual metadata.flatMap(_.voting_period_kind).map(_.toString)
               row.currentExpectedQuorum shouldEqual block.votes.quorum
               row.activeProposal shouldEqual block.votes.active.map(_.id)
               row.baker shouldEqual metadata.map(_.baker.value)
@@ -968,33 +961,14 @@ class TezosDatabaseOperationsTest
         )
 
         //check
-        val feesCalculation = sut.calculateAverageFees(ops.head.kind, feesToConsider)
+        //we specify when the computation of fees needs be done, to have the test block reference time in range
+        val feesCalculation =
+          sut.FeesStatistics.calculateAverage(
+            feesSelectionWindowInDays,
+            asOf = testReferenceDateTime.toInstant()
+          )
 
-        dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
-
-      }
-
-      "return None when computing average fees for a kind with no data" in {
-        //generate data
-        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-        val block = generateBlockRows(1, testReferenceTimestamp).head
-        val group = generateOperationGroupRows(block).head
-
-        val fees = Seq.fill(3)(Some(BigDecimal(1)))
-        val ops = wrapFeesWithOperations(fees, block, group)
-
-        val populate = for {
-          _ <- Tables.Blocks += block
-          _ <- Tables.OperationGroups += group
-          ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
-        } yield ids
-
-        dbHandler.run(populate).futureValue should have size (fees.size)
-
-        //check
-        val feesCalculation = sut.calculateAverageFees("undefined", feesToConsider)
-
-        dbHandler.run(feesCalculation).futureValue shouldBe None
+        dbHandler.run(feesCalculation).futureValue.headOption.value shouldEqual expected
 
       }
 
@@ -1038,9 +1012,14 @@ class TezosDatabaseOperationsTest
           level = 0
         )
         //check
-        val feesCalculation = sut.calculateAverageFees(selection.head.kind, feesToConsider)
+        //we specify when the computation of fees needs be done, to have the test block reference time in range
+        val feesCalculation =
+          sut.FeesStatistics.calculateAverage(
+            feesSelectionWindowInDays,
+            asOf = testReferenceDateTime.toInstant()
+          )
 
-        dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
+        dbHandler.run(feesCalculation).futureValue.find(_.kind == ops.head.kind).value shouldEqual expected
 
       }
 

@@ -9,7 +9,6 @@ import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import cats.effect.{ContextShift, IO}
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives.cors
-import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.ConseilApi.NoNetworkEnabledError
 import tech.cryptonomic.conseil.api.config.ConseilAppConfig.CombinedConfiguration
 import tech.cryptonomic.conseil.api.config.NautilusCloudConfiguration
@@ -19,17 +18,23 @@ import tech.cryptonomic.conseil.api.routes.Docs
 import tech.cryptonomic.conseil.api.routes.info.AppInfo
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
 import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.{BitcoinDataOperations, BitcoinDataRoutes}
-import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{EthereumDataOperations, EthereumDataRoutes, QuorumDataRoutes}
+import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{
+  EthereumDataOperations,
+  EthereumDataRoutes,
+  QuorumDataRoutes
+}
 import tech.cryptonomic.conseil.api.routes.platform.data.tezos.{TezosDataOperations, TezosDataRoutes}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.{GenericPlatformDiscoveryOperations, PlatformDiscovery}
 import tech.cryptonomic.conseil.api.security.Security
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.config.Platforms
 import tech.cryptonomic.conseil.common.config.Platforms.BlockchainPlatform
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.sql.DatabaseRunner
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
 
 object ConseilApi {
@@ -43,7 +48,9 @@ object ConseilApi {
 
 class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
     extends EnableCORSDirectives
-    with LazyLogging {
+    with ConseilLogSupport {
+
+  import scala.collection.JavaConverters._
 
   private val transformation = new UnitTransformation(config.metadata)
   private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
@@ -53,7 +60,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
   implicit private val contextShift: ContextShift[IO] = IO.contextShift(dispatcher)
 
   config.nautilusCloud match {
-    case ncc@NautilusCloudConfiguration(true, _, _, _, _, delay, interval) =>
+    case ncc @ NautilusCloudConfiguration(true, _, _, _, _, delay, interval) =>
       system.scheduler.schedule(delay, interval)(Security.updateKeys(ncc))
     case _ => ()
   }
@@ -98,31 +105,34 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
           handleExceptions(loggingExceptionHandler) {
             extractClientIP {
               ip =>
-                recordResponseValues(ip)(mat, correlationId) {
-                  timeoutHandler {
-                    concat(
-                      validateApiKey { _ =>
+                extractStrictEntity(10.seconds) {
+                  ent =>
+                    recordResponseValues(ip, ent.data.utf8String)(mat, correlationId) {
+                      timeoutHandler {
                         concat(
-                          logRequest("Conseil", Logging.DebugLevel) {
-                            AppInfo.route
+                          validateApiKey { _ =>
+                            concat(
+                              logRequest("Conseil", Logging.DebugLevel) {
+                                AppInfo.route
+                              },
+                              logRequest("Metadata Route", Logging.DebugLevel) {
+                                platformDiscovery.route
+                              },
+                              concat(ApiCache.cachedDataEndpoints.map {
+                                case (platform, routes) =>
+                                  logRequest(s"$platform Data Route", Logging.DebugLevel) {
+                                    routes.getRoute ~ routes.postRoute
+                                  }
+                              }.toSeq: _*)
+                            )
                           },
-                          logRequest("Metadata Route", Logging.DebugLevel) {
-                            platformDiscovery.route
-                          },
-                          concat(ApiCache.cachedDataEndpoints.map {
-                            case (platform, routes) =>
-                              logRequest(s"$platform Data Route", Logging.DebugLevel) {
-                                routes.getRoute ~ routes.postRoute
-                              }
-                          }.toSeq: _*)
+                          options {
+                            // Support for CORS pre-flight checks.
+                            complete("Supported methods : GET and POST.")
+                          }
                         )
-                      },
-                      options {
-                        // Support for CORS pre-flight checks.
-                        complete("Supported methods : GET and POST.")
                       }
-                    )
-                  }
+                    }
                 }
             }
           }

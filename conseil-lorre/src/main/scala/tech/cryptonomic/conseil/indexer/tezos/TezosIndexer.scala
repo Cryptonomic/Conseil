@@ -4,11 +4,12 @@ import akka.Done
 import akka.actor.{ActorSystem, Terminated}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
-import com.typesafe.scalalogging.LazyLogging
 import mouse.any._
 import cats.instances.future._
+import cats.syntax.applicative._
 import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, TezosConfiguration}
 import tech.cryptonomic.conseil.common.config._
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
@@ -21,7 +22,7 @@ import tech.cryptonomic.conseil.indexer.config._
 import tech.cryptonomic.conseil.indexer.forks.ForkHandler
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors._
-import tech.cryptonomic.conseil.indexer.tezos.forks.TezosForkInvalidatingAmender
+import tech.cryptonomic.conseil.indexer.tezos.forks.{TezosForkInvalidatingAmender, TezosForkSearchEngine}
 import tech.cryptonomic.conseil.indexer.tezos.processing._
 import tech.cryptonomic.conseil.indexer.tezos.processing.AccountsResetHandler.{AccountResetEvents, UnhandledResetEvents}
 
@@ -29,7 +30,6 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-import tech.cryptonomic.conseil.indexer.tezos.forks.TezosForkSearchEngine
 
 /** Class responsible for indexing data for Tezos BlockChain
   * @param ignoreProcessFailures `true` if non-critical errors while fetchign data should simply resume the indexer logic and retry
@@ -61,15 +61,18 @@ class TezosIndexer private (
     system: ActorSystem,
     materializer: ActorMaterializer,
     dispatcher: ExecutionContext
-) extends LazyLogging
-    with LorreIndexer
+) extends LorreIndexer
     with LorreProgressLogging {
 
+  val featureFlags = lorreConf.enabledFeatures
+
   /** Schedules method for fetching baking rights */
-  if (lorreConf.blockRightsFetching.enabled)
+  if (featureFlags.blockRightsFetchingIsOn) {
+    logger.info("I'm scheduling the concurrent tasks to update baking and endorsing rights")
     system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
       rightsProcessor.writeFutureRights()
     )
+  }
 
   /** Tries to fetch blocks head to verify if connection with Tezos node was successfully established */
   @tailrec
@@ -91,7 +94,6 @@ class TezosIndexer private (
       iteration: Int,
       accountResetEvents: AccountResetEvents
   ): Unit = {
-    val noOp = Future.successful(())
     val processing = for {
       maxLevel <- indexedData.fetchMaxLevel
       reloadedAccountEvents <- processFork(maxLevel)
@@ -99,10 +101,9 @@ class TezosIndexer private (
         reloadedAccountEvents.getOrElse(accountResetEvents)
       )
       _ <- processTezosBlocks(maxLevel)
-      _ <- if (iteration % lorreConf.feeUpdateInterval == 0)
-        TezosFeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
-      else
-        noOp
+      _ <- TezosFeeOperations
+        .processTezosAverageFees(lorreConf.feesAverageTimeWindow)
+        .whenA(iteration % lorreConf.feeUpdateInterval == 0)
       _ <- rightsProcessor.updateRightsTimestamps()
     } yield Some(unhandled)
 
@@ -145,8 +146,8 @@ class TezosIndexer private (
     */
   private def processFork(maxIndexedLevel: BlockLevel): Future[Option[AccountResetEvents]] = {
     lazy val emptyOutcome = Future.successful(Option.empty)
-    //nothing to check if no block was indexed yet
-    if (maxIndexedLevel != indexedData.defaultBlockLevel)
+    //nothing to check if no block was indexed yet or if the feature is off
+    if (featureFlags.forkHandlingIsOn && maxIndexedLevel != indexedData.defaultBlockLevel)
       forkHandler.handleFork(maxIndexedLevel).flatMap {
         case None =>
           logger.debug(s"No fork detected up to $maxIndexedLevel")
@@ -230,19 +231,25 @@ class TezosIndexer private (
 
   override def start(): Unit = {
     checkTezosConnection()
-    val accountResetsToHandle =
-      Await.result(
-        accountsResetHandler.unprocessedResetRequestLevels(lorreConf.chainEvents),
-        atMost = 5.seconds
-      )
-    mainLoop(0, accountResetsToHandle)
+    Await.result(
+      accountsResetHandler
+        .unprocessedResetRequestLevels(lorreConf.chainEvents)
+        .transform(
+          accountResets => mainLoop(0, accountResets),
+          error => {
+            logger.error("Could not get the unprocessed events block levels for this chain network", error)
+            error
+          }
+        ),
+      Duration.Inf
+    )
   }
 
   override def stop(): Future[ShutdownComplete] = terminationSequence()
 
 }
 
-object TezosIndexer extends LazyLogging {
+object TezosIndexer extends ConseilLogSupport {
 
   /** * Creates the Indexer which is dedicated for Tezos BlockChain */
   def fromConfig(
@@ -354,7 +361,7 @@ object TezosIndexer extends LazyLogging {
     implicit val tns: TNSContract =
       conf.tns match {
         case None =>
-          logger.warn("No configuration found to initialize TNS for {}.", selectedNetwork)
+          logger.warn("No configuration found to initialize TNS for the selected network.")
           TNSContract.noContract
         case Some(conf) =>
           TNSContract.fromConfig(conf)
@@ -396,8 +403,9 @@ object TezosIndexer extends LazyLogging {
     val gracefulTermination = () =>
       for {
         _ <- Future.successful(db.close())
-        _: ShutdownComplete <- nodeOperator.node.shutdown()
+        _ = materializer.shutdown()
         _: Terminated <- system.terminate()
+        _: ShutdownComplete <- nodeOperator.node.shutdown()
       } yield ShutdownComplete
 
     new TezosIndexer(

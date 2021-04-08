@@ -2,12 +2,10 @@ package tech.cryptonomic.conseil.common.tezos
 
 import java.time.Instant
 
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.{EitherValues, OptionValues}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class TezosTypesTest extends AnyWordSpec with Matchers with OptionValues with EitherValues {
+class TezosTypesTest extends ConseilSpec {
 
   val sut = TezosTypes
 

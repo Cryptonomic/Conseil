@@ -1,10 +1,10 @@
 package tech.cryptonomic.conseil.indexer.bitcoin
 
 import cats.effect.{Concurrent, Resource}
-import com.typesafe.scalalogging.LazyLogging
 import fs2.Stream
 import slickeffect.Transactor
 
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.config.Platforms.BitcoinBatchFetchConfiguration
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.bitcoin.BitcoinPersistence
@@ -23,7 +23,7 @@ class BitcoinOperations[F[_]: Concurrent](
     persistence: BitcoinPersistence[F],
     tx: Transactor[F],
     batchConf: BitcoinBatchFetchConfiguration
-) extends LazyLogging {
+) extends ConseilLogSupport {
 
   /**
     * Start Lorre with mode defined with [[Depth]].

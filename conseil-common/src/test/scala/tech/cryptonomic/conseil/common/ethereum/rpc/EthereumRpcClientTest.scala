@@ -4,12 +4,11 @@ import scala.concurrent.ExecutionContext
 
 import cats.effect._
 import fs2.Stream
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
 
 import tech.cryptonomic.conseil.common.ethereum.{EthereumFixtures, EthereumStubs}
+import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class EthereumRpcClientTest extends AnyWordSpec with Matchers with EthereumFixtures with EthereumStubs {
+class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with EthereumStubs {
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
@@ -70,6 +69,25 @@ class EthereumRpcClientTest extends AnyWordSpec with Matchers with EthereumFixtu
           .unsafeRunSync() shouldBe List(RpcFixtures.tokenResult)
       }
 
+      "return a token transfer for the given log" in new EthereumClientStubs {
+        Stream(RpcFixtures.logResult)
+          .through(
+            ethereumClientStub(JsonFixtures.callResponse).getTokenTransfer
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.tokenTransferResult)
+      }
+
+      "return a tokens history for the given token transfer" in new EthereumClientStubs {
+        Stream(RpcFixtures.tokenTransferResult)
+          .through(
+            ethereumClientStub(JsonFixtures.callResponse).getTokenBalance(RpcFixtures.blockResult)
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.tokenBalanceFromResult, RpcFixtures.tokenBalanceToResult)
+      }
     }
 
 }

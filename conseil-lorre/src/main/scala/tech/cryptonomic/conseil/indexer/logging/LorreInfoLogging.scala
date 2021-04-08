@@ -1,14 +1,14 @@
 package tech.cryptonomic.conseil.indexer.logging
 
-import com.typesafe.scalalogging.Logger
 import tech.cryptonomic.conseil.BuildInfo
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, PlatformConfiguration}
 import tech.cryptonomic.conseil.common.io.MainOutputs.{showDatabaseConfiguration, showPlatformConfiguration}
 import tech.cryptonomic.conseil.indexer.config.LorreConfiguration
 
-trait LorreInfoLogging {
+trait LorreInfoLogging extends ConseilLogSupport {
 
-  protected def logger: Logger
+  lazy val buildCommit = BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash take 7}]")
 
   /** Shows the main application info
     * @param platform the platform indexer is running for
@@ -16,19 +16,15 @@ trait LorreInfoLogging {
     */
   def displayInfo(platform: String, network: String): Unit =
     logger.info(
-      """
+      s"""
         | ==================================***==================================
-        |  Lorre v.{}
-        |  {}
+        |  Lorre v.${BuildInfo.version}
+        |  $buildCommit
         | ==================================***==================================
         |
-        |  About to start processing data on the {} network for {}
+        |  About to start processing data on the $network network for $platform
         |
-        |""".stripMargin,
-      BuildInfo.version,
-      BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]"),
-      network,
-      platform
+        |""".stripMargin
     )
 
   /** Shows details on the current configuration
@@ -44,31 +40,23 @@ trait LorreInfoLogging {
       ignoreFailures: (String, Option[String])
   ): Unit =
     logger.info(
-      """
+      s"""
         | ==================================***==================================
         | Configuration details
         |
-        | Connecting to {} {}
-        | on {}
+        | Connecting to ${platform.name} ${platformConf.network}
+        | on ${showPlatformConfiguration(platformConf)}
         |
-        | Reference hash for synchronization with the chain: {}
-        | Requested depth of synchronization: {}
-        | Environment set to skip failed download of chain data: {} [\u2020]
+        | Reference hash for synchronization with the chain: ${lorreConf.headHash.getOrElse("head")}
+        | Requested depth of synchronization: ${lorreConf.depth}
+        | Environment set to skip failed download of chain data: ${ignoreFailures._2.getOrElse("no")} [\u2020]
         |
-        | {}
+        | ${showDatabaseConfiguration("lorre")}
         |
-        | [\u2020] To let the process crash on error,
-        |     set an environment variable named {} to "off" or "no"
+        | [\u2020] To let the process resume on error,
+        |     set an environment variable named ${ignoreFailures._1} to "yes" or "true"
         | ==================================***==================================
         |
-      """.stripMargin,
-      platform.name,
-      platformConf.network,
-      showPlatformConfiguration(platformConf),
-      lorreConf.headHash.getOrElse("head"),
-      lorreConf.depth,
-      ignoreFailures._2.getOrElse("yes"),
-      showDatabaseConfiguration("lorre"),
-      ignoreFailures._1
+      """.stripMargin
     )
 }
