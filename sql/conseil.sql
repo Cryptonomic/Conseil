@@ -706,6 +706,10 @@ CREATE INDEX ix_balance_updates_account_id ON tezos.balance_updates USING btree 
 
 CREATE INDEX ix_balance_updates_block_level ON tezos.balance_updates USING btree (block_level);
 
+-- Index: ix_operations_block_level
+
+CREATE INDEX ix_operations_block_level ON tezos.operations USING btree (block_level ASC NULLS LAST) TABLESPACE pg_default;
+
 --
 -- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
 --
