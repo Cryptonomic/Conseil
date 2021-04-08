@@ -706,7 +706,7 @@ CREATE INDEX ix_balance_updates_account_id ON tezos.balance_updates USING btree 
 
 CREATE INDEX ix_balance_updates_block_level ON tezos.balance_updates USING btree (block_level);
 
--- Index: ix_operations_block_level
+-- Index: ix_operations_block_level_delegate
 
 CREATE INDEX ix_operations_block_level_delegate
     ON tezos.operations USING btree
