@@ -213,11 +213,26 @@ object TezosTypes {
     "double_baking_evidence",
     "endorsement",
     "proposals",
-    "ballot"
+    "ballot",
+    "endorsement_with_slot"
+  )
+
+  final case class Operations(
+      kind: String,
+      level: BlockLevel
+  )
+  final case class EndorsementInternalObject(
+      branch: String,
+      operations: Operations
   )
 
   final case class Endorsement(
       level: BlockLevel,
+      metadata: EndorsementMetadata
+  ) extends Operation
+
+  final case class EndorsementWithSlot(
+      endorsement: EndorsementInternalObject,
       metadata: EndorsementMetadata
   ) extends Operation
 

@@ -6,6 +6,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   Block,
   BlockHeaderMetadata,
   Endorsement,
+  EndorsementWithSlot,
   EndorsingRights,
   RightsFetchKey
 }
@@ -80,15 +81,20 @@ class BakingAndEndorsingRightsProcessor(
 
     val endorsementsForBlock = fetchingResults.map {
       case (Block(data, operations, _), _) =>
-        data.hash -> operations.flatMap(_.contents.collect { case e: Endorsement => e })
+        data.hash -> operations.flatMap(_.contents.collect {
+              case e: EndorsementWithSlot => e
+              case e: Endorsement => e
+            })
     }.toMap.withDefaultValue(List.empty)
 
     endorsingRights.map {
       case (fetch @ RightsFetchKey(fetchHash, _, _), rightsList) if endorsementsForBlock.contains(fetchHash) =>
         val updatedRights = rightsList.map { rights =>
-          val endorsedLevel = endorsementsForBlock(fetchHash).collect {
-            case endorsement if endorsement.metadata.delegate.value == rights.delegate => endorsement.level
-          }.headOption
+          val endorsedLevel = endorsementsForBlock(fetchHash).collectFirst {
+            case endorsement: EndorsementWithSlot if endorsement.metadata.delegate.value == rights.delegate =>
+              endorsement.endorsement.operations.level
+            case endorsement: Endorsement if endorsement.metadata.delegate.value == rights.delegate => endorsement.level
+          }
           rights.copy(endorsedBlock = endorsedLevel)
         }
         fetch -> updatedRights

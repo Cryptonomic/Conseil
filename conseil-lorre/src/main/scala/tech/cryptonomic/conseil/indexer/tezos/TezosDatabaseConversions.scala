@@ -236,6 +236,7 @@ private[tezos] object TezosDatabaseConversions {
   implicit val operationToOperationsRow = new Conversion[Id, (Block, OperationHash, Operation), Tables.OperationsRow] {
     override def convert(from: (Block, OperationHash, Operation)) =
       (convertEndorsement orElse
+          convertEndorsementWithSlot orElse
           convertNonceRevelation orElse
           convertActivateAccount orElse
           convertReveal orElse
@@ -245,6 +246,32 @@ private[tezos] object TezosDatabaseConversions {
           convertBallot orElse
           convertProposals orElse
           convertUnhandledOperations)(from)
+  }
+
+  private val convertEndorsementWithSlot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
+    case (block, groupHash, EndorsementWithSlot(endorsement, metadata)) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
+      Tables.OperationsRow(
+        operationId = 0,
+        operationGroupHash = groupHash.value,
+        kind = "endorsement_with_slot",
+        level = Some(endorsement.operations.level),
+        delegate = Some(metadata.delegate.value),
+        slots = Some(metadata.slots).map(concatenateToString),
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false,
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        branch = block.operationGroups.find(h => h.hash == groupHash).map(_.branch.value),
+        numberOfSlots = Some(metadata.slots.length),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time,
+        forkId = Fork.mainForkId
+      )
   }
 
   private val convertEndorsement: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
