@@ -86,21 +86,22 @@ class EthereumClient[F[_]: Concurrent](
     */
   def getContract(batchSize: Int): Pipe[F, TransactionReceipt, Contract] =
     stream =>
-      stream.flatMap { receipt =>
-        stream.collect {
-          case receipt if receipt.contractAddress.isDefined =>
-            EthGetCode.request(receipt.contractAddress.get, receipt.blockNumber)
-        }.through(client.stream[EthGetCode.Params, Bytecode](batchSize))
-          .map(
-            bytecode =>
-              Contract(
-                address = receipt.contractAddress.get,
-                blockHash = receipt.blockHash,
-                blockNumber = receipt.blockNumber,
-                bytecode = bytecode
-              )
-          )
-      }
+      stream
+        .filter(_.contractAddress.isDefined)
+        .flatMap { receipt =>
+          Stream
+            .emit(EthGetCode.request(receipt.contractAddress.get, receipt.blockNumber))
+            .through(client.stream[EthGetCode.Params, Bytecode](batchSize))
+            .map(
+              bytecode =>
+                Contract(
+                  address = receipt.contractAddress.get,
+                  blockHash = receipt.blockHash,
+                  blockNumber = receipt.blockNumber,
+                  bytecode = bytecode
+                )
+            )
+        }
 
   /**
     * Get token information from given contract.
