@@ -2,8 +2,7 @@ package tech.cryptonomic.conseil.smoke.tests.suites
 
 import java.util.concurrent.Executors
 
-import cats.effect.{IO, Resource}
-import com.typesafe.config.ConfigFactory
+import cats.effect.IO
 import io.circe.{parser, Json}
 import org.http4s.circe._
 import org.http4s.client.blaze._
@@ -15,69 +14,22 @@ import tech.cryptonomic.conseil.smoke.tests.RegressionFixtures
 
 import scala.Console.{GREEN, RED, RESET}
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-import scala.sys.process._
-import scala.util.Try
 import scala.annotation.tailrec
 import io.circe.ACursor
 
 /** Currently can be used to test any conseil instance that loaded blocks levels 1 to 5000
   * against predefined expectations on the responses
   */
-class TezosRegressionSuite(configfile: String, syncNetwork: Option[String])
+class TezosRegressionSuite(val configfile: String, val syncNetwork: Option[String])
     extends RegressionSuite
     with RegressionFixtures {
 
   /* We're currently assuming running on carthage up to a given level
    * we should eventually pass-in everything as a composite argument, like a csv?
    */
-  private val referenceBlockHash = "BKosYnQbd4zhakKey6YdjyC96sZJ8K11yw8FJWbHAgfJ1yG4EFC" // block at level 5000
-  private val depth = "5000"
-
-  //this is supposed to throw an error if there's anything wrong, and be catched by the companion smart constructor
-  private val apiKey = {
-    val key = Try(
-      ConfigFactory.load().getStringList("conseil.security.api-keys.keys").get(0)
-    )
-    key.failed.foreach(_ => println("No apiKey found in configuration, I can't test conseil api without"))
-    key.get
-  }
-
-  object Setup {
-    implicit val ioShift = IO.contextShift(scala.concurrent.ExecutionContext.global)
-    val timer = IO.timer(scala.concurrent.ExecutionContext.global)
-
-    /* We might wanna start with only 10k blocks */
-    private def runLorre(network: String) =
-      Process(
-        command = Seq("sbt", s"runLorre -v -d $depth -h $referenceBlockHash tezos $network"),
-        cwd = None,
-        extraEnv = "SBT_OPTS" -> s"-Dconfig.file=$configfile"
-      )
-    private val runApi =
-      Process(
-        command = Seq("sbt", "runApi -v"),
-        cwd = None,
-        extraEnv = "SBT_OPTS" -> s"-Dconfig.file=$configfile"
-      )
-
-    private def syncData(network: String) =
-      IO(runLorre(network).!.ensuring(_ == 0, "lorre failed to load correctly"))
-
-    private def startConseil: IO[Process] =
-      for {
-        _ <- if (syncNetwork.nonEmpty) syncData(syncNetwork.get) else IO(0)
-        proc <- IO(runApi.run())
-        _ <- IO(println("waiting for conseil to start"))
-        _ <- timer.sleep(20.seconds)
-      } yield proc
-
-    val conseilProcess = Resource.make(startConseil) { conseil =>
-      IO(println(s"Stopping conseil process $conseil")) *>
-        IO(conseil.destroy())
-    }
-
-  }
+  val syncPlatform = "tezos"
+  val referenceBlockHash = "BKosYnQbd4zhakKey6YdjyC96sZJ8K11yw8FJWbHAgfJ1yG4EFC" // block at level 5000
+  val depth = "5000"
 
   private val pool = Executors.newCachedThreadPool()
   private val clientExecution: ExecutionContext = ExecutionContext.fromExecutor(pool)

@@ -47,6 +47,24 @@ object EthereumRpcCommands {
   }
 
   /**
+    * `eth_getBlockByHash` Ethereum JSON-RPC api method.
+    * If verbosity is true it returns the full transaction objects,
+    * if false only the hashes of the transactions.
+    * We only use verbosity=false in Lorre.
+    */
+  object EthGetBlockByHash extends EthereumRpcMethod {
+    val rpcMethod = "eth_getBlockByHash"
+    case class Params(hash: String, verbosity: Boolean)
+    def request(hash: String) = RpcRequest("2.0", rpcMethod, Params(hash, false), s"egbbh_$hash")
+
+    implicit val encodeParams: Encoder[Params] = (params: Params) =>
+      Json.arr(
+        Json.fromString(params.hash),
+        Json.fromBoolean(params.verbosity)
+      )
+  }
+
+  /**
     * `eth_getTransactionByHash` Ethereum JSON-RPC api method.
     * Returns the information about a transaction requested by transaction hash.
     */
