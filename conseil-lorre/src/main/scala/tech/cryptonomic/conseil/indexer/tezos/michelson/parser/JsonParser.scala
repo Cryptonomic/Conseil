@@ -75,8 +75,8 @@ object JsonParser {
       annots: Option[List[String]] = None
   ) extends JsonExpression {
     private def reformatPairListsAsNestedPairs(expr: JsonExpression): JsonExpression = expr match {
-      case xx @ JsonType("pair", Some(_ :: _ :: Nil), _) =>
-        xx
+      case expr @ JsonType("pair", Some(_ :: _ :: Nil), _) =>
+        expr
       case JsonType("pair", Some(x :: y :: xs), annots) =>
         JsonType(
           "pair",
@@ -88,7 +88,7 @@ object JsonParser {
           ),
           annots
         )
-      case x => x
+      case idExpr => idExpr
     }
 
     override def toMichelsonExpression =
