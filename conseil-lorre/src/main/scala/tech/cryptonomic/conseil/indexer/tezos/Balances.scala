@@ -36,6 +36,8 @@ object OperationBalances {
     Getter[BlockTagged[OP], Map[BlockTagged[Label], List[BalanceUpdate]]] {
       case b: BlockTagged[OP] =>
         b.content match {
+          case e: EndorsementWithSlot =>
+            Map(b.updateContent(OPERATION_SOURCE) -> e.metadata.balance_updates)
           case e: Endorsement =>
             Map(b.updateContent(OPERATION_SOURCE) -> e.metadata.balance_updates)
           case nr: SeedNonceRevelation =>
