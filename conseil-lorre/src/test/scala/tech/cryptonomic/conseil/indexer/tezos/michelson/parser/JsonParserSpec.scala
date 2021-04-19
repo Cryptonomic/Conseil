@@ -740,4 +740,56 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         )
       )
     }
+
+  it should "correctly transform pair list to nested pairs" in {
+      val json =
+        """{
+        |   "prim":"pair",
+        |   "args":[
+        |      {
+        |         "prim":"address",
+        |         "annots":[
+        |            "%contract"
+        |         ]
+        |      },
+        |      {
+        |         "prim":"string",
+        |         "annots":[
+        |            "%counterAsset"
+        |         ]
+        |      },
+        |      {
+        |         "prim":"nat",
+        |         "annots":[
+        |            "%decimals"
+        |         ]
+        |      }
+        |   ]
+        |}""".stripMargin
+
+      //pair ( address %contract ) ( pair ( string %counterAsset ) ( nat %decimals ) )
+
+      parse[MichelsonExpression](json) should equal(
+        Right(
+          MichelsonType(
+            "pair",
+            List(
+              MichelsonType(
+                "address",
+                List.empty,
+                List("%contract")
+              ),
+              MichelsonType(
+                "pair",
+                List(
+                  MichelsonType("string", List.empty, List("%counterAsset")),
+                  MichelsonType("nat", List.empty, List("%decimals"))
+                )
+              )
+            )
+          )
+        )
+      )
+    }
+
 }

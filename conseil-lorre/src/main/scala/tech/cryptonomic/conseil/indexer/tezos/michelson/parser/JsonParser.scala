@@ -74,12 +74,33 @@ object JsonParser {
       args: Option[List[EmbeddedElement]],
       annots: Option[List[String]] = None
   ) extends JsonExpression {
+    private def reformatPairListsAsNestedPairs(expr: JsonExpression): JsonExpression = expr match {
+      case expr @ JsonType("pair", Some(_ :: _ :: Nil), _) =>
+        expr
+      case JsonType("pair", Some(x :: y :: xs), annots) =>
+        JsonType(
+          "pair",
+          Some(
+            List(
+              x,
+              Left(Left(JsonType("pair", Some(y :: xs), annots)))
+            )
+          ),
+          annots
+        )
+      case idExpr => idExpr
+    }
+
     override def toMichelsonExpression =
-      MichelsonType(
-        prim,
-        args.getOrElse(List.empty).map(toMichelsonElement),
-        annots.getOrElse(List.empty)
-      )
+      reformatPairListsAsNestedPairs(this) match {
+        case JsonType(prim, args, annots) =>
+          MichelsonType(
+            prim,
+            args.getOrElse(List.empty).map(toMichelsonElement),
+            annots.getOrElse(List.empty)
+          )
+      }
+
   }
 
   /*
