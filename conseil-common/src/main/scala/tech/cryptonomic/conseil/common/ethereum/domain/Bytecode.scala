@@ -2,6 +2,8 @@ package tech.cryptonomic.conseil.common.ethereum.domain
 
 import tech.cryptonomic.conseil.common.ethereum.Utils
 
+import java.security.MessageDigest
+
 /**
   * Ethereum contract bytecode disassembler.
   * It allows to chech if given contract is ERC20 or ERC721.
@@ -13,6 +15,12 @@ case class Bytecode(value: String) {
     * Bytecode without "0x" prefix.
     */
   lazy val normalized = value.stripPrefix("0x")
+
+  /**
+    * SHA-1 hash of normalized bytecode
+    */
+  lazy val hash: String =
+    "0x" + MessageDigest.getInstance("SHA-1").digest(normalized.getBytes("UTF-8")).map("%02x".format(_)).mkString
 
   /**
     * To turn the compiled bytecode into a list of operations,

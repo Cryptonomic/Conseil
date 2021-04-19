@@ -118,6 +118,11 @@ trait EthereumDataRoutesCreator
   private val accountsByAddressRoute: Route =
     delegateCall(ethereumAccountByAddressEndpoint)(operations.fetchAccountByAddress)
 
+  /** V2 Route implementation for accounts history endpoint */
+  private val accountsHistoryRoute: Route = delegateCall(ethereumAccountsHistoryEndpoint)(
+    filter => operations.fetchAccountsHistory(filter.toQuery.withLimitCap(maxQueryResultSize))
+  )
+
   /**
     * Helper method, which validates the network and delegates the call for specific endpoint to the given method `f`.
     * Note that this method works only for Tuple2 input parameters in the `endpoint`.
@@ -155,7 +160,8 @@ trait EthereumDataRoutesCreator
       tokenTransfersRoute,
       tokensHistoryRoute,
       accountsRoute,
-      accountsByAddressRoute
+      accountsByAddressRoute,
+      accountsHistoryRoute
     )
 
   /** Function for validation of the platform and network with flatten */

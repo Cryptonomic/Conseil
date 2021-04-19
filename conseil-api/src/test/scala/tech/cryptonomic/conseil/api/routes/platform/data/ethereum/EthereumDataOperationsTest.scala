@@ -98,33 +98,10 @@ class EthereumDataOperationsTest
         }
       }
 
-      "return proper contracts, while fetching all contracts" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Contracts ++= contracts).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchContracts(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
-      }
-
-      "return proper tokens, while fetching all tokens" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Tokens ++= tokens).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchTokens(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
-      }
-
       "return proper token transfers, while fetching all token transfers" in {
         // given
         dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Tokens ++= tokens).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
 
         whenReady(sut.fetchTokenTransfers(Query.empty)) { result =>
@@ -136,7 +113,6 @@ class EthereumDataOperationsTest
         // given
         dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Tokens ++= tokens).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
         dbHandler.run(Tables.TokensHistory ++= tokenBalances).isReadyWithin(5.seconds) shouldBe true
 
@@ -147,24 +123,20 @@ class EthereumDataOperationsTest
 
       "return proper number of accounts, while fetching all of accounts" in {
         // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Accounts ++= accounts).isReadyWithin(5.seconds) shouldBe true
 
         whenReady(sut.fetchAccounts(Query.empty)) { result =>
-          result.value.size shouldBe 2
+          result.value.size shouldBe 3
         }
       }
 
       "return proper account by address" in {
         // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+        dbHandler.run(Tables.Accounts ++= accounts).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchAccountByAddress("to")) { result =>
-          result.value should (contain key "address" and contain value transaction1.destination)
-          result.value should (contain key "value" and contain value Some(
-            convertAndScale(transaction2.amount + transaction3.amount, 2)
-          ))
+        whenReady(sut.fetchAccountByAddress("0x3")) { result =>
+          result.value should (contain key "token_standard" and contain value account3.tokenStandard)
+          result.value should (contain key "balance" and contain value Some(convertAndScale(account3.balance, 2)))
 
           // Since we are getting data for QueryResponse in generic way,
           // we are accessing Java API which returns java data types.
@@ -174,10 +146,11 @@ class EthereumDataOperationsTest
         }
       }
 
-      "correctly use query on tempotal tokens_history" in {
+      "correctly use query on temporal tokens_history" in {
 
         val tokensHistoryRow = TokensHistoryRow(
           tokenAddress = "0x1",
+          blockHash = "0x1",
           blockNumber = 1,
           transactionHash = "0x1",
           accountAddress = "0x0",
@@ -214,10 +187,11 @@ class EthereumDataOperationsTest
 
       }
 
-      "get the balance of a token at a specific timestamp there there are multiple entitioes for given account" in {
+      "get the balance of a token at a specific timestamp there there are multiple entities for given account" in {
         val tokensHistoryRows = List(
           TokensHistoryRow(
             tokenAddress = "0x1",
+            blockHash = "0x1",
             blockNumber = 1,
             transactionHash = "0x1",
             accountAddress = "0x0",
@@ -226,6 +200,7 @@ class EthereumDataOperationsTest
           ),
           TokensHistoryRow(
             tokenAddress = "0x1",
+            blockHash = "0x2",
             blockNumber = 2,
             transactionHash = "0x1",
             accountAddress = "0x0",
@@ -234,6 +209,7 @@ class EthereumDataOperationsTest
           ),
           TokensHistoryRow(
             tokenAddress = "0x1",
+            blockHash = "0x3",
             blockNumber = 3,
             transactionHash = "0x1",
             accountAddress = "0x0",
@@ -274,6 +250,7 @@ class EthereumDataOperationsTest
         val tokensHistoryRows = List(
           TokensHistoryRow(
             tokenAddress = "0x1",
+            blockHash = "0x1",
             blockNumber = 1,
             transactionHash = "0x1",
             accountAddress = "0x1",
@@ -282,6 +259,7 @@ class EthereumDataOperationsTest
           ),
           TokensHistoryRow(
             tokenAddress = "0x1",
+            blockHash = "0x2",
             blockNumber = 2,
             transactionHash = "0x1",
             accountAddress = "0x2",
@@ -290,6 +268,7 @@ class EthereumDataOperationsTest
           ),
           TokensHistoryRow(
             tokenAddress = "0x1",
+            blockHash = "0x3",
             blockNumber = 3,
             transactionHash = "0x1",
             accountAddress = "0x3",
@@ -325,6 +304,156 @@ class EthereumDataOperationsTest
           ),
           Map(
             "account_address" -> Some("0x2"),
+            "block_number" -> Some(2),
+            "asof" -> Some(new Timestamp(2)),
+            "r" -> Some(1)
+          )
+        )
+      }
+
+      "correctly use query on temporal accounts_history" in {
+
+        val accountsHistoryRow = AccountsHistoryRow(
+          address = "0x1",
+          blockHash = "0x1",
+          blockNumber = 1,
+          balance = BigDecimal("1.0"),
+          asof = new Timestamp(1)
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.AccountsHistory += accountsHistoryRow
+          found <- sut.selectWithPredicates(
+            "ethereum",
+            table = Tables.AccountsHistory.baseTableRow.tableName,
+            columns = List(SimpleField("address"), SimpleField("block_number"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("address"),
+            snapshot = Some(Snapshot("asof", new Timestamp(1))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "address" -> Some("0x1"),
+            "block_number" -> Some(1),
+            "asof" -> Some(new Timestamp(1)),
+            "r" -> Some(1)
+          )
+        )
+      }
+
+      "get the balance of an account at a specific timestamp there there are multiple entities for given account" in {
+        val accountsHistoryRows = List(
+          AccountsHistoryRow(
+            address = "0x1",
+            blockHash = "0x1",
+            blockNumber = 1,
+            balance = BigDecimal("1.0"),
+            asof = new Timestamp(1)
+          ),
+          AccountsHistoryRow(
+            address = "0x1",
+            blockHash = "0x2",
+            blockNumber = 2,
+            balance = BigDecimal("2.0"),
+            asof = new Timestamp(2)
+          ),
+          AccountsHistoryRow(
+            address = "0x1",
+            blockHash = "0x3",
+            blockNumber = 3,
+            balance = BigDecimal("3.0"),
+            asof = new Timestamp(3)
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.AccountsHistory ++= accountsHistoryRows
+          found <- sut.selectWithPredicates(
+            "ethereum",
+            table = Tables.AccountsHistory.baseTableRow.tableName,
+            columns = List(SimpleField("address"), SimpleField("block_number"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("address"),
+            snapshot = Some(Snapshot("asof", new Timestamp(2))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "address" -> Some("0x1"),
+            "block_number" -> Some(2),
+            "asof" -> Some(new Timestamp(2)),
+            "r" -> Some(1)
+          )
+        )
+      }
+
+      "get the accounts balance of an account at a specific timestamp" in {
+        val accountsHistoryRows = List(
+          AccountsHistoryRow(
+            address = "0x1",
+            blockHash = "0x1",
+            blockNumber = 1,
+            balance = BigDecimal("1.0"),
+            asof = new Timestamp(1)
+          ),
+          AccountsHistoryRow(
+            address = "0x2",
+            blockHash = "0x2",
+            blockNumber = 2,
+            balance = BigDecimal("2.0"),
+            asof = new Timestamp(2)
+          ),
+          AccountsHistoryRow(
+            address = "0x1",
+            blockHash = "0x3",
+            blockNumber = 3,
+            balance = BigDecimal("3.0"),
+            asof = new Timestamp(3)
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.AccountsHistory ++= accountsHistoryRows
+          found <- sut.selectWithPredicates(
+            "ethereum",
+            table = Tables.AccountsHistory.baseTableRow.tableName,
+            columns = List(SimpleField("address"), SimpleField("block_number"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("address"),
+            snapshot = Some(Snapshot("asof", new Timestamp(2))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "address" -> Some("0x1"),
+            "block_number" -> Some(1),
+            "asof" -> Some(new Timestamp(1)),
+            "r" -> Some(1)
+          ),
+          Map(
+            "address" -> Some("0x2"),
             "block_number" -> Some(2),
             "asof" -> Some(new Timestamp(2)),
             "r" -> Some(1)
@@ -379,6 +508,7 @@ object EthereumDataOperationsTest {
       hash = "hash",
       blockHash = "blockHash",
       blockNumber = 0,
+      timestamp = Some(Timestamp.valueOf("2020-01-01 00:00:00")),
       source = "from",
       gas = BigDecimal("1"),
       gasPrice = BigDecimal("1"),
@@ -395,6 +525,7 @@ object EthereumDataOperationsTest {
       hash = "hash1",
       blockHash = block1.hash,
       blockNumber = block1.level,
+      timestamp = Some(block1.timestamp),
       source = "from1",
       destination = Some("to"),
       transactionIndex = 1,
@@ -403,7 +534,8 @@ object EthereumDataOperationsTest {
     val transaction2: TransactionsRow = defaultTransaction.copy(
       hash = "hash2",
       blockHash = block2.hash,
-      blockNumber = block3.level,
+      blockNumber = block2.level,
+      timestamp = Some(block2.timestamp),
       source = "from1",
       destination = Some("to"),
       transactionIndex = 2,
@@ -412,7 +544,8 @@ object EthereumDataOperationsTest {
     val transaction3: TransactionsRow = defaultTransaction.copy(
       hash = "hash3",
       blockHash = block3.hash,
-      blockNumber = block2.level,
+      blockNumber = block3.level,
+      timestamp = Some(block3.timestamp),
       source = "from2",
       destination = Some("to3"),
       transactionIndex = 3,
@@ -426,6 +559,7 @@ object EthereumDataOperationsTest {
           address = "address",
           blockHash = block.hash,
           blockNumber = block.level,
+          timestamp = Some(block.timestamp),
           data = "data",
           logIndex = 0,
           removed = false,
@@ -445,6 +579,7 @@ object EthereumDataOperationsTest {
           transactionIndex = transaction.transactionIndex,
           blockHash = block.hash,
           blockNumber = block.level,
+          timestamp = Some(block.timestamp),
           contractAddress = Some("0x1"),
           cumulativeGasUsed = BigDecimal("1.0"),
           gasUsed = BigDecimal("1.0"),
@@ -457,39 +592,15 @@ object EthereumDataOperationsTest {
     val receipt3: ReceiptsRow = defaultReceipt(block3, transaction3)
     val receipts: Seq[ReceiptsRow] = List(receipt1, receipt2, receipt3)
 
-    private val defaultContract = (block: BlocksRow) =>
-      ContractsRow(
-        address = "0x0",
-        blockHash = block.hash,
-        blockNumber = block.level,
-        bytecode = "0x0"
-      )
-    val contract1: ContractsRow = defaultContract(block1).copy(address = "0x1")
-    val contract2: ContractsRow = defaultContract(block2).copy(address = "0x2")
-    val contract3: ContractsRow = defaultContract(block3).copy(address = "0x3")
-    val contracts: Seq[ContractsRow] = List(contract1, contract2, contract3)
-
-    private val defaultToken = (block: BlocksRow) =>
-      TokensRow(
-        address = "0x1",
-        blockHash = block.hash,
-        blockNumber = block.level,
-        name = "token",
-        symbol = "symbol",
-        decimals = "0x0",
-        totalSupply = "0x0"
-      )
-    val token1: TokensRow = defaultToken(block1).copy(address = "0x1")
-    val token2: TokensRow = defaultToken(block2).copy(address = "0x2")
-    val token3: TokensRow = defaultToken(block3).copy(address = "0x3")
-    val tokens: Seq[TokensRow] = List(token1, token2, token3)
-
     private val defaultTokenTransfer =
       (block: BlocksRow, transaction: TransactionsRow) =>
         TokenTransfersRow(
           tokenAddress = "0x1",
+          blockHash = block.hash,
           blockNumber = block.level,
+          timestamp = Some(block.timestamp),
           transactionHash = transaction.hash,
+          logIndex = 0,
           fromAddress = "0x0",
           toAddress = "0x0",
           value = 1.0
@@ -506,6 +617,7 @@ object EthereumDataOperationsTest {
       (block: BlocksRow, transaction: TransactionsRow) =>
         TokensHistoryRow(
           tokenAddress = "0x1",
+          blockHash = block.hash,
           blockNumber = block.level,
           transactionHash = transaction.hash,
           accountAddress = "0x0",
@@ -519,5 +631,33 @@ object EthereumDataOperationsTest {
     val tokenBalance3: TokensHistoryRow =
       defaultTokenBalance(block3, transaction3).copy(accountAddress = "0x5")
     val tokenBalances: Seq[TokensHistoryRow] = List(tokenBalance1, tokenBalance2, tokenBalance3)
+
+    private val defaultAccount =
+      (block: BlocksRow, transaction: TransactionsRow) =>
+        AccountsRow(
+          address = transaction.source,
+          blockHash = transaction.blockHash,
+          blockNumber = transaction.blockNumber,
+          timestamp = Some(block.timestamp),
+          balance = BigDecimal("1.0")
+        )
+    val account1: AccountsRow =
+      defaultAccount(block1, transaction1).copy(address = "0x1", balance = BigDecimal("1.0"))
+    val account2: AccountsRow =
+      defaultAccount(block2, transaction3).copy(address = "0x2", balance = BigDecimal("2.0"))
+    val account3: AccountsRow =
+      defaultAccount(block3, transaction3).copy(
+        address = "0x3",
+        balance = BigDecimal("3.0"),
+        bytecode = Some("0x0"),
+        bytecodeHash = Some("0x0"),
+        tokenStandard = Some("ERC20"),
+        name = Some("name"),
+        symbol = Some("SYM"),
+        decimals = Some("18"),
+        totalSupply = Some("100")
+      )
+    val accounts: Seq[AccountsRow] = List(account1, account2, account3)
+
   }
 }

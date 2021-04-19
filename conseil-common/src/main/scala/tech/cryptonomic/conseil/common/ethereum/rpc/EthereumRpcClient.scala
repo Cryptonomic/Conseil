@@ -5,9 +5,15 @@ import fs2.{Pipe, Stream}
 import io.circe.generic.auto._
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.circe.CirceEntityEncoder._
-
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
-import tech.cryptonomic.conseil.common.ethereum.domain.{Bytecode, Contract, Token, TokenBalance, TokenTransfer}
+import tech.cryptonomic.conseil.common.ethereum.domain.{
+  Account,
+  Bytecode,
+  Contract,
+  TokenBalance,
+  TokenStandards,
+  TokenTransfer
+}
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumRpcCommands._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction, TransactionReceipt}
@@ -104,45 +110,18 @@ class EthereumClient[F[_]: Concurrent](
         }
 
   /**
-    * Get token information from given contract.
-    */
-  def getTokenInfo: Pipe[F, Contract, Token] =
-    stream =>
-      stream.flatMap { contract =>
-        stream
-          .map(
-            contract =>
-              Seq("name", "symbol", "decimals", "totalSupply")
-                .map(f => EthCall.request(contract.blockNumber, contract.address, s"0x${Utils.keccak(s"$f()")}"))
-          )
-          .flatMap(Stream.emits)
-          .through(client.stream[EthCall.Params, String](batchSize = 1))
-          .chunkN(4)
-          .map(_.toList)
-          .collect {
-            case name :: symbol :: decimals :: totalSupply :: Nil =>
-              Token(
-                address = contract.address,
-                blockHash = contract.blockHash,
-                blockNumber = contract.blockNumber,
-                name = Utils.hexToString(name),
-                symbol = Utils.hexToString(symbol),
-                decimals = decimals,
-                totalSupply = totalSupply
-              )
-          }
-      }
-
-  /**
     * Extract token transfers from log
     */
-  def getTokenTransfer: Pipe[F, Log, TokenTransfer] =
+  def getTokenTransfer(block: Block): Pipe[F, Log, TokenTransfer] =
     stream =>
       stream.map { log =>
         TokenTransfer(
           tokenAddress = log.address,
+          blockHash = log.blockHash,
           blockNumber = Integer.decode(log.blockNumber),
+          timestamp = block.timestamp,
           transactionHash = log.transactionHash,
+          logIndex = log.logIndex,
           fromAddress = log.topics(1),
           toAddress = log.topics(2),
           value = Utils.hexStringToBigDecimal(log.data)
@@ -176,6 +155,7 @@ class EthereumClient[F[_]: Concurrent](
             case (address, balance) =>
               TokenBalance(
                 accountAddress = address,
+                blockHash = tokenTransfer.blockHash,
                 blockNumber = tokenTransfer.blockNumber,
                 transactionHash = tokenTransfer.transactionHash,
                 tokenAddress = tokenTransfer.tokenAddress,
@@ -184,6 +164,89 @@ class EthereumClient[F[_]: Concurrent](
               )
           }
 
+      }
+
+  /**
+    * Get account balance at given block number from transaction
+    *
+    */
+  def getAccountBalance(block: Block): Pipe[F, Transaction, Account] =
+    stream =>
+      stream.flatMap { transaction =>
+        Stream
+          .emits(Seq(Some(transaction.from), transaction.to).flatten)
+          .flatMap { address =>
+            Stream
+              .emit(address)
+              .map(addr => EthGetBalance.request(addr, transaction.blockNumber))
+              .through(client.stream[EthGetBalance.Params, String](batchSize = 1))
+              .map(balance => (address, balance))
+          }
+          .map {
+            case (address, balance) =>
+              Account(
+                address,
+                transaction.blockHash,
+                transaction.blockNumber,
+                timestamp = block.timestamp,
+                Utils.hexStringToBigDecimal(balance)
+              )
+          }
+      }
+
+  /**
+    * Get contract account balance at given block number from transaction
+    *
+    */
+  def getContractBalance(block: Block): Pipe[F, Contract, Account] =
+    stream =>
+      stream.flatMap { contract =>
+        Stream
+          .emit(contract.address)
+          .map(addr => EthGetBalance.request(addr, contract.blockNumber))
+          .through(client.stream[EthGetBalance.Params, String](batchSize = 1))
+          .map { balance =>
+            Account(
+              contract.address,
+              contract.blockHash,
+              contract.blockNumber,
+              timestamp = block.timestamp,
+              Utils.hexStringToBigDecimal(balance),
+              bytecode = Some(contract.bytecode),
+              tokenStandard = (contract.bytecode.isErc20, contract.bytecode.isErc721) match {
+                case (true, false) => Some(TokenStandards.ERC20)
+                case (false, true) => Some(TokenStandards.ERC721)
+                case _ => None
+              }
+            )
+          }
+      }
+
+  /**
+    * Add token info for contract address implementing ERC20 or ERC721
+    *
+    */
+  def addTokenInfo: Pipe[F, Account, Account] =
+    stream =>
+      stream.flatMap {
+        case token if token.tokenStandard.isDefined =>
+          Stream
+            .emits(Seq("name", "symbol", "decimals", "totalSupply"))
+            .map(f => EthCall.request(token.blockNumber, token.address, s"0x${Utils.keccak(s"$f()")}"))
+            .through(client.stream[EthCall.Params, String](batchSize = 1))
+            .chunkN(4)
+            .map(_.toList)
+            .collect {
+              case name :: symbol :: decimals :: totalSupply :: Nil =>
+                token.copy(
+                  name = Some(name),
+                  symbol = Some(symbol),
+                  decimals = Some(decimals),
+                  totalSupply = Some(totalSupply)
+                )
+            }
+
+        case account => Stream.emit(account)
       }
 }
 

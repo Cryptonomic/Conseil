@@ -902,6 +902,7 @@ CREATE TABLE ethereum.transactions (
   hash text NOT NULL PRIMARY KEY,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
+  timestamp timestamp without time zone,
   source text NOT NULL, -- from
   gas numeric NOT NULL,
   gas_price numeric NOT NULL,
@@ -924,6 +925,7 @@ CREATE TABLE ethereum.receipts (
   transaction_index integer NOT NULL,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
+  timestamp timestamp without time zone,
   contract_address text,
   cumulative_gas_used numeric NOT NULL,
   gas_used numeric NOT NULL,
@@ -937,6 +939,7 @@ CREATE TABLE ethereum.logs (
   address text NOT NULL,
   block_hash text NOT NULL,
   block_number integer NOT NULL,
+  timestamp timestamp without time zone,
   data text NOT NULL,
   log_index integer NOT NULL,
   removed boolean NOT NULL,
@@ -948,54 +951,91 @@ CREATE TABLE ethereum.logs (
 ALTER TABLE ONLY ethereum.logs
   ADD CONSTRAINT ethereum_logs_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES ethereum.blocks(hash);
 
-CREATE TABLE ethereum.contracts (
-  address text NOT NULL,
-  block_hash text NOT NULL,
-  block_number integer NOT NULL,
-  bytecode text NOT NULL,
-  is_erc20 boolean NOT NULL DEFAULT false,
-  is_erc721 boolean NOT NULL DEFAULT false
-);
-
-CREATE TABLE ethereum.tokens (
-  address text NOT NULL,
-  block_hash text NOT NULL,
-  block_number integer NOT NULL,
-  name text NOT NULL,
-  symbol text NOT NULL,
-  decimals text NOT NULL,
-  total_supply text NOT NULL
-);
-
 CREATE TABLE ethereum.token_transfers (
   token_address text NOT NULL,
+  block_hash text NOT NULL,
   block_number integer NOT NULL,
+  timestamp timestamp without time zone,
   transaction_hash text NOT NULL,
+  log_index integer NOT NULL,
   from_address text NOT NULL,
   to_address text NOT NULL,
   value numeric NOT NULL
 );
 
 CREATE TABLE ethereum.tokens_history (
-    account_address text NOT NULL,
-    block_number integer NOT NULL,
-    transaction_hash text NOT NULL,
-    token_address text NOT NULL,
-    value numeric NOT NULL,
-    asof timestamp without time zone NOT NULL
+  account_address text NOT NULL,
+  block_hash text NOT NULL,
+  block_number integer NOT NULL,
+  transaction_hash text NOT NULL,
+  token_address text NOT NULL,
+  value numeric NOT NULL,
+  asof timestamp without time zone NOT NULL
 );
 
 CREATE INDEX ix_account_address ON ethereum.tokens_history USING btree (account_address);
 CREATE INDEX ix_token_address ON ethereum.tokens_history USING btree (token_address);
 
-CREATE OR REPLACE VIEW ethereum.accounts AS
+CREATE TABLE ethereum.accounts (
+  address text NOT NULL,
+  block_hash text NOT NULL,
+  block_number integer NOT NULL,
+  timestamp timestamp without time zone,
+  balance numeric NOT NULL,
+  bytecode text,
+  bytecode_hash text,
+  token_standard text,
+  name text,
+  symbol text,
+  decimals text,
+  total_supply text,
+  PRIMARY KEY (address)
+);
+
+CREATE INDEX ix_accounts_address ON ethereum.accounts USING btree (address);
+
+CREATE TABLE ethereum.accounts_history (
+  address text NOT NULL,
+  block_hash text NOT NULL,
+  block_number integer NOT NULL,
+  balance numeric NOT NULL,
+  asof timestamp without time zone NOT NULL,
+  PRIMARY KEY (address, block_number)
+);
+
+CREATE INDEX ix_accounts_history_address ON ethereum.accounts_history USING btree (address);
+
+CREATE OR REPLACE VIEW ethereum.tokens AS
 SELECT
-  destination AS address,
-  SUM(amount) AS value
+  address,
+  block_hash,
+  block_number,
+  timestamp,
+  name,
+  symbol,
+  decimals,
+  total_supply
 FROM
-  ethereum.transactions
-GROUP BY
-  destination;
+  ethereum.accounts
+WHERE
+  token_standard IS NOT NULL
+;
+
+CREATE OR REPLACE VIEW ethereum.contracts AS
+SELECT
+  address,
+  block_hash,
+  block_number,
+  timestamp,
+  bytecode,
+  bytecode_hash,
+  token_standard
+FROM
+  ethereum.accounts
+WHERE
+  bytecode IS NOT NULL
+;
+
 
 -- The schema for Quorum is duplicated from Ethereum.
 -- TODO: This is a temporary solution, in the future we intend to generate the schema automatically to avoid duplication,

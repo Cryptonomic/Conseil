@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.common.ethereum.domain
 /** Ethereum token balance */
 case class TokenBalance(
     accountAddress: String,
+    blockHash: String,
     blockNumber: Int,
     transactionHash: String,
     tokenAddress: String,

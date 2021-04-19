@@ -2,18 +2,18 @@ package tech.cryptonomic.conseil.common.ethereum
 
 import java.sql.Timestamp
 import java.time.Instant
-
 import cats.Id
 import cats.effect.{Concurrent, Resource}
 import slick.jdbc.PostgresProfile.api._
-
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.util.Conversion
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction}
 import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.TransactionReceipt
-import tech.cryptonomic.conseil.common.ethereum.domain.{Contract, Token, TokenBalance, TokenTransfer}
+import tech.cryptonomic.conseil.common.ethereum.domain.{Account, TokenBalance, TokenTransfer}
+
+import scala.concurrent.ExecutionContext
 
 /**
   * Ethereum persistence into the database using Slick.
@@ -23,62 +23,84 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
   /**
     * Create [[DBIO]] seq with blocks and transactions that can be wrap into one transaction.
     *
-    * @param block JSON_RPC block
+    * @param block        JSON_RPC block
     * @param transactions JSON_RPC block's transactions
+    * @param receipts     JSON_RPC block's transactions receipts
     */
   def createBlock(
       block: Block,
       transactions: List[Transaction],
       receipts: List[TransactionReceipt]
-  ): DBIOAction[Unit, NoStream, Effect.Write] =
+  ): DBIOAction[Unit, NoStream, Effect.Write] = {
+    val timestamp = Timestamp.from(Instant.ofEpochSecond(Integer.decode(block.timestamp).toLong))
     DBIO.seq(
       Tables.Blocks += block.convertTo[Tables.BlocksRow],
-      Tables.Transactions ++= transactions.map(_.convertTo[Tables.TransactionsRow]),
-      Tables.Receipts ++= receipts.map(_.convertTo[Tables.ReceiptsRow]),
-      Tables.Logs ++= receipts.flatMap(_.logs).map(_.convertTo[Tables.LogsRow])
+      Tables.Transactions ++= transactions
+            .map(_.convertTo[Tables.TransactionsRow])
+            .map(_.copy(timestamp = Some(timestamp))),
+      Tables.Receipts ++= receipts.map(_.convertTo[Tables.ReceiptsRow]).map(_.copy(timestamp = Some(timestamp))),
+      Tables.Logs ++= receipts.flatMap(_.logs).map(_.convertTo[Tables.LogsRow]).map(_.copy(timestamp = Some(timestamp)))
     )
+  }
 
   /**
     * Create [[DBIO]] seq with token transfers.
     *
     * @param tokenTransfers token transfer events data
     */
-  def createTokenTransfers(tokenTransfers: List[TokenTransfer]): DBIOAction[Unit, NoStream, Effect.Write] =
-    DBIO.seq(
-      Tables.TokenTransfers ++= tokenTransfers
-            .map(_.convertTo[Tables.TokenTransfersRow])
-    )
+  def createTokenTransfers(tokenTransfers: List[TokenTransfer]): DBIO[Option[Int]] =
+    Tables.TokenTransfers ++= tokenTransfers.map(_.convertTo[Tables.TokenTransfersRow])
 
   /**
     * Create [[DBIO]] seq with token balances.
     *
     * @param tokenBalances token balanceOf() data
     */
-  def createTokenBalances(tokenBalances: List[TokenBalance]): DBIOAction[Unit, NoStream, Effect.Write] =
-    DBIO.seq(
-      Tables.TokensHistory ++= tokenBalances
-            .map(_.convertTo[Tables.TokensHistoryRow])
-    )
+  def createTokenBalances(tokenBalances: List[TokenBalance]): DBIO[Option[Int]] =
+    Tables.TokensHistory ++= tokenBalances.map(_.convertTo[Tables.TokensHistoryRow])
 
   /**
-    * Create [[DBIO]] seq with contracts.
+    * Create [[DBIO]] seq with contract account balances.
     *
-    * @param contracts JSON_RPC contract
+    * @param contractAccounts contract account eth_getBalance data
     */
-  def createContracts(contracts: List[Contract]) =
-    DBIO.seq(
-      Tables.Contracts ++= contracts.map(_.convertTo[Tables.ContractsRow])
-    )
+  def createContractAccounts(contractAccounts: List[Account]): DBIO[Option[Int]] =
+    Tables.Accounts ++= contractAccounts.map(_.convertTo[Tables.AccountsRow])
 
   /**
-    * Create [[DBIO]] seq with tokens.
+    * Create [[DBIO]] seq with account balances.
     *
-    * @param logs JSON_RPC token
+    * @param accounts account eth_getBalance data
     */
-  def createTokens(tokens: List[Token]) =
-    DBIO.seq(
-      Tables.Tokens ++= tokens.map(_.convertTo[Tables.TokensRow])
+  def createAccountBalances(accounts: List[Account]): DBIO[Option[Int]] =
+    Tables.AccountsHistory ++= accounts.map(_.convertTo[Tables.AccountsHistoryRow])
+
+  /**
+    * Create [[DBIO]] seq with updated account balances.
+    *
+    * @param accounts account eth_getBalance data
+    */
+  def upsertAccounts(accounts: List[Account])(
+      implicit ec: ExecutionContext
+  ): DBIOAction[List[Unit], NoStream, Effect.Read with Effect.Write with Effect.Transactional] = {
+    import tech.cryptonomic.conseil.common.sql.CustomProfileExtension.api._
+    DBIO.sequence(
+      accounts.map { account =>
+        (for {
+          existing <- Tables.Accounts.filter(_.address === account.address).result.headOption
+          row = existing.map(
+            _.copy(
+              blockHash = account.blockHash,
+              blockNumber = Integer.decode(account.blockNumber),
+              timestamp = Some(Timestamp.from(Instant.ofEpochSecond(Integer.decode(account.timestamp).toLong))),
+              balance = account.balance
+            )
+          ) getOrElse account.convertTo[Tables.AccountsRow]
+          _ <- Tables.Accounts.insertOrUpdate(row)
+        } yield ()).transactionally
+      }
     )
+  }
 
   /**
     * Get sequence of existing blocks heights from the database.
@@ -94,16 +116,6 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
   def getLatestIndexedBlock: DBIO[Option[Tables.BlocksRow]] =
     Tables.Blocks.sortBy(_.level.desc).take(1).result.headOption
 
-  /**
-    * Get a list of contract in a given block number range.
-    *
-    * @param range Inclusive range of the block's height
-    */
-  def getContracts(range: Range.Inclusive): DBIO[Seq[Tables.ContractsRow]] =
-    Tables.Contracts
-      .filter(_.blockNumber between (range.start, range.end))
-      .filter(c => c.isErc20 || c.isErc721)
-      .result
 }
 
 object EthereumPersistence {
@@ -119,30 +131,31 @@ object EthereumPersistence {
     * TODO: This conversion should be done with the Chimney,
     *       but it's blocked due to the https://github.com/scala/bug/issues/11157
     */
-  implicit val blockToBlocksRow: Conversion[Id, Block, Tables.BlocksRow] = new Conversion[Id, Block, Tables.BlocksRow] {
-    override def convert(from: Block) =
-      Tables.BlocksRow(
-        hash = from.hash,
-        level = Integer.decode(from.number),
-        difficulty = Utils.hexStringToBigDecimal(from.difficulty),
-        extraData = from.extraData,
-        gasLimit = Utils.hexStringToBigDecimal(from.gasLimit),
-        gasUsed = Utils.hexStringToBigDecimal(from.gasUsed),
-        logsBloom = from.logsBloom,
-        miner = from.miner,
-        mixHash = from.mixHash,
-        nonce = from.nonce,
-        parentHash = from.parentHash,
-        receiptsRoot = from.receiptsRoot,
-        sha3Uncles = from.sha3Uncles,
-        size = Integer.decode(from.size),
-        stateRoot = from.stateRoot,
-        totalDifficulty = Utils.hexStringToBigDecimal(from.totalDifficulty),
-        transactionsRoot = from.transactionsRoot,
-        uncles = Option(from.uncles).filter(_.nonEmpty).map(_.mkString(",")),
-        timestamp = Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong))
-      )
-  }
+  implicit val blockToBlocksRow: Conversion[Id, Block, Tables.BlocksRow] =
+    new Conversion[Id, Block, Tables.BlocksRow] {
+      override def convert(from: Block) =
+        Tables.BlocksRow(
+          hash = from.hash,
+          level = Integer.decode(from.number),
+          difficulty = Utils.hexStringToBigDecimal(from.difficulty),
+          extraData = from.extraData,
+          gasLimit = Utils.hexStringToBigDecimal(from.gasLimit),
+          gasUsed = Utils.hexStringToBigDecimal(from.gasUsed),
+          logsBloom = from.logsBloom,
+          miner = from.miner,
+          mixHash = from.mixHash,
+          nonce = from.nonce,
+          parentHash = from.parentHash,
+          receiptsRoot = from.receiptsRoot,
+          sha3Uncles = from.sha3Uncles,
+          size = Integer.decode(from.size),
+          stateRoot = from.stateRoot,
+          totalDifficulty = Utils.hexStringToBigDecimal(from.totalDifficulty),
+          transactionsRoot = from.transactionsRoot,
+          uncles = Option(from.uncles).filter(_.nonEmpty).map(_.mkString(",")),
+          timestamp = Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong))
+        )
+    }
 
   /**
     * Convert form [[Transaction]] to [[Tables.TransactionsRow]]
@@ -214,24 +227,6 @@ object EthereumPersistence {
     }
 
   /**
-    * Convert form [[Contract]] to [[Tables.ContractsRow]]
-    * TODO: This conversion should be done with the Chimney,
-    *       but it's blocked due to the https://github.com/scala/bug/issues/11157
-    */
-  implicit val contractToContractsRow: Conversion[Id, Contract, Tables.ContractsRow] =
-    new Conversion[Id, Contract, Tables.ContractsRow] {
-      override def convert(from: Contract) =
-        Tables.ContractsRow(
-          address = from.address,
-          blockHash = from.blockHash,
-          blockNumber = Integer.decode(from.blockNumber),
-          bytecode = from.bytecode.value,
-          isErc20 = from.bytecode.isErc20,
-          isErc721 = from.bytecode.isErc721
-        )
-    }
-
-  /**
     * Convert form [[Log]] to [[Tables.TokenTransfersRow]]
     * TODO: This conversion should be done with the Chimney,
     *       but it's blocked due to the https://github.com/scala/bug/issues/11157
@@ -241,8 +236,10 @@ object EthereumPersistence {
       override def convert(from: Log) =
         Tables.TokenTransfersRow(
           tokenAddress = from.address,
+          blockHash = from.blockHash,
           blockNumber = Integer.decode(from.blockNumber),
           transactionHash = from.transactionHash,
+          logIndex = Integer.decode(from.logIndex),
           fromAddress = from.topics(1),
           toAddress = from.topics(2),
           value = Utils.hexStringToBigDecimal(from.data)
@@ -259,8 +256,11 @@ object EthereumPersistence {
       override def convert(from: TokenTransfer) =
         Tables.TokenTransfersRow(
           tokenAddress = from.tokenAddress,
+          blockHash = from.blockHash,
           blockNumber = from.blockNumber,
+          timestamp = Some(Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong))),
           transactionHash = from.transactionHash,
+          logIndex = Integer.decode(from.logIndex),
           fromAddress = from.fromAddress,
           toAddress = from.toAddress,
           value = from.value
@@ -277,6 +277,7 @@ object EthereumPersistence {
       override def convert(from: TokenBalance) =
         Tables.TokensHistoryRow(
           accountAddress = from.accountAddress,
+          blockHash = from.blockHash,
           blockNumber = from.blockNumber,
           transactionHash = from.transactionHash,
           tokenAddress = from.tokenAddress,
@@ -286,17 +287,22 @@ object EthereumPersistence {
     }
 
   /**
-    * Convert form [[Token]] to [[Tables.TokensRow]]
+    * Convert form [[Account]] to [[Tables.AccountsRow]]
     * TODO: This conversion should be done with the Chimney,
     *       but it's blocked due to the https://github.com/scala/bug/issues/11157
     */
-  implicit val tokenToTokensRow: Conversion[Id, Token, Tables.TokensRow] =
-    new Conversion[Id, Token, Tables.TokensRow] {
-      override def convert(from: Token) =
-        Tables.TokensRow(
+  implicit val accountToAccountsRow: Conversion[Id, Account, Tables.AccountsRow] =
+    new Conversion[Id, Account, Tables.AccountsRow] {
+      override def convert(from: Account) =
+        Tables.AccountsRow(
           address = from.address,
           blockHash = from.blockHash,
           blockNumber = Integer.decode(from.blockNumber),
+          timestamp = Some(Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong))),
+          balance = from.balance,
+          bytecode = from.bytecode.map(_.value),
+          bytecodeHash = from.bytecode.map(_.hash),
+          tokenStandard = from.tokenStandard.map(_.value),
           name = from.name,
           symbol = from.symbol,
           decimals = from.decimals,
@@ -304,4 +310,20 @@ object EthereumPersistence {
         )
     }
 
+  /**
+    * Convert form [[Account]] to [[Tables.AccountsHistoryRow]]
+    * TODO: This conversion should be done with the Chimney,
+    *       but it's blocked due to the https://github.com/scala/bug/issues/11157
+    */
+  implicit val accountToAccountsHistoryRow: Conversion[Id, Account, Tables.AccountsHistoryRow] =
+    new Conversion[Id, Account, Tables.AccountsHistoryRow] {
+      override def convert(from: Account) =
+        Tables.AccountsHistoryRow(
+          address = from.address,
+          blockHash = from.blockHash,
+          blockNumber = Integer.decode(from.blockNumber),
+          balance = from.balance,
+          asof = Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong))
+        )
+    }
 }

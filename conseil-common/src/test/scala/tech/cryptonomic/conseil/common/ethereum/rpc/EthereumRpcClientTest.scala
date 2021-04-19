@@ -59,20 +59,10 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
           .unsafeRunSync() shouldBe List(RpcFixtures.contractResult)
       }
 
-      "return a token info for the given contract" in new EthereumClientStubs {
-        Stream(RpcFixtures.contractResult)
-          .through(
-            ethereumClientStub(JsonFixtures.callResponse).getTokenInfo
-          )
-          .compile
-          .toList
-          .unsafeRunSync() shouldBe List(RpcFixtures.tokenResult)
-      }
-
       "return a token transfer for the given log" in new EthereumClientStubs {
         Stream(RpcFixtures.logResult)
           .through(
-            ethereumClientStub(JsonFixtures.callResponse).getTokenTransfer
+            ethereumClientStub(JsonFixtures.callResponse).getTokenTransfer(RpcFixtures.blockResult)
           )
           .compile
           .toList
@@ -87,6 +77,36 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
           .compile
           .toList
           .unsafeRunSync() shouldBe List(RpcFixtures.tokenBalanceFromResult, RpcFixtures.tokenBalanceToResult)
+      }
+
+      "return account balances for transaction sides" in new EthereumClientStubs {
+        Stream(RpcFixtures.transactionResult)
+          .through(
+            ethereumClientStub(JsonFixtures.getBalanceResponse).getAccountBalance(RpcFixtures.blockResult)
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.accountFromResult, RpcFixtures.accountToResult)
+      }
+
+      "return contract account balances for created contract" in new EthereumClientStubs {
+        Stream(RpcFixtures.contractResult)
+          .through(
+            ethereumClientStub(JsonFixtures.getBalanceResponse).getContractBalance(RpcFixtures.blockResult)
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.contractAccountResult)
+      }
+
+      "return contract account data with token info" in new EthereumClientStubs {
+        Stream(RpcFixtures.contractAccountResult)
+          .through(
+            ethereumClientStub(JsonFixtures.callResponse).addTokenInfo
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.contractAccountResult)
       }
     }
 

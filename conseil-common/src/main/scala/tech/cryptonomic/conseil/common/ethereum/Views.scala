@@ -14,33 +14,132 @@ trait Views {
   val profile: slick.jdbc.JdbcProfile
   import profile.api._
 
-  /** Entity class storing rows of view Accounts
+  /** Entity class storing rows of view Tokens
     *  @param address Database column address SqlType(text)
-    *  @param value Database column value SqlType(numeric) */
-  case class AccountsRow(address: String, value: scala.math.BigDecimal)
+    *  @param blockHash Database column block_hash SqlType(text)
+    *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param timestamp Database column timestamp SqlType(timestamp)
+    *  @param name Database column name SqlType(text)
+    *  @param symbol Database column symbol SqlType(text)
+    *  @param decimals Database column decimals SqlType(text)
+    *  @param totalSupply Database column total_supply SqlType(text) */
+  case class TokensRow(
+      address: String,
+      blockHash: String,
+      blockNumber: Int,
+      timestamp: Option[java.sql.Timestamp],
+      name: Option[String],
+      symbol: Option[String],
+      decimals: Option[String],
+      totalSupply: Option[String]
+  )
 
-  /** Table description of view accounts. Objects of this class serve as prototypes for rows in queries. */
-  class Accounts(_tableTag: Tag) extends profile.api.Table[AccountsRow](_tableTag, Some("bitcoin"), "accounts") {
-    def * = (address, value) <> (AccountsRow.tupled, AccountsRow.unapply)
+  /** Table description of view tokens. Objects of this class serve as prototypes for rows in queries. */
+  class Tokens(_tableTag: Tag) extends profile.api.Table[TokensRow](_tableTag, Some("ethereum"), "tokens") {
+    def * =
+      (address, blockHash, blockNumber, timestamp, name, symbol, decimals, totalSupply) <> (TokensRow.tupled, TokensRow.unapply)
 
     /** Database column address SqlType(text) */
     val address: Rep[String] = column[String]("address")
 
-    /** Database column value SqlType(numeric) */
-    val value: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("value")
+    /**  Database column block_hash SqlType(text) */
+    val blockHash: Rep[String] = column[String]("block_hash")
+
+    /** Database column block_number SqlType(int4) */
+    val blockNumber: Rep[Int] = column[Int]("block_number")
+
+    /** Database column timestamp SqlType(timestamp) */
+    val timestamp: Rep[Option[java.sql.Timestamp]] = column[Option[java.sql.Timestamp]]("timestamp", O.Default(None))
+
+    /** Database column name SqlType(text) */
+    val name: Rep[Option[String]] = column[Option[String]]("name")
+
+    /** Database column symbol SqlType(text) */
+    val symbol: Rep[Option[String]] = column[Option[String]]("symbol")
+
+    /** Database column decimals SqlType(text) */
+    val decimals: Rep[Option[String]] = column[Option[String]]("decimals")
+
+    /** Database column total_supply SqlType(text) */
+    val totalSupply: Rep[Option[String]] = column[Option[String]]("total_supply")
   }
 
-  /** Collection-like TableQuery object for view Accounts */
-  lazy val Accounts = new TableQuery(tag => new Accounts(tag))
+  /** Collection-like TableQuery object for view Tokens */
+  lazy val Tokens = new TableQuery(tag => new Tokens(tag))
 
-  lazy val AccountsViewSql: SqlAction[Int, NoStream, Effect] = sqlu"""
-    CREATE OR REPLACE VIEW ethereum.accounts AS
+  lazy val TokensViewSql: SqlAction[Int, NoStream, Effect] = sqlu"""
+    CREATE OR REPLACE VIEW ethereum.tokens AS
       SELECT
-        destination AS address,
-        SUM(amount) AS value
+        address,
+        block_hash,
+        block_number,
+        timestamp,
+        name,
+        symbol,
+        decimals,
+        total_supply
       FROM
-        ethereum.transactions
-      GROUP BY
-        destination
+        ethereum.accounts
+      WHERE
+        token_standard IS NOT NULL
+    """
+
+  /** Entity class storing rows of view Contracts
+    *  @param address Database column address SqlType(text)
+    *  @param blockHash Database column block_hash SqlType(text)
+    *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param timestamp Database column timestamp SqlType(timestamp)
+    *  @param bytecode Database column bytecode SqlType(text)
+    *  @param tokenStandard Database column token_standard SqlType(text) */
+  case class ContractsRow(
+      address: String,
+      blockHash: String,
+      blockNumber: Int,
+      timestamp: Option[java.sql.Timestamp],
+      bytecode: Option[String],
+      tokenStandard: Option[String]
+  )
+
+  /** Table description of view contracts. Objects of this class serve as prototypes for rows in queries. */
+  class Contracts(_tableTag: Tag) extends profile.api.Table[ContractsRow](_tableTag, Some("ethereum"), "contracts") {
+    def * =
+      (address, blockHash, blockNumber, timestamp, bytecode, tokenStandard) <> (ContractsRow.tupled, ContractsRow.unapply)
+
+    /** Database column address SqlType(text) */
+    val address: Rep[String] = column[String]("address")
+
+    /**  Database column block_hash SqlType(text) */
+    val blockHash: Rep[String] = column[String]("block_hash")
+
+    /** Database column block_number SqlType(int4) */
+    val blockNumber: Rep[Int] = column[Int]("block_number")
+
+    /** Database column timestamp SqlType(timestamp) */
+    val timestamp: Rep[Option[java.sql.Timestamp]] = column[Option[java.sql.Timestamp]]("timestamp", O.Default(None))
+
+    /** Database column bytecode SqlType(text) */
+    val bytecode: Rep[Option[String]] = column[Option[String]]("bytecode")
+
+    /** Database column token_standard SqlType(text) */
+    val tokenStandard: Rep[Option[String]] = column[Option[String]]("token_standard")
+
+  }
+
+  /** Collection-like TableQuery object for view Contracts */
+  lazy val Contracts = new TableQuery(tag => new Contracts(tag))
+
+  lazy val ContractsViewSql: SqlAction[Int, NoStream, Effect] = sqlu"""
+    CREATE OR REPLACE VIEW ethereum.contracts AS
+      SELECT
+        address,
+        block_hash,
+        block_number,
+        timestamp,
+        bytecode,
+        token_standard
+      FROM
+        ethereum.accounts
+      WHERE
+        bytecode IS NOT NULL
     """
 }

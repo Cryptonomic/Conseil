@@ -48,6 +48,10 @@ trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
   def ethereumAccountByAddressEndpoint: Endpoint[((String, String), Option[String]), Option[QueryResponse]] =
     accountByAddressEndpoint(platform)
 
+  def ethereumAccountsHistoryEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[
+    List[QueryResponse]
+  ]] =
+    accountsHistoryEndpoint(platform)
 }
 
 /** Represents list of endpoints exposed for Quorum Blockchain (based on Ethereum) */
