@@ -48,42 +48,32 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
     *
     * @param tokenTransfers token transfer events data
     */
-  def createTokenTransfers(tokenTransfers: List[TokenTransfer]): DBIOAction[Unit, NoStream, Effect.Write] =
-    DBIO.seq(
-      Tables.TokenTransfers ++= tokenTransfers
-            .map(_.convertTo[Tables.TokenTransfersRow])
-    )
+  def createTokenTransfers(tokenTransfers: List[TokenTransfer]): DBIO[Option[Int]] =
+    Tables.TokenTransfers ++= tokenTransfers.map(_.convertTo[Tables.TokenTransfersRow])
 
   /**
     * Create [[DBIO]] seq with token balances.
     *
     * @param tokenBalances token balanceOf() data
     */
-  def createTokenBalances(tokenBalances: List[TokenBalance]): DBIOAction[Unit, NoStream, Effect.Write] =
-    DBIO.seq(
-      Tables.TokensHistory ++= tokenBalances
-            .map(_.convertTo[Tables.TokensHistoryRow])
-    )
+  def createTokenBalances(tokenBalances: List[TokenBalance]): DBIO[Option[Int]] =
+    Tables.TokensHistory ++= tokenBalances.map(_.convertTo[Tables.TokensHistoryRow])
 
   /**
     * Create [[DBIO]] seq with contract account balances.
     *
     * @param contractAccounts contract account eth_getBalance data
     */
-  def createContractAccounts(contractAccounts: List[Account]): DBIOAction[Unit, NoStream, Effect.Write] =
-    DBIO.seq(
-      Tables.Accounts ++= contractAccounts.map(_.convertTo[Tables.AccountsRow])
-    )
+  def createContractAccounts(contractAccounts: List[Account]): DBIO[Option[Int]] =
+    Tables.Accounts ++= contractAccounts.map(_.convertTo[Tables.AccountsRow])
 
   /**
     * Create [[DBIO]] seq with account balances.
     *
     * @param accounts account eth_getBalance data
     */
-  def createAccountBalances(accounts: List[Account]): DBIOAction[Unit, NoStream, Effect.Write] =
-    DBIO.seq(
-      Tables.AccountsHistory ++= accounts.map(_.convertTo[Tables.AccountsHistoryRow])
-    )
+  def createAccountBalances(accounts: List[Account]): DBIO[Option[Int]] =
+    Tables.AccountsHistory ++= accounts.map(_.convertTo[Tables.AccountsHistoryRow])
 
   /**
     * Create [[DBIO]] seq with updated account balances.
