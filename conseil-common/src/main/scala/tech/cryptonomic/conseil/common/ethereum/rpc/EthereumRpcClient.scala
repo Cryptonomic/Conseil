@@ -63,6 +63,14 @@ class EthereumClient[F[_]: Concurrent](
       .through(client.stream[EthGetBlockByNumber.Params, Block](batchSize))
 
   /**
+    * Get Block by hash.
+    *
+    */
+  def getBlockByHash(hash: String): Stream[F, Block] =
+    Stream(EthGetBlockByHash.request(hash = hash))
+      .through(client.stream[EthGetBlockByHash.Params, Block](batchSize = 1))
+
+  /**
     * Get block's transactions. Call JSON-RPC for each transaction from the given block.
     *
     * @param batchSize The size of the batched request in single HTTP call.

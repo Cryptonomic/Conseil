@@ -37,10 +37,18 @@ class EthereumOperations[F[_]: Concurrent](
     *
     * @param depth Can be: Newest, Everything or Custom
     */
-  def loadBlocksAndLogs(depth: Depth): Stream[F, Unit] =
+  def loadBlocksAndLogs(depth: Depth, headHash: Option[String]): Stream[F, Unit] =
     Stream
       .eval(tx.transact(persistence.getLatestIndexedBlock))
-      .zip(ethereumClient.getMostRecentBlockNumber.map(Integer.decode))
+      .flatMap {
+        case latest if headHash.isDefined =>
+          Stream(latest)
+            .zip(ethereumClient.getBlockByHash(headHash.get).map(block => Integer.decode(block.number)))
+        case latest =>
+          Stream(latest)
+            .zip(ethereumClient.getMostRecentBlockNumber.map(Integer.decode))
+
+      }
       .flatMap {
         case (latestIndexedBlock, mostRecentBlockNumber) =>
           val range = depth match {
@@ -76,7 +84,7 @@ class EthereumOperations[F[_]: Concurrent](
       .flatMap(
         existingBlocks =>
           Stream
-            .range(range.start, range.end)
+            .range(range.start, range.end + 1)
             .filter(height => !existingBlocks.contains(height))
             .map(n => s"0x${n.toHexString}")
             .through(ethereumClient.getBlockByNumber(batchConf.blocksBatchSize))
