@@ -303,8 +303,8 @@ object EthereumPersistence {
           bytecode = from.bytecode.map(_.value),
           bytecodeHash = from.bytecode.map(_.hash),
           tokenStandard = from.tokenStandard.map(_.value),
-          name = from.name,
-          symbol = from.symbol,
+          name = from.name.map(Utils.truncateEmptyHexString),
+          symbol = from.symbol.map(Utils.truncateEmptyHexString),
           decimals = from.decimals,
           totalSupply = from.totalSupply
         )

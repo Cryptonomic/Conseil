@@ -42,7 +42,7 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
       "return a transaction receipt for the given transaction" in new EthereumClientStubs {
         Stream(RpcFixtures.transactionResult)
           .through(
-            ethereumClientStub(JsonFixtures.getTransactionReceiptResponse).getTransactionReceipt
+            ethereumClientStub(JsonFixtures.getTransactionReceiptResponse).getTransactionReceipt(batchSize = 1)
           )
           .compile
           .toList

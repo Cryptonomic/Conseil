@@ -86,12 +86,12 @@ class EthereumClient[F[_]: Concurrent](
   /**
     * Get transaction receipt.
     */
-  def getTransactionReceipt: Pipe[F, Transaction, TransactionReceipt] =
+  def getTransactionReceipt(batchSize: Int): Pipe[F, Transaction, TransactionReceipt] =
     stream =>
       stream
         .map(_.hash)
         .map(EthGetTransactionReceipt.request)
-        .through(client.stream[EthGetTransactionReceipt.Params, TransactionReceipt](batchSize = 1))
+        .through(client.stream[EthGetTransactionReceipt.Params, TransactionReceipt](batchSize = batchSize))
 
   /**
     * Returns contract from a given transaction receipt.
@@ -247,10 +247,10 @@ class EthereumClient[F[_]: Concurrent](
             .collect {
               case name :: symbol :: decimals :: totalSupply :: Nil =>
                 token.copy(
-                  name = Some(name),
-                  symbol = Some(symbol),
-                  decimals = Some(decimals),
-                  totalSupply = Some(totalSupply)
+                  name = Some(Utils.hexToString(name)),
+                  symbol = Some(Utils.hexToString(symbol)),
+                  decimals = Utils.hexToInt(decimals),
+                  totalSupply = Some(Utils.hexStringToBigDecimal(totalSupply))
                 )
             }
 

@@ -987,8 +987,8 @@ CREATE TABLE ethereum.accounts (
   token_standard text,
   name text,
   symbol text,
-  decimals text,
-  total_supply text,
+  decimals integer,
+  total_supply numeric,
   PRIMARY KEY (address)
 );
 

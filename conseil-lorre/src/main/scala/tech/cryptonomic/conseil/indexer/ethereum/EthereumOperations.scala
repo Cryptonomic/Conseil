@@ -101,7 +101,7 @@ class EthereumOperations[F[_]: Concurrent](
               case (block, txs) if block.transactions.size > 0 =>
                 Stream
                   .emits(txs)
-                  .through(ethereumClient.getTransactionReceipt)
+                  .through(ethereumClient.getTransactionReceipt(batchConf.transactionsBatchSize))
                   .chunkN(Integer.MAX_VALUE)
                   .map(receipts => (block, txs, receipts.toList, receipts.toList.flatMap(_.logs)))
               case (block, txs) => Stream.emit((block, txs, Nil, Nil))

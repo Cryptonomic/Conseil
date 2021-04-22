@@ -38,8 +38,8 @@ trait Tables {
     *  @param tokenStandard Database column token_standard SqlType(text), Default(None)
     *  @param name Database column name SqlType(text), Default(None)
     *  @param symbol Database column symbol SqlType(text), Default(None)
-    *  @param decimals Database column decimals SqlType(text), Default(None)
-    *  @param totalSupply Database column total_supply SqlType(text), Default(None) */
+    *  @param decimals Database column decimals SqlType(int4), Default(None)
+    *  @param totalSupply Database column total_supply SqlType(numeric), Default(None) */
   case class AccountsRow(
       address: String,
       blockHash: String,
@@ -51,8 +51,8 @@ trait Tables {
       tokenStandard: Option[String] = None,
       name: Option[String] = None,
       symbol: Option[String] = None,
-      decimals: Option[String] = None,
-      totalSupply: Option[String] = None
+      decimals: Option[Int] = None,
+      totalSupply: Option[scala.math.BigDecimal] = None
   )
 
   /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */
@@ -76,8 +76,8 @@ trait Tables {
         <<?[String],
         <<?[String],
         <<?[String],
-        <<?[String],
-        <<?[String]
+        <<?[Int],
+        <<?[scala.math.BigDecimal]
       )
     )
   }
@@ -155,11 +155,12 @@ trait Tables {
     /** Database column symbol SqlType(text), Default(None) */
     val symbol: Rep[Option[String]] = column[Option[String]]("symbol", O.Default(None))
 
-    /** Database column decimals SqlType(text), Default(None) */
-    val decimals: Rep[Option[String]] = column[Option[String]]("decimals", O.Default(None))
+    /** Database column decimals SqlType(int4), Default(None) */
+    val decimals: Rep[Option[Int]] = column[Option[Int]]("decimals", O.Default(None))
 
-    /** Database column total_supply SqlType(text), Default(None) */
-    val totalSupply: Rep[Option[String]] = column[Option[String]]("total_supply", O.Default(None))
+    /** Database column total_supply SqlType(numeric), Default(None) */
+    val totalSupply: Rep[Option[scala.math.BigDecimal]] =
+      column[Option[scala.math.BigDecimal]]("total_supply", O.Default(None))
   }
 
   /** Collection-like TableQuery object for table Accounts */

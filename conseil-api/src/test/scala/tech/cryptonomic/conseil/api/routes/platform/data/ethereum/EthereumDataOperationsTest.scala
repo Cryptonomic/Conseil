@@ -654,8 +654,8 @@ object EthereumDataOperationsTest {
         tokenStandard = Some("ERC20"),
         name = Some("name"),
         symbol = Some("SYM"),
-        decimals = Some("18"),
-        totalSupply = Some("100")
+        decimals = Some(18),
+        totalSupply = Some(BigDecimal(100))
       )
     val accounts: Seq[AccountsRow] = List(account1, account2, account3)
 
