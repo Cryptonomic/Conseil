@@ -8,25 +8,13 @@ import akka.stream.scaladsl.Source
 import cats._
 import cats.implicits._
 import tech.cryptonomic.conseil.indexer.config.{BakingAndEndorsingRights, BatchFetchConfiguration}
-import tech.cryptonomic.conseil.indexer.tezos.{
-  TezosIndexedDataOperations,
-  TezosNodeOperator,
-  TezosDatabaseOperations => TezosDb
-}
+import tech.cryptonomic.conseil.indexer.tezos.{TezosIndexedDataOperations, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator.LazyPages
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
-  Account,
-  AccountId,
-  BlockLevel,
-  BlockReference,
-  BlockTagged,
-  Protocol4Delegate,
-  PublicKeyHash,
-  TezosBlockHash
-}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Account, AccountId, BlockLevel, BlockReference, BlockTagged, Protocol4Delegate, PublicKeyHash, Scripted, TezosBlockHash}
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors.AccountsProcessingFailed
+import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts.Tzip16
 
 /** Collects operations related to handling accounts from
   * the tezos node.
@@ -130,6 +118,12 @@ class AccountsProcessor(
           activatedOperations.mapValues(_.toSet),
           activatedAccounts.map(PublicKeyHash(_)).toSet
         )
+        _ = updatedTaggedAccounts.map { xxx =>
+          xxx.content.filter {
+            case (id, Account(_, _, Some(Scripted.Contracts(_, code)), _, _, _, _, _)) =>
+              Tzip16.parseAccountsFromParameters(code).isDefined
+          }
+        }
         inactiveBakerAccounts <- getInactiveBakersWithTaggedAccounts(updatedTaggedAccounts)
       } yield inactiveBakerAccounts
 
