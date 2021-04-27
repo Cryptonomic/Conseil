@@ -586,7 +586,7 @@ object TezosTypes {
 
   object VotingPeriod extends Enumeration {
     type Kind = Value
-    val proposal, promotion_vote, testing_vote, testing = Value
+    val proposal, promotion_vote, testing_vote, testing, adoption, exploration, cooldown = Value
   }
 
   val defaultVotingPeriod: VotingPeriod.Kind = VotingPeriod.proposal
