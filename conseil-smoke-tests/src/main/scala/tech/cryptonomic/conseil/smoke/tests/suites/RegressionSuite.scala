@@ -53,7 +53,7 @@ abstract class RegressionSuite {
         _ <- if (syncNetwork.nonEmpty) syncData(syncPlatform, syncNetwork.get) else IO(0)
         proc <- IO(runApi.run())
         _ <- IO(println("waiting for conseil to start"))
-        _ <- timer.sleep(20.seconds)
+        _ <- timer.sleep(30.seconds)
       } yield proc
 
     val conseilProcess = Resource.make(startConseil) { conseil =>
@@ -77,6 +77,7 @@ object RegressionSuite {
     syncPlatform.toLowerCase match {
       case "tezos" => IO(new TezosRegressionSuite(configfile, syncNetwork))
       case "ethereum" => IO(new EthereumRegressionSuite(configfile, syncNetwork))
+      case "bitcoin" => IO(new BitcoinRegressionSuite(configfile, syncNetwork))
       case other => IO.raiseError(new IllegalArgumentException(s"Platform: $other is not supported!"))
     }
 }
