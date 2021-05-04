@@ -18,6 +18,7 @@ import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumRpcCommands._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction, TransactionReceipt}
 import tech.cryptonomic.conseil.common.ethereum.Utils
+import tech.cryptonomic.conseil.common.rpc.RpcClient.RpcException
 
 import java.sql.Timestamp
 import java.time.Instant
@@ -252,6 +253,11 @@ class EthereumClient[F[_]: Concurrent](
                   decimals = Utils.hexToInt(decimals),
                   totalSupply = Some(Utils.hexStringToBigDecimal(totalSupply))
                 )
+            }
+            .handleErrorWith {
+              // if any of the methods is not defined on a contract do not add token data
+              case RpcException(-32000, _, _) =>
+                Stream.emit(token)
             }
 
         case account => Stream.emit(account)
