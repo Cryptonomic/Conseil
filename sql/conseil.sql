@@ -810,10 +810,13 @@ CREATE TABLE bitcoin.blocks (
   time timestamp without time zone NOT NULL
 );
 
+CREATE INDEX ix_block_hash ON bitcoin.blocks USING btree (hash);
+
 -- https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
 CREATE TABLE bitcoin.transactions (
   txid text NOT NULL PRIMARY KEY,
   blockhash text NOT NULL,
+  block_height integer NOT NULL,
   hash text NOT NULL,
   hex text NOT NULL,
   size integer NOT NULL,
@@ -828,8 +831,13 @@ CREATE TABLE bitcoin.transactions (
 ALTER TABLE ONLY bitcoin.transactions
   ADD CONSTRAINT bitcoin_transactions_blockhash_fkey FOREIGN KEY (blockhash) REFERENCES bitcoin.blocks(hash);
 
+CREATE INDEX ix_transactions_txid ON bitcoin.transactions USING btree (txid);
+
 CREATE TABLE bitcoin.inputs (
   txid text NOT NULL,
+  blockhash text NOT NULL,
+  block_height integer NOT NULL,
+  block_time timestamp without time zone NOT NULL,
   output_txid text, -- output id this input spends
   v_out integer,
   script_sig_asm text,
@@ -844,6 +852,9 @@ ALTER TABLE ONLY bitcoin.inputs
 
 CREATE TABLE bitcoin.outputs (
   txid text NOT NULL,
+  blockhash text NOT NULL,
+  block_height integer NOT NULL,
+  block_time timestamp without time zone NOT NULL,
   value numeric,
   n integer NOT NULL,
   script_pub_key_asm text NOT NULL,

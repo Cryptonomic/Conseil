@@ -509,7 +509,8 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("version", "Version", DataType.Int, None, KeyType.NonKey, "transactions"),
             Attribute("blockhash", "Blockhash", DataType.String, None, KeyType.NonKey, "transactions"),
             Attribute("size", "Size", DataType.Int, None, KeyType.NonKey, "transactions"),
-            Attribute("vsize", "Vsize", DataType.Int, None, KeyType.NonKey, "transactions")
+            Attribute("vsize", "Vsize", DataType.Int, None, KeyType.NonKey, "transactions"),
+            Attribute("block_height", "Block height", DataType.Int, None, KeyType.NonKey, "transactions")
           )
         )
       }
@@ -524,7 +525,10 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("script_sig_hex", "Script sig hex", DataType.String, None, KeyType.NonKey, "inputs"),
             Attribute("sequence", "Sequence", DataType.LargeInt, None, KeyType.NonKey, "inputs"),
             Attribute("coinbase", "Coinbase", DataType.String, None, KeyType.NonKey, "inputs"),
-            Attribute("tx_in_witness", "Tx in witness", DataType.String, None, KeyType.NonKey, "inputs")
+            Attribute("tx_in_witness", "Tx in witness", DataType.String, None, KeyType.NonKey, "inputs"),
+            Attribute("blockhash", "Blockhash", DataType.String, None, KeyType.NonKey, "inputs"),
+            Attribute("block_height", "Block height", DataType.Int, None, KeyType.NonKey, "inputs"),
+            Attribute("block_time", "Block time", DataType.DateTime, None, KeyType.NonKey, "inputs")
           )
         )
       }
@@ -553,7 +557,10 @@ class GenericPlatformDiscoveryOperationsTest
               None,
               KeyType.NonKey,
               "outputs"
-            )
+            ),
+            Attribute("blockhash", "Blockhash", DataType.String, None, KeyType.NonKey, "outputs"),
+            Attribute("block_height", "Block height", DataType.Int, None, KeyType.NonKey, "outputs"),
+            Attribute("block_time", "Block time", DataType.DateTime, None, KeyType.NonKey, "outputs")
           )
         )
       }
