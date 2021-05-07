@@ -124,6 +124,7 @@ class EthereumOperations[F[_]: Concurrent](
               case (block, txs, receipts, logs) if txs.size > 0 =>
                 Stream
                   .emits(txs)
+                  .filter(t => List(Some(t.from), t.to).forall(addr => !receipts.map(_.contractAddress).contains(addr)))
                   .through(ethereumClient.getAccountBalance(block))
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap(
