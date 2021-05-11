@@ -96,7 +96,7 @@ class BitcoinIndexer(
               * handle multiple computations.
               */
             IO.delay(logger.info("Start Lorre for Bitcoin")) *>
-              bitcoinOperations.loadBlocks(lorreConf.depth).compile.drain
+              bitcoinOperations.loadBlocks(lorreConf.depth, lorreConf.headHash).compile.drain
           }
       )
       .unsafeRunSync()
