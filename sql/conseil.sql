@@ -811,6 +811,7 @@ CREATE TABLE bitcoin.blocks (
 );
 
 CREATE INDEX ix_block_hash ON bitcoin.blocks USING btree (hash);
+CREATE INDEX ix_block_height ON bitcoin.blocks USING btree (height DESC NULLS LAST);
 
 -- https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
 CREATE TABLE bitcoin.transactions (
@@ -832,6 +833,8 @@ ALTER TABLE ONLY bitcoin.transactions
   ADD CONSTRAINT bitcoin_transactions_blockhash_fkey FOREIGN KEY (blockhash) REFERENCES bitcoin.blocks(hash);
 
 CREATE INDEX ix_transactions_txid ON bitcoin.transactions USING btree (txid);
+CREATE INDEX ix_transactions_blockhash ON bitcoin.transactions USING btree (blockhash);
+CREATE INDEX ix_transactions_block_height ON bitcoin.transactions USING btree (block_height DESC NULLS LAST);
 
 CREATE TABLE bitcoin.inputs (
   txid text NOT NULL,
@@ -850,6 +853,10 @@ CREATE TABLE bitcoin.inputs (
 ALTER TABLE ONLY bitcoin.inputs
   ADD CONSTRAINT bitcoin_inputs_txid_fkey FOREIGN KEY (txid) REFERENCES bitcoin.transactions(txid);
 
+CREATE INDEX ix_inputs_txid ON bitcoin.inputs USING btree (txid);
+CREATE INDEX ix_inputs_blockhash ON bitcoin.inputs USING btree (blockhash);
+CREATE INDEX ix_inputs_block_height ON bitcoin.inputs USING btree (block_height DESC NULLS LAST);
+
 CREATE TABLE bitcoin.outputs (
   txid text NOT NULL,
   blockhash text NOT NULL,
@@ -866,6 +873,10 @@ CREATE TABLE bitcoin.outputs (
 
 ALTER TABLE ONLY bitcoin.outputs
   ADD CONSTRAINT bitcoin_outputs_txid_fkey FOREIGN KEY (txid) REFERENCES bitcoin.transactions(txid);
+
+CREATE INDEX ix_outputs_txid ON bitcoin.outputs USING btree (txid);
+CREATE INDEX ix_outputs_blockhash ON bitcoin.outputs USING btree (blockhash);
+CREATE INDEX ix_outputs_block_height ON bitcoin.outputs USING btree (block_height DESC NULLS LAST);
 
 CREATE OR REPLACE VIEW bitcoin.accounts AS
 SELECT
