@@ -479,11 +479,11 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("size", "Size", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("stripped_size", "Stripped size", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("weight", "Weight", DataType.Int, None, KeyType.NonKey, "blocks"),
-            Attribute("height", "Height", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("height", "Height", DataType.Int, None, KeyType.UniqueKey, "blocks"),
             Attribute("version", "Version", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("version_hex", "Version hex", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("merkle_root", "Merkle root", DataType.String, None, KeyType.NonKey, "blocks"),
-            Attribute("time", "Time", DataType.DateTime, None, KeyType.NonKey, "blocks"),
+            Attribute("time", "Time", DataType.DateTime, None, KeyType.UniqueKey, "blocks"),
             Attribute("median_time", "Median time", DataType.DateTime, None, KeyType.NonKey, "blocks"),
             Attribute("nonce", "Nonce", DataType.LargeInt, None, KeyType.NonKey, "blocks"),
             Attribute("bits", "Bits", DataType.String, None, KeyType.NonKey, "blocks"),
@@ -510,7 +510,7 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("blockhash", "Blockhash", DataType.String, None, KeyType.NonKey, "transactions"),
             Attribute("size", "Size", DataType.Int, None, KeyType.NonKey, "transactions"),
             Attribute("vsize", "Vsize", DataType.Int, None, KeyType.NonKey, "transactions"),
-            Attribute("block_height", "Block height", DataType.Int, None, KeyType.NonKey, "transactions")
+            Attribute("block_height", "Block height", DataType.Int, None, KeyType.UniqueKey, "transactions")
           )
         )
       }
@@ -526,8 +526,8 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("sequence", "Sequence", DataType.LargeInt, None, KeyType.NonKey, "inputs"),
             Attribute("coinbase", "Coinbase", DataType.String, None, KeyType.NonKey, "inputs"),
             Attribute("tx_in_witness", "Tx in witness", DataType.String, None, KeyType.NonKey, "inputs"),
-            Attribute("blockhash", "Blockhash", DataType.String, None, KeyType.NonKey, "inputs"),
-            Attribute("block_height", "Block height", DataType.Int, None, KeyType.NonKey, "inputs"),
+            Attribute("blockhash", "Blockhash", DataType.String, None, KeyType.UniqueKey, "inputs"),
+            Attribute("block_height", "Block height", DataType.Int, None, KeyType.UniqueKey, "inputs"),
             Attribute("block_time", "Block time", DataType.DateTime, None, KeyType.NonKey, "inputs")
           )
         )
@@ -558,8 +558,8 @@ class GenericPlatformDiscoveryOperationsTest
               KeyType.NonKey,
               "outputs"
             ),
-            Attribute("blockhash", "Blockhash", DataType.String, None, KeyType.NonKey, "outputs"),
-            Attribute("block_height", "Block height", DataType.Int, None, KeyType.NonKey, "outputs"),
+            Attribute("blockhash", "Blockhash", DataType.String, None, KeyType.UniqueKey, "outputs"),
+            Attribute("block_height", "Block height", DataType.Int, None, KeyType.UniqueKey, "outputs"),
             Attribute("block_time", "Block time", DataType.DateTime, None, KeyType.NonKey, "outputs")
           )
         )

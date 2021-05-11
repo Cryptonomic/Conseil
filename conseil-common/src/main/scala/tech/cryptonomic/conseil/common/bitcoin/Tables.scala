@@ -216,6 +216,12 @@ trait Tables {
 
     /** Database column time SqlType(timestamp) */
     val time: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("time")
+
+    /** Index over (height) (database name ix_block_height) */
+    val index1 = index("ix_block_height", height)
+
+    /** Index over (time) (database name ix_block_time) */
+    val index2 = index("ix_block_time", time)
   }
 
   /** Collection-like TableQuery object for table Blocks */
@@ -353,6 +359,12 @@ trait Tables {
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
+
+    /** Index over (blockHeight) (database name ix_inputs_block_height) */
+    val index1 = index("ix_inputs_block_height", blockHeight)
+
+    /** Index over (blockhash) (database name ix_inputs_blockhash) */
+    val index2 = index("ix_inputs_blockhash", blockhash)
   }
 
   /** Collection-like TableQuery object for table Inputs */
@@ -491,6 +503,12 @@ trait Tables {
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
+
+    /** Index over (blockHeight) (database name ix_outputs_block_height) */
+    val index1 = index("ix_outputs_block_height", blockHeight)
+
+    /** Index over (blockhash) (database name ix_outputs_blockhash) */
+    val index2 = index("ix_outputs_blockhash", blockhash)
   }
 
   /** Collection-like TableQuery object for table Outputs */
@@ -627,6 +645,9 @@ trait Tables {
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
+
+    /** Index over (blockHeight) (database name ix_transactions_block_height) */
+    val index1 = index("ix_transactions_block_height", blockHeight)
   }
 
   /** Collection-like TableQuery object for table Transactions */
