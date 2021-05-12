@@ -41,13 +41,13 @@ class BitcoinPersistence[F[_]: Concurrent] {
     * @param range Inclusive range of the block's height
     */
   def getIndexedBlockHeights(range: Range.Inclusive): DBIO[Seq[Int]] =
-    Tables.Blocks.filter(_.height between (range.start, range.end)).map(_.height).result
+    Tables.Blocks.filter(_.level between (range.start, range.end)).map(_.level).result
 
   /**
     * Get the latest block from the database.
     */
   def getLatestIndexedBlock: DBIO[Option[Tables.BlocksRow]] =
-    Tables.Blocks.sortBy(_.height.desc).take(1).result.headOption
+    Tables.Blocks.sortBy(_.level.desc).take(1).result.headOption
 }
 
 object BitcoinPersistence {
@@ -70,7 +70,7 @@ object BitcoinPersistence {
         size = from.size,
         strippedSize = from.strippedsize,
         weight = from.weight,
-        height = from.height,
+        level = from.height,
         version = from.version,
         versionHex = from.versionHex,
         merkleRoot = from.merkleroot,
@@ -96,7 +96,7 @@ object BitcoinPersistence {
       override def convert(from: Transaction) =
         Tables.TransactionsRow(
           txid = from.txid,
-          blockhash = from.blockhash,
+          blockHash = from.blockhash,
           hash = from.hash,
           hex = from.hex,
           size = from.size,
@@ -104,8 +104,7 @@ object BitcoinPersistence {
           weight = from.weight,
           version = from.version,
           lockTime = Timestamp.from(Instant.ofEpochSecond(from.locktime)),
-          blockTime = Timestamp.from(Instant.ofEpochSecond(from.blocktime)),
-          time = Timestamp.from(Instant.ofEpochSecond(from.time))
+          blockTime = Timestamp.from(Instant.ofEpochSecond(from.blocktime))
         )
     }
 

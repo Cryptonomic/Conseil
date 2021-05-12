@@ -1,4 +1,5 @@
 package tech.cryptonomic.conseil.common.bitcoin
+
 // AUTO-GENERATED Slick data model
 /** Stand-alone Slick data model for immediate use */
 object Tables extends {
@@ -23,7 +24,7 @@ trait Tables {
     *  @param size Database column size SqlType(int4)
     *  @param strippedSize Database column stripped_size SqlType(int4)
     *  @param weight Database column weight SqlType(int4)
-    *  @param height Database column height SqlType(int4)
+    *  @param level Database column level SqlType(int4)
     *  @param version Database column version SqlType(int4)
     *  @param versionHex Database column version_hex SqlType(text)
     *  @param merkleRoot Database column merkle_root SqlType(text)
@@ -41,7 +42,7 @@ trait Tables {
       size: Int,
       strippedSize: Int,
       weight: Int,
-      height: Int,
+      level: Int,
       version: Int,
       versionHex: String,
       merkleRoot: String,
@@ -97,7 +98,7 @@ trait Tables {
         size,
         strippedSize,
         weight,
-        height,
+        level,
         version,
         versionHex,
         merkleRoot,
@@ -120,7 +121,7 @@ trait Tables {
           Rep.Some(size),
           Rep.Some(strippedSize),
           Rep.Some(weight),
-          Rep.Some(height),
+          Rep.Some(level),
           Rep.Some(version),
           Rep.Some(versionHex),
           Rep.Some(merkleRoot),
@@ -177,8 +178,8 @@ trait Tables {
     /** Database column weight SqlType(int4) */
     val weight: Rep[Int] = column[Int]("weight")
 
-    /** Database column height SqlType(int4) */
-    val height: Rep[Int] = column[Int]("height")
+    /** Database column level SqlType(int4) */
+    val level: Rep[Int] = column[Int]("level")
 
     /** Database column version SqlType(int4) */
     val version: Rep[Int] = column[Int]("version")
@@ -397,7 +398,7 @@ trait Tables {
 
   /** Entity class storing rows of table Transactions
     *  @param txid Database column txid SqlType(text), PrimaryKey
-    *  @param blockhash Database column blockhash SqlType(text)
+    *  @param blockHash Database column block_hash SqlType(text)
     *  @param hash Database column hash SqlType(text)
     *  @param hex Database column hex SqlType(text)
     *  @param size Database column size SqlType(int4)
@@ -405,11 +406,10 @@ trait Tables {
     *  @param weight Database column weight SqlType(int4)
     *  @param version Database column version SqlType(int4)
     *  @param lockTime Database column lock_time SqlType(timestamp)
-    *  @param blockTime Database column block_time SqlType(timestamp)
-    *  @param time Database column time SqlType(timestamp) */
+    *  @param blockTime Database column block_time SqlType(timestamp) */
   case class TransactionsRow(
       txid: String,
-      blockhash: String,
+      blockHash: String,
       hash: String,
       hex: String,
       size: Int,
@@ -417,8 +417,7 @@ trait Tables {
       weight: Int,
       version: Int,
       lockTime: java.sql.Timestamp,
-      blockTime: java.sql.Timestamp,
-      time: java.sql.Timestamp
+      blockTime: java.sql.Timestamp
   )
 
   /** GetResult implicit for fetching TransactionsRow objects using plain SQL queries */
@@ -439,7 +438,6 @@ trait Tables {
         <<[Int],
         <<[Int],
         <<[java.sql.Timestamp],
-        <<[java.sql.Timestamp],
         <<[java.sql.Timestamp]
       )
     )
@@ -449,14 +447,14 @@ trait Tables {
   class Transactions(_tableTag: Tag)
       extends profile.api.Table[TransactionsRow](_tableTag, Some("bitcoin"), "transactions") {
     def * =
-      (txid, blockhash, hash, hex, size, vsize, weight, version, lockTime, blockTime, time) <> (TransactionsRow.tupled, TransactionsRow.unapply)
+      (txid, blockHash, hash, hex, size, vsize, weight, version, lockTime, blockTime) <> (TransactionsRow.tupled, TransactionsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       (
         (
           Rep.Some(txid),
-          Rep.Some(blockhash),
+          Rep.Some(blockHash),
           Rep.Some(hash),
           Rep.Some(hex),
           Rep.Some(size),
@@ -464,16 +462,14 @@ trait Tables {
           Rep.Some(weight),
           Rep.Some(version),
           Rep.Some(lockTime),
-          Rep.Some(blockTime),
-          Rep.Some(time)
+          Rep.Some(blockTime)
         )
       ).shaped.<>(
         { r =>
           import r._;
           _1.map(
             _ =>
-              TransactionsRow
-                .tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get, _10.get, _11.get))
+              TransactionsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get, _10.get))
           )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -482,8 +478,8 @@ trait Tables {
     /** Database column txid SqlType(text), PrimaryKey */
     val txid: Rep[String] = column[String]("txid", O.PrimaryKey)
 
-    /** Database column blockhash SqlType(text) */
-    val blockhash: Rep[String] = column[String]("blockhash")
+    /** Database column block_hash SqlType(text) */
+    val blockHash: Rep[String] = column[String]("block_hash")
 
     /** Database column hash SqlType(text) */
     val hash: Rep[String] = column[String]("hash")
@@ -509,11 +505,8 @@ trait Tables {
     /** Database column block_time SqlType(timestamp) */
     val blockTime: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("block_time")
 
-    /** Database column time SqlType(timestamp) */
-    val time: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("time")
-
-    /** Foreign key referencing Blocks (database name bitcoin_transactions_blockhash_fkey) */
-    lazy val blocksFk = foreignKey("bitcoin_transactions_blockhash_fkey", blockhash, Blocks)(
+    /** Foreign key referencing Blocks (database name bitcoin_transactions_block_hash_fkey) */
+    lazy val blocksFk = foreignKey("bitcoin_transactions_block_hash_fkey", blockHash, Blocks)(
       r => r.hash,
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
