@@ -1030,10 +1030,11 @@ WHERE
 ;
 
 CREATE INDEX ix_blocks_hash ON ethereum.blocks USING btree (hash);
-CREATE INDEX ix_blocks_level ON ethereum.blocks USING btree (level DESC NULLS LAST);
+CREATE INDEX ix_blocks_level ON ethereum.blocks USING btree (level);
+CREATE INDEX ix_blocks_timestamp ON ethereum.blocks USING btree (timestamp);
 
 CREATE INDEX ix_transactions_hash ON ethereum.transactions USING btree (hash);
-CREATE INDEX ix_transactions_block_number ON ethereum.transactions USING btree (block_number DESC NULLS LAST);
+CREATE INDEX ix_transactions_block_number ON ethereum.transactions USING btree (block_number);
 CREATE INDEX ix_transactions_source ON ethereum.transactions USING btree (source);
 CREATE INDEX ix_transactions_destination ON ethereum.transactions USING btree (destination);
 
@@ -1041,16 +1042,16 @@ CREATE INDEX ix_accounts_address ON ethereum.accounts USING btree (address);
 CREATE INDEX ix_accounts_token_standard ON ethereum.accounts USING btree (token_standard);
 
 CREATE INDEX ix_accounts_history_address ON ethereum.accounts_history USING btree (address);
-CREATE INDEX ix_accounts_history_block_number ON ethereum.accounts_history USING btree (block_number DESC NULLS LAST);
+CREATE INDEX ix_accounts_history_block_number ON ethereum.accounts_history USING btree (block_number);
 
 CREATE INDEX ix_token_transfers_address ON ethereum.token_transfers USING btree (token_address);
-CREATE INDEX ix_token_transfers_block_number ON ethereum.token_transfers USING btree (block_number DESC NULLS LAST);
+CREATE INDEX ix_token_transfers_block_number ON ethereum.token_transfers USING btree (block_number);
 CREATE INDEX ix_token_transfers_from ON ethereum.token_transfers USING btree (from_address);
 CREATE INDEX ix_token_transfers_to ON ethereum.token_transfers USING btree (to_address);
 
 CREATE INDEX ix_tokens_history_account_address ON ethereum.tokens_history USING btree (account_address);
 CREATE INDEX ix_tokens_history_token_address ON ethereum.tokens_history USING btree (token_address);
-CREATE INDEX ix_tokens_history_block_number ON ethereum.tokens_history USING btree (block_number DESC NULLS LAST);
+CREATE INDEX ix_tokens_history_block_number ON ethereum.tokens_history USING btree (block_number);
 
 -- The schema for Quorum is duplicated from Ethereum.
 -- TODO: This is a temporary solution, in the future we intend to generate the schema automatically to avoid duplication,

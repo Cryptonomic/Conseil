@@ -90,7 +90,7 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
       }
 
       "return contract account balances for created contract" in new EthereumClientStubs {
-        Stream(RpcFixtures.contractResult)
+        Stream(RpcFixtures.contractResultErc20)
           .through(
             ethereumClientStub(JsonFixtures.getBalanceResponse).getContractBalance(RpcFixtures.blockResult)
           )
@@ -103,6 +103,16 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
         Stream(RpcFixtures.contractAccountResult)
           .through(
             ethereumClientStub(JsonFixtures.callResponse).addTokenInfo
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.contractAccountResultErc20)
+      }
+
+      "properly contract account data if token info methods not implemented" in new EthereumClientStubs {
+        Stream(RpcFixtures.contractAccountResult)
+          .through(
+            ethereumClientStub(JsonFixtures.failedCallResponse).addTokenInfo
           )
           .compile
           .toList

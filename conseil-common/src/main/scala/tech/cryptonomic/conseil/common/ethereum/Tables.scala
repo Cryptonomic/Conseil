@@ -456,6 +456,9 @@ trait Tables {
 
     /** Index over (level) (database name ix_blocks_level) */
     val index1 = index("ix_blocks_level", level)
+
+    /** Index over (timestamp) (database name ix_blocks_timestamp) */
+    val index2 = index("ix_blocks_timestamp", timestamp)
   }
 
   /** Collection-like TableQuery object for table Blocks */

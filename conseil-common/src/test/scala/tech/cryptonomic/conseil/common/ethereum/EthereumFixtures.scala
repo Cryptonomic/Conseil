@@ -124,6 +124,14 @@ trait EthereumFixtures {
       |  "id": "requestId"
       |}]""".stripMargin
 
+    // Json result for the failed: eth_call
+    val failedCallResponse =
+      """[{
+      |  "jsonrpc":"2.0",
+      |  "id":"requestId",
+      |  "error":{"code":-32000,"message":"exception message"}
+      |}]""".stripMargin
+
     // Json result for the: eth_getBalance
     val getBalanceResponse =
       """[{
@@ -244,14 +252,27 @@ trait EthereumFixtures {
       blockNumber = "0x18e70",
       timestamp = "0x55d21481",
       balance = BigDecimal("1.0"),
-      bytecode = Some(Bytecode("0x0")),
-      tokenStandard = None,
+      bytecode = Some(Bytecode(BytecodeFixtures.erc20)),
+      tokenStandard = Some(TokenStandards.ERC20),
       name = None,
       symbol = None,
       decimals = None,
       totalSupply = None
     )
 
+    val contractAccountResultErc20 = Account(
+      address = "0x123",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = "0x18e70",
+      timestamp = "0x55d21481",
+      balance = BigDecimal("1.0"),
+      bytecode = Some(Bytecode(BytecodeFixtures.erc20)),
+      tokenStandard = Some(TokenStandards.ERC20),
+      name = Some(""),
+      symbol = Some(""),
+      decimals = Some(0),
+      totalSupply = Some(BigDecimal(0))
+    )
     val contractTokenAccountResult = Account(
       address = "0x123",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
@@ -273,6 +294,15 @@ trait EthereumFixtures {
       isErc20 = false,
       isErc721 = false,
       bytecode = Bytecode("0x0")
+    )
+
+    val contractResultErc20 = Contract(
+      address = "0x123",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = "0x18e70",
+      isErc20 = true,
+      isErc721 = false,
+      bytecode = Bytecode(BytecodeFixtures.erc20)
     )
 
     val tokenResult = Token(
