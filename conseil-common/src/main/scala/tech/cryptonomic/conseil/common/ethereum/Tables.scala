@@ -576,6 +576,15 @@ trait Tables {
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
+
+    /** Index over (address) (database name ix_logs_address) */
+    val index1 = index("ix_logs_address", address)
+
+    /** Index over (blockNumber) (database name ix_logs_block_number) */
+    val index2 = index("ix_logs_block_number", blockNumber)
+
+    /** Index over (transactionHash) (database name ix_logs_hash) */
+    val index3 = index("ix_logs_hash", transactionHash)
   }
 
   /** Collection-like TableQuery object for table Logs */
@@ -706,6 +715,12 @@ trait Tables {
 
     /** Database column root SqlType(text), Default(None) */
     val root: Rep[Option[String]] = column[Option[String]]("root", O.Default(None))
+
+    /** Index over (blockNumber) (database name ix_receipts_block_number) */
+    val index1 = index("ix_receipts_block_number", blockNumber)
+
+    /** Index over (transactionHash) (database name ix_receipts_hash) */
+    val index2 = index("ix_receipts_hash", transactionHash)
   }
 
   /** Collection-like TableQuery object for table Receipts */

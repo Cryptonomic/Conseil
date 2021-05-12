@@ -1038,6 +1038,13 @@ CREATE INDEX ix_transactions_block_number ON ethereum.transactions USING btree (
 CREATE INDEX ix_transactions_source ON ethereum.transactions USING btree (source);
 CREATE INDEX ix_transactions_destination ON ethereum.transactions USING btree (destination);
 
+CREATE INDEX ix_receipts_hash ON ethereum.receipts USING btree (transaction_hash);
+CREATE INDEX ix_receipts_block_number ON ethereum.receipts USING btree (block_number);
+
+CREATE INDEX ix_logs_address ON ethereum.logs USING btree (address);
+CREATE INDEX ix_logs_hash ON ethereum.logs USING btree (transaction_hash);
+CREATE INDEX ix_logs_block_number ON ethereum.logs USING btree (block_number);
+
 CREATE INDEX ix_accounts_address ON ethereum.accounts USING btree (address);
 CREATE INDEX ix_accounts_token_standard ON ethereum.accounts USING btree (token_standard);
 
