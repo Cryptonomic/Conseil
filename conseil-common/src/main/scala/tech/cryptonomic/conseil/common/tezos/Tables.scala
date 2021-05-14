@@ -40,7 +40,8 @@ trait Tables {
     ProcessedChainEvents.schema,
     RegisteredTokens.schema,
     TezosNames.schema,
-    TokenBalances.schema
+    TokenBalances.schema,
+    TokenMetadata.schema
   ).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
@@ -2433,171 +2434,32 @@ trait Tables {
 
   /** Entity class storing rows of table KnownAddresses
     *  @param address Database column address SqlType(varchar)
-    *  @param alias Database column alias SqlType(varchar), Default(None)
-    *  @param name Database column name SqlType(varchar), Default(None)
-    *  @param description Database column description SqlType(varchar), Default(None)
-    *  @param version Database column version SqlType(varchar), Default(None)
-    *  @param licenseName Database column license_name SqlType(varchar), Default(None)
-    *  @param licenseDetails Database column license_details SqlType(varchar), Default(None)
-    *  @param authors Database column authors SqlType(varchar), Default(None)
-    *  @param homepage Database column homepage SqlType(varchar), Default(None)
-    *  @param sourceTools Database column source_tools SqlType(varchar), Default(None)
-    *  @param sourceLocation Database column source_location SqlType(varchar), Default(None)
-    *  @param interfaces Database column interfaces SqlType(varchar), Default(None)
-    *  @param blockLevel Database column block_level SqlType(int8), Default(None)
-    *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
-    *  @param metadataUri Database column metadata_uri SqlType(varchar), Default(None)
-    *  @param views Database column views SqlType(varchar), Default(None) */
-  case class KnownAddressesRow(
-      address: String,
-      alias: Option[String] = None,
-      name: Option[String] = None,
-      description: Option[String] = None,
-      version: Option[String] = None,
-      licenseName: Option[String] = None,
-      licenseDetails: Option[String] = None,
-      authors: Option[String] = None,
-      homepage: Option[String] = None,
-      sourceTools: Option[String] = None,
-      sourceLocation: Option[String] = None,
-      interfaces: Option[String] = None,
-      blockLevel: Option[Long] = None,
-      timestamp: Option[java.sql.Timestamp] = None,
-      metadataUri: Option[String] = None,
-      views: Option[String] = None
-  )
+    *  @param alias Database column alias SqlType(varchar), Default(None) */
+  case class KnownAddressesRow(address: String, alias: Option[String] = None)
 
   /** GetResult implicit for fetching KnownAddressesRow objects using plain SQL queries */
-  implicit def GetResultKnownAddressesRow(
-      implicit e0: GR[String],
-      e1: GR[Option[String]],
-      e2: GR[Option[Long]],
-      e3: GR[Option[java.sql.Timestamp]]
-  ): GR[KnownAddressesRow] = GR { prs =>
-    import prs._
-    KnownAddressesRow.tupled(
-      (
-        <<[String],
-        <<?[String],
-        <<?[String],
-        <<?[String],
-        <<?[String],
-        <<?[String],
-        <<?[String],
-        <<?[String],
-        <<?[String],
-        <<?[String],
-        <<?[String],
-        <<?[String],
-        <<?[Long],
-        <<?[java.sql.Timestamp],
-        <<?[String],
-        <<?[String]
-      )
-    )
+  implicit def GetResultKnownAddressesRow(implicit e0: GR[String], e1: GR[Option[String]]): GR[KnownAddressesRow] = GR {
+    prs =>
+      import prs._
+      KnownAddressesRow.tupled((<<[String], <<?[String]))
   }
 
   /** Table description of table known_addresses. Objects of this class serve as prototypes for rows in queries. */
   class KnownAddresses(_tableTag: Tag)
       extends profile.api.Table[KnownAddressesRow](_tableTag, Some("tezos"), "known_addresses") {
-    def * =
-      (
-        address,
-        alias,
-        name,
-        description,
-        version,
-        licenseName,
-        licenseDetails,
-        authors,
-        homepage,
-        sourceTools,
-        sourceLocation,
-        interfaces,
-        blockLevel,
-        timestamp,
-        metadataUri,
-        views
-      ) <> (KnownAddressesRow.tupled, KnownAddressesRow.unapply)
+    def * = (address, alias) <> (KnownAddressesRow.tupled, KnownAddressesRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (
-        (
-          Rep.Some(address),
-          alias,
-          name,
-          description,
-          version,
-          licenseName,
-          licenseDetails,
-          authors,
-          homepage,
-          sourceTools,
-          sourceLocation,
-          interfaces,
-          blockLevel,
-          timestamp,
-          metadataUri,
-          views
-        )
-      ).shaped.<>(
-        { r =>
-          import r._;
-          _1.map(
-            _ => KnownAddressesRow.tupled((_1.get, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16))
-          )
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
+      ((Rep.Some(address), alias)).shaped.<>({ r =>
+        import r._; _1.map(_ => KnownAddressesRow.tupled((_1.get, _2)))
+      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column address SqlType(varchar) */
     val address: Rep[String] = column[String]("address")
 
     /** Database column alias SqlType(varchar), Default(None) */
     val alias: Rep[Option[String]] = column[Option[String]]("alias", O.Default(None))
-
-    /** Database column name SqlType(varchar), Default(None) */
-    val name: Rep[Option[String]] = column[Option[String]]("name", O.Default(None))
-
-    /** Database column description SqlType(varchar), Default(None) */
-    val description: Rep[Option[String]] = column[Option[String]]("description", O.Default(None))
-
-    /** Database column version SqlType(varchar), Default(None) */
-    val version: Rep[Option[String]] = column[Option[String]]("version", O.Default(None))
-
-    /** Database column license_name SqlType(varchar), Default(None) */
-    val licenseName: Rep[Option[String]] = column[Option[String]]("license_name", O.Default(None))
-
-    /** Database column license_details SqlType(varchar), Default(None) */
-    val licenseDetails: Rep[Option[String]] = column[Option[String]]("license_details", O.Default(None))
-
-    /** Database column authors SqlType(varchar), Default(None) */
-    val authors: Rep[Option[String]] = column[Option[String]]("authors", O.Default(None))
-
-    /** Database column homepage SqlType(varchar), Default(None) */
-    val homepage: Rep[Option[String]] = column[Option[String]]("homepage", O.Default(None))
-
-    /** Database column source_tools SqlType(varchar), Default(None) */
-    val sourceTools: Rep[Option[String]] = column[Option[String]]("source_tools", O.Default(None))
-
-    /** Database column source_location SqlType(varchar), Default(None) */
-    val sourceLocation: Rep[Option[String]] = column[Option[String]]("source_location", O.Default(None))
-
-    /** Database column interfaces SqlType(varchar), Default(None) */
-    val interfaces: Rep[Option[String]] = column[Option[String]]("interfaces", O.Default(None))
-
-    /** Database column block_level SqlType(int8), Default(None) */
-    val blockLevel: Rep[Option[Long]] = column[Option[Long]]("block_level", O.Default(None))
-
-    /** Database column timestamp SqlType(timestamp), Default(None) */
-    val timestamp: Rep[Option[java.sql.Timestamp]] = column[Option[java.sql.Timestamp]]("timestamp", O.Default(None))
-
-    /** Database column metadata_uri SqlType(varchar), Default(None) */
-    val metadataUri: Rep[Option[String]] = column[Option[String]]("metadata_uri", O.Default(None))
-
-    /** Database column views SqlType(varchar), Default(None) */
-    val views: Rep[Option[String]] = column[Option[String]]("views", O.Default(None))
   }
 
   /** Collection-like TableQuery object for table KnownAddresses */
@@ -3252,25 +3114,43 @@ trait Tables {
     *  @param name Database column name SqlType(text)
     *  @param contractType Database column contract_type SqlType(text)
     *  @param accountId Database column account_id SqlType(text)
-    *  @param scale Database column scale SqlType(int4) */
-  case class RegisteredTokensRow(id: Int, name: String, contractType: String, accountId: String, scale: Int)
+    *  @param scale Database column scale SqlType(int4)
+    *  @param metadataPath Database column metadata_path SqlType(text) */
+  case class RegisteredTokensRow(
+      id: Int,
+      name: String,
+      contractType: String,
+      accountId: String,
+      scale: Int,
+      metadataPath: String
+  )
 
   /** GetResult implicit for fetching RegisteredTokensRow objects using plain SQL queries */
   implicit def GetResultRegisteredTokensRow(implicit e0: GR[Int], e1: GR[String]): GR[RegisteredTokensRow] = GR { prs =>
     import prs._
-    RegisteredTokensRow.tupled((<<[Int], <<[String], <<[String], <<[String], <<[Int]))
+    RegisteredTokensRow.tupled((<<[Int], <<[String], <<[String], <<[String], <<[Int], <<[String]))
   }
 
   /** Table description of table registered_tokens. Objects of this class serve as prototypes for rows in queries. */
   class RegisteredTokens(_tableTag: Tag)
       extends profile.api.Table[RegisteredTokensRow](_tableTag, Some("tezos"), "registered_tokens") {
-    def * = (id, name, contractType, accountId, scale) <> (RegisteredTokensRow.tupled, RegisteredTokensRow.unapply)
+    def * =
+      (id, name, contractType, accountId, scale, metadataPath) <> (RegisteredTokensRow.tupled, RegisteredTokensRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(id), Rep.Some(name), Rep.Some(contractType), Rep.Some(accountId), Rep.Some(scale))).shaped.<>(
+      (
+        (
+          Rep.Some(id),
+          Rep.Some(name),
+          Rep.Some(contractType),
+          Rep.Some(accountId),
+          Rep.Some(scale),
+          Rep.Some(metadataPath)
+        )
+      ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => RegisteredTokensRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))
+          import r._; _1.map(_ => RegisteredTokensRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -3289,6 +3169,9 @@ trait Tables {
 
     /** Database column scale SqlType(int4) */
     val scale: Rep[Int] = column[Int]("scale")
+
+    /** Database column metadata_path SqlType(text) */
+    val metadataPath: Rep[String] = column[String]("metadata_path")
   }
 
   /** Collection-like TableQuery object for table RegisteredTokens */
@@ -3463,4 +3346,70 @@ trait Tables {
 
   /** Collection-like TableQuery object for table TokenBalances */
   lazy val TokenBalances = new TableQuery(tag => new TokenBalances(tag))
+
+  /** Entity class storing rows of table TokenMetadata
+    *  @param ownerAddress Database column owner_address SqlType(text)
+    *  @param ownerBigmapId Database column owner_bigmap_id SqlType(int4)
+    *  @param key Database column key SqlType(text)
+    *  @param value Database column value SqlType(text), Default(None)
+    *  @param source Database column source SqlType(text), Default(None)
+    *  @param sourceType Database column source_type SqlType(text), Default(None) */
+  case class TokenMetadataRow(
+      ownerAddress: String,
+      ownerBigmapId: Int,
+      key: String,
+      value: Option[String] = None,
+      source: Option[String] = None,
+      sourceType: Option[String] = None
+  )
+
+  /** GetResult implicit for fetching TokenMetadataRow objects using plain SQL queries */
+  implicit def GetResultTokenMetadataRow(
+      implicit e0: GR[String],
+      e1: GR[Int],
+      e2: GR[Option[String]]
+  ): GR[TokenMetadataRow] = GR { prs =>
+    import prs._
+    TokenMetadataRow.tupled((<<[String], <<[Int], <<[String], <<?[String], <<?[String], <<?[String]))
+  }
+
+  /** Table description of table token_metadata. Objects of this class serve as prototypes for rows in queries. */
+  class TokenMetadata(_tableTag: Tag)
+      extends profile.api.Table[TokenMetadataRow](_tableTag, Some("tezos"), "token_metadata") {
+    def * =
+      (ownerAddress, ownerBigmapId, key, value, source, sourceType) <> (TokenMetadataRow.tupled, TokenMetadataRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      ((Rep.Some(ownerAddress), Rep.Some(ownerBigmapId), Rep.Some(key), value, source, sourceType)).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => TokenMetadataRow.tupled((_1.get, _2.get, _3.get, _4, _5, _6)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    /** Database column owner_address SqlType(text) */
+    val ownerAddress: Rep[String] = column[String]("owner_address")
+
+    /** Database column owner_bigmap_id SqlType(int4) */
+    val ownerBigmapId: Rep[Int] = column[Int]("owner_bigmap_id")
+
+    /** Database column key SqlType(text) */
+    val key: Rep[String] = column[String]("key")
+
+    /** Database column value SqlType(text), Default(None) */
+    val value: Rep[Option[String]] = column[Option[String]]("value", O.Default(None))
+
+    /** Database column source SqlType(text), Default(None) */
+    val source: Rep[Option[String]] = column[Option[String]]("source", O.Default(None))
+
+    /** Database column source_type SqlType(text), Default(None) */
+    val sourceType: Rep[Option[String]] = column[Option[String]]("source_type", O.Default(None))
+
+    /** Primary key of TokenMetadata (database name token_metadata_pkey) */
+    val pk = primaryKey("token_metadata_pkey", (ownerAddress, ownerBigmapId, key))
+  }
+
+  /** Collection-like TableQuery object for table TokenMetadata */
+  lazy val TokenMetadata = new TableQuery(tag => new TokenMetadata(tag))
 }

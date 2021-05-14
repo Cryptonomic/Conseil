@@ -3,7 +3,17 @@ package tech.cryptonomic.conseil.indexer.tezos.michelson.contracts
 import java.lang.Integer.parseInt
 import java.nio.charset.StandardCharsets
 
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, Contract, ContractId, Decimal, Micheline, Parameters, ParametersCompatibility, PublicKeyHash, makeAccountId}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
+  makeAccountId,
+  AccountId,
+  Contract,
+  ContractId,
+  Decimal,
+  Micheline,
+  Parameters,
+  ParametersCompatibility,
+  PublicKeyHash
+}
 import cats.implicits._
 
 import scala.collection.immutable.TreeSet
@@ -12,7 +22,13 @@ import scala.concurrent.SyncVar
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.util.CryptoUtil
 import scorex.util.encode.{Base16 => Hex}
-import tech.cryptonomic.conseil.indexer.tezos.michelson.dto.{MichelsonBytesConstant, MichelsonInstruction, MichelsonIntConstant, MichelsonSingleInstruction, MichelsonType}
+import tech.cryptonomic.conseil.indexer.tezos.michelson.dto.{
+  MichelsonBytesConstant,
+  MichelsonInstruction,
+  MichelsonIntConstant,
+  MichelsonSingleInstruction,
+  MichelsonType
+}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.parser.JsonParser
 
 /** For each specific contract available we store a few
@@ -383,6 +399,7 @@ object TokenContracts extends ConseilLogSupport {
 
     private def proceduralDecode(hex: String): String = {
 
+      logger.info(s"69706673 trying to decode $hex")
       val bytes = new Array[Byte](hex.length / 2)
 
       var i = 0
@@ -394,7 +411,7 @@ object TokenContracts extends ConseilLogSupport {
 
     }
 
-    def parseAccountsFromParameters(paramCode: Micheline): Option[String] = {
+    def extractTzip16MetadataLocationFromParameters(paramCode: Micheline, path: String): Option[String] = {
       val parsed = JsonParser.parse[MichelsonInstruction](paramCode.expression)
 
       parsed.left.foreach(
@@ -412,24 +429,8 @@ object TokenContracts extends ConseilLogSupport {
       )
 
       for {
-        metadataUrl <- parsed.toOption.collect {
-          case MichelsonSingleInstruction(
-          "Pair",
-          _ :: MichelsonType(
-          "Pair",
-          _ :: MichelsonType(
-          "Pair",
-          _ :: MichelsonType(
-          "Pair",
-          MichelsonIntConstant(_) :: MichelsonBytesConstant(mu) :: Nil,
-          _
-          ) :: Nil,
-          _
-          ) :: Nil,
-          _
-          ) :: Nil,
-          _
-          ) =>
+        metadataUrl <- parsed.toOption.flatMap(_.getAtPath(path)).collect {
+          case MichelsonBytesConstant(mu) =>
             mu
         }
       } yield proceduralDecode(metadataUrl)

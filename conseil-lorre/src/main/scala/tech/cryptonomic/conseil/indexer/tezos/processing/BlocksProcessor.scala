@@ -4,18 +4,20 @@ import scala.util.{Failure, Success, Try}
 import scala.concurrent.{ExecutionContext, Future}
 import slick.jdbc.PostgresProfile.api._
 import cats.implicits._
-
 import tech.cryptonomic.conseil.indexer.tezos.{
+  TezosGovernanceOperations,
   TezosNamesOperations,
   TezosNodeOperator,
-  TezosGovernanceOperations,
+  Tzip16MetadataOperator,
   TezosDatabaseOperations => TezosDb
 }
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, Voting}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, InternalOperationResults, Voting}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
+import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts.Tzip16
 
 /** Collects operations related to handling blocks from
   * the tezos node.
@@ -33,7 +35,8 @@ class BlocksProcessor(
     db: Database,
     tnsOperations: TezosNamesOperations,
     accountsProcessor: AccountsProcessor,
-    bakersProcessor: BakersProcessor
+    bakersProcessor: BakersProcessor,
+    metadataOperator: Tzip16MetadataOperator
 )(implicit tokens: TokenContracts, tns: TNSContract)
     extends ConseilLogSupport {
 
@@ -59,6 +62,7 @@ class BlocksProcessor(
 
     for {
       _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
+      _ <- processTzip16Metadata(blocks)
       _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
       bakersCheckpoints <- accountsProcessor.processAccountsForBlocks(accountUpdates) // should this fail, we still recover data from the checkpoint
       _ <- bakersProcessor.processBakersForBlocks(bakersCheckpoints)
@@ -67,6 +71,42 @@ class BlocksProcessor(
       _ <- processBlocksForGovernance(rollsData.toMap)
     } yield results.size
 
+  }
+
+  private def processTzip16Metadata(blocks: List[Block])(implicit ec: ExecutionContext): Future[Option[Int]] = {
+    val internalTransactionResults = blocks.flatMap { block =>
+      block.operationGroups.flatMap { opGroups =>
+        opGroups.contents.collect {
+          case TezosTypes.Transaction(_, _, _, _, _, _, _, _, _, metadata) =>
+            metadata.internal_operation_results.toList.flatten.collect {
+              case transaction: InternalOperationResults.Transaction => transaction
+            }
+        }
+      }
+    }.flatten
+
+    val itrPathMichelinePairFut = internalTransactionResults.traverse { itr =>
+      db.run(TezosDb.getContractMetadataPath(itr.destination.id)).map {
+        case Some(path) =>
+          itr.parameters_micheline.toList.map {
+            case Left(value) => (itr, path, value.value)
+            case Right(value) => (itr, path, value)
+          }
+        case None => List.empty
+      }
+    }.map(_.flatten)
+
+    val metadata = itrPathMichelinePairFut.flatMap { pathMichelinePair =>
+      pathMichelinePair.traverse {
+        case (itr, path, micheline) =>
+          Tzip16
+            .extractTzip16MetadataLocationFromParameters(micheline, path)
+            .toList
+            .traverse(x => metadataOperator.getMetadata(x).map(itr.source -> _))
+      }
+    }.map(_.flatten)
+
+    metadata.flatMap(tok => db.run(TezosDb.writeTokenMetadata(tok)))
   }
 
   /** Prepares and stores statistics for voting periods of the

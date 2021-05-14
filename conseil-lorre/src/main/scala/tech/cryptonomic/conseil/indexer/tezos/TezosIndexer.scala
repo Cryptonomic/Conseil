@@ -288,9 +288,18 @@ object TezosIndexer extends ConseilLogSupport {
       lorreConf.blockRightsFetching
     )
 
+    val tezosMetadataInterface = new TezosMetadataInterface(conf, callsConf, streamingClientConf)
+    val tzip16MetadataOperator = new Tzip16MetadataOperator(tezosMetadataInterface, batchingConf)
+
     /* handles standard accounts data */
     val accountsProcessor =
-      new AccountsProcessor(nodeOperator, indexedData, batchingConf, lorreConf.blockRightsFetching)
+      new AccountsProcessor(
+        nodeOperator,
+        tzip16MetadataOperator,
+        indexedData,
+        batchingConf,
+        lorreConf.blockRightsFetching
+      )
 
     /* handles wide-range accounts refresh due to occasional special events */
     val accountsResetHandler = new AccountsResetHandler(db, indexedData)
@@ -336,7 +345,7 @@ object TezosIndexer extends ConseilLogSupport {
             case (tokenRows, _) =>
               TokenContracts.fromConfig(
                 tokenRows.map {
-                  case Tables.RegisteredTokensRow(_, tokenName, standard, accountId, _) =>
+                  case Tables.RegisteredTokensRow(_, tokenName, standard, accountId, _, _) =>
                     ContractId(accountId) -> standard
                 }
               )
@@ -376,7 +385,8 @@ object TezosIndexer extends ConseilLogSupport {
       db,
       tnsOperations,
       accountsProcessor,
-      bakersProcessor
+      bakersProcessor,
+      tzip16MetadataOperator
     )
 
     /* A single component will provide all required search functions for the fork-handler */

@@ -8,6 +8,7 @@ import cats.implicits._
 import cats.{Id, Show}
 import io.scalaland.chimney.dsl._
 import monocle.Getter
+import tech.cryptonomic.conseil.common.tezos
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
@@ -965,6 +966,23 @@ private[tezos] object TezosDatabaseConversions {
           registeredAt = registrationTimestamp,
           registrationPeriod = Try(from.registrationPeriod.toInt).toOption,
           modified = Try(from.updated.toLowerCase.trim.toBoolean).toOption
+        )
+      }
+    }
+
+  implicit val tzip16MetadataToTokenMetadataRow =
+    new Conversion[Id, (PublicKeyHash, (String, Tzip16Metadata)), Tables.TokenMetadataRow] {
+
+      /** Takes a `FROM` object and retuns the `TO` object, with an effect `F`. */
+      override def convert(from: (PublicKeyHash, (String, Tzip16Metadata))): Id[tezos.Tables.TokenMetadataRow] = {
+        val (pkh, (rawJson, metadata)) = from
+        Tables.TokenMetadataRow(
+          ownerAddress = pkh.value,
+          ownerBigmapId = 42,
+          key = metadata.name,
+          value = rawJson.some,
+          source = metadata.source.flatMap(_.location),
+          sourceType = metadata.source.flatMap(_.tools.map(_.mkString(",")))
         )
       }
     }

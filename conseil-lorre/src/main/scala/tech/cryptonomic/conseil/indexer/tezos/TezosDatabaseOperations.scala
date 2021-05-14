@@ -518,6 +518,11 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     Tables.TezosNames.insertOrUpdateAll(names.map(_.convertTo[Tables.TezosNamesRow]))
   }
 
+  def writeTokenMetadata(metadata: List[(PublicKeyHash, (String, Tzip16Metadata))]): DBIO[Option[Int]] = {
+    import CustomProfileExtension.api._
+    Tables.TokenMetadata.insertOrUpdateAll(metadata.map(_.convertTo[Tables.TokenMetadataRow]))
+  }
+
   /**
     * Writes accounts to the database and record the keys (hashes) to later save complete bakers information relative to each block
     * @param accounts the full accounts' data with account rows of inactive bakers
@@ -866,6 +871,14 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     */
   def deferConstraints(): DBIO[Int] =
     sqlu"SET CONSTRAINTS ALL DEFERRED;"
+
+  def getContractMetadataPath(contractId: String): DBIO[Option[String]] =
+    //println(s"looking for contractId: $contractId")
+    Tables.RegisteredTokens
+      .filter(rt => rt.accountId === contractId && rt.metadataPath =!= "null")
+      .map(_.metadataPath)
+      .result
+      .headOption
 
   /** Operations related to data invalidation due to forks on the chain */
   object ForkInvalidation {

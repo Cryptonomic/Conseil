@@ -80,28 +80,7 @@ CREATE TABLE tezos.baker_registry (
 
 CREATE TABLE tezos.known_addresses (
     address character varying NOT NULL,
-    alias character varying,
-    name character varying,
-    description character varying,
-    version character varying,
-    license_name character varying,
-    license_details character varying,
-    authors character varying,
-    homepage character varying,
-    source_tools character varying,
-    source_location character varying,
-    interfaces character varying,
-    block_level bigint,
-    timestamp timestamp without time zone,
-    metadata_uri character varying,
-    views character varying
-     -- nullable
-    -- + reserved fields
-    -- + raw json
-    -- + block level
-    -- + timestamp of retrieval
-    -- + metadata uri(ipfs + http)
-
+    alias character varying
 );
 
 CREATE TABLE tezos.governance (
@@ -149,7 +128,8 @@ CREATE TABLE tezos.registered_tokens (
     name text NOT NULL,
     contract_type text NOT NULL,
     account_id text NOT NULL,
-    scale integer NOT NULL
+    scale integer NOT NULL,
+    metadata_path text NOT NULL
 );
 
 CREATE TABLE tezos.token_balances (
@@ -803,6 +783,26 @@ ALTER TABLE ONLY tezos.operations
     FOREIGN KEY (operation_group_hash, block_hash, fork_id)
     REFERENCES tezos.operation_groups(hash, block_id, fork_id)
     DEFERRABLE INITIALLY IMMEDIATE;
+
+
+--owner_address (KT1 address)
+--owner_<something> - bigmap id?
+--key - big map key? nested keys? x.y.z?
+--value - metadata json
+--source (ipfs url or bigmap index)
+--source type ("ipfs", "bigmap")
+--PR (owner_address+something+key)
+
+CREATE TABLE tezos.token_metadata (
+    owner_address text,
+    owner_bigmap_id integer,
+    key text,
+    value text,
+    source text,
+    source_type text,
+    PRIMARY KEY (owner_address, owner_bigmap_id, key)
+);
+
 
 --
 -- PostgreSQL database dump complete
