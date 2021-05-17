@@ -170,7 +170,8 @@ class GenericPlatformDiscoveryOperationsTest
             Entity("transactions", "Transactions", 0),
             Entity("blocks", "Blocks", 0),
             Entity("inputs", "Inputs", 0),
-            Entity("outputs", "Outputs", 0)
+            Entity("outputs", "Outputs", 0),
+            Entity("accounts", "Accounts", 0)
           )
         )
       }

@@ -64,8 +64,10 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
     *
     * @param contractAccounts contract account eth_getBalance data
     */
-  def createContractAccounts(contractAccounts: List[Account]): DBIO[Option[Int]] =
-    Tables.Accounts ++= contractAccounts.map(_.convertTo[Tables.AccountsRow])
+  def createContractAccounts(contractAccounts: List[Account]): DBIO[Option[Int]] = {
+    import tech.cryptonomic.conseil.common.sql.CustomProfileExtension.api._
+    Tables.Accounts.insertOrUpdateAll(contractAccounts.map(_.convertTo[Tables.AccountsRow]))
+  }
 
   /**
     * Create [[DBIO]] seq with account balances.
@@ -303,8 +305,8 @@ object EthereumPersistence {
           bytecode = from.bytecode.map(_.value),
           bytecodeHash = from.bytecode.map(_.hash),
           tokenStandard = from.tokenStandard.map(_.value),
-          name = from.name,
-          symbol = from.symbol,
+          name = from.name.map(Utils.truncateEmptyHexString),
+          symbol = from.symbol.map(Utils.truncateEmptyHexString),
           decimals = from.decimals,
           totalSupply = from.totalSupply
         )

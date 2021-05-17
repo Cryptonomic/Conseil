@@ -1,4 +1,5 @@
 package tech.cryptonomic.conseil.common.ethereum
+
 // AUTO-GENERATED Slick data model
 /** Stand-alone Slick data model for immediate use */
 object Tables extends {
@@ -38,8 +39,8 @@ trait Tables {
     *  @param tokenStandard Database column token_standard SqlType(text), Default(None)
     *  @param name Database column name SqlType(text), Default(None)
     *  @param symbol Database column symbol SqlType(text), Default(None)
-    *  @param decimals Database column decimals SqlType(text), Default(None)
-    *  @param totalSupply Database column total_supply SqlType(text), Default(None) */
+    *  @param decimals Database column decimals SqlType(int4), Default(None)
+    *  @param totalSupply Database column total_supply SqlType(numeric), Default(None) */
   case class AccountsRow(
       address: String,
       blockHash: String,
@@ -51,8 +52,8 @@ trait Tables {
       tokenStandard: Option[String] = None,
       name: Option[String] = None,
       symbol: Option[String] = None,
-      decimals: Option[String] = None,
-      totalSupply: Option[String] = None
+      decimals: Option[Int] = None,
+      totalSupply: Option[scala.math.BigDecimal] = None
   )
 
   /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */
@@ -61,7 +62,9 @@ trait Tables {
       e1: GR[Int],
       e2: GR[Option[java.sql.Timestamp]],
       e3: GR[scala.math.BigDecimal],
-      e4: GR[Option[String]]
+      e4: GR[Option[String]],
+      e5: GR[Option[Int]],
+      e6: GR[Option[scala.math.BigDecimal]]
   ): GR[AccountsRow] = GR { prs =>
     import prs._
     AccountsRow.tupled(
@@ -76,8 +79,8 @@ trait Tables {
         <<?[String],
         <<?[String],
         <<?[String],
-        <<?[String],
-        <<?[String]
+        <<?[Int],
+        <<?[scala.math.BigDecimal]
       )
     )
   }
@@ -155,11 +158,15 @@ trait Tables {
     /** Database column symbol SqlType(text), Default(None) */
     val symbol: Rep[Option[String]] = column[Option[String]]("symbol", O.Default(None))
 
-    /** Database column decimals SqlType(text), Default(None) */
-    val decimals: Rep[Option[String]] = column[Option[String]]("decimals", O.Default(None))
+    /** Database column decimals SqlType(int4), Default(None) */
+    val decimals: Rep[Option[Int]] = column[Option[Int]]("decimals", O.Default(None))
 
-    /** Database column total_supply SqlType(text), Default(None) */
-    val totalSupply: Rep[Option[String]] = column[Option[String]]("total_supply", O.Default(None))
+    /** Database column total_supply SqlType(numeric), Default(None) */
+    val totalSupply: Rep[Option[scala.math.BigDecimal]] =
+      column[Option[scala.math.BigDecimal]]("total_supply", O.Default(None))
+
+    /** Index over (tokenStandard) (database name ix_accounts_token_standard) */
+    val index1 = index("ix_accounts_token_standard", tokenStandard)
   }
 
   /** Collection-like TableQuery object for table Accounts */
@@ -224,6 +231,9 @@ trait Tables {
 
     /** Index over (address) (database name ix_accounts_history_address) */
     val index1 = index("ix_accounts_history_address", address)
+
+    /** Index over (blockNumber) (database name ix_accounts_history_block_number) */
+    val index2 = index("ix_accounts_history_block_number", blockNumber)
   }
 
   /** Collection-like TableQuery object for table AccountsHistory */
@@ -443,6 +453,12 @@ trait Tables {
 
     /** Database column timestamp SqlType(timestamp) */
     val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
+
+    /** Index over (level) (database name ix_blocks_level) */
+    val index1 = index("ix_blocks_level", level)
+
+    /** Index over (timestamp) (database name ix_blocks_timestamp) */
+    val index2 = index("ix_blocks_timestamp", timestamp)
   }
 
   /** Collection-like TableQuery object for table Blocks */
@@ -560,6 +576,15 @@ trait Tables {
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
+
+    /** Index over (address) (database name ix_logs_address) */
+    val index1 = index("ix_logs_address", address)
+
+    /** Index over (blockNumber) (database name ix_logs_block_number) */
+    val index2 = index("ix_logs_block_number", blockNumber)
+
+    /** Index over (transactionHash) (database name ix_logs_hash) */
+    val index3 = index("ix_logs_hash", transactionHash)
   }
 
   /** Collection-like TableQuery object for table Logs */
@@ -690,6 +715,12 @@ trait Tables {
 
     /** Database column root SqlType(text), Default(None) */
     val root: Rep[Option[String]] = column[Option[String]]("root", O.Default(None))
+
+    /** Index over (blockNumber) (database name ix_receipts_block_number) */
+    val index1 = index("ix_receipts_block_number", blockNumber)
+
+    /** Index over (transactionHash) (database name ix_receipts_hash) */
+    val index2 = index("ix_receipts_hash", transactionHash)
   }
 
   /** Collection-like TableQuery object for table Receipts */
@@ -772,11 +803,14 @@ trait Tables {
     /** Database column asof SqlType(timestamp) */
     val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
 
-    /** Index over (accountAddress) (database name ix_account_address) */
-    val index1 = index("ix_account_address", accountAddress)
+    /** Index over (accountAddress) (database name ix_tokens_history_account_address) */
+    val index1 = index("ix_tokens_history_account_address", accountAddress)
 
-    /** Index over (tokenAddress) (database name ix_token_address) */
-    val index2 = index("ix_token_address", tokenAddress)
+    /** Index over (blockNumber) (database name ix_tokens_history_block_number) */
+    val index2 = index("ix_tokens_history_block_number", blockNumber)
+
+    /** Index over (tokenAddress) (database name ix_tokens_history_token_address) */
+    val index3 = index("ix_tokens_history_token_address", tokenAddress)
   }
 
   /** Collection-like TableQuery object for table TokensHistory */
@@ -881,6 +915,18 @@ trait Tables {
 
     /** Database column value SqlType(numeric) */
     val value: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("value")
+
+    /** Index over (tokenAddress) (database name ix_token_transfers_address) */
+    val index1 = index("ix_token_transfers_address", tokenAddress)
+
+    /** Index over (blockNumber) (database name ix_token_transfers_block_number) */
+    val index2 = index("ix_token_transfers_block_number", blockNumber)
+
+    /** Index over (fromAddress) (database name ix_token_transfers_from) */
+    val index3 = index("ix_token_transfers_from", fromAddress)
+
+    /** Index over (toAddress) (database name ix_token_transfers_to) */
+    val index4 = index("ix_token_transfers_to", toAddress)
   }
 
   /** Collection-like TableQuery object for table TokenTransfers */
@@ -1072,6 +1118,15 @@ trait Tables {
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
+
+    /** Index over (blockNumber) (database name ix_transactions_block_number) */
+    val index1 = index("ix_transactions_block_number", blockNumber)
+
+    /** Index over (destination) (database name ix_transactions_destination) */
+    val index2 = index("ix_transactions_destination", destination)
+
+    /** Index over (source) (database name ix_transactions_source) */
+    val index3 = index("ix_transactions_source", source)
   }
 
   /** Collection-like TableQuery object for table Transactions */
