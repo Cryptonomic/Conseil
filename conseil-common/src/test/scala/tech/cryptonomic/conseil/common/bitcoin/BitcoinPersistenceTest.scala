@@ -29,7 +29,10 @@ class BitcoinPersistenceTest
         (for {
           // we have to have block row to save the transaction (due to the foreign key)
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
-          _ <- tx.transact(Tables.Transactions += RpcFixtures.transactionResult.convertTo[Tables.TransactionsRow])
+          _ <- tx.transact(
+            Tables.Transactions += (RpcFixtures.transactionResult, RpcFixtures.blockResult)
+                  .convertTo[Tables.TransactionsRow]
+          )
           result <- tx.transact(Tables.Transactions.result)
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.transactionRow)
       }
@@ -38,9 +41,13 @@ class BitcoinPersistenceTest
         (for {
           // we have to have block and transaction row to save the input (due to the foreign key)
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
-          _ <- tx.transact(Tables.Transactions += RpcFixtures.transactionResult.convertTo[Tables.TransactionsRow])
           _ <- tx.transact(
-            Tables.Inputs += (RpcFixtures.transactionResult, RpcFixtures.inputResult).convertTo[Tables.InputsRow]
+            Tables.Transactions += (RpcFixtures.transactionResult, RpcFixtures.blockResult)
+                  .convertTo[Tables.TransactionsRow]
+          )
+          _ <- tx.transact(
+            Tables.Inputs += (RpcFixtures.transactionResult, RpcFixtures.inputResult, RpcFixtures.blockResult)
+                  .convertTo[Tables.InputsRow]
           )
           result <- tx.transact(Tables.Inputs.result)
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.inputRow)
@@ -50,9 +57,13 @@ class BitcoinPersistenceTest
         (for {
           // we have to have block and transaction row to save the input (due to the foreign key)
           _ <- tx.transact(Tables.Blocks += RpcFixtures.blockResult.convertTo[Tables.BlocksRow])
-          _ <- tx.transact(Tables.Transactions += RpcFixtures.transactionResult.convertTo[Tables.TransactionsRow])
           _ <- tx.transact(
-            Tables.Outputs += (RpcFixtures.transactionResult, RpcFixtures.outputResult).convertTo[Tables.OutputsRow]
+            Tables.Transactions += (RpcFixtures.transactionResult, RpcFixtures.blockResult)
+                  .convertTo[Tables.TransactionsRow]
+          )
+          _ <- tx.transact(
+            Tables.Outputs += (RpcFixtures.transactionResult, RpcFixtures.outputResult, RpcFixtures.blockResult)
+                  .convertTo[Tables.OutputsRow]
           )
           result <- tx.transact(Tables.Outputs.result)
         } yield result).unsafeRunSync() shouldBe Vector(DbFixtures.outputRow)

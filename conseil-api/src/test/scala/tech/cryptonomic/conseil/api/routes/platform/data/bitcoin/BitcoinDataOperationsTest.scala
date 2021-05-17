@@ -174,6 +174,7 @@ object BitcoinDataOperationsTest {
         TransactionsRow(
           txid = "0",
           blockhash = block.hash,
+          blockHeight = block.height,
           hash = "txhash0",
           hex = "hex",
           size = block.size,
@@ -189,21 +190,47 @@ object BitcoinDataOperationsTest {
     val transaction3: TransactionsRow = defaultTransaction(block3).copy(txid = "3", hash = "txhash1")
     val transactions: Seq[TransactionsRow] = List(transaction1, transaction2, transaction3)
 
-    val input1: InputsRow = InputsRow(txid = "1", sequence = 1, vOut = Some(1), outputTxid = Some("1"))
-    val input2: InputsRow = InputsRow(txid = "2", sequence = 2, vOut = Some(2))
-    val input3: InputsRow = InputsRow(txid = "3", sequence = 3, vOut = Some(3), outputTxid = Some("3"))
+    private val defaultInput: BlocksRow => InputsRow =
+      block =>
+        InputsRow(
+          txid = "0",
+          blockhash = block.hash,
+          blockHeight = block.height,
+          blockTime = block.time,
+          sequence = 0,
+          vOut = Some(0),
+          outputTxid = Some("0")
+        )
+    val input1: InputsRow = defaultInput(block1).copy(txid = "1", sequence = 1, vOut = Some(1), outputTxid = Some("1"))
+    val input2: InputsRow = defaultInput(block1).copy(txid = "2", sequence = 2, vOut = Some(2))
+    val input3: InputsRow = defaultInput(block1).copy(txid = "3", sequence = 3, vOut = Some(3), outputTxid = Some("3"))
     val inputs: Seq[InputsRow] = List(input1, input2, input3)
 
-    val output1: OutputsRow = OutputsRow(
+    private val defaultOutput: BlocksRow => OutputsRow =
+      block =>
+        OutputsRow(
+          txid = "0",
+          blockhash = block.hash,
+          blockHeight = block.height,
+          blockTime = block.time,
+          value = Some(0L),
+          n = 0,
+          scriptPubKeyAsm = "script_pub_asm_0",
+          scriptPubKeyHex = "script_pub_hex_0",
+          scriptPubKeyType = "script_pub_type_0",
+          scriptPubKeyAddresses = Some("script_pub_key_address_0")
+        )
+
+    val output1: OutputsRow = defaultOutput(block1).copy(
       txid = "1",
-      value = Some(1L),
+      value = Some(BigDecimal.valueOf(1.0)),
       n = 1,
       scriptPubKeyAsm = "script_pub_asm_1",
       scriptPubKeyHex = "script_pub_hex_1",
       scriptPubKeyType = "script_pub_type_1",
       scriptPubKeyAddresses = Some("script_pub_key_address_1")
     )
-    val output2: OutputsRow = OutputsRow(
+    val output2: OutputsRow = defaultOutput(block1).copy(
       txid = "2",
       value = Some(BigDecimal.valueOf(10.0)),
       n = 2,
@@ -212,7 +239,7 @@ object BitcoinDataOperationsTest {
       scriptPubKeyType = "script_pub_type_2",
       scriptPubKeyAddresses = Some("script_pub_key_address_2")
     )
-    val output3: OutputsRow = OutputsRow(
+    val output3: OutputsRow = defaultOutput(block1).copy(
       txid = "3",
       value = Some(100L),
       n = 3,
