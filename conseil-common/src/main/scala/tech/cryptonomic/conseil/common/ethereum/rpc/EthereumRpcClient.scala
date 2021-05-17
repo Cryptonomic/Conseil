@@ -158,6 +158,11 @@ class EthereumClient[F[_]: Concurrent](
                 )
               )
               .through(client.stream[EthCall.Params, String](batchSize = 1))
+              .handleErrorWith {
+                // if balanceOf is not implemented by contract return 0x0
+                case RpcException(-32000, _, _) =>
+                  Stream.emit("0x0")
+              }
               .map(balance => (address, balance))
           }
           .map {
