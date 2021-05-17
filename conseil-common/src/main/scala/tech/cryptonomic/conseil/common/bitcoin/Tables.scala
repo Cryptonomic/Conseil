@@ -216,6 +216,12 @@ trait Tables {
 
     /** Database column time SqlType(timestamp) */
     val time: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("time")
+
+    /** Index over (level) (database name ix_block_level) */
+    val index1 = index("ix_block_level", level)
+
+    /** Index over (time) (database name ix_block_time) */
+    val index2 = index("ix_block_time", time)
   }
 
   /** Collection-like TableQuery object for table Blocks */
@@ -223,6 +229,9 @@ trait Tables {
 
   /** Entity class storing rows of table Inputs
     *  @param txid Database column txid SqlType(text)
+    *  @param blockHash Database column block_hash SqlType(text)
+    *  @param blockLevel Database column block_level SqlType(int4)
+    *  @param blockTime Database column block_time SqlType(timestamp)
     *  @param outputTxid Database column output_txid SqlType(text), Default(None)
     *  @param vOut Database column v_out SqlType(int4), Default(None)
     *  @param scriptSigAsm Database column script_sig_asm SqlType(text), Default(None)
@@ -232,6 +241,9 @@ trait Tables {
     *  @param txInWitness Database column tx_in_witness SqlType(text), Default(None) */
   case class InputsRow(
       txid: String,
+      blockHash: String,
+      blockLevel: Int,
+      blockTime: java.sql.Timestamp,
       outputTxid: Option[String] = None,
       vOut: Option[Int] = None,
       scriptSigAsm: Option[String] = None,
@@ -244,31 +256,81 @@ trait Tables {
   /** GetResult implicit for fetching InputsRow objects using plain SQL queries */
   implicit def GetResultInputsRow(
       implicit e0: GR[String],
-      e1: GR[Option[String]],
-      e2: GR[Option[Int]],
-      e3: GR[Long]
+      e1: GR[Int],
+      e2: GR[java.sql.Timestamp],
+      e3: GR[Option[String]],
+      e4: GR[Option[Int]],
+      e5: GR[Long]
   ): GR[InputsRow] = GR { prs =>
     import prs._
-    InputsRow.tupled((<<[String], <<?[String], <<?[Int], <<?[String], <<?[String], <<[Long], <<?[String], <<?[String]))
+    InputsRow.tupled(
+      (
+        <<[String],
+        <<[String],
+        <<[Int],
+        <<[java.sql.Timestamp],
+        <<?[String],
+        <<?[Int],
+        <<?[String],
+        <<?[String],
+        <<[Long],
+        <<?[String],
+        <<?[String]
+      )
+    )
   }
 
   /** Table description of table inputs. Objects of this class serve as prototypes for rows in queries. */
   class Inputs(_tableTag: Tag) extends profile.api.Table[InputsRow](_tableTag, Some("bitcoin"), "inputs") {
     def * =
-      (txid, outputTxid, vOut, scriptSigAsm, scriptSigHex, sequence, coinbase, txInWitness) <> (InputsRow.tupled, InputsRow.unapply)
+      (
+        txid,
+        blockHash,
+        blockLevel,
+        blockTime,
+        outputTxid,
+        vOut,
+        scriptSigAsm,
+        scriptSigHex,
+        sequence,
+        coinbase,
+        txInWitness
+      ) <> (InputsRow.tupled, InputsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(txid), outputTxid, vOut, scriptSigAsm, scriptSigHex, Rep.Some(sequence), coinbase, txInWitness)).shaped
-        .<>(
-          { r =>
-            import r._; _1.map(_ => InputsRow.tupled((_1.get, _2, _3, _4, _5, _6.get, _7, _8)))
-          },
-          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      (
+        (
+          Rep.Some(txid),
+          Rep.Some(blockHash),
+          Rep.Some(blockLevel),
+          Rep.Some(blockTime),
+          outputTxid,
+          vOut,
+          scriptSigAsm,
+          scriptSigHex,
+          Rep.Some(sequence),
+          coinbase,
+          txInWitness
         )
+      ).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => InputsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5, _6, _7, _8, _9.get, _10, _11)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
 
     /** Database column txid SqlType(text) */
     val txid: Rep[String] = column[String]("txid")
+
+    /** Database column block_hash SqlType(text) */
+    val blockHash: Rep[String] = column[String]("block_hash")
+
+    /** Database column block_level SqlType(int4) */
+    val blockLevel: Rep[Int] = column[Int]("block_level")
+
+    /** Database column block_time SqlType(timestamp) */
+    val blockTime: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("block_time")
 
     /** Database column output_txid SqlType(text), Default(None) */
     val outputTxid: Rep[Option[String]] = column[Option[String]]("output_txid", O.Default(None))
@@ -297,6 +359,12 @@ trait Tables {
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
+
+    /** Index over (blockHash) (database name ix_inputs_block_hash) */
+    val index1 = index("ix_inputs_block_hash", blockHash)
+
+    /** Index over (blockLevel) (database name ix_inputs_block_level) */
+    val index2 = index("ix_inputs_block_level", blockLevel)
   }
 
   /** Collection-like TableQuery object for table Inputs */
@@ -304,6 +372,9 @@ trait Tables {
 
   /** Entity class storing rows of table Outputs
     *  @param txid Database column txid SqlType(text)
+    *  @param blockHash Database column block_hash SqlType(text)
+    *  @param blockLevel Database column block_level SqlType(int4)
+    *  @param blockTime Database column block_time SqlType(timestamp)
     *  @param value Database column value SqlType(numeric), Default(None)
     *  @param n Database column n SqlType(int4)
     *  @param scriptPubKeyAsm Database column script_pub_key_asm SqlType(text)
@@ -313,6 +384,9 @@ trait Tables {
     *  @param scriptPubKeyAddresses Database column script_pub_key_addresses SqlType(text), Default(None) */
   case class OutputsRow(
       txid: String,
+      blockHash: String,
+      blockLevel: Int,
+      blockTime: java.sql.Timestamp,
       value: Option[scala.math.BigDecimal] = None,
       n: Int,
       scriptPubKeyAsm: String,
@@ -325,27 +399,55 @@ trait Tables {
   /** GetResult implicit for fetching OutputsRow objects using plain SQL queries */
   implicit def GetResultOutputsRow(
       implicit e0: GR[String],
-      e1: GR[Option[scala.math.BigDecimal]],
-      e2: GR[Int],
-      e3: GR[Option[Int]],
-      e4: GR[Option[String]]
+      e1: GR[Int],
+      e2: GR[java.sql.Timestamp],
+      e3: GR[Option[scala.math.BigDecimal]],
+      e4: GR[Option[Int]],
+      e5: GR[Option[String]]
   ): GR[OutputsRow] = GR { prs =>
     import prs._
     OutputsRow.tupled(
-      (<<[String], <<?[scala.math.BigDecimal], <<[Int], <<[String], <<[String], <<?[Int], <<[String], <<?[String])
+      (
+        <<[String],
+        <<[String],
+        <<[Int],
+        <<[java.sql.Timestamp],
+        <<?[scala.math.BigDecimal],
+        <<[Int],
+        <<[String],
+        <<[String],
+        <<?[Int],
+        <<[String],
+        <<?[String]
+      )
     )
   }
 
   /** Table description of table outputs. Objects of this class serve as prototypes for rows in queries. */
   class Outputs(_tableTag: Tag) extends profile.api.Table[OutputsRow](_tableTag, Some("bitcoin"), "outputs") {
     def * =
-      (txid, value, n, scriptPubKeyAsm, scriptPubKeyHex, scriptPubKeyReqSigs, scriptPubKeyType, scriptPubKeyAddresses) <> (OutputsRow.tupled, OutputsRow.unapply)
+      (
+        txid,
+        blockHash,
+        blockLevel,
+        blockTime,
+        value,
+        n,
+        scriptPubKeyAsm,
+        scriptPubKeyHex,
+        scriptPubKeyReqSigs,
+        scriptPubKeyType,
+        scriptPubKeyAddresses
+      ) <> (OutputsRow.tupled, OutputsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       (
         (
           Rep.Some(txid),
+          Rep.Some(blockHash),
+          Rep.Some(blockLevel),
+          Rep.Some(blockTime),
           value,
           Rep.Some(n),
           Rep.Some(scriptPubKeyAsm),
@@ -356,13 +458,23 @@ trait Tables {
         )
       ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => OutputsRow.tupled((_1.get, _2, _3.get, _4.get, _5.get, _6, _7.get, _8)))
+          import r._;
+          _1.map(_ => OutputsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5, _6.get, _7.get, _8.get, _9, _10.get, _11)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
 
     /** Database column txid SqlType(text) */
     val txid: Rep[String] = column[String]("txid")
+
+    /** Database column block_hash SqlType(text) */
+    val blockHash: Rep[String] = column[String]("block_hash")
+
+    /** Database column block_level SqlType(int4) */
+    val blockLevel: Rep[Int] = column[Int]("block_level")
+
+    /** Database column block_time SqlType(timestamp) */
+    val blockTime: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("block_time")
 
     /** Database column value SqlType(numeric), Default(None) */
     val value: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("value", O.Default(None))
@@ -391,6 +503,12 @@ trait Tables {
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
+
+    /** Index over (blockHash) (database name ix_outputs_block_hash) */
+    val index1 = index("ix_outputs_block_hash", blockHash)
+
+    /** Index over (blockLevel) (database name ix_outputs_block_level) */
+    val index2 = index("ix_outputs_block_level", blockLevel)
   }
 
   /** Collection-like TableQuery object for table Outputs */
@@ -399,6 +517,7 @@ trait Tables {
   /** Entity class storing rows of table Transactions
     *  @param txid Database column txid SqlType(text), PrimaryKey
     *  @param blockHash Database column block_hash SqlType(text)
+    *  @param blockLevel Database column block_level SqlType(int4)
     *  @param hash Database column hash SqlType(text)
     *  @param hex Database column hex SqlType(text)
     *  @param size Database column size SqlType(int4)
@@ -410,6 +529,7 @@ trait Tables {
   case class TransactionsRow(
       txid: String,
       blockHash: String,
+      blockLevel: Int,
       hash: String,
       hex: String,
       size: Int,
@@ -431,6 +551,7 @@ trait Tables {
       (
         <<[String],
         <<[String],
+        <<[Int],
         <<[String],
         <<[String],
         <<[Int],
@@ -447,7 +568,7 @@ trait Tables {
   class Transactions(_tableTag: Tag)
       extends profile.api.Table[TransactionsRow](_tableTag, Some("bitcoin"), "transactions") {
     def * =
-      (txid, blockHash, hash, hex, size, vsize, weight, version, lockTime, blockTime) <> (TransactionsRow.tupled, TransactionsRow.unapply)
+      (txid, blockHash, blockLevel, hash, hex, size, vsize, weight, version, lockTime, blockTime) <> (TransactionsRow.tupled, TransactionsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -455,6 +576,7 @@ trait Tables {
         (
           Rep.Some(txid),
           Rep.Some(blockHash),
+          Rep.Some(blockLevel),
           Rep.Some(hash),
           Rep.Some(hex),
           Rep.Some(size),
@@ -469,7 +591,8 @@ trait Tables {
           import r._;
           _1.map(
             _ =>
-              TransactionsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get, _10.get))
+              TransactionsRow
+                .tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get, _10.get, _11.get))
           )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -480,6 +603,9 @@ trait Tables {
 
     /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
+
+    /** Database column block_level SqlType(int4) */
+    val blockLevel: Rep[Int] = column[Int]("block_level")
 
     /** Database column hash SqlType(text) */
     val hash: Rep[String] = column[String]("hash")
@@ -511,6 +637,9 @@ trait Tables {
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
+
+    /** Index over (blockLevel) (database name ix_transactions_block_level) */
+    val index1 = index("ix_transactions_block_level", blockLevel)
   }
 
   /** Collection-like TableQuery object for table Transactions */

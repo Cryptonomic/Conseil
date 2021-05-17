@@ -79,6 +79,19 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
           .unsafeRunSync() shouldBe List(RpcFixtures.tokenBalanceFromResult, RpcFixtures.tokenBalanceToResult)
       }
 
+      "properly handle token balance if balanceOf() not implemented" in new EthereumClientStubs {
+        Stream(RpcFixtures.tokenTransferResult)
+          .through(
+            ethereumClientStub(JsonFixtures.failedCallResponse).getTokenBalance(RpcFixtures.blockResult)
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(
+              RpcFixtures.tokenBalanceFromResult.copy(value = BigDecimal(0)),
+              RpcFixtures.tokenBalanceToResult.copy(value = BigDecimal(0))
+            )
+      }
+
       "return account balances for transaction sides" in new EthereumClientStubs {
         Stream(RpcFixtures.transactionResult)
           .through(

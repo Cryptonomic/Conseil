@@ -41,7 +41,7 @@ class BitcoinOperationsTest extends ConseilSpec with MockFactory {
         (bitcoinClientMock.getBlockChainInfo _) expects () returning (Stream(BlockchainInfo("mainnet", 10)).covary[IO])
 
         // run
-        bitcoinOperationsStub.loadBlocks(Newest).compile.drain.unsafeRunSync()
+        bitcoinOperationsStub.loadBlocks(Newest, None).compile.drain.unsafeRunSync()
       }
 
       "run indexer for the all blocks" in new BitcoinOperationsStubs {
@@ -60,7 +60,7 @@ class BitcoinOperationsTest extends ConseilSpec with MockFactory {
         (bitcoinClientMock.getBlockChainInfo _) expects () returning (Stream(BlockchainInfo("mainnet", 10)).covary[IO])
 
         // run
-        bitcoinOperationsStub.loadBlocks(Everything).compile.drain.unsafeRunSync()
+        bitcoinOperationsStub.loadBlocks(Everything, None).compile.drain.unsafeRunSync()
       }
 
       "run indexer for the custom blocks range" in new BitcoinOperationsStubs {
@@ -80,7 +80,7 @@ class BitcoinOperationsTest extends ConseilSpec with MockFactory {
         (bitcoinClientMock.getBlockChainInfo _) expects () returning (Stream(BlockchainInfo("mainnet", 10)).covary[IO])
 
         // run
-        bitcoinOperationsStub.loadBlocks(Custom(3)).compile.drain.unsafeRunSync()
+        bitcoinOperationsStub.loadBlocks(Custom(3), None).compile.drain.unsafeRunSync()
       }
     }
 

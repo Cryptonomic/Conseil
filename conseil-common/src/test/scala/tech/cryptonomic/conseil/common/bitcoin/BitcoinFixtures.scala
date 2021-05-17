@@ -260,6 +260,7 @@ trait BitcoinFixtures {
     val transactionRow = Tables.TransactionsRow(
       txid = "d6118e27502a9b239c4519351c765667c86b1a4f8ff7592c367e88e4dac63e01",
       blockHash = "00000000000335c47dd6ae953912d172a4d9839355f2083165043bb6f43c2f58",
+      blockLevel = 102000,
       hash = "d6118e27502a9b239c4519351c765667c86b1a4f8ff7592c367e88e4dac63e01",
       hex =
         "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0704cb04041b0166ffffffff0100f2052a0100000043410476b42b3f2ff4ca18f71d6bd30de5e52cc055cc9f798c39d32e391ec227548fd1bd5104d07a7e1a443f01afb9781d64126fd3571f9c0d93747b30eeddd71a5332ac00000000",
@@ -273,6 +274,9 @@ trait BitcoinFixtures {
 
     val inputRow = Tables.InputsRow(
       txid = "d6118e27502a9b239c4519351c765667c86b1a4f8ff7592c367e88e4dac63e01",
+      blockHash = "00000000000335c47dd6ae953912d172a4d9839355f2083165043bb6f43c2f58",
+      blockLevel = 102000,
+      blockTime = Timestamp.from(Instant.parse("2011-01-10T20:39:40.00Z")),
       vOut = None,
       scriptSigAsm = None,
       scriptSigHex = None,
@@ -283,6 +287,9 @@ trait BitcoinFixtures {
 
     val outputRow = Tables.OutputsRow(
       txid = "d6118e27502a9b239c4519351c765667c86b1a4f8ff7592c367e88e4dac63e01",
+      blockHash = "00000000000335c47dd6ae953912d172a4d9839355f2083165043bb6f43c2f58",
+      blockLevel = 102000,
+      blockTime = Timestamp.from(Instant.parse("2011-01-10T20:39:40.00Z")),
       value = Some(50.0),
       n = 0,
       scriptPubKeyAsm =

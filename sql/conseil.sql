@@ -795,7 +795,7 @@ CREATE TABLE bitcoin.blocks (
   size integer NOT NULL,
   stripped_size integer NOT NULL,
   weight integer NOT NULL,
-  level integer NOT NULL,
+  level integer NOT NULL, -- height
   version integer NOT NULL,
   version_hex text NOT NULL,
   merkle_root text NOT NULL,
@@ -810,10 +810,15 @@ CREATE TABLE bitcoin.blocks (
   time timestamp without time zone NOT NULL
 );
 
+CREATE INDEX ix_block_hash ON bitcoin.blocks USING btree (hash);
+CREATE INDEX ix_block_level ON bitcoin.blocks USING btree (level);
+CREATE INDEX ix_block_time ON bitcoin.blocks USING btree (time);
+
 -- https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
 CREATE TABLE bitcoin.transactions (
   txid text NOT NULL PRIMARY KEY,
   block_hash text NOT NULL,
+  block_level integer NOT NULL,
   hash text NOT NULL,
   hex text NOT NULL,
   size integer NOT NULL,
@@ -827,8 +832,15 @@ CREATE TABLE bitcoin.transactions (
 ALTER TABLE ONLY bitcoin.transactions
   ADD CONSTRAINT bitcoin_transactions_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES bitcoin.blocks(hash);
 
+CREATE INDEX ix_transactions_txid ON bitcoin.transactions USING btree (txid);
+CREATE INDEX ix_transactions_block_hash ON bitcoin.transactions USING btree (block_hash);
+CREATE INDEX ix_transactions_block_level ON bitcoin.transactions USING btree (block_level);
+
 CREATE TABLE bitcoin.inputs (
   txid text NOT NULL,
+  block_hash text NOT NULL,
+  block_level integer NOT NULL,
+  block_time timestamp without time zone NOT NULL,
   output_txid text, -- output id this input spends
   v_out integer,
   script_sig_asm text,
@@ -841,8 +853,15 @@ CREATE TABLE bitcoin.inputs (
 ALTER TABLE ONLY bitcoin.inputs
   ADD CONSTRAINT bitcoin_inputs_txid_fkey FOREIGN KEY (txid) REFERENCES bitcoin.transactions(txid);
 
+CREATE INDEX ix_inputs_txid ON bitcoin.inputs USING btree (txid);
+CREATE INDEX ix_inputs_block_hash ON bitcoin.inputs USING btree (block_hash);
+CREATE INDEX ix_inputs_block_level ON bitcoin.inputs USING btree (block_level);
+
 CREATE TABLE bitcoin.outputs (
   txid text NOT NULL,
+  block_hash text NOT NULL,
+  block_level integer NOT NULL,
+  block_time timestamp without time zone NOT NULL,
   value numeric,
   n integer NOT NULL,
   script_pub_key_asm text NOT NULL,
@@ -854,6 +873,10 @@ CREATE TABLE bitcoin.outputs (
 
 ALTER TABLE ONLY bitcoin.outputs
   ADD CONSTRAINT bitcoin_outputs_txid_fkey FOREIGN KEY (txid) REFERENCES bitcoin.transactions(txid);
+
+CREATE INDEX ix_outputs_txid ON bitcoin.outputs USING btree (txid);
+CREATE INDEX ix_outputs_block_hash ON bitcoin.outputs USING btree (block_hash);
+CREATE INDEX ix_outputs_block_level ON bitcoin.outputs USING btree (block_level);
 
 CREATE OR REPLACE VIEW bitcoin.accounts AS
 SELECT
