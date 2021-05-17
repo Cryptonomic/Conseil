@@ -58,3 +58,48 @@
 - table:
     schema: tezos
     name: token_balances
+- table:
+    schema: bitcoin
+    name: blocks
+- table:
+    schema: bitcoin
+    name: transactions
+- table:
+    schema: bitcoin
+    name: inputs
+- table:
+    schema: bitcoin
+    name: outputs
+- table:
+    schema: bitcoin
+    name: accounts
+- table:
+    schema: ethereum
+    name: blocks
+- table:
+      schema: ethereum
+      name: transactions
+- table:
+      schema: ethereum
+      name: receipts
+- table:
+      schema: ethereum
+      name: logs
+- table:
+      schema: ethereum
+      name: token_transfers
+- table:
+      schema: ethereum
+      name: tokens_history
+- table:
+      schema: ethereum
+      name: accounts
+- table:
+      schema: ethereum
+      name: accounts_history
+- table:
+      schema: ethereum
+      name: tokens
+- table:
+    schema: ethereum
+    name: contracts
