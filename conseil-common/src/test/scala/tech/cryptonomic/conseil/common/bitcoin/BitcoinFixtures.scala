@@ -226,7 +226,7 @@ trait BitcoinFixtures {
       weight = 536,
       version = 1,
       time = 1294691980,
-      locktime = 0,
+      locktime = 0L,
       blocktime = 1294691980,
       vin = List(inputResult),
       vout = List(outputResult)

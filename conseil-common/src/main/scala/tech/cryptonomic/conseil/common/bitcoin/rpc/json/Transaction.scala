@@ -19,7 +19,7 @@ case class Transaction(
     weight: Int,
     version: Int,
     time: Int,
-    locktime: Int,
+    locktime: Long,
     blocktime: Int,
     vin: Seq[TransactionInput],
     vout: Seq[TransactionOutput]
