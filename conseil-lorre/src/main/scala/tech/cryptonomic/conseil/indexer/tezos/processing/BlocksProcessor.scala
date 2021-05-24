@@ -97,14 +97,20 @@ class BlocksProcessor(
     }.map(_.flatten)
 
     val metadata = itrPathMichelinePairFut.flatMap { pathMichelinePair =>
-      pathMichelinePair.traverse {
+      val res = pathMichelinePair.map {
         case (itr, path, micheline) =>
-          Tzip16
+          itr -> Tzip16
             .extractTzip16MetadataLocationFromParameters(micheline, path)
-            .toList
-            .traverse(x => metadataOperator.getMetadata(x).map(itr.source -> _))
+      }.filter {
+        case (_, location) => location.nonEmpty
+      }.map(x => x._1 -> x._2.get)
+      metadataOperator.getMetadata(res).map {
+        result =>
+          result.map {
+            case ((transaction,_), (raw, meta)) => (transaction.source, (raw, meta))
+          }
       }
-    }.map(_.flatten)
+    }
 
     metadata.flatMap(tok => db.run(TezosDb.writeTokenMetadata(tok)))
   }

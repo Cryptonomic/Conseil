@@ -520,7 +520,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
 
   def writeTokenMetadata(metadata: List[(PublicKeyHash, (String, Tzip16Metadata))]): DBIO[Option[Int]] = {
     import CustomProfileExtension.api._
-    Tables.TokenMetadata.insertOrUpdateAll(metadata.map(_.convertTo[Tables.TokenMetadataRow]))
+    Tables.TokenMetadata.insertOrUpdateAll(metadata.map(_.convertTo[Tables.TokenMetadataRow]).groupBy(x => (x.key, x.ownerAddress, x.ownerBigmapId)).map(x => x._2.head))
   }
 
   /**

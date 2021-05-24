@@ -34,7 +34,6 @@ private[tezos] object TezosJsonDecoders {
       import cats.syntax.bifunctor._
       import cats.syntax.either._
       import io.circe.parser.decode
-
       decode[A](json).leftWiden[Throwable].liftTo[Eff]
     }
 
