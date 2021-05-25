@@ -25,11 +25,9 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   BlockTagged,
   Protocol4Delegate,
   PublicKeyHash,
-  Scripted,
   TezosBlockHash
 }
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors.AccountsProcessingFailed
-import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts.Tzip16
 
 /** Collects operations related to handling accounts from
   * the tezos node.
@@ -42,7 +40,6 @@ import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
   */
 class AccountsProcessor(
     nodeOperator: TezosNodeOperator,
-    metadataOperator: Tzip16MetadataOperator,
     indexedData: TezosIndexedDataOperations,
     batchingConf: BatchFetchConfiguration,
     rightsConf: BakingAndEndorsingRights

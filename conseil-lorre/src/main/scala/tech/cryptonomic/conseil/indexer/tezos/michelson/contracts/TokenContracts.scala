@@ -3,17 +3,8 @@ package tech.cryptonomic.conseil.indexer.tezos.michelson.contracts
 import java.lang.Integer.parseInt
 import java.nio.charset.StandardCharsets
 
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
-  makeAccountId,
-  AccountId,
-  Contract,
-  ContractId,
-  Decimal,
-  Micheline,
-  Parameters,
-  ParametersCompatibility,
-  PublicKeyHash
-}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, Contract, ContractId, Decimal, Parameters, ParametersCompatibility, makeAccountId}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.Micheline
 import cats.implicits._
 
 import scala.collection.immutable.TreeSet
@@ -22,13 +13,7 @@ import scala.concurrent.SyncVar
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.util.CryptoUtil
 import scorex.util.encode.{Base16 => Hex}
-import tech.cryptonomic.conseil.indexer.tezos.michelson.dto.{
-  MichelsonBytesConstant,
-  MichelsonInstruction,
-  MichelsonIntConstant,
-  MichelsonSingleInstruction,
-  MichelsonType
-}
+import tech.cryptonomic.conseil.indexer.tezos.michelson.dto.{MichelsonBytesConstant, MichelsonInstruction}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.parser.JsonParser
 
 /** For each specific contract available we store a few
@@ -149,24 +134,6 @@ object TokenContracts extends ConseilLogSupport {
             } yield accountId -> balance
 
         }
-//      case "TZIP-16" =>
-//        new TokenToolbox(id) {
-//          override type PInfo = String
-//
-//          override def parametersReader =
-//            compatWrapped =>
-//              MichelineOps.Tzip16.parseAccountsFromParameters(MichelineOps.handleCompatibility(compatWrapped))
-//
-//          override def balanceReader: BalanceReader[String] =
-//            (pinfo, update) =>
-//              for {
-//                sth <- pinfo
-//                key <- MichelineOps.parseBytes(update.key)
-//                code <- update.value
-//                balance <- MichelineOps.parseBalanceFromMap(code)
-//              } yield PublicKeyHash(sth) -> balance
-//
-//        }
     }
 
   /** Builds a registry of token contracts with the token data passed-in

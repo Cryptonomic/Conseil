@@ -22,7 +22,7 @@ import tech.cryptonomic.conseil.common.util.JsonUtil.JsonString
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
 import tech.cryptonomic.conseil.indexer.config.{BatchFetchConfiguration, HttpStreamingConfiguration, NetworkCallsConfiguration}
 
-import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Try}
 
@@ -205,16 +205,9 @@ class TezosMetadataInterface(
     val batchId = java.util.UUID.randomUUID()
     logger.debug(s"$batchId - New batched Tzip GET call for ${ids.size} requests")
 
-    println(s"XXXXX ${ids}")
     streamedGetQuery(ids, mapToCommand, concurrencyLevel)
       .runFold(List.empty[(CID, String)])(_ :+ _)
-      .andThen {
-        case xxx =>
-//          xxx.toOption.toList.flatten.foreach { zzz =>
-////            println()
-////            println(zzz._2)
-//          }
-//          println()
+      .andThen { case _ =>
           logger.debug(s"$batchId - Tzip Batch completed")
       }
   }
@@ -241,7 +234,6 @@ class TezosMetadataInterface(
 
     //we need to thread the id all through the streaming http stages
     val uris = Source(ids.map{id =>
-//      println(convertIdToUrl(id))
       (convertIdToUrl(id), id)
     })
 

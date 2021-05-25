@@ -873,7 +873,6 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     sqlu"SET CONSTRAINTS ALL DEFERRED;"
 
   def getContractMetadataPath(contractId: String): DBIO[Option[String]] =
-    //println(s"looking for contractId: $contractId")
     Tables.RegisteredTokens
       .filter(rt => rt.accountId === contractId && rt.metadataPath =!= "null")
       .map(_.metadataPath)
