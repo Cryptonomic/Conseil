@@ -18,6 +18,7 @@ import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumRpcCommands._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction, TransactionReceipt}
 import tech.cryptonomic.conseil.common.ethereum.Utils
+import tech.cryptonomic.conseil.common.rpc.RpcClient.RpcException
 
 import java.sql.Timestamp
 import java.time.Instant
@@ -86,12 +87,12 @@ class EthereumClient[F[_]: Concurrent](
   /**
     * Get transaction receipt.
     */
-  def getTransactionReceipt: Pipe[F, Transaction, TransactionReceipt] =
+  def getTransactionReceipt(batchSize: Int): Pipe[F, Transaction, TransactionReceipt] =
     stream =>
       stream
         .map(_.hash)
         .map(EthGetTransactionReceipt.request)
-        .through(client.stream[EthGetTransactionReceipt.Params, TransactionReceipt](batchSize = 1))
+        .through(client.stream[EthGetTransactionReceipt.Params, TransactionReceipt](batchSize = batchSize))
 
   /**
     * Returns contract from a given transaction receipt.
@@ -157,6 +158,11 @@ class EthereumClient[F[_]: Concurrent](
                 )
               )
               .through(client.stream[EthCall.Params, String](batchSize = 1))
+              .handleErrorWith {
+                // if balanceOf is not implemented by contract return 0x0
+                case RpcException(-32000, _, _) =>
+                  Stream.emit("0x0")
+              }
               .map(balance => (address, balance))
           }
           .map {
@@ -247,11 +253,16 @@ class EthereumClient[F[_]: Concurrent](
             .collect {
               case name :: symbol :: decimals :: totalSupply :: Nil =>
                 token.copy(
-                  name = Some(name),
-                  symbol = Some(symbol),
-                  decimals = Some(decimals),
-                  totalSupply = Some(totalSupply)
+                  name = Some(Utils.hexToString(name)),
+                  symbol = Some(Utils.hexToString(symbol)),
+                  decimals = Utils.hexToInt(decimals),
+                  totalSupply = Some(Utils.hexStringToBigDecimal(totalSupply))
                 )
+            }
+            .handleErrorWith {
+              // if any of the methods is not defined on a contract do not add token data
+              case RpcException(-32000, _, _) =>
+                Stream.emit(token)
             }
 
         case account => Stream.emit(account)

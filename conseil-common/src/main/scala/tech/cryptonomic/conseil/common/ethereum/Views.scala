@@ -21,8 +21,8 @@ trait Views {
     *  @param timestamp Database column timestamp SqlType(timestamp)
     *  @param name Database column name SqlType(text)
     *  @param symbol Database column symbol SqlType(text)
-    *  @param decimals Database column decimals SqlType(text)
-    *  @param totalSupply Database column total_supply SqlType(text) */
+    *  @param decimals Database column decimals SqlType(int4)
+    *  @param totalSupply Database column total_supply SqlType(numeric) */
   case class TokensRow(
       address: String,
       blockHash: String,
@@ -30,8 +30,8 @@ trait Views {
       timestamp: Option[java.sql.Timestamp],
       name: Option[String],
       symbol: Option[String],
-      decimals: Option[String],
-      totalSupply: Option[String]
+      decimals: Option[Int],
+      totalSupply: Option[scala.math.BigDecimal]
   )
 
   /** Table description of view tokens. Objects of this class serve as prototypes for rows in queries. */
@@ -57,11 +57,11 @@ trait Views {
     /** Database column symbol SqlType(text) */
     val symbol: Rep[Option[String]] = column[Option[String]]("symbol")
 
-    /** Database column decimals SqlType(text) */
-    val decimals: Rep[Option[String]] = column[Option[String]]("decimals")
+    /** Database column decimals SqlType(int4) */
+    val decimals: Rep[Option[Int]] = column[Option[Int]]("decimals")
 
-    /** Database column total_supply SqlType(text) */
-    val totalSupply: Rep[Option[String]] = column[Option[String]]("total_supply")
+    /** Database column total_supply SqlType(numeric) */
+    val totalSupply: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("total_supply")
   }
 
   /** Collection-like TableQuery object for view Tokens */
@@ -97,13 +97,14 @@ trait Views {
       blockNumber: Int,
       timestamp: Option[java.sql.Timestamp],
       bytecode: Option[String],
+      bytecodeHash: Option[String],
       tokenStandard: Option[String]
   )
 
   /** Table description of view contracts. Objects of this class serve as prototypes for rows in queries. */
   class Contracts(_tableTag: Tag) extends profile.api.Table[ContractsRow](_tableTag, Some("ethereum"), "contracts") {
     def * =
-      (address, blockHash, blockNumber, timestamp, bytecode, tokenStandard) <> (ContractsRow.tupled, ContractsRow.unapply)
+      (address, blockHash, blockNumber, timestamp, bytecode, bytecodeHash, tokenStandard) <> (ContractsRow.tupled, ContractsRow.unapply)
 
     /** Database column address SqlType(text) */
     val address: Rep[String] = column[String]("address")
@@ -119,6 +120,9 @@ trait Views {
 
     /** Database column bytecode SqlType(text) */
     val bytecode: Rep[Option[String]] = column[Option[String]]("bytecode")
+
+    /** Database column bytecode_hash SqlType(text) */
+    val bytecodeHash: Rep[Option[String]] = column[Option[String]]("bytecode_hash")
 
     /** Database column token_standard SqlType(text) */
     val tokenStandard: Rep[Option[String]] = column[Option[String]]("token_standard")
@@ -136,6 +140,7 @@ trait Views {
         block_number,
         timestamp,
         bytecode,
+        bytecode_hash,
         token_standard
       FROM
         ethereum.accounts

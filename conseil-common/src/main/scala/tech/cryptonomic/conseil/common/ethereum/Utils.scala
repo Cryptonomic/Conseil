@@ -13,7 +13,7 @@ object Utils {
     * Decode hex string.
     */
   def hexToString(value: String): String =
-    value.stripPrefix("0x").grouped(2).toArray.map(Integer.parseInt(_, 16).toChar).mkString.trim
+    new String(value.stripPrefix("0x").grouped(2).toArray.map(Integer.parseInt(_, 16).toByte), "UTF-8").trim
 
   /**
     * Create SHA-3 signature from the first 4 bytes of the given string.
@@ -34,5 +34,8 @@ object Utils {
     case s if s.endsWith("0x") => ""
     case s => s
   }
+
+  def hexToInt(value: String): Option[Int] =
+    Try(Integer.decode(value)).map(_.toInt).toOption
 
 }

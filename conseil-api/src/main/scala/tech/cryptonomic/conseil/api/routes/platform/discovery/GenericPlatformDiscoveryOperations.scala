@@ -79,7 +79,7 @@ class GenericPlatformDiscoveryOperations(
     * */
   private def preCacheAttributes(platform: Platform): DBIO[AttributesCache] = {
     val result = for {
-      tables <- MTable.getTables(Some(""), Some(platform.name), Some(""), Some(Seq("TABLE")))
+      tables <- MTable.getTables(Some(""), Some(platform.name), Some(""), Some(Seq("TABLE", "VIEW")))
       columns <- getColumns(tables)
       indexes <- getIndexes(tables)
       primaryKeys <- getPrimaryKeys(tables)
@@ -218,7 +218,7 @@ class GenericPlatformDiscoveryOperations(
     * */
   private def preCacheEntities(platform: String, network: String): DBIO[EntitiesCache] = {
     val result = for {
-      tables <- MTable.getTables(Some(""), Some(platform), Some(""), Some(Seq("TABLE")))
+      tables <- MTable.getTables(Some(""), Some(platform), Some(""), Some(Seq("TABLE", "VIEW")))
       counts <- getTablesCount(platform, tables)
     } yield
       now -> (tables.map(_.name.name) zip counts).map {

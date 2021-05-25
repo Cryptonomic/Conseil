@@ -101,15 +101,30 @@ class EthereumOperations[F[_]: Concurrent](
               case (block, txs) if block.transactions.size > 0 =>
                 Stream
                   .emits(txs)
-                  .through(ethereumClient.getTransactionReceipt)
+                  .through(ethereumClient.getTransactionReceipt(batchConf.transactionsBatchSize))
                   .chunkN(Integer.MAX_VALUE)
                   .map(receipts => (block, txs, receipts.toList, receipts.toList.flatMap(_.logs)))
               case (block, txs) => Stream.emit((block, txs, Nil, Nil))
             }
             .flatMap {
+              case (block, txs, receipts, logs) if receipts.exists(_.contractAddress.isDefined) =>
+                Stream
+                  .emits(receipts)
+                  .filter(_.contractAddress.isDefined)
+                  .through(ethereumClient.getContract(batchConf.contractsBatchSize))
+                  .through(ethereumClient.getContractBalance(block))
+                  .through(ethereumClient.addTokenInfo)
+                  .chunkN(Integer.MAX_VALUE)
+                  .evalTap(accounts => tx.transact(persistence.createContractAccounts(accounts.toList)))
+                  .evalTap(accounts => tx.transact(persistence.createAccountBalances(accounts.toList)))
+                  .map(_ => (block, txs, receipts, logs))
+              case (block, txs, receipts, logs) => Stream.emit((block, txs, receipts, logs))
+            }
+            .flatMap {
               case (block, txs, receipts, logs) if txs.size > 0 =>
                 Stream
                   .emits(txs)
+                  .filter(t => List(Some(t.from), t.to).forall(addr => !receipts.map(_.contractAddress).contains(addr)))
                   .through(ethereumClient.getAccountBalance(block))
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap(
@@ -142,20 +157,6 @@ class EthereumOperations[F[_]: Concurrent](
                   .evalTap(tokenBalances => tx.transact(persistence.createTokenBalances(tokenBalances.toList)))
                   .map(_ => (block, txs, receipts))
               case (block, txs, receipts, _) => Stream.emit((block, txs, receipts))
-            }
-            .flatMap {
-              case (block, txs, receipts) if receipts.exists(_.contractAddress.isDefined) =>
-                Stream
-                  .emits(receipts)
-                  .filter(_.contractAddress.isDefined)
-                  .through(ethereumClient.getContract(batchConf.contractsBatchSize))
-                  .through(ethereumClient.getContractBalance(block))
-                  .through(ethereumClient.addTokenInfo)
-                  .chunkN(Integer.MAX_VALUE)
-                  .evalTap(accounts => tx.transact(persistence.createContractAccounts(accounts.toList)))
-                  .evalTap(accounts => tx.transact(persistence.createAccountBalances(accounts.toList)))
-                  .map(_ => (block, txs, receipts))
-              case (block, txs, receipts) => Stream.emit((block, txs, receipts))
             }
             .evalTap {
               case (block, txs, receipts) if Integer.decode(block.number) % 10 == 0 =>

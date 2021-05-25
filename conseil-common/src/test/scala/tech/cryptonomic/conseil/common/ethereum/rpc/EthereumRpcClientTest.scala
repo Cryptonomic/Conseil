@@ -42,7 +42,7 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
       "return a transaction receipt for the given transaction" in new EthereumClientStubs {
         Stream(RpcFixtures.transactionResult)
           .through(
-            ethereumClientStub(JsonFixtures.getTransactionReceiptResponse).getTransactionReceipt
+            ethereumClientStub(JsonFixtures.getTransactionReceiptResponse).getTransactionReceipt(batchSize = 1)
           )
           .compile
           .toList
@@ -79,6 +79,19 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
           .unsafeRunSync() shouldBe List(RpcFixtures.tokenBalanceFromResult, RpcFixtures.tokenBalanceToResult)
       }
 
+      "properly handle token balance if balanceOf() not implemented" in new EthereumClientStubs {
+        Stream(RpcFixtures.tokenTransferResult)
+          .through(
+            ethereumClientStub(JsonFixtures.failedCallResponse).getTokenBalance(RpcFixtures.blockResult)
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(
+              RpcFixtures.tokenBalanceFromResult.copy(value = BigDecimal(0)),
+              RpcFixtures.tokenBalanceToResult.copy(value = BigDecimal(0))
+            )
+      }
+
       "return account balances for transaction sides" in new EthereumClientStubs {
         Stream(RpcFixtures.transactionResult)
           .through(
@@ -90,7 +103,7 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
       }
 
       "return contract account balances for created contract" in new EthereumClientStubs {
-        Stream(RpcFixtures.contractResult)
+        Stream(RpcFixtures.contractResultErc20)
           .through(
             ethereumClientStub(JsonFixtures.getBalanceResponse).getContractBalance(RpcFixtures.blockResult)
           )
@@ -103,6 +116,16 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
         Stream(RpcFixtures.contractAccountResult)
           .through(
             ethereumClientStub(JsonFixtures.callResponse).addTokenInfo
+          )
+          .compile
+          .toList
+          .unsafeRunSync() shouldBe List(RpcFixtures.contractAccountResultErc20)
+      }
+
+      "properly contract account data if token info methods not implemented" in new EthereumClientStubs {
+        Stream(RpcFixtures.contractAccountResult)
+          .through(
+            ethereumClientStub(JsonFixtures.failedCallResponse).addTokenInfo
           )
           .compile
           .toList

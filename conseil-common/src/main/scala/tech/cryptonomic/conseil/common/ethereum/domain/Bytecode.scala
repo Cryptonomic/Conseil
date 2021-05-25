@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.common.ethereum.domain
 import tech.cryptonomic.conseil.common.ethereum.Utils
 
 import java.security.MessageDigest
+import scala.util.Try
 
 /**
   * Ethereum contract bytecode disassembler.
@@ -45,13 +46,15 @@ case class Bytecode(value: String) {
                     opcodes :+ Opcode(
                           offset,
                           instruction,
-                          BigInt(
-                            normalized.substring(
-                              offset * 2 + 2,
-                              Integer.min(offset * 2 + 2 + instruction.args * 2, normalized.size)
-                            ),
-                            16
-                          )
+                          Try(
+                            BigInt(
+                              normalized.substring(
+                                offset * 2 + 2,
+                                Integer.min(offset * 2 + 2 + instruction.args * 2, normalized.size)
+                              ),
+                              16
+                            )
+                          ).getOrElse(0)
                         )
                   )
                 case Some(instruction) => (0, opcodes :+ Opcode(offset, instruction, 0))
