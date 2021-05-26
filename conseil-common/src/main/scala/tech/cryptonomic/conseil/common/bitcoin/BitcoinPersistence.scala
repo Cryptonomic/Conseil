@@ -27,13 +27,16 @@ class BitcoinPersistence[F[_]: Concurrent] {
   def createBlock(
       block: Block,
       transactions: List[Transaction]
-  ): DBIOAction[Unit, NoStream, Effect.Write] =
+  ): DBIOAction[Unit, NoStream, Effect.Write] = {
+    import tech.cryptonomic.conseil.common.sql.CustomProfileExtension.api._
     DBIO.seq(
       Tables.Blocks += block.convertTo[Tables.BlocksRow],
-      Tables.Transactions ++= transactions.map(t => (t, block)).map(_.convertTo[Tables.TransactionsRow]),
+      // txid can be duplicated https://github.com/bitcoin/bitcoin/issues/612
+      Tables.Transactions.insertOrUpdateAll(transactions.map(t => (t, block)).map(_.convertTo[Tables.TransactionsRow])),
       Tables.Inputs ++= transactions.flatMap(t => t.vin.map(c => (t, c, block))).map(_.convertTo[Tables.InputsRow]),
       Tables.Outputs ++= transactions.flatMap(t => t.vout.map(c => (t, c, block))).map(_.convertTo[Tables.OutputsRow])
     )
+  }
 
   /**
     * Get sequence of existing blocks heights from the database.
@@ -97,7 +100,7 @@ object BitcoinPersistence {
         case (transaction, block) =>
           Tables.TransactionsRow(
             txid = transaction.txid,
-            blockHash = transaction.blockhash,
+            blockHash = block.hash,
             blockLevel = block.height,
             hash = transaction.hash,
             hex = transaction.hex,
