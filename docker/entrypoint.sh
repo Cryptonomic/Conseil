@@ -9,16 +9,16 @@ if [ $1 = "conseil-api" ]; then
     java -Xmx$JVM_XMX -cp /root/conseil-api.jar tech.cryptonomic.conseil.api.Conseil
   else
     echo "Bootstrapping Conseil API with custom configuration from: $CONFIG_PATH..."
-    java -Xmx$JVM_XMX -Dconfig.file=$CONFIG_PATH -cp /root/conseil-api.jar tech.cryptonomic.conseil.api.Conseil -d 10000
+    java -Xmx$JVM_XMX -Dconfig.file=$CONFIG_PATH -cp /root/conseil-api.jar tech.cryptonomic.conseil.api.Conseil
   fi
 fi
 
 if [ $1 = "conseil-lorre" ]; then
   if [ -z "${CONFIG_PATH}" ]; then
     echo "Bootstrapping Conseil Lorre"
-    java -Xmx$JVM_XMX -cp /root/conseil-lorre.jar tech.cryptonomic.conseil.indexer.Lorre $LORRE_RUNNER_PLATFORM $LORRE_RUNNER_NETWORK
+    java -Xmx$JVM_XMX -cp /root/conseil-lorre.jar tech.cryptonomic.conseil.indexer.Lorre $LORRE_RUNNER_PLATFORM $LORRE_RUNNER_NETWORK -d 10000
   else
     echo "Bootstrapping Conseil Lorre with custom configuration from: $CONFIG_PATH..."
-    java -Xmx$JVM_XMX -Dconfig.file=$CONFIG_PATH -cp /root/conseil-lorre.jar tech.cryptonomic.conseil.indexer.Lorre $LORRE_RUNNER_PLATFORM $LORRE_RUNNER_NETWORK
+    java -Xmx$JVM_XMX -Dconfig.file=$CONFIG_PATH -cp /root/conseil-lorre.jar tech.cryptonomic.conseil.indexer.Lorre $LORRE_RUNNER_PLATFORM $LORRE_RUNNER_NETWORK -d 10000
   fi
 fi
