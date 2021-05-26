@@ -9,7 +9,7 @@ if [ $1 = "conseil-api" ]; then
     java -Xmx$JVM_XMX -cp /root/conseil-api.jar tech.cryptonomic.conseil.api.Conseil
   else
     echo "Bootstrapping Conseil API with custom configuration from: $CONFIG_PATH..."
-    java -Xmx$JVM_XMX -Dconfig.file=$CONFIG_PATH -cp /root/conseil-api.jar tech.cryptonomic.conseil.api.Conseil
+    java -Xmx$JVM_XMX -Dconfig.file=$CONFIG_PATH -cp /root/conseil-api.jar tech.cryptonomic.conseil.api.Conseil -d 10000
   fi
 fi
 
