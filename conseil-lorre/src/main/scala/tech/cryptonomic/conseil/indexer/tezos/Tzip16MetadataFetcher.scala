@@ -20,22 +20,25 @@ import tech.cryptonomic.conseil.common.io.Logging.{ConseilLogSupport, ConseilLog
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{InternalOperationResults, _}
 import tech.cryptonomic.conseil.common.util.JsonUtil.JsonString
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
-import tech.cryptonomic.conseil.indexer.config.{BatchFetchConfiguration, HttpStreamingConfiguration, NetworkCallsConfiguration}
+import tech.cryptonomic.conseil.indexer.config.{
+  BatchFetchConfiguration,
+  HttpStreamingConfiguration,
+  NetworkCallsConfiguration
+}
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Try}
 
-
 case class Tzip16Metadata(
-  name: String,
-  description: String,
-  version: Option[String],
-  license: Option[Tzip16License],
-  authors: Option[List[String]],
-  homepage: Option[String],
-  source: Option[Tzip16Source],
-  interfaces: Option[List[String]]
+    name: String,
+    description: String,
+    version: Option[String],
+    license: Option[Tzip16License],
+    authors: Option[List[String]],
+    homepage: Option[String],
+    source: Option[Tzip16Source],
+    interfaces: Option[List[String]]
 )
 
 case class Tzip16Source(tools: Option[List[String]], location: Option[String])
@@ -54,9 +57,10 @@ object Tzip16MetadataJsonDecoders {
 }
 
 class Tzip16MetadataOperator(
-  val node: TezosMetadataInterface,
-  batchConf: BatchFetchConfiguration
-)(implicit val fetchFutureContext: ExecutionContext) extends ConseilLogSupport {
+    val node: TezosMetadataInterface,
+    batchConf: BatchFetchConfiguration
+)(implicit val fetchFutureContext: ExecutionContext)
+    extends ConseilLogSupport {
 
   import TezosJsonDecoders.Circe.decodeLiftingTo
   import Tzip16MetadataJsonDecoders._
@@ -66,9 +70,11 @@ class Tzip16MetadataOperator(
 
   private type FutureFetcher = DataFetcher[Future, List, Throwable]
 
-  def getMetadata(addresses: List[(InternalOperationResults.Transaction, String)]):
-  Future[List[((InternalOperationResults.Transaction, String), (String, Tzip16Metadata))]] =
-    fetch[(InternalOperationResults.Transaction, String), (String, Tzip16Metadata), Future, List, Throwable].run(addresses)
+  def getMetadata(
+      addresses: List[(InternalOperationResults.Transaction, String)]
+  ): Future[List[((InternalOperationResults.Transaction, String), (String, Tzip16Metadata))]] =
+    fetch[(InternalOperationResults.Transaction, String), (String, Tzip16Metadata), Future, List, Throwable]
+      .run(addresses)
 
   implicit val metadataFetcher: FutureFetcher {
     type In = (InternalOperationResults.Transaction, String)
@@ -90,8 +96,8 @@ class Tzip16MetadataOperator(
     private val makeUrl = (key: In) => key._2
 
     /** an effectful function from a collection of inputs `T[In]`
-     * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
-     */
+      * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
+      */
     override val fetchData =
       Kleisli(
         fetchKeys => {
@@ -111,7 +117,8 @@ class Tzip16MetadataOperator(
 
     /** an effectful function that decodes the json value to an output `Out`*/
     override val decodeData: Kleisli[Future, String, (String, Tzip16Metadata)] = Kleisli { json =>
-      decodeLiftingTo[Future, Tzip16Metadata](json).map(json -> _)
+      decodeLiftingTo[Future, Tzip16Metadata](json)
+        .map(json -> _)
         .onError(
           logWarnOnJsonDecoding(
             s"I fetched TZIP-16 json from tezos node that I'm unable to decode: $json",
@@ -123,8 +130,8 @@ class Tzip16MetadataOperator(
   }
 
   private def logWarnOnJsonDecoding[Encoded](
-    message: String,
-    ignore: Boolean = false
+      message: String,
+      ignore: Boolean = false
   ): PartialFunction[Throwable, Future[Unit]] = {
     case decodingError: io.circe.Error if ignore =>
       ().pure[Future]
@@ -137,11 +144,11 @@ class Tzip16MetadataOperator(
 }
 
 class TezosMetadataInterface(
-  config: TezosConfiguration,
-  requestConfig: NetworkCallsConfiguration,
-  streamingConfig: HttpStreamingConfiguration
+    config: TezosConfiguration,
+    requestConfig: NetworkCallsConfiguration,
+    streamingConfig: HttpStreamingConfiguration
 )(implicit system: ActorSystem)
-  extends ConseilLogSupport {
+    extends ConseilLogSupport {
 
   import config.node
 
@@ -198,42 +205,42 @@ class TezosMetadataInterface(
     if (rejectingCalls.get) Future.fromTry(rejected) else call
 
   def runBatchedGetQuery[CID](
-    ids: List[CID],
-    mapToCommand: CID => String,
-    concurrencyLevel: Int
+      ids: List[CID],
+      mapToCommand: CID => String,
+      concurrencyLevel: Int
   ): Future[List[(CID, String)]] = {
     val batchId = java.util.UUID.randomUUID()
     logger.debug(s"$batchId - New batched Tzip GET call for ${ids.size} requests")
 
     streamedGetQuery(ids, mapToCommand, concurrencyLevel)
       .runFold(List.empty[(CID, String)])(_ :+ _)
-      .andThen { case _ =>
+      .andThen {
+        case _ =>
           logger.debug(s"$batchId - Tzip Batch completed")
       }
   }
 
   /**
-   * Creates a stream that will produce http response content for the
-   * list of commands.
-   *
-   * @param ids              correlation ids for each request to send
-   * @param mapToCommand     extract a tezos command (uri fragment) from the id
-   * @param concurrencyLevel the concurrency in processing the responses
-   * @tparam CID a type that will be used to correlate each request with the response
-   * @return A stream source whose elements will be the response string, tupled with the correlation id,
-   *         used to match with the corresponding request
-   */
+    * Creates a stream that will produce http response content for the
+    * list of commands.
+    *
+    * @param ids              correlation ids for each request to send
+    * @param mapToCommand     extract a tezos command (uri fragment) from the id
+    * @param concurrencyLevel the concurrency in processing the responses
+    * @tparam CID a type that will be used to correlate each request with the response
+    * @return A stream source whose elements will be the response string, tupled with the correlation id,
+    *         used to match with the corresponding request
+    */
   private def streamedGetQuery[CID](
-    ids: List[CID],
-    mapToCommand: CID => String,
-    concurrencyLevel: Int
+      ids: List[CID],
+      mapToCommand: CID => String,
+      concurrencyLevel: Int
   ): Source[(CID, String), akka.NotUsed] = withRejectionControl {
 
     val convertIdToUrl = mapToCommand andThen translateCommandToUrl
 
-
     //we need to thread the id all through the streaming http stages
-    val uris = Source(ids.map{id =>
+    val uris = Source(ids.map { id =>
       (convertIdToUrl(id), id)
     })
 
@@ -266,7 +273,7 @@ class TezosMetadataInterface(
       case url if url.startsWith("http") => url
       case url if url.startsWith("ipfs") =>
         s"https://ipfs.infura.io/ipfs/${url.stripPrefix("ipfs://")}"
-        //s"https://cloudflare-ipfs.com/ipfs/${url.stripPrefix("ipfs://")}"
+      //s"https://cloudflare-ipfs.com/ipfs/${url.stripPrefix("ipfs://")}"
     }
 
   /* Wraps the request/response flow with logging, if enabled by configuration
@@ -288,13 +295,12 @@ class TezosMetadataInterface(
 
   /* creates a connections pool based on the host network */
   private def getHostPoolFlow[T] =
-      Http(system).cachedHostConnectionPoolHttps[T](
-        host = "ipfs.infura.io",
-        //host = "cloudflare-ipfs.com",
-        port = 443,
-        settings = streamingRequestsConnectionPooling
-      )
-
+    Http(system).cachedHostConnectionPoolHttps[T](
+      host = "ipfs.infura.io",
+      //host = "cloudflare-ipfs.com",
+      port = 443,
+      settings = streamingRequestsConnectionPooling
+    )
 
   private def loggedRpcResults[T] =
     if (node.traceCalls)
@@ -307,4 +313,3 @@ class TezosMetadataInterface(
       Flow[(T, String)].map(identity)
 
 }
-

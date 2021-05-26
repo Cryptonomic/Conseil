@@ -794,13 +794,13 @@ ALTER TABLE ONLY tezos.operations
 --PR (owner_address+something+key)
 
 CREATE TABLE tezos.token_metadata (
+    contract_address text,
     owner_address text,
-    owner_bigmap_id integer,
     key text,
     value text,
     source text,
     source_type text,
-    PRIMARY KEY (owner_address, owner_bigmap_id, key)
+    PRIMARY KEY (contract_address, owner_address, key)
 );
 
 

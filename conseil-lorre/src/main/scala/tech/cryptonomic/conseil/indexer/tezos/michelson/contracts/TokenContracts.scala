@@ -3,7 +3,15 @@ package tech.cryptonomic.conseil.indexer.tezos.michelson.contracts
 import java.lang.Integer.parseInt
 import java.nio.charset.StandardCharsets
 
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, Contract, ContractId, Decimal, Parameters, ParametersCompatibility, makeAccountId}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
+  makeAccountId,
+  AccountId,
+  Contract,
+  ContractId,
+  Decimal,
+  Parameters,
+  ParametersCompatibility
+}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Micheline
 import cats.implicits._
 

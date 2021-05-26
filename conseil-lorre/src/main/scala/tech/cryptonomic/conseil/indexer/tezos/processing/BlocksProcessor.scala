@@ -100,15 +100,14 @@ class BlocksProcessor(
       val res = pathMichelinePair.map {
         case (itr, path, micheline) =>
           itr -> Tzip16
-            .extractTzip16MetadataLocationFromParameters(micheline, path)
+                .extractTzip16MetadataLocationFromParameters(micheline, path)
       }.filter {
         case (_, location) => location.nonEmpty
       }.map(x => x._1 -> x._2.get)
-      metadataOperator.getMetadata(res).map {
-        result =>
-          result.map {
-            case ((transaction,_), (raw, meta)) => (transaction.source, (raw, meta))
-          }
+      metadataOperator.getMetadata(res).map { result =>
+        result.map {
+          case ((transaction, location), (raw, meta)) => (transaction.source.value, transaction.destination.id, location, (raw, meta))
+        }
       }
     }
 

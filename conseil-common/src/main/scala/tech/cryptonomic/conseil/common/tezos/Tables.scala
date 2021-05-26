@@ -3348,15 +3348,15 @@ trait Tables {
   lazy val TokenBalances = new TableQuery(tag => new TokenBalances(tag))
 
   /** Entity class storing rows of table TokenMetadata
+    *  @param contractAddress Database column contract_address SqlType(text)
     *  @param ownerAddress Database column owner_address SqlType(text)
-    *  @param ownerBigmapId Database column owner_bigmap_id SqlType(int4)
     *  @param key Database column key SqlType(text)
     *  @param value Database column value SqlType(text), Default(None)
     *  @param source Database column source SqlType(text), Default(None)
     *  @param sourceType Database column source_type SqlType(text), Default(None) */
   case class TokenMetadataRow(
+      contractAddress: String,
       ownerAddress: String,
-      ownerBigmapId: Int,
       key: String,
       value: Option[String] = None,
       source: Option[String] = None,
@@ -3364,35 +3364,32 @@ trait Tables {
   )
 
   /** GetResult implicit for fetching TokenMetadataRow objects using plain SQL queries */
-  implicit def GetResultTokenMetadataRow(
-      implicit e0: GR[String],
-      e1: GR[Int],
-      e2: GR[Option[String]]
-  ): GR[TokenMetadataRow] = GR { prs =>
-    import prs._
-    TokenMetadataRow.tupled((<<[String], <<[Int], <<[String], <<?[String], <<?[String], <<?[String]))
+  implicit def GetResultTokenMetadataRow(implicit e0: GR[String], e1: GR[Option[String]]): GR[TokenMetadataRow] = GR {
+    prs =>
+      import prs._
+      TokenMetadataRow.tupled((<<[String], <<[String], <<[String], <<?[String], <<?[String], <<?[String]))
   }
 
   /** Table description of table token_metadata. Objects of this class serve as prototypes for rows in queries. */
   class TokenMetadata(_tableTag: Tag)
       extends profile.api.Table[TokenMetadataRow](_tableTag, Some("tezos"), "token_metadata") {
     def * =
-      (ownerAddress, ownerBigmapId, key, value, source, sourceType) <> (TokenMetadataRow.tupled, TokenMetadataRow.unapply)
+      (contractAddress, ownerAddress, key, value, source, sourceType) <> (TokenMetadataRow.tupled, TokenMetadataRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(ownerAddress), Rep.Some(ownerBigmapId), Rep.Some(key), value, source, sourceType)).shaped.<>(
+      ((Rep.Some(contractAddress), Rep.Some(ownerAddress), Rep.Some(key), value, source, sourceType)).shaped.<>(
         { r =>
           import r._; _1.map(_ => TokenMetadataRow.tupled((_1.get, _2.get, _3.get, _4, _5, _6)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
 
+    /** Database column contract_address SqlType(text) */
+    val contractAddress: Rep[String] = column[String]("contract_address")
+
     /** Database column owner_address SqlType(text) */
     val ownerAddress: Rep[String] = column[String]("owner_address")
-
-    /** Database column owner_bigmap_id SqlType(int4) */
-    val ownerBigmapId: Rep[Int] = column[Int]("owner_bigmap_id")
 
     /** Database column key SqlType(text) */
     val key: Rep[String] = column[String]("key")
@@ -3407,7 +3404,7 @@ trait Tables {
     val sourceType: Rep[Option[String]] = column[Option[String]]("source_type", O.Default(None))
 
     /** Primary key of TokenMetadata (database name token_metadata_pkey) */
-    val pk = primaryKey("token_metadata_pkey", (ownerAddress, ownerBigmapId, key))
+    val pk = primaryKey("token_metadata_pkey", (contractAddress, ownerAddress, key))
   }
 
   /** Collection-like TableQuery object for table TokenMetadata */

@@ -971,18 +971,19 @@ private[tezos] object TezosDatabaseConversions {
     }
 
   implicit val tzip16MetadataToTokenMetadataRow =
-    new Conversion[Id, (PublicKeyHash, (String, Tzip16Metadata)), Tables.TokenMetadataRow] {
+    new Conversion[Id, (String, String, String, (String, Tzip16Metadata)), Tables.TokenMetadataRow] {
 
       /** Takes a `FROM` object and retuns the `TO` object, with an effect `F`. */
-      override def convert(from: (PublicKeyHash, (String, Tzip16Metadata))): Id[tezos.Tables.TokenMetadataRow] = {
-        val (pkh, (rawJson, metadata)) = from
+      override def convert(from: (String, String, String, (String, Tzip16Metadata))): Id[tezos.Tables.TokenMetadataRow] = {
+        val (contract, owner, source, (rawJson, metadata)) = from
+        val sourceType = source.takeWhile(_ != ':')
         Tables.TokenMetadataRow(
-          ownerAddress = pkh.value,
-          ownerBigmapId = 42,
+          contractAddress = contract,
+          ownerAddress = owner,
           key = metadata.name,
           value = rawJson.some,
-          source = metadata.source.flatMap(_.location),
-          sourceType = metadata.source.flatMap(_.tools.map(_.mkString(",")))
+          source = Some(source),
+          sourceType = Some(sourceType)
         )
       }
     }
