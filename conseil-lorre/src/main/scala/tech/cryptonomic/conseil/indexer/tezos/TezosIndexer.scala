@@ -295,7 +295,6 @@ object TezosIndexer extends ConseilLogSupport {
     val accountsProcessor =
       new AccountsProcessor(
         nodeOperator,
-        tzip16MetadataOperator,
         indexedData,
         batchingConf,
         lorreConf.blockRightsFetching
