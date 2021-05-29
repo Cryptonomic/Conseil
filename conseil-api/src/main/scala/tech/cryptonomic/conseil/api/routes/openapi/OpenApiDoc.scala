@@ -32,7 +32,6 @@ object OpenApiDoc
 
   /** OpenAPI definition */
   def openapi: OpenApi = openApi(Info("Conseil API", "0.0.1"))(
-    queryEndpoint,
     tezosBlocksEndpoint,
     tezosBlocksHeadEndpoint,
     tezosBlockByHashEndpoint,
