@@ -17,6 +17,7 @@ import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataStandardJsonCode
   queryResponseDecoder,
   queryResponseEncoder
 }
+import tech.cryptonomic.conseil.common.metadata.PlatformPath
 
 /** OpenAPI documentation object */
 object OpenApiDoc
@@ -32,6 +33,10 @@ object OpenApiDoc
 
   /** OpenAPI definition */
   def openapi: OpenApi = openApi(Info("Conseil API", "0.0.1"))(
+    queryEndpoint(PlatformPath("tezos")),
+    queryEndpoint(PlatformPath("bitcoin")),
+    queryEndpoint(PlatformPath("ethereum")),
+    queryEndpoint(PlatformPath("quorum")),
     tezosBlocksEndpoint,
     tezosBlocksHeadEndpoint,
     tezosBlockByHashEndpoint,
