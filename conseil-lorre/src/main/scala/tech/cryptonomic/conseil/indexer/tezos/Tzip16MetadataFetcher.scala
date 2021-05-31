@@ -126,16 +126,10 @@ class Tzip16MetadataOperator(
 
     /** an effectful function that decodes the json value to an output `Out`*/
     override val decodeData: Kleisli[Future, String, Option[(String, Tzip16Metadata)]] = Kleisli { json =>
-      Try {
-        decodeLiftingTo[Future, Tzip16Metadata](json)
-          .map(json -> _)
-          .onError(
-            logWarnOnJsonDecoding(
-              s"I fetched TZIP-16 json from tezos node that I'm unable to decode: $json",
-              ignore = Option(json).forall(_.trim.isEmpty)
-            )
-          )
-      }.toOption.sequence
+      import cats.syntax.functor._
+      import io.circe.parser.decode
+        decode[Tzip16Metadata](json).toOption.pure[Future]
+          .map(_.map(json -> _))
     }
   }
 
@@ -181,17 +175,10 @@ class Tzip16MetadataOperator(
 
     /** an effectful function that decodes the json value to an output `Out`*/
     override val decodeData: Kleisli[Future, String, Option[(String, Tzip16Metadata)]] = Kleisli { json =>
-      Try {
-        decodeLiftingTo[Future, Tzip16Metadata](json)
-          .map(json -> _)
-          .onError(
-            logWarnOnJsonDecoding(
-              s"I fetched TZIP-16 json from tezos node that I'm unable to decode: $json",
-              ignore = Option(json).forall(_.trim.isEmpty)
-            )
-          )
-      }.toOption.sequence
-
+      import cats.syntax.functor._
+      import io.circe.parser.decode
+      decode[Tzip16Metadata](json).toOption.pure[Future]
+        .map(_.map(json -> _))
     }
   }
 
