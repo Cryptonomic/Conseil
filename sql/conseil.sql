@@ -784,15 +784,6 @@ ALTER TABLE ONLY tezos.operations
     REFERENCES tezos.operation_groups(hash, block_id, fork_id)
     DEFERRABLE INITIALLY IMMEDIATE;
 
-
---owner_address (KT1 address)
---owner_<something> - bigmap id?
---key - big map key? nested keys? x.y.z?
---value - metadata json
---source (ipfs url or bigmap index)
---source type ("ipfs", "bigmap")
---PR (owner_address+something+key)
-
 CREATE TABLE tezos.token_metadata (
     contract_address text,
     owner_address text,

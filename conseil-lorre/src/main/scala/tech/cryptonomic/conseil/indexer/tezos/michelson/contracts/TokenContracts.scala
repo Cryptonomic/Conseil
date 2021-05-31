@@ -374,7 +374,7 @@ object TokenContracts extends ConseilLogSupport {
 
     private def proceduralDecode(hex: String): String = {
 
-      logger.info(s"69706673 trying to decode $hex")
+      logger.info(s"trying to decode $hex")
       val bytes = new Array[Byte](hex.length / 2)
 
       var i = 0
@@ -386,7 +386,7 @@ object TokenContracts extends ConseilLogSupport {
 
     }
 
-    def extractTzip16MetadataLocationFromParameters(paramCode: Micheline, path: String): Option[String] = {
+    def extractTzip16MetadataLocationFromParameters(paramCode: Micheline, path: Option[String]): Option[String] = {
       val parsed = JsonParser.parse[MichelsonInstruction](paramCode.expression)
 
       parsed.left.foreach(
@@ -403,8 +403,12 @@ object TokenContracts extends ConseilLogSupport {
         michelson => logger.debug(s"I parsed a tzip-16 parameters value as $michelson")
       )
 
+      val fromWhere = parsed
+        .toOption
+        .flatMap(_.findInstruction(MichelsonBytesConstant(""), startsWith = Some("6970")).sortBy(_.length).headOption)
       for {
-        metadataUrl <- parsed.toOption.flatMap(_.getAtPath(path)).collect {
+        pth <- path.orElse(fromWhere)
+        metadataUrl <- parsed.toOption.flatMap(_.getAtPath(pth)).collect {
           case MichelsonBytesConstant(mu) =>
             mu
         }

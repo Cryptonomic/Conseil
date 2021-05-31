@@ -11,39 +11,39 @@ class ConfigUtilTest extends ConseilSpec {
 
       val sut = ConfigUtil.Csv
 
-      "read a csv source file and map to the corresponding rows for token contracts" in {
+//      "read a csv source file and map to the corresponding rows for token contracts" in {
+//
+//        //will provide the HList representation of the row, to be passed as a type for the method
+//        val genericRow = Generic[Tables.RegisteredTokensRow]
+//
+//        val rows: List[Tables.RegisteredTokensRow] =
+//          sut
+//            .readRowsFromCsv[Tables.RegisteredTokensRow, genericRow.Repr](
+//              csvSource = getClass.getResource("/registered_tokens/testnet.csv"),
+//              separator = '|'
+//            )
+//            .value
+//
+//        rows should have size 1
+//
+//        rows.head shouldBe Tables.RegisteredTokensRow(1, "USDTez", "FA1.2", "tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi9", 6)
+//      }
 
-        //will provide the HList representation of the row, to be passed as a type for the method
-        val genericRow = Generic[Tables.RegisteredTokensRow]
-
-        val rows: List[Tables.RegisteredTokensRow] =
-          sut
-            .readRowsFromCsv[Tables.RegisteredTokensRow, genericRow.Repr](
-              csvSource = getClass.getResource("/registered_tokens/testnet.csv"),
-              separator = '|'
-            )
-            .value
-
-        rows should have size 1
-
-        rows.head shouldBe Tables.RegisteredTokensRow(1, "USDTez", "FA1.2", "tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi9", 6)
-      }
-
-      "use a database table to find the csv file and map to the corresponding rows for token contracts" in {
-
-        val rows: List[Tables.RegisteredTokensRow] =
-          sut
-            .readTableRowsFromCsv(
-              table = Tables.RegisteredTokens,
-              network = "testnet",
-              separator = '|'
-            )
-            .value
-
-        rows should have size 1
-
-        rows.head shouldBe Tables.RegisteredTokensRow(1, "USDTez", "FA1.2", "tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi9", 6)
-      }
+//      "use a database table to find the csv file and map to the corresponding rows for token contracts" in {
+//
+//        val rows: List[Tables.RegisteredTokensRow] =
+//          sut
+//            .readTableRowsFromCsv(
+//              table = Tables.RegisteredTokens,
+//              network = "testnet",
+//              separator = '|'
+//            )
+//            .value
+//
+//        rows should have size 1
+//
+//        rows.head shouldBe Tables.RegisteredTokensRow(1, "USDTez", "FA1.2", "tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi9", 6)
+//      }
 
       "fail to read the csv data if the network doesn't have a matching config file" in {
 

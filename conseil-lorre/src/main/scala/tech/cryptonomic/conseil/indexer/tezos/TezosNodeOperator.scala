@@ -689,6 +689,10 @@ private[tezos] class TezosNodeOperator(
       val copyInternalParametersToMicheline = (t: InternalOperationResults.Transaction) =>
         t.copy(parameters_micheline = t.parameters)
 
+      val copyOriginationToMicheline = (o: Origination) =>
+        o.copy(script = o.script.map(_.copy(storage_micheline = o.script.map(_.storage))))
+
+      val setOriginationMicheline = acrossOriginations.modify(copyOriginationToMicheline)
       val codeAlter = acrossScriptsCode.modify(toMichelsonScript[MichelsonInstruction])
       val storageAlter = acrossScriptsStorage.modify(toMichelsonScript[MichelsonInstruction])
 
@@ -703,7 +707,8 @@ private[tezos] class TezosNodeOperator(
       val parametersAlterToInternals = acrossInternalParameters.modify(toMichelsonScript[MichelsonInstruction])
 
       //each operation will convert a block to an updated version of block, therefore compose each transformation with the next
-      codeAlter andThen
+
+      setOriginationMicheline andThen codeAlter andThen
         storageAlter andThen
         setUnparsedMicheline andThen
         parametersAlter andThen

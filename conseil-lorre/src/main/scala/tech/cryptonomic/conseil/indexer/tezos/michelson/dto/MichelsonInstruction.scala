@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.indexer.tezos.michelson.dto
 
+import scala.annotation.tailrec
 import scala.util.Try
 
 /*
@@ -28,16 +29,31 @@ sealed trait MichelsonInstruction extends MichelsonElement {
   def findInstruction(
       pattern: MichelsonElement,
       in: MichelsonElement = this,
-      acc: List[String] = List.empty
-  ): List[String] =
-    if (pattern == in) {
+      acc: List[String] = List.empty,
+      startsWith: Option[String] = None
+  ): List[String] = {
+    val stw = startsWith.map { str =>
+      in match {
+        case instruction: MichelsonInstruction => instruction match {
+          case MichelsonStringConstant(string) =>
+            string.startsWith(str)
+          case MichelsonBytesConstant(bytes) =>
+            bytes.startsWith(str)
+          case _ =>
+            false
+        }
+        case _ =>
+          false
+      }
+    }
+    if (pattern == in || stw.getOrElse(false)) {
       List(acc.reverse.mkString(";"))
     } else {
       in match {
         case MichelsonCode(instructions) =>
           instructions.zipWithIndex.flatMap {
             case (instruction, index) =>
-              findInstruction(pattern, instruction, s"MichelsonCode:$index" :: acc)
+              findInstruction(pattern, instruction, s"MichelsonCode:$index" :: acc, startsWith)
           }
         case expression: MichelsonExpression =>
           expression match {
@@ -47,7 +63,8 @@ sealed trait MichelsonInstruction extends MichelsonElement {
                   findInstruction(
                     pattern,
                     instruction,
-                    s"MichelsonType:$prim:${annotations.mkString("&")}:$index" :: acc
+                    s"MichelsonType:$prim:${annotations.mkString("&")}:$index" :: acc,
+                    startsWith
                   )
               }
             case MichelsonEmptyExpression => List.empty
@@ -60,13 +77,14 @@ sealed trait MichelsonInstruction extends MichelsonElement {
                   findInstruction(
                     pattern,
                     instruction,
-                    s"MichelsonSingleInstruction:$name:${annotations.mkString("&")}:$index" :: acc
+                    s"MichelsonSingleInstruction:$name:${annotations.mkString("&")}:$index" :: acc,
+                    startsWith
                   )
               }
             case MichelsonInstructionSequence(instructions) =>
               instructions.zipWithIndex.flatMap {
                 case (instruction, index) =>
-                  findInstruction(pattern, instruction, s"MichelsonInstructionSequence:$index" :: acc)
+                  findInstruction(pattern, instruction, s"MichelsonInstructionSequence:$index" :: acc, startsWith)
               }
             case _ => List.empty
           }
@@ -74,6 +92,7 @@ sealed trait MichelsonInstruction extends MichelsonElement {
         case _ => List.empty
       }
     }
+  }
 
   def getAtPath(path: String): Option[MichelsonElement] = {
     val pathList = path.split(';').toList

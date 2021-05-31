@@ -2,6 +2,9 @@ package tech.cryptonomic.conseil.indexer.tezos.michelson.contracts
 
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
+import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts.Tzip16
+import tech.cryptonomic.conseil.indexer.tezos.michelson.dto.{MichelsonBytesConstant, MichelsonInstruction, MichelsonSingleInstruction}
+import tech.cryptonomic.conseil.indexer.tezos.michelson.parser.JsonParser
 
 class TokenContractsTest extends ConseilSpec {
 
@@ -215,6 +218,36 @@ class TokenContractsTest extends ConseilSpec {
 
       }
 
+      "xxxx" in {
+        val sth = """{"prim":"Pair","args":[{"prim":"Pair","args":[{"string":"tz1UBZUkXpKGhYsP5KtzDNqLLchwF4uHrGjw"},{"prim":"Pair","args":[{"int":"0"},[]]}]},{"prim":"Pair","args":[{"prim":"Pair","args":[[{"prim":"Elt","args":[{"string":""},{"bytes":"697066733a2f2f516d534263385175796e55376241725547746a774352685a55624a795a51417272637a4b6e714d37685a50746656"}]}],[]]},{"prim":"Pair","args":[{"prim":"False"},[]]}]}]}"""
+
+        val res = JsonParser.parse[MichelsonInstruction](sth)
+        //MichelsonSingleInstruction:Pair::1;MichelsonType:Pair::1;MichelsonInstructionSequence:0;MichelsonSingleInstruction:Elt::1
+
+        val xd = "MichelsonSingleInstruction:Pair::1;MichelsonType:Pair::0;MichelsonType:Pair::0;MichelsonInstructionSequence:0;MichelsonSingleInstruction:Elt::1"
+
+        res.toOption.get.getAtPath(xd)
+        val ssss = Tzip16.extractTzip16MetadataLocationFromParameters(Micheline(sth), xd)
+
+        ssss shouldBe Some("""ipfs://QmSBc8QuynU7bArUGtjwCRhZUbJyZQArrczKnqM7hZPtfV""")
+
+      }
+
+      "yyyy" in {
+        val sth = """{"prim":"Pair","args":[{"prim":"Pair","args":[[],{"prim":"Pair","args":[[],{"string":"tz1Y1j7FK1X9Rrv2VdPz5bXoU7SszF8W1RnK"}]}]},{"prim":"Pair","args":[{"prim":"Pair","args":[[{"prim":"Elt","args":[{"string":""},{"bytes":"697066733a2f2f516d5946375a6438624b506b7062783378434d3975693848796839574e67653133747a6f5644526d4c44526b364e"}]}],[]]},{"prim":"Pair","args":[[],[]]}]}]}"""
+
+        val res = JsonParser.parse[MichelsonInstruction](sth)
+        //MichelsonSingleInstruction:Pair::1;MichelsonType:Pair::1;MichelsonInstructionSequence:0;MichelsonSingleInstruction:Elt::1
+        val xxx = res.toOption.get.findInstruction(MichelsonBytesConstant(""), startsWith = Some("6970"))
+
+        val xd = "MichelsonSingleInstruction:Pair::1;MichelsonType:Pair::0;MichelsonType:Pair::0;MichelsonInstructionSequence:0;MichelsonSingleInstruction:Elt::1"
+
+        res.toOption.get.getAtPath(xd)
+        val ssss = Tzip16.extractTzip16MetadataLocationFromParameters(Micheline(sth), xxx.head)
+
+        ssss shouldBe None
+
+      }
     }
 
 }

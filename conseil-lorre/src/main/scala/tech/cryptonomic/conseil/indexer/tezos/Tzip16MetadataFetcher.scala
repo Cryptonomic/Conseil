@@ -29,6 +29,8 @@ import tech.cryptonomic.conseil.indexer.config.{
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Try}
+import cats.instances._
+import cats.implicits._
 
 case class Tzip16Metadata(
     name: String,
@@ -70,16 +72,23 @@ class Tzip16MetadataOperator(
 
   private type FutureFetcher = DataFetcher[Future, List, Throwable]
 
-  def getMetadata(
+  def getMetadataWithOrigination(
+    addresses: List[(Origination, String)]
+  ): Future[List[((Origination, String), Option[(String, Tzip16Metadata)])]] =
+    fetch[(Origination, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
+      .run(addresses)
+
+
+  def getMetadataWithIntTransaction(
       addresses: List[(InternalOperationResults.Transaction, String)]
-  ): Future[List[((InternalOperationResults.Transaction, String), (String, Tzip16Metadata))]] =
-    fetch[(InternalOperationResults.Transaction, String), (String, Tzip16Metadata), Future, List, Throwable]
+  ): Future[List[((InternalOperationResults.Transaction, String), Option[(String, Tzip16Metadata)])]] =
+    fetch[(InternalOperationResults.Transaction, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
       .run(addresses)
 
   implicit val metadataFetcher: FutureFetcher {
     type In = (InternalOperationResults.Transaction, String)
 
-    type Out = (String, Tzip16Metadata)
+    type Out = Option[(String, Tzip16Metadata)]
 
     type Encoded = String
   } = new FutureFetcher {
@@ -88,7 +97,7 @@ class Tzip16MetadataOperator(
     override type In = (InternalOperationResults.Transaction, String)
 
     /** the output type, e.g. the decoded block data */
-    override type Out = (String, Tzip16Metadata)
+    override type Out = Option[(String, Tzip16Metadata)]
 
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
@@ -116,18 +125,76 @@ class Tzip16MetadataOperator(
       )
 
     /** an effectful function that decodes the json value to an output `Out`*/
-    override val decodeData: Kleisli[Future, String, (String, Tzip16Metadata)] = Kleisli { json =>
-      decodeLiftingTo[Future, Tzip16Metadata](json)
-        .map(json -> _)
-        .onError(
-          logWarnOnJsonDecoding(
-            s"I fetched TZIP-16 json from tezos node that I'm unable to decode: $json",
-            ignore = Option(json).forall(_.trim.isEmpty)
+    override val decodeData: Kleisli[Future, String, Option[(String, Tzip16Metadata)]] = Kleisli { json =>
+      Try {
+        decodeLiftingTo[Future, Tzip16Metadata](json)
+          .map(json -> _)
+          .onError(
+            logWarnOnJsonDecoding(
+              s"I fetched TZIP-16 json from tezos node that I'm unable to decode: $json",
+              ignore = Option(json).forall(_.trim.isEmpty)
+            )
           )
-        )
+      }.toOption.sequence
+    }
+  }
+
+
+  implicit val metadataFetcherOrigination: FutureFetcher {
+    type In = (Origination, String)
+
+    type Out = Option[(String, Tzip16Metadata)]
+
+    type Encoded = String
+  } = new FutureFetcher {
+
+    /** the input type, e.g. ids of data */
+    override type In = (Origination, String)
+
+    /** the output type, e.g. the decoded block data */
+    override type Out = Option[(String, Tzip16Metadata)]
+
+    /** the encoded representation type used e.g. some Json representation */
+    override type Encoded = String
+
+    private val makeUrl = (key: In) => key._2
+
+    /** an effectful function from a collection of inputs `T[In]`
+     * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
+     */
+    override val fetchData =
+      Kleisli(
+        fetchKeys => {
+          val hashes = fetchKeys
+          logger.info("Fetching tzip metadata")
+          node.runBatchedGetQuery(fetchKeys, makeUrl, 2).onError {
+            case err =>
+              val showHashes = hashes.mkString(", ")
+              logger
+                .error(
+                  s"I encountered problems while fetching baking rights from TZIP-16 for blocks $showHashes. The error says ${err.getMessage}"
+                )
+                .pure[Future]
+          }
+        }
+      )
+
+    /** an effectful function that decodes the json value to an output `Out`*/
+    override val decodeData: Kleisli[Future, String, Option[(String, Tzip16Metadata)]] = Kleisli { json =>
+      Try {
+        decodeLiftingTo[Future, Tzip16Metadata](json)
+          .map(json -> _)
+          .onError(
+            logWarnOnJsonDecoding(
+              s"I fetched TZIP-16 json from tezos node that I'm unable to decode: $json",
+              ignore = Option(json).forall(_.trim.isEmpty)
+            )
+          )
+      }.toOption.sequence
 
     }
   }
+
 
   private def logWarnOnJsonDecoding[Encoded](
       message: String,

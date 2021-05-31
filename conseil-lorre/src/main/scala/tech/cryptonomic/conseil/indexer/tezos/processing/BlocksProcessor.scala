@@ -4,13 +4,7 @@ import scala.util.{Failure, Success, Try}
 import scala.concurrent.{ExecutionContext, Future}
 import slick.jdbc.PostgresProfile.api._
 import cats.implicits._
-import tech.cryptonomic.conseil.indexer.tezos.{
-  TezosGovernanceOperations,
-  TezosNamesOperations,
-  TezosNodeOperator,
-  Tzip16MetadataOperator,
-  TezosDatabaseOperations => TezosDb
-}
+import tech.cryptonomic.conseil.indexer.tezos.{TezosGovernanceOperations, TezosNamesOperations, TezosNodeOperator, Tzip16MetadataOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.TezosTypes
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, InternalOperationResults, Voting}
@@ -18,6 +12,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts.Tzip16
+import tech.cryptonomic.conseil.indexer.tezos.michelson.renderer.MichelsonRenderer
 
 /** Collects operations related to handling blocks from
   * the tezos node.
@@ -85,6 +80,34 @@ class BlocksProcessor(
       }
     }.flatten
 
+    val originatins = blocks.flatMap { block =>
+      block.operationGroups.map { opGroups =>
+        opGroups.contents.collect {
+          case o:TezosTypes.Origination =>
+            o
+        }
+      }
+    }.flatten
+
+    val xd = "MichelsonSingleInstruction:Pair::1;MichelsonType:Pair::0;MichelsonType:Pair::0;MichelsonInstructionSequence:0;MichelsonSingleInstruction:Elt::1"
+    val origiRes = originatins.flatMap { orig =>
+      orig.script.flatMap { x =>
+        x.storage_micheline.map { xx =>
+          orig -> Tzip16
+            .extractTzip16MetadataLocationFromParameters(xx, None)
+        }
+      }.toList
+    }.filter {
+      case (_, location) => location.nonEmpty
+    }.map(x => x._1 -> x._2.get)
+
+    val xxx = metadataOperator.getMetadataWithOrigination(origiRes).map { result =>
+      result.filter(_._2.isDefined).map {
+        case ((transaction, location), Some((raw, meta))) => (transaction.source.value, transaction.source.value, location, (raw, meta))
+      }
+    }
+
+
     val itrPathMichelinePairFut = internalTransactionResults.traverse { itr =>
       db.run(TezosDb.getContractMetadataPath(itr.destination.id)).map {
         case Some(path) =>
@@ -100,18 +123,24 @@ class BlocksProcessor(
       val res = pathMichelinePair.map {
         case (itr, path, micheline) =>
           itr -> Tzip16
-                .extractTzip16MetadataLocationFromParameters(micheline, path)
+                .extractTzip16MetadataLocationFromParameters(micheline, Some(path))
       }.filter {
         case (_, location) => location.nonEmpty
       }.map(x => x._1 -> x._2.get)
-      metadataOperator.getMetadata(res).map { result =>
-        result.map {
-          case ((transaction, location), (raw, meta)) => (transaction.source.value, transaction.destination.id, location, (raw, meta))
+
+      metadataOperator.getMetadataWithIntTransaction(res).map { result =>
+        result.filter(_._2.isDefined).map {
+          case ((transaction, location), Some((raw, meta))) => (transaction.source.value, transaction.destination.id, location, (raw, meta))
         }
       }
     }
 
-    metadata.flatMap(tok => db.run(TezosDb.writeTokenMetadata(tok)))
+    for {
+      tok <- metadata
+      org <- xxx
+      sth = tok ::: org
+      yyy <- db.run(TezosDb.writeTokenMetadata(sth))
+    } yield yyy
   }
 
   /** Prepares and stores statistics for voting periods of the
