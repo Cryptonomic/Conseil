@@ -60,7 +60,7 @@ case class TezosDataRoutes(
   )
 
   /** V2 Route implementation for query endpoint */
-  override def postRoute: Route = queryEndpoint(platformPath).implementedByAsync {
+  override val postRoute: Route = tezosQueryEndpoint.implementedByAsync {
     case (network, entity, apiQuery, _) =>
       val path = EntityPath(entity, NetworkPath(network, platformPath))
 

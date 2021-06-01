@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.ethereum
 
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.BeforeAndAfterEach
@@ -23,7 +24,6 @@ import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, Platfo
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
-
 import java.net.URL
 import tech.cryptonomic.conseil.common.config.Platforms.EthereumRetryConfiguration
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
@@ -93,7 +93,7 @@ class EthereumDataRoutesTest
           uri = "/v2/data/notSupportedPlatform/mainnet/blocks",
           entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
         )
-        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
+        postRequest ~> addHeader("apiKey", "hooman") ~> Route.seal(routes.postRoute) ~> check {
           status shouldBe StatusCodes.NotFound
         }
       }
