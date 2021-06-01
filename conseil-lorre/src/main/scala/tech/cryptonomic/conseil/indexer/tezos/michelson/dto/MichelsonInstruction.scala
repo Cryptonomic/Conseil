@@ -34,14 +34,15 @@ sealed trait MichelsonInstruction extends MichelsonElement {
   ): List[String] = {
     val stw = startsWith.map { str =>
       in match {
-        case instruction: MichelsonInstruction => instruction match {
-          case MichelsonStringConstant(string) =>
-            string.startsWith(str)
-          case MichelsonBytesConstant(bytes) =>
-            bytes.startsWith(str)
-          case _ =>
-            false
-        }
+        case instruction: MichelsonInstruction =>
+          instruction match {
+            case MichelsonStringConstant(string) =>
+              string.startsWith(str)
+            case MichelsonBytesConstant(bytes) =>
+              bytes.startsWith(str)
+            case _ =>
+              false
+          }
         case _ =>
           false
       }

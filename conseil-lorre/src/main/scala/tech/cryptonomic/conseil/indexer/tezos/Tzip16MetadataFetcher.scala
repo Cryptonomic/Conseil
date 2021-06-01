@@ -32,26 +32,24 @@ import scala.util.{Failure, Try}
 import cats.instances._
 import cats.implicits._
 
-case class Tzip16Metadata(
-    name: String,
-    description: String,
-    version: Option[String],
-    license: Option[Tzip16License],
-    authors: Option[List[String]],
-    homepage: Option[String],
-    source: Option[Tzip16Source],
-    interfaces: Option[List[String]]
-)
-
-case class Tzip16Source(tools: Option[List[String]], location: Option[String])
-
-case class Tzip16License(name: Option[String], details: Option[String])
-
 object Tzip16MetadataJsonDecoders {
 
   import io.circe._
   import io.circe.generic.semiauto._
+  case class Tzip16Metadata(
+      name: String,
+      description: String,
+      version: Option[String],
+      license: Option[Tzip16License],
+      authors: Option[List[String]],
+      homepage: Option[String],
+      source: Option[Tzip16Source],
+      interfaces: Option[List[String]]
+  )
 
+  case class Tzip16Source(tools: Option[List[String]], location: Option[String])
+
+  case class Tzip16License(name: Option[String], details: Option[String])
   implicit val tzip16MetadataJsonDecoder: Decoder[Tzip16Metadata] = deriveDecoder
   implicit val tzip16SourceJsonDecoder: Decoder[Tzip16Source] = deriveDecoder
   implicit val tzip16LicenseJsonDecoder: Decoder[Tzip16License] = deriveDecoder
@@ -64,7 +62,6 @@ class Tzip16MetadataOperator(
 )(implicit val fetchFutureContext: ExecutionContext)
     extends ConseilLogSupport {
 
-  import TezosJsonDecoders.Circe.decodeLiftingTo
   import Tzip16MetadataJsonDecoders._
   import cats.instances.future._
   import cats.syntax.applicative._
@@ -73,11 +70,10 @@ class Tzip16MetadataOperator(
   private type FutureFetcher = DataFetcher[Future, List, Throwable]
 
   def getMetadataWithOrigination(
-    addresses: List[(Origination, String)]
+      addresses: List[(Origination, String)]
   ): Future[List[((Origination, String), Option[(String, Tzip16Metadata)])]] =
     fetch[(Origination, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
       .run(addresses)
-
 
   def getMetadataWithIntTransaction(
       addresses: List[(InternalOperationResults.Transaction, String)]
@@ -128,11 +124,11 @@ class Tzip16MetadataOperator(
     override val decodeData: Kleisli[Future, String, Option[(String, Tzip16Metadata)]] = Kleisli { json =>
       import cats.syntax.functor._
       import io.circe.parser.decode
-        decode[Tzip16Metadata](json).toOption.pure[Future]
-          .map(_.map(json -> _))
+      decode[Tzip16Metadata](json).toOption
+        .pure[Future]
+        .map(_.map(json -> _))
     }
   }
-
 
   implicit val metadataFetcherOrigination: FutureFetcher {
     type In = (Origination, String)
@@ -154,8 +150,8 @@ class Tzip16MetadataOperator(
     private val makeUrl = (key: In) => key._2
 
     /** an effectful function from a collection of inputs `T[In]`
-     * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
-     */
+      * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
+      */
     override val fetchData =
       Kleisli(
         fetchKeys => {
@@ -177,23 +173,10 @@ class Tzip16MetadataOperator(
     override val decodeData: Kleisli[Future, String, Option[(String, Tzip16Metadata)]] = Kleisli { json =>
       import cats.syntax.functor._
       import io.circe.parser.decode
-      decode[Tzip16Metadata](json).toOption.pure[Future]
+      decode[Tzip16Metadata](json).toOption
+        .pure[Future]
         .map(_.map(json -> _))
     }
-  }
-
-
-  private def logWarnOnJsonDecoding[Encoded](
-      message: String,
-      ignore: Boolean = false
-  ): PartialFunction[Throwable, Future[Unit]] = {
-    case decodingError: io.circe.Error if ignore =>
-      ().pure[Future]
-    case decodingError: io.circe.Error =>
-      decodingError.fillInStackTrace()
-      logger.warn(message, decodingError).pure[Future]
-    case t =>
-      logger.error("Something unexpected failed while decoding json", t).pure[Future]
   }
 }
 
@@ -327,7 +310,6 @@ class TezosMetadataInterface(
       case url if url.startsWith("http") => url
       case url if url.startsWith("ipfs") =>
         s"https://ipfs.infura.io/ipfs/${url.stripPrefix("ipfs://")}"
-      //s"https://cloudflare-ipfs.com/ipfs/${url.stripPrefix("ipfs://")}"
     }
 
   /* Wraps the request/response flow with logging, if enabled by configuration
@@ -351,7 +333,6 @@ class TezosMetadataInterface(
   private def getHostPoolFlow[T] =
     Http(system).cachedHostConnectionPoolHttps[T](
       host = "ipfs.infura.io",
-      //host = "cloudflare-ipfs.com",
       port = 443,
       settings = streamingRequestsConnectionPooling
     )

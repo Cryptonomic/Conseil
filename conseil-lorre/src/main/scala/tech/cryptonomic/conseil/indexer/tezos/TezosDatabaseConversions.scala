@@ -14,6 +14,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
 import tech.cryptonomic.conseil.common.tezos.{Fork, Tables, TezosOptics}
 import tech.cryptonomic.conseil.common.util.Conversion
+import tech.cryptonomic.conseil.indexer.tezos.Tzip16MetadataJsonDecoders.Tzip16Metadata
 
 import scala.util.Try
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.SmartContracts
@@ -971,19 +972,22 @@ private[tezos] object TezosDatabaseConversions {
     }
 
   implicit val tzip16MetadataToTokenMetadataRow =
-    new Conversion[Id, (String, String, String, (String, Tzip16Metadata)), Tables.TokenMetadataRow] {
+    new Conversion[Id, (String, String, String, String, (String, Tzip16Metadata)), Tables.MetadataRow] {
 
       /** Takes a `FROM` object and retuns the `TO` object, with an effect `F`. */
-      override def convert(from: (String, String, String, (String, Tzip16Metadata))): Id[tezos.Tables.TokenMetadataRow] = {
-        val (contract, owner, source, (rawJson, metadata)) = from
+      override def convert(
+          from: (String, String, String, String, (String, Tzip16Metadata))
+      ): Id[tezos.Tables.MetadataRow] = {
+        val (metadataType, contract, owner, source, (rawJson, metadata)) = from
         val sourceType = source.takeWhile(_ != ':')
-        Tables.TokenMetadataRow(
+        Tables.MetadataRow(
           contractAddress = contract,
           ownerAddress = owner,
           key = metadata.name,
           value = rawJson.some,
           source = Some(source),
-          sourceType = Some(sourceType)
+          sourceType = Some(sourceType),
+          metadataType = Some(metadataType)
         )
       }
     }

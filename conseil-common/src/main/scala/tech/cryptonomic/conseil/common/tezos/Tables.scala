@@ -34,14 +34,14 @@ trait Tables {
     Forks.schema,
     Governance.schema,
     KnownAddresses.schema,
+    Metadata.schema,
     OperationGroups.schema,
     Operations.schema,
     OriginatedAccountMaps.schema,
     ProcessedChainEvents.schema,
     RegisteredTokens.schema,
     TezosNames.schema,
-    TokenBalances.schema,
-    TokenMetadata.schema
+    TokenBalances.schema
   ).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
@@ -2465,6 +2465,73 @@ trait Tables {
   /** Collection-like TableQuery object for table KnownAddresses */
   lazy val KnownAddresses = new TableQuery(tag => new KnownAddresses(tag))
 
+  /** Entity class storing rows of table Metadata
+    *  @param contractAddress Database column contract_address SqlType(text)
+    *  @param ownerAddress Database column owner_address SqlType(text)
+    *  @param key Database column key SqlType(text)
+    *  @param value Database column value SqlType(text), Default(None)
+    *  @param source Database column source SqlType(text), Default(None)
+    *  @param sourceType Database column source_type SqlType(text), Default(None)
+    *  @param metadataType Database column metadata_type SqlType(text), Default(None) */
+  case class MetadataRow(
+      contractAddress: String,
+      ownerAddress: String,
+      key: String,
+      value: Option[String] = None,
+      source: Option[String] = None,
+      sourceType: Option[String] = None,
+      metadataType: Option[String] = None
+  )
+
+  /** GetResult implicit for fetching MetadataRow objects using plain SQL queries */
+  implicit def GetResultMetadataRow(implicit e0: GR[String], e1: GR[Option[String]]): GR[MetadataRow] = GR { prs =>
+    import prs._
+    MetadataRow.tupled((<<[String], <<[String], <<[String], <<?[String], <<?[String], <<?[String], <<?[String]))
+  }
+
+  /** Table description of table metadata. Objects of this class serve as prototypes for rows in queries. */
+  class Metadata(_tableTag: Tag) extends profile.api.Table[MetadataRow](_tableTag, Some("tezos"), "metadata") {
+    def * =
+      (contractAddress, ownerAddress, key, value, source, sourceType, metadataType) <> (MetadataRow.tupled, MetadataRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      ((Rep.Some(contractAddress), Rep.Some(ownerAddress), Rep.Some(key), value, source, sourceType, metadataType)).shaped
+        .<>(
+          { r =>
+            import r._; _1.map(_ => MetadataRow.tupled((_1.get, _2.get, _3.get, _4, _5, _6, _7)))
+          },
+          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        )
+
+    /** Database column contract_address SqlType(text) */
+    val contractAddress: Rep[String] = column[String]("contract_address")
+
+    /** Database column owner_address SqlType(text) */
+    val ownerAddress: Rep[String] = column[String]("owner_address")
+
+    /** Database column key SqlType(text) */
+    val key: Rep[String] = column[String]("key")
+
+    /** Database column value SqlType(text), Default(None) */
+    val value: Rep[Option[String]] = column[Option[String]]("value", O.Default(None))
+
+    /** Database column source SqlType(text), Default(None) */
+    val source: Rep[Option[String]] = column[Option[String]]("source", O.Default(None))
+
+    /** Database column source_type SqlType(text), Default(None) */
+    val sourceType: Rep[Option[String]] = column[Option[String]]("source_type", O.Default(None))
+
+    /** Database column metadata_type SqlType(text), Default(None) */
+    val metadataType: Rep[Option[String]] = column[Option[String]]("metadata_type", O.Default(None))
+
+    /** Primary key of Metadata (database name metadata_pkey) */
+    val pk = primaryKey("metadata_pkey", (contractAddress, ownerAddress, key))
+  }
+
+  /** Collection-like TableQuery object for table Metadata */
+  lazy val Metadata = new TableQuery(tag => new Metadata(tag))
+
   /** Entity class storing rows of table OperationGroups
     *  @param protocol Database column protocol SqlType(varchar)
     *  @param chainId Database column chain_id SqlType(varchar), Default(None)
@@ -3346,67 +3413,4 @@ trait Tables {
 
   /** Collection-like TableQuery object for table TokenBalances */
   lazy val TokenBalances = new TableQuery(tag => new TokenBalances(tag))
-
-  /** Entity class storing rows of table TokenMetadata
-    *  @param contractAddress Database column contract_address SqlType(text)
-    *  @param ownerAddress Database column owner_address SqlType(text)
-    *  @param key Database column key SqlType(text)
-    *  @param value Database column value SqlType(text), Default(None)
-    *  @param source Database column source SqlType(text), Default(None)
-    *  @param sourceType Database column source_type SqlType(text), Default(None) */
-  case class TokenMetadataRow(
-      contractAddress: String,
-      ownerAddress: String,
-      key: String,
-      value: Option[String] = None,
-      source: Option[String] = None,
-      sourceType: Option[String] = None
-  )
-
-  /** GetResult implicit for fetching TokenMetadataRow objects using plain SQL queries */
-  implicit def GetResultTokenMetadataRow(implicit e0: GR[String], e1: GR[Option[String]]): GR[TokenMetadataRow] = GR {
-    prs =>
-      import prs._
-      TokenMetadataRow.tupled((<<[String], <<[String], <<[String], <<?[String], <<?[String], <<?[String]))
-  }
-
-  /** Table description of table token_metadata. Objects of this class serve as prototypes for rows in queries. */
-  class TokenMetadata(_tableTag: Tag)
-      extends profile.api.Table[TokenMetadataRow](_tableTag, Some("tezos"), "token_metadata") {
-    def * =
-      (contractAddress, ownerAddress, key, value, source, sourceType) <> (TokenMetadataRow.tupled, TokenMetadataRow.unapply)
-
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      ((Rep.Some(contractAddress), Rep.Some(ownerAddress), Rep.Some(key), value, source, sourceType)).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => TokenMetadataRow.tupled((_1.get, _2.get, _3.get, _4, _5, _6)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
-
-    /** Database column contract_address SqlType(text) */
-    val contractAddress: Rep[String] = column[String]("contract_address")
-
-    /** Database column owner_address SqlType(text) */
-    val ownerAddress: Rep[String] = column[String]("owner_address")
-
-    /** Database column key SqlType(text) */
-    val key: Rep[String] = column[String]("key")
-
-    /** Database column value SqlType(text), Default(None) */
-    val value: Rep[Option[String]] = column[Option[String]]("value", O.Default(None))
-
-    /** Database column source SqlType(text), Default(None) */
-    val source: Rep[Option[String]] = column[Option[String]]("source", O.Default(None))
-
-    /** Database column source_type SqlType(text), Default(None) */
-    val sourceType: Rep[Option[String]] = column[Option[String]]("source_type", O.Default(None))
-
-    /** Primary key of TokenMetadata (database name token_metadata_pkey) */
-    val pk = primaryKey("token_metadata_pkey", (contractAddress, ownerAddress, key))
-  }
-
-  /** Collection-like TableQuery object for table TokenMetadata */
-  lazy val TokenMetadata = new TableQuery(tag => new TokenMetadata(tag))
 }

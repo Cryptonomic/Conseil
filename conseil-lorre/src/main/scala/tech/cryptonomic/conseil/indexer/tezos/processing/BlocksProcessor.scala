@@ -4,7 +4,13 @@ import scala.util.{Failure, Success, Try}
 import scala.concurrent.{ExecutionContext, Future}
 import slick.jdbc.PostgresProfile.api._
 import cats.implicits._
-import tech.cryptonomic.conseil.indexer.tezos.{TezosGovernanceOperations, TezosNamesOperations, TezosNodeOperator, Tzip16MetadataOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.indexer.tezos.{
+  TezosGovernanceOperations,
+  TezosNamesOperations,
+  TezosNodeOperator,
+  Tzip16MetadataOperator,
+  TezosDatabaseOperations => TezosDb
+}
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.TezosTypes
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, InternalOperationResults, Voting}
@@ -80,17 +86,16 @@ class BlocksProcessor(
       }
     }.flatten
 
-    val originatins = blocks.flatMap { block =>
+    val originations = blocks.flatMap { block =>
       block.operationGroups.map { opGroups =>
         opGroups.contents.collect {
-          case o:TezosTypes.Origination =>
+          case o: TezosTypes.Origination =>
             o
         }
       }
     }.flatten
 
-    val xd = "MichelsonSingleInstruction:Pair::1;MichelsonType:Pair::0;MichelsonType:Pair::0;MichelsonInstructionSequence:0;MichelsonSingleInstruction:Elt::1"
-    val origiRes = originatins.flatMap { orig =>
+    val origiRes = originations.flatMap { orig =>
       orig.script.flatMap { x =>
         x.storage_micheline.map { xx =>
           orig -> Tzip16
@@ -101,11 +106,21 @@ class BlocksProcessor(
       case (_, location) => location.nonEmpty
     }.map(x => x._1 -> x._2.get)
 
-    val xxx = metadataOperator.getMetadataWithOrigination(origiRes).map { result =>
-      result.filter(x => x._2.isDefined && x._1._1.metadata.operation_result.originated_contracts.toList.flatten.nonEmpty).map {
-        case ((transaction, location), Some((raw, meta))) =>
-          (transaction.metadata.operation_result.originated_contracts.get.head.id, transaction.source.value, location, (raw, meta))
-      }
+    val metadataFromOrigination = metadataOperator.getMetadataWithOrigination(origiRes).map { result =>
+      result
+        .filter(
+          res => res._2.isDefined && res._1._1.metadata.operation_result.originated_contracts.toList.flatten.nonEmpty
+        )
+        .map {
+          case ((transaction, location), Some((raw, meta))) =>
+            (
+              "origination",
+              transaction.metadata.operation_result.originated_contracts.get.head.id,
+              transaction.source.value,
+              location,
+              (raw, meta)
+            )
+        }
     }
 
     val itrPathMichelinePairFut = internalTransactionResults.traverse { itr =>
@@ -119,7 +134,7 @@ class BlocksProcessor(
       }
     }.map(_.flatten)
 
-    val metadata = itrPathMichelinePairFut.flatMap { pathMichelinePair =>
+    val metadataFromTransaction = itrPathMichelinePairFut.flatMap { pathMichelinePair =>
       val res = pathMichelinePair.map {
         case (itr, path, micheline) =>
           itr -> Tzip16
@@ -130,17 +145,18 @@ class BlocksProcessor(
 
       metadataOperator.getMetadataWithIntTransaction(res).map { result =>
         result.filter(_._2.isDefined).map {
-          case ((transaction, location), Some((raw, meta))) => (transaction.destination.id, transaction.source.value, location, (raw, meta))
+          case ((transaction, location), Some((raw, meta))) =>
+            ("transaction", transaction.destination.id, transaction.source.value, location, (raw, meta))
         }
       }
     }
 
     for {
-      tok <- metadata
-      org <- xxx
-      sth = tok ::: org
-      yyy <- db.run(TezosDb.writeTokenMetadata(sth))
-    } yield yyy
+      tokenMetadata <- metadataFromTransaction
+      originationMetadata <- metadataFromOrigination
+      concatenatedMetadata = tokenMetadata ::: originationMetadata
+      insertResult <- db.run(TezosDb.writeMetadata(concatenatedMetadata))
+    } yield insertResult
   }
 
   /** Prepares and stores statistics for voting periods of the

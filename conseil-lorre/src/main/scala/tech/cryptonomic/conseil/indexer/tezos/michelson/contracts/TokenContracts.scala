@@ -403,8 +403,7 @@ object TokenContracts extends ConseilLogSupport {
         michelson => logger.debug(s"I parsed a tzip-16 parameters value as $michelson")
       )
 
-      val fromWhere = parsed
-        .toOption
+      val fromWhere = parsed.toOption
         .flatMap(_.findInstruction(MichelsonBytesConstant(""), startsWith = Some("6970")).sortBy(_.length).headOption)
       for {
         pth <- path.orElse(fromWhere)

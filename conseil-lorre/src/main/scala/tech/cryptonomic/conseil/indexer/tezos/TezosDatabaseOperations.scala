@@ -29,7 +29,9 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.math
 import scala.util.{Failure, Success}
 import java.{util => ju}
+
 import slick.dbio.DBIOAction
+import tech.cryptonomic.conseil.indexer.tezos.Tzip16MetadataJsonDecoders.Tzip16Metadata
 
 /**
   * Functions for writing Tezos data to a database.
@@ -518,11 +520,11 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     Tables.TezosNames.insertOrUpdateAll(names.map(_.convertTo[Tables.TezosNamesRow]))
   }
 
-  def writeTokenMetadata(metadata: List[(String, String, String, (String, Tzip16Metadata))]): DBIO[Option[Int]] = {
+  def writeMetadata(metadata: List[(String, String, String, String, (String, Tzip16Metadata))]): DBIO[Option[Int]] = {
     import CustomProfileExtension.api._
-    Tables.TokenMetadata.insertOrUpdateAll(
+    Tables.Metadata.insertOrUpdateAll(
       metadata
-        .map(_.convertTo[Tables.TokenMetadataRow])
+        .map(_.convertTo[Tables.MetadataRow])
         .groupBy(x => (x.key, x.ownerAddress, x.contractAddress))
         .map(x => x._2.head)
     )
