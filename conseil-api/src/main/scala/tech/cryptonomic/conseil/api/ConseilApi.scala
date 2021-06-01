@@ -120,7 +120,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
                               },
                               concat(ApiCache.cachedDataEndpoints.map {
                                 case (platform, routes) =>
-                                  logRequest(s"$platform Data Route", Logging.DebugLevel) {
+                                  logRequest(s"$platform Data Route", Logging.InfoLevel) {
                                     routes.getRoute ~ routes.postRoute
                                   }
                               }.toSeq: _*)

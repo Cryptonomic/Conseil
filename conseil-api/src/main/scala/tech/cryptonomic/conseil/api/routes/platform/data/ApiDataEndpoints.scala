@@ -4,22 +4,23 @@ import endpoints.algebra
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataTypes.ApiQuery
 import tech.cryptonomic.conseil.api.routes.validation.Validation
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
+import tech.cryptonomic.conseil.common.metadata.PlatformPath
 
 /** Trait, which provides default query endpoint and methods used while creating endpoints */
 trait ApiDataEndpoints extends algebra.JsonEntitiesFromSchemas with Validation {
   self: ApiDataJsonSchemas =>
 
   /** Common path among endpoints */
-  private val commonPath = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network")
+  private val commonPath = path / "v2" / "data"
 
   /** V2 Query endpoint definition */
-  def queryEndpoint: Endpoint[
-    (String, String, String, ApiQuery, Option[String]),
+  def queryEndpoint(platform: PlatformPath): Endpoint[
+    (String, String, ApiQuery, Option[String]),
     Option[Validation.QueryValidating[QueryResponseWithOutput]]
   ] =
     endpoint(
       request = post(
-        url = commonPath / segment[String](name = "entity"),
+        url = commonPath / platform.platform / segment[String](name = "network") / segment[String](name = "entity"),
         entity = jsonRequest[ApiQuery],
         headers = optRequestHeader("apiKey")
       ),

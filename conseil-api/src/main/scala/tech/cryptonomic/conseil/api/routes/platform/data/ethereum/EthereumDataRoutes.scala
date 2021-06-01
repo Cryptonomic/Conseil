@@ -14,7 +14,7 @@ case class EthereumDataRoutes(
     maxQueryResultSize: Int
 )(implicit val executionContext: ExecutionContext)
     extends EthereumDataRoutesCreator {
-  override val platform: PlatformPath = PlatformPath("ethereum")
+  override val platformPath: PlatformPath = PlatformPath("ethereum")
 }
 
 /** Represents the data routes for Quorum Blockchain */
@@ -25,5 +25,5 @@ case class QuorumDataRoutes(
     maxQueryResultSize: Int
 )(implicit val executionContext: ExecutionContext)
     extends EthereumDataRoutesCreator {
-  override val platform: PlatformPath = PlatformPath("quorum")
+  override val platformPath: PlatformPath = PlatformPath("quorum")
 }
