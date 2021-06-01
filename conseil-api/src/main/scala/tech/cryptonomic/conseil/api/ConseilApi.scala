@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.api
 
 import java.util.UUID
-
 import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.server.Directives._
@@ -120,7 +119,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
                               },
                               concat(ApiCache.cachedDataEndpoints.map {
                                 case (platform, routes) =>
-                                  logRequest(s"$platform Data Route", Logging.InfoLevel) {
+                                  logRequest(s"$platform Data Route", Logging.DebugLevel) {
                                     routes.getRoute ~ routes.postRoute
                                   }
                               }.toSeq: _*)

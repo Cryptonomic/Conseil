@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.stephenn.scalatest.jsonassert.JsonMatchers
 import org.scalamock.scalatest.MockFactory
@@ -89,7 +90,7 @@ class BitcoinDataRoutesTest
           uri = "/v2/data/notSupportedPlatform/mainnet/blocks",
           entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
         )
-        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
+        postRequest ~> addHeader("apiKey", "hooman") ~> Route.seal(routes.postRoute) ~> check {
           status shouldBe StatusCodes.NotFound
         }
       }

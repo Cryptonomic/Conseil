@@ -267,7 +267,7 @@ trait BitcoinFixtures {
       size = 134,
       vsize = 134,
       weight = 536,
-      version = 1,
+      version = 1L,
       lockTime = new Timestamp(0),
       blockTime = Timestamp.from(Instant.parse("2011-01-10T20:39:40.00Z"))
     )

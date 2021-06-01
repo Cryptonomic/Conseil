@@ -41,7 +41,7 @@ trait EthereumDataRoutesCreator
   def platformPath: PlatformPath
 
   /** V2 Route implementation for query endpoint */
-  override def postRoute: Route = queryEndpoint(platformPath).implementedByAsync {
+  override val postRoute: Route = ethereumQueryEndpoint.implementedByAsync {
     case (network, entity, apiQuery, _) =>
       val path = EntityPath(entity, NetworkPath(network, platformPath))
       pathValidation(path) {

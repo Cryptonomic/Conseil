@@ -30,7 +30,7 @@ case class BitcoinDataRoutes(
   private val platformPath = PlatformPath("bitcoin")
 
   /** V2 Route implementation for query endpoint */
-  override def postRoute: Route = queryEndpoint(platformPath).implementedByAsync {
+  override val postRoute: Route = bitcoinQueryEndpoint.implementedByAsync {
     case (network, entity, apiQuery, _) =>
       val path = EntityPath(entity, NetworkPath(network, platformPath))
 

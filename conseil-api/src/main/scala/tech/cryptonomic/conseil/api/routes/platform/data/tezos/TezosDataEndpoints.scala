@@ -1,11 +1,12 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
-import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataEndpoints
+import tech.cryptonomic.conseil.api.routes.platform.data.{ApiDataEndpoints, ApiDataTypes}
 import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosDataOperations._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.BlocksRow
 import endpoints.algebra
+import tech.cryptonomic.conseil.api.routes.validation.Validation.QueryValidating
 
 /** Trait containing endpoints definition */
 trait TezosDataEndpoints
@@ -14,7 +15,13 @@ trait TezosDataEndpoints
     with TezosDataJsonSchemas
     with TezosFilterFromQueryString {
 
-  private val root = path / "v2" / "data" / "tezos" / segment[String](name = "network")
+  private val platform = "tezos"
+
+  private val root = path / "v2" / "data" / platform / segment[String](name = "network")
+
+  def tezosQueryEndpoint: Endpoint[(String, String, ApiDataTypes.ApiQuery, Option[String]), Option[
+    QueryValidating[QueryResponseWithOutput]
+  ]] = queryEndpoint(platform)
 
   /** V2 Blocks endpoint definition */
   def tezosBlocksEndpoint: Endpoint[((String, TezosFilter), Option[String]), Option[List[QueryResponse]]] =
