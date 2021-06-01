@@ -179,7 +179,7 @@ class TezosIndexer private (
     val blockPagesToSynchronize = lorreConf.depth match {
       case Newest => nodeOperator.getBlocksNotInDatabase(maxIndexedLevel)
       case Everything => nodeOperator.getLatestBlocks()
-      case Custom(n) => nodeOperator.getLatestBlocks(Some(n), lorreConf.headHash.map(TezosBlockHash))
+      case Custom(n) => nodeOperator.getLatestBlocks(Some(n), lorreConf.headHash.map(TezosBlockHash), Some(maxIndexedLevel))
     }
 
     /* collects the hashes of the blocks in the results */
