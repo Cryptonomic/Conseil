@@ -102,11 +102,11 @@ class BlocksProcessor(
     }.map(x => x._1 -> x._2.get)
 
     val xxx = metadataOperator.getMetadataWithOrigination(origiRes).map { result =>
-      result.filter(_._2.isDefined).map {
-        case ((transaction, location), Some((raw, meta))) => (transaction.source.value, transaction.source.value, location, (raw, meta))
+      result.filter(x => x._2.isDefined && x._1._1.metadata.operation_result.originated_contracts.toList.flatten.nonEmpty).map {
+        case ((transaction, location), Some((raw, meta))) =>
+          (transaction.metadata.operation_result.originated_contracts.get.head.id, transaction.source.value, location, (raw, meta))
       }
     }
-
 
     val itrPathMichelinePairFut = internalTransactionResults.traverse { itr =>
       db.run(TezosDb.getContractMetadataPath(itr.destination.id)).map {
@@ -130,7 +130,7 @@ class BlocksProcessor(
 
       metadataOperator.getMetadataWithIntTransaction(res).map { result =>
         result.filter(_._2.isDefined).map {
-          case ((transaction, location), Some((raw, meta))) => (transaction.source.value, transaction.destination.id, location, (raw, meta))
+          case ((transaction, location), Some((raw, meta))) => (transaction.destination.id, transaction.source.value, location, (raw, meta))
         }
       }
     }
