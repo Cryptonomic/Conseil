@@ -784,13 +784,14 @@ ALTER TABLE ONLY tezos.operations
     REFERENCES tezos.operation_groups(hash, block_id, fork_id)
     DEFERRABLE INITIALLY IMMEDIATE;
 
-CREATE TABLE tezos.token_metadata (
+CREATE TABLE tezos.metadata (
     contract_address text,
     owner_address text,
     key text,
     value text,
     source text,
     source_type text,
+    metadata_type text,
     PRIMARY KEY (contract_address, owner_address, key)
 );
 
