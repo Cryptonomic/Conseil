@@ -38,21 +38,22 @@ trait EthereumDataRoutesCreator
   def maxQueryResultSize: Int
 
   /** Path for the specific platform */
-  def platform: PlatformPath
+  def platformPath: PlatformPath
 
   /** V2 Route implementation for query endpoint */
-  override val postRoute: Route = queryEndpoint.implementedByAsync {
-    case (platform, network, entity, apiQuery, _) =>
-      val path = EntityPath(entity, NetworkPath(network, PlatformPath(platform)))
+  override val postRoute: Route = ethereumQueryEndpoint.implementedByAsync {
+    case (network, entity, apiQuery, _) =>
+      val path = EntityPath(entity, NetworkPath(network, platformPath))
       pathValidation(path) {
         apiQuery
           .validate(path, metadataService, metadataConfiguration)
           .flatMap { validationResult =>
             validationResult.map { validQuery =>
-              operations.queryWithPredicates(platform, entity, validQuery.withLimitCap(maxQueryResultSize)).map {
-                queryResponses =>
+              operations
+                .queryWithPredicates(platformPath.platform, entity, validQuery.withLimitCap(maxQueryResultSize))
+                .map { queryResponses =>
                   QueryResponseWithOutput(queryResponses, validQuery.output)
-              }
+                }
             }.left.map(Future.successful).bisequence
           }
           .map(Some(_))
@@ -168,7 +169,7 @@ trait EthereumDataRoutesCreator
   private def platformNetworkValidation[A](network: String)(
       operation: => Future[Option[A]]
   ): Future[Option[A]] =
-    pathValidation(NetworkPath(network, platform))(operation)
+    pathValidation(NetworkPath(network, platformPath))(operation)
 
   private def pathValidation[A](path: metadata.Path)(
       operation: => Future[Option[A]]

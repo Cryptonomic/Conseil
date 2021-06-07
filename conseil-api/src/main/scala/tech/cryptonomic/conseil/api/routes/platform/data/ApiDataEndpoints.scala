@@ -10,16 +10,17 @@ trait ApiDataEndpoints extends algebra.JsonEntitiesFromSchemas with Validation {
   self: ApiDataJsonSchemas =>
 
   /** Common path among endpoints */
-  private val commonPath = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network")
+  private def commonPath(platform: String) =
+    path / "v2" / "data" / platform / segment[String](name = "network") / segment[String](name = "entity")
 
   /** V2 Query endpoint definition */
-  def queryEndpoint: Endpoint[
-    (String, String, String, ApiQuery, Option[String]),
+  def queryEndpoint(platform: String): Endpoint[
+    (String, String, ApiQuery, Option[String]),
     Option[Validation.QueryValidating[QueryResponseWithOutput]]
   ] =
     endpoint(
       request = post(
-        url = commonPath / segment[String](name = "entity"),
+        url = commonPath(platform),
         entity = jsonRequest[ApiQuery],
         headers = optRequestHeader("apiKey")
       ),

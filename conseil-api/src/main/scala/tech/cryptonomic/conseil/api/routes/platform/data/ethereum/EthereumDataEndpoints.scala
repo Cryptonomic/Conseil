@@ -1,11 +1,18 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.ethereum
 
+import tech.cryptonomic.conseil.api.routes.platform.data.{ApiDataEndpoints, ApiDataTypes}
+import tech.cryptonomic.conseil.api.routes.validation.Validation.QueryValidating
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 
 /** Represents list of endpoints exposed for Ethereum Blockchain */
 trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
 
   private val platform: String = "ethereum"
+
+  def ethereumQueryEndpoint: Endpoint[(String, String, ApiDataTypes.ApiQuery, Option[String]), Option[
+    QueryValidating[DataTypes.QueryResponseWithOutput]
+  ]] = queryEndpoint(platform)
 
   def ethereumBlocksEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
     blocksEndpoint(platform)
@@ -58,6 +65,10 @@ trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
 trait QuorumDataEndpoints extends EthereumDataEndpointsCreator {
 
   private val platform: String = "quorum"
+
+  def quorumQueryEndpoint: Endpoint[(String, String, ApiDataTypes.ApiQuery, Option[String]), Option[
+    QueryValidating[DataTypes.QueryResponseWithOutput]
+  ]] = queryEndpoint(platform)
 
   def quorumBlocksEndpoint: Endpoint[((String, EthereumFilter), Option[String]), Option[List[QueryResponse]]] =
     blocksEndpoint(platform)
