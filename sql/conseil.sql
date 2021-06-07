@@ -795,7 +795,7 @@ CREATE TABLE bitcoin.blocks (
   size integer NOT NULL,
   stripped_size integer NOT NULL,
   weight integer NOT NULL,
-  height integer NOT NULL,
+  level integer NOT NULL, -- height
   version integer NOT NULL,
   version_hex text NOT NULL,
   merkle_root text NOT NULL,
@@ -811,14 +811,14 @@ CREATE TABLE bitcoin.blocks (
 );
 
 CREATE INDEX ix_block_hash ON bitcoin.blocks USING btree (hash);
-CREATE INDEX ix_block_height ON bitcoin.blocks USING btree (height);
+CREATE INDEX ix_block_level ON bitcoin.blocks USING btree (level);
 CREATE INDEX ix_block_time ON bitcoin.blocks USING btree (time);
 
 -- https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
 CREATE TABLE bitcoin.transactions (
   txid text NOT NULL PRIMARY KEY,
-  blockhash text NOT NULL,
-  block_height integer NOT NULL,
+  block_hash text NOT NULL,
+  block_level integer NOT NULL,
   hash text NOT NULL,
   hex text NOT NULL,
   size integer NOT NULL,
@@ -826,21 +826,20 @@ CREATE TABLE bitcoin.transactions (
   weight integer NOT NULL,
   version integer NOT NULL,
   lock_time timestamp without time zone NOT NULL,
-  block_time timestamp without time zone NOT NULL,
-  time timestamp without time zone NOT NULL
+  block_time timestamp without time zone NOT NULL
 );
 
 ALTER TABLE ONLY bitcoin.transactions
-  ADD CONSTRAINT bitcoin_transactions_blockhash_fkey FOREIGN KEY (blockhash) REFERENCES bitcoin.blocks(hash);
+  ADD CONSTRAINT bitcoin_transactions_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES bitcoin.blocks(hash);
 
 CREATE INDEX ix_transactions_txid ON bitcoin.transactions USING btree (txid);
-CREATE INDEX ix_transactions_blockhash ON bitcoin.transactions USING btree (blockhash);
-CREATE INDEX ix_transactions_block_height ON bitcoin.transactions USING btree (block_height);
+CREATE INDEX ix_transactions_block_hash ON bitcoin.transactions USING btree (block_hash);
+CREATE INDEX ix_transactions_block_level ON bitcoin.transactions USING btree (block_level);
 
 CREATE TABLE bitcoin.inputs (
   txid text NOT NULL,
-  blockhash text NOT NULL,
-  block_height integer NOT NULL,
+  block_hash text NOT NULL,
+  block_level integer NOT NULL,
   block_time timestamp without time zone NOT NULL,
   output_txid text, -- output id this input spends
   v_out integer,
@@ -855,13 +854,13 @@ ALTER TABLE ONLY bitcoin.inputs
   ADD CONSTRAINT bitcoin_inputs_txid_fkey FOREIGN KEY (txid) REFERENCES bitcoin.transactions(txid);
 
 CREATE INDEX ix_inputs_txid ON bitcoin.inputs USING btree (txid);
-CREATE INDEX ix_inputs_blockhash ON bitcoin.inputs USING btree (blockhash);
-CREATE INDEX ix_inputs_block_height ON bitcoin.inputs USING btree (block_height);
+CREATE INDEX ix_inputs_block_hash ON bitcoin.inputs USING btree (block_hash);
+CREATE INDEX ix_inputs_block_level ON bitcoin.inputs USING btree (block_level);
 
 CREATE TABLE bitcoin.outputs (
   txid text NOT NULL,
-  blockhash text NOT NULL,
-  block_height integer NOT NULL,
+  block_hash text NOT NULL,
+  block_level integer NOT NULL,
   block_time timestamp without time zone NOT NULL,
   value numeric,
   n integer NOT NULL,
@@ -876,8 +875,8 @@ ALTER TABLE ONLY bitcoin.outputs
   ADD CONSTRAINT bitcoin_outputs_txid_fkey FOREIGN KEY (txid) REFERENCES bitcoin.transactions(txid);
 
 CREATE INDEX ix_outputs_txid ON bitcoin.outputs USING btree (txid);
-CREATE INDEX ix_outputs_blockhash ON bitcoin.outputs USING btree (blockhash);
-CREATE INDEX ix_outputs_block_height ON bitcoin.outputs USING btree (block_height);
+CREATE INDEX ix_outputs_block_hash ON bitcoin.outputs USING btree (block_hash);
+CREATE INDEX ix_outputs_block_level ON bitcoin.outputs USING btree (block_level);
 
 CREATE OR REPLACE VIEW bitcoin.accounts AS
 SELECT
@@ -924,7 +923,7 @@ CREATE TABLE ethereum.blocks (
 CREATE TABLE ethereum.transactions (
   hash text NOT NULL PRIMARY KEY,
   block_hash text NOT NULL,
-  block_number integer NOT NULL,
+  block_level integer NOT NULL,
   timestamp timestamp without time zone,
   source text NOT NULL, -- from
   gas numeric NOT NULL,
@@ -947,7 +946,7 @@ CREATE TABLE ethereum.receipts (
   transaction_hash text NOT NULL,
   transaction_index integer NOT NULL,
   block_hash text NOT NULL,
-  block_number integer NOT NULL,
+  block_level integer NOT NULL,
   timestamp timestamp without time zone,
   contract_address text,
   cumulative_gas_used numeric NOT NULL,
@@ -961,7 +960,7 @@ CREATE TABLE ethereum.receipts (
 CREATE TABLE ethereum.logs (
   address text NOT NULL,
   block_hash text NOT NULL,
-  block_number integer NOT NULL,
+  block_level integer NOT NULL,
   timestamp timestamp without time zone,
   data text NOT NULL,
   log_index integer NOT NULL,
@@ -977,7 +976,7 @@ ALTER TABLE ONLY ethereum.logs
 CREATE TABLE ethereum.token_transfers (
   token_address text NOT NULL,
   block_hash text NOT NULL,
-  block_number integer NOT NULL,
+  block_level integer NOT NULL,
   timestamp timestamp without time zone,
   transaction_hash text NOT NULL,
   log_index integer NOT NULL,
@@ -989,7 +988,7 @@ CREATE TABLE ethereum.token_transfers (
 CREATE TABLE ethereum.tokens_history (
   account_address text NOT NULL,
   block_hash text NOT NULL,
-  block_number integer NOT NULL,
+  block_level integer NOT NULL,
   transaction_hash text NOT NULL,
   token_address text NOT NULL,
   value numeric NOT NULL,
@@ -999,7 +998,7 @@ CREATE TABLE ethereum.tokens_history (
 CREATE TABLE ethereum.accounts (
   address text NOT NULL,
   block_hash text NOT NULL,
-  block_number integer NOT NULL,
+  block_level integer NOT NULL,
   timestamp timestamp without time zone,
   balance numeric NOT NULL,
   bytecode text,
@@ -1015,17 +1014,17 @@ CREATE TABLE ethereum.accounts (
 CREATE TABLE ethereum.accounts_history (
   address text NOT NULL,
   block_hash text NOT NULL,
-  block_number integer NOT NULL,
+  block_level integer NOT NULL,
   balance numeric NOT NULL,
   asof timestamp without time zone NOT NULL,
-  PRIMARY KEY (address, block_number)
+  PRIMARY KEY (address, block_level)
 );
 
 CREATE OR REPLACE VIEW ethereum.tokens AS
 SELECT
   address,
   block_hash,
-  block_number,
+  block_level,
   timestamp,
   name,
   symbol,
@@ -1041,7 +1040,7 @@ CREATE OR REPLACE VIEW ethereum.contracts AS
 SELECT
   address,
   block_hash,
-  block_number,
+  block_level,
   timestamp,
   bytecode,
   bytecode_hash,
@@ -1057,31 +1056,31 @@ CREATE INDEX ix_blocks_level ON ethereum.blocks USING btree (level);
 CREATE INDEX ix_blocks_timestamp ON ethereum.blocks USING btree (timestamp);
 
 CREATE INDEX ix_transactions_hash ON ethereum.transactions USING btree (hash);
-CREATE INDEX ix_transactions_block_number ON ethereum.transactions USING btree (block_number);
+CREATE INDEX ix_transactions_block_level ON ethereum.transactions USING btree (block_level);
 CREATE INDEX ix_transactions_source ON ethereum.transactions USING btree (source);
 CREATE INDEX ix_transactions_destination ON ethereum.transactions USING btree (destination);
 
 CREATE INDEX ix_receipts_hash ON ethereum.receipts USING btree (transaction_hash);
-CREATE INDEX ix_receipts_block_number ON ethereum.receipts USING btree (block_number);
+CREATE INDEX ix_receipts_block_level ON ethereum.receipts USING btree (block_level);
 
 CREATE INDEX ix_logs_address ON ethereum.logs USING btree (address);
 CREATE INDEX ix_logs_hash ON ethereum.logs USING btree (transaction_hash);
-CREATE INDEX ix_logs_block_number ON ethereum.logs USING btree (block_number);
+CREATE INDEX ix_logs_block_level ON ethereum.logs USING btree (block_level);
 
 CREATE INDEX ix_accounts_address ON ethereum.accounts USING btree (address);
 CREATE INDEX ix_accounts_token_standard ON ethereum.accounts USING btree (token_standard);
 
 CREATE INDEX ix_accounts_history_address ON ethereum.accounts_history USING btree (address);
-CREATE INDEX ix_accounts_history_block_number ON ethereum.accounts_history USING btree (block_number);
+CREATE INDEX ix_accounts_history_block_level ON ethereum.accounts_history USING btree (block_level);
 
 CREATE INDEX ix_token_transfers_address ON ethereum.token_transfers USING btree (token_address);
-CREATE INDEX ix_token_transfers_block_number ON ethereum.token_transfers USING btree (block_number);
+CREATE INDEX ix_token_transfers_block_level ON ethereum.token_transfers USING btree (block_level);
 CREATE INDEX ix_token_transfers_from ON ethereum.token_transfers USING btree (from_address);
 CREATE INDEX ix_token_transfers_to ON ethereum.token_transfers USING btree (to_address);
 
 CREATE INDEX ix_tokens_history_account_address ON ethereum.tokens_history USING btree (account_address);
 CREATE INDEX ix_tokens_history_token_address ON ethereum.tokens_history USING btree (token_address);
-CREATE INDEX ix_tokens_history_block_number ON ethereum.tokens_history USING btree (block_number);
+CREATE INDEX ix_tokens_history_block_level ON ethereum.tokens_history USING btree (block_level);
 
 -- The schema for Quorum is duplicated from Ethereum.
 -- TODO: This is a temporary solution, in the future we intend to generate the schema automatically to avoid duplication,

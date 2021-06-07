@@ -140,7 +140,7 @@ object BitcoinDataOperationsTest {
       size = 0,
       strippedSize = 0,
       weight = 0,
-      height = 0,
+      level = 0,
       version = 1,
       versionHex = "vhex",
       merkleRoot = "root",
@@ -173,8 +173,8 @@ object BitcoinDataOperationsTest {
       block =>
         TransactionsRow(
           txid = "0",
-          blockhash = block.hash,
-          blockHeight = block.height,
+          blockHash = block.hash,
+          blockLevel = block.level,
           hash = "txhash0",
           hex = "hex",
           size = block.size,
@@ -182,8 +182,7 @@ object BitcoinDataOperationsTest {
           vsize = 1,
           version = 1,
           lockTime = block.time,
-          blockTime = block.time,
-          time = block.time
+          blockTime = block.time
         )
     val transaction1: TransactionsRow = defaultTransaction(block1).copy(txid = "1", hash = "txhash1")
     val transaction2: TransactionsRow = defaultTransaction(block2).copy(txid = "2", hash = "txhash1")
@@ -194,8 +193,8 @@ object BitcoinDataOperationsTest {
       block =>
         InputsRow(
           txid = "0",
-          blockhash = block.hash,
-          blockHeight = block.height,
+          blockHash = block.hash,
+          blockLevel = block.level,
           blockTime = block.time,
           sequence = 0,
           vOut = Some(0),
@@ -210,8 +209,8 @@ object BitcoinDataOperationsTest {
       block =>
         OutputsRow(
           txid = "0",
-          blockhash = block.hash,
-          blockHeight = block.height,
+          blockHash = block.hash,
+          blockLevel = block.level,
           blockTime = block.time,
           value = Some(0L),
           n = 0,

@@ -115,7 +115,7 @@ class BitcoinPersistenceTest
           )
           // test results
           result <- tx.transact(bitcoinPersistenceStub.getLatestIndexedBlock)
-        } yield result).unsafeRunSync() shouldBe Some(DbFixtures.blockRow.copy(hash = "hash2", height = 2))
+        } yield result).unsafeRunSync() shouldBe Some(DbFixtures.blockRow.copy(hash = "hash2", level = 2))
       }
     }
 

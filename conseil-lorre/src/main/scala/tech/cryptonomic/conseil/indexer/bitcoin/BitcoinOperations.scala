@@ -45,7 +45,7 @@ class BitcoinOperations[F[_]: Concurrent](
       .flatMap {
         case (block, latestBlock) =>
           depth match {
-            case Newest => loadBlocksWithTransactions(block.map(_.height + 1).getOrElse(1) to latestBlock)
+            case Newest => loadBlocksWithTransactions(block.map(_.level + 1).getOrElse(1) to latestBlock)
             case Everything => loadBlocksWithTransactions(1 to latestBlock)
             case Custom(depth) => loadBlocksWithTransactions(math.max(latestBlock - depth, 1) to latestBlock)
           }

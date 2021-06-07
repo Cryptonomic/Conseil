@@ -41,13 +41,13 @@ class BitcoinPersistence[F[_]: Concurrent] {
     * @param range Inclusive range of the block's height
     */
   def getIndexedBlockHeights(range: Range.Inclusive): DBIO[Seq[Int]] =
-    Tables.Blocks.filter(_.height between (range.start, range.end)).map(_.height).result
+    Tables.Blocks.filter(_.level between (range.start, range.end)).map(_.level).result
 
   /**
     * Get the latest block from the database.
     */
   def getLatestIndexedBlock: DBIO[Option[Tables.BlocksRow]] =
-    Tables.Blocks.sortBy(_.height.desc).take(1).result.headOption
+    Tables.Blocks.sortBy(_.level.desc).take(1).result.headOption
 }
 
 object BitcoinPersistence {
@@ -70,7 +70,7 @@ object BitcoinPersistence {
         size = from.size,
         strippedSize = from.strippedsize,
         weight = from.weight,
-        height = from.height,
+        level = from.height,
         version = from.version,
         versionHex = from.versionHex,
         merkleRoot = from.merkleroot,
@@ -97,8 +97,8 @@ object BitcoinPersistence {
         case (transaction, block) =>
           Tables.TransactionsRow(
             txid = transaction.txid,
-            blockhash = transaction.blockhash,
-            blockHeight = block.height,
+            blockHash = transaction.blockhash,
+            blockLevel = block.height,
             hash = transaction.hash,
             hex = transaction.hex,
             size = transaction.size,
@@ -106,8 +106,7 @@ object BitcoinPersistence {
             weight = transaction.weight,
             version = transaction.version,
             lockTime = Timestamp.from(Instant.ofEpochSecond(transaction.locktime)),
-            blockTime = Timestamp.from(Instant.ofEpochSecond(transaction.blocktime)),
-            time = Timestamp.from(Instant.ofEpochSecond(transaction.time))
+            blockTime = Timestamp.from(Instant.ofEpochSecond(transaction.blocktime))
           )
       }
     }
@@ -123,8 +122,8 @@ object BitcoinPersistence {
         case (transaction, input, block) =>
           Tables.InputsRow(
             txid = transaction.txid,
-            blockhash = block.hash,
-            blockHeight = block.height,
+            blockHash = block.hash,
+            blockLevel = block.height,
             blockTime = Timestamp.from(Instant.ofEpochSecond(block.time)),
             outputTxid = input.txid,
             vOut = input.vout,
@@ -148,8 +147,8 @@ object BitcoinPersistence {
         case (transaction, output, block) =>
           Tables.OutputsRow(
             txid = transaction.txid,
-            blockhash = block.hash,
-            blockHeight = block.height,
+            blockHash = block.hash,
+            blockLevel = block.height,
             blockTime = Timestamp.from(Instant.ofEpochSecond(block.time)),
             value = output.value,
             n = output.n,

@@ -93,7 +93,7 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
           row = existing.map(
             _.copy(
               blockHash = account.blockHash,
-              blockNumber = Integer.decode(account.blockNumber),
+              blockLevel = Integer.decode(account.blockNumber),
               timestamp = Some(Timestamp.from(Instant.ofEpochSecond(Integer.decode(account.timestamp).toLong))),
               balance = account.balance
             )
@@ -170,7 +170,7 @@ object EthereumPersistence {
         Tables.TransactionsRow(
           hash = from.hash,
           blockHash = from.blockHash,
-          blockNumber = Integer.decode(from.blockNumber),
+          blockLevel = Integer.decode(from.blockNumber),
           source = from.from,
           gas = Utils.hexStringToBigDecimal(from.gas),
           gasPrice = Utils.hexStringToBigDecimal(from.gasPrice),
@@ -195,7 +195,7 @@ object EthereumPersistence {
       override def convert(from: TransactionReceipt) =
         Tables.ReceiptsRow(
           blockHash = from.blockHash,
-          blockNumber = Integer.decode(from.blockNumber),
+          blockLevel = Integer.decode(from.blockNumber),
           transactionHash = from.transactionHash,
           transactionIndex = Integer.decode(from.transactionIndex),
           contractAddress = from.contractAddress,
@@ -218,7 +218,7 @@ object EthereumPersistence {
         Tables.LogsRow(
           address = from.address,
           blockHash = from.blockHash,
-          blockNumber = Integer.decode(from.blockNumber),
+          blockLevel = Integer.decode(from.blockNumber),
           data = from.data,
           logIndex = Integer.decode(from.logIndex),
           removed = from.removed,
@@ -239,7 +239,7 @@ object EthereumPersistence {
         Tables.TokenTransfersRow(
           tokenAddress = from.address,
           blockHash = from.blockHash,
-          blockNumber = Integer.decode(from.blockNumber),
+          blockLevel = Integer.decode(from.blockNumber),
           transactionHash = from.transactionHash,
           logIndex = Integer.decode(from.logIndex),
           fromAddress = from.topics(1),
@@ -259,7 +259,7 @@ object EthereumPersistence {
         Tables.TokenTransfersRow(
           tokenAddress = from.tokenAddress,
           blockHash = from.blockHash,
-          blockNumber = from.blockNumber,
+          blockLevel = from.blockNumber,
           timestamp = Some(Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong))),
           transactionHash = from.transactionHash,
           logIndex = Integer.decode(from.logIndex),
@@ -280,7 +280,7 @@ object EthereumPersistence {
         Tables.TokensHistoryRow(
           accountAddress = from.accountAddress,
           blockHash = from.blockHash,
-          blockNumber = from.blockNumber,
+          blockLevel = from.blockNumber,
           transactionHash = from.transactionHash,
           tokenAddress = from.tokenAddress,
           value = from.value,
@@ -299,7 +299,7 @@ object EthereumPersistence {
         Tables.AccountsRow(
           address = from.address,
           blockHash = from.blockHash,
-          blockNumber = Integer.decode(from.blockNumber),
+          blockLevel = Integer.decode(from.blockNumber),
           timestamp = Some(Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong))),
           balance = from.balance,
           bytecode = from.bytecode.map(_.value),
@@ -323,7 +323,7 @@ object EthereumPersistence {
         Tables.AccountsHistoryRow(
           address = from.address,
           blockHash = from.blockHash,
-          blockNumber = Integer.decode(from.blockNumber),
+          blockLevel = Integer.decode(from.blockNumber),
           balance = from.balance,
           asof = Timestamp.from(Instant.ofEpochSecond(Integer.decode(from.timestamp).toLong))
         )
