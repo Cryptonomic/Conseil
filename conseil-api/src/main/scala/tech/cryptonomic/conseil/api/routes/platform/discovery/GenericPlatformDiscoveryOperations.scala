@@ -191,7 +191,7 @@ class GenericPlatformDiscoveryOperations(
               updatedEntities <- IO.fromFuture(
                 IO(dbRunner.runQuery(preCacheEntities(networkPath.up.platform, networkPath.network)))
               )
-              _ <- caching.putAllEntities(updatedEntities)
+              _ <- caching.putEntities(key, updatedEntities(key).value)
             } yield ()).unsafeRunAsyncAndForget()
             IO.pure(ent)
           }
