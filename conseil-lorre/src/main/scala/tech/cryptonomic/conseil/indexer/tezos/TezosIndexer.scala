@@ -345,7 +345,7 @@ object TezosIndexer extends ConseilLogSupport {
             case (tokenRows, _) =>
               TokenContracts.fromConfig(
                 tokenRows.map {
-                  case Tables.RegisteredTokensRow(_, _, standard, accountId, _, _) =>
+                  case Tables.RegisteredTokensRow(_, _, standard, accountId, _, _, _, _, _, _, _, _) =>
                     ContractId(accountId) -> standard
                 }
               )

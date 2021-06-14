@@ -403,10 +403,14 @@ object TokenContracts extends ConseilLogSupport {
         michelson => logger.debug(s"I parsed a tzip-16 parameters value as $michelson")
       )
 
-      val fromWhere = parsed.toOption
-        .flatMap(_.findInstruction(MichelsonBytesConstant(""), startsWith = Some("6970")).sortBy(_.length).headOption)
+      val fromIpfs = parsed.toOption
+        .flatMap(_.findInstruction(MichelsonBytesConstant(""), startsWith = Some("69706673")).sortBy(_.length).headOption)
+      val fromHttp = parsed.toOption
+        .flatMap(_.findInstruction(MichelsonBytesConstant(""), startsWith = Some("68747470")).sortBy(_.length).headOption)
+      val fromTezosStorage = parsed.toOption
+        .flatMap(_.findInstruction(MichelsonBytesConstant(""), startsWith = Some("74657a6f732d73746f72616765")).sortBy(_.length).headOption)
       for {
-        pth <- path.orElse(fromWhere)
+        pth <- path.orElse(fromIpfs).orElse(fromHttp).orElse(fromTezosStorage)
         metadataUrl <- parsed.toOption.flatMap(_.getAtPath(pth)).collect {
           case MichelsonBytesConstant(mu) =>
             mu

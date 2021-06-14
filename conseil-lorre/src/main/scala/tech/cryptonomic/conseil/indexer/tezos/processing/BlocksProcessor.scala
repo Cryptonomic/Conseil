@@ -63,7 +63,7 @@ class BlocksProcessor(
 
     for {
       _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
-      _ <- processTzip16Metadata(blocks)
+      //_ <- processTzip16Metadata(blocks)
       _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
       bakersCheckpoints <- accountsProcessor.processAccountsForBlocks(accountUpdates) // should this fail, we still recover data from the checkpoint
       _ <- bakersProcessor.processBakersForBlocks(bakersCheckpoints)
@@ -155,8 +155,8 @@ class BlocksProcessor(
       tokenMetadata <- metadataFromTransaction
       originationMetadata <- metadataFromOrigination
       concatenatedMetadata = tokenMetadata ::: originationMetadata
-      insertResult <- db.run(TezosDb.writeMetadata(concatenatedMetadata))
-    } yield insertResult
+      //insertResult <- db.run(TezosDb.writeMetadata(concatenatedMetadata))
+    } yield None //insertResult
   }
 
   /** Prepares and stores statistics for voting periods of the

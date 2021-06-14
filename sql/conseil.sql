@@ -129,7 +129,30 @@ CREATE TABLE tezos.registered_tokens (
     contract_type text NOT NULL,
     account_id text NOT NULL,
     scale integer NOT NULL,
+    interfaces text NOT NULL,
+    is_tzip16 boolean NOT NULL,
+    is_nft boolean NOT NULL,
+    metadata_type text NOT NULL,
+    metadata_big_map_id integer NOT NULL,
+    metadata_big_map_type text NOT NULL,
     metadata_path text NOT NULL
+);
+
+CREATE TABLE tezos.metadata (
+    address text NOT NULL,
+    raw_metadata text NOT NULL,
+    name text NOT NULL,
+    desctiption text,
+    last_updated timestamp
+);
+
+CREATE TABLE tezos.nfts (
+    contract_address text NOT NULL,
+    contract_name text NOT NULL,
+    asset_type text NOT NULL,
+    asset_location text NOT NULL,
+    raw_metadata text NOT NULL,
+    last_updated timestamp
 );
 
 CREATE TABLE tezos.token_balances (
@@ -784,16 +807,6 @@ ALTER TABLE ONLY tezos.operations
     REFERENCES tezos.operation_groups(hash, block_id, fork_id)
     DEFERRABLE INITIALLY IMMEDIATE;
 
-CREATE TABLE tezos.metadata (
-    contract_address text,
-    owner_address text,
-    key text,
-    value text,
-    source text,
-    source_type text,
-    metadata_type text,
-    PRIMARY KEY (contract_address, owner_address, key)
-);
 
 
 --

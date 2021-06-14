@@ -13,7 +13,7 @@ import tech.cryptonomic.conseil.common.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.Tables.{GovernanceRow, OriginatedAccountMapsRow}
+import tech.cryptonomic.conseil.common.tezos.Tables.{GovernanceRow, NftsRow, OriginatedAccountMapsRow, RegisteredTokensRow}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.ConfigUtil
@@ -31,6 +31,8 @@ import scala.util.{Failure, Success}
 import java.{util => ju}
 
 import slick.dbio.DBIOAction
+import tech.cryptonomic.conseil.common
+import tech.cryptonomic.conseil.common.tezos
 import tech.cryptonomic.conseil.indexer.tezos.Tzip16MetadataJsonDecoders.Tzip16Metadata
 
 /**
@@ -520,15 +522,29 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     Tables.TezosNames.insertOrUpdateAll(names.map(_.convertTo[Tables.TezosNamesRow]))
   }
 
-  def writeMetadata(metadata: List[(String, String, String, String, (String, Tzip16Metadata))]): DBIO[Option[Int]] = {
-    import CustomProfileExtension.api._
-    Tables.Metadata.insertOrUpdateAll(
-      metadata
-        .map(_.convertTo[Tables.MetadataRow])
-        .groupBy(x => (x.key, x.ownerAddress, x.contractAddress))
-        .map(x => x._2.head)
-    )
-  }
+//  def writeMetadata(metadata: List[(String, String, String, String, (String, Tzip16Metadata))]): DBIO[Option[Int]] = {
+//    import CustomProfileExtension.api._
+//    Tables.Metadata.insertOrUpdateAll(
+//      metadata
+//        .map(_.convertTo[Tables.MetadataRow])
+//        .groupBy(x => (x.key, x.ownerAddress, x.contractAddress))
+//        .map(x => x._2.head)
+//    )
+//  }
+
+
+  def getTzip16Contracts(): DBIO[Seq[RegisteredTokensRow]] =
+    Tables.RegisteredTokens.filter(_.isTzip16).result
+
+  def getNftTokensForAccount(accountId: String): DBIO[Seq[NftsRow]] =
+    Tables.Nfts.filter(_.contractAddress == accountId).result
+
+  def getAccountById(accountId: String) =
+    Tables.Accounts.filter(_.accountId === accountId).result
+
+  def getOperationsByAccount(accountId: String) =
+    Tables.Operations.filter(_.destination === accountId).result
+
 
   /**
     * Writes accounts to the database and record the keys (hashes) to later save complete bakers information relative to each block

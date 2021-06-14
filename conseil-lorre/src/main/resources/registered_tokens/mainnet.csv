@@ -1,5 +1,5 @@
-id, name      					, contract_type  , account_id	                         , scale , metadata_path
-1 , Staker DAO					, FA1.2-StakerDao, KT1EctCuorV2NfVb1XTQgvzJ88MQtWP8cMMv, 0     , null
-2 , USDtz     					, FA1.2          , KT1LN4LPSqTMS7Sd2CJw4bbDGRkMv2t68Fy9, 6     , null
-3 , tzBTC     					, FA1.2          , KT1PWx2mnDueood7fEmfbBDKx1D9BAnnXitn, 0     , null
-4 , hic et nunc NFT, tzip-16								, KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton, 0     , MichelsonSingleInstruction:Pair::1;MichelsonType:Pair::1;MichelsonInstructionSequence:0;MichelsonSingleInstruction:Elt::1
+id, name      					, contract_type  , account_id	                         , scale , interfaces								, is_tzip16	, is_nft	, metadata_type, metadata_big_map_id	, metadata_big_map_type, metadata_path
+1 , Staker DAO					, FA1.2-StakerDao, KT1EctCuorV2NfVb1XTQgvzJ88MQtWP8cMMv, 0     , ""															 , false					, false 	, ""											, -1																		,	""																			, ""
+2 , USDtz     					, FA1.2          , KT1LN4LPSqTMS7Sd2CJw4bbDGRkMv2t68Fy9, 6     , ""															 , false					, false 	,	""											,	-1																		,	""																			, ""
+3 , tzBTC     					, FA1.2          , KT1PWx2mnDueood7fEmfbBDKx1D9BAnnXitn, 0     , ""															 , false					, false		, ""											, -1																		, ""																			, ""
+4 , hic et nunc NFT, FA2												, KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton, 0     , "TZIP-12, TZIP-16", true						, true			, ipfs									, 512																	,	ipfs																	, MichelsonSingleInstruction:Pair::1;MichelsonType:Pair::1;MichelsonInstructionSequence:0;MichelsonSingleInstruction:Elt::1

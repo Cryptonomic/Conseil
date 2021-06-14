@@ -971,25 +971,25 @@ private[tezos] object TezosDatabaseConversions {
       }
     }
 
-  implicit val tzip16MetadataToTokenMetadataRow =
-    new Conversion[Id, (String, String, String, String, (String, Tzip16Metadata)), Tables.MetadataRow] {
-
-      /** Takes a `FROM` object and retuns the `TO` object, with an effect `F`. */
-      override def convert(
-          from: (String, String, String, String, (String, Tzip16Metadata))
-      ): Id[tezos.Tables.MetadataRow] = {
-        val (metadataType, contract, owner, source, (rawJson, metadata)) = from
-        val sourceType = source.takeWhile(_ != ':')
-        Tables.MetadataRow(
-          contractAddress = contract,
-          ownerAddress = owner,
-          key = metadata.name,
-          value = rawJson.some,
-          source = Some(source),
-          sourceType = Some(sourceType),
-          metadataType = Some(metadataType)
-        )
-      }
-    }
+//  implicit val tzip16MetadataToTokenMetadataRow =
+//    new Conversion[Id, (String, String, String, String, (String, Tzip16Metadata)), Tables.MetadataRow] {
+//
+//      /** Takes a `FROM` object and retuns the `TO` object, with an effect `F`. */
+//      override def convert(
+//          from: (String, String, String, String, (String, Tzip16Metadata))
+//      ): Id[tezos.Tables.MetadataRow] = {
+//        val (metadataType, contract, owner, source, (rawJson, metadata)) = from
+//        val sourceType = source.takeWhile(_ != ':')
+//        Tables.MetadataRow(
+//          contractAddress = contract,
+//          ownerAddress = owner,
+//          key = metadata.name,
+//          value = rawJson.some,
+//          source = Some(source),
+//          sourceType = Some(sourceType),
+//          metadataType = Some(metadataType)
+//        )
+//      }
+//    }
 
 }
