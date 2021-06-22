@@ -483,6 +483,7 @@ private[tezos] object TezosDatabaseConversions {
         delegatable = delegatable,
         script = script.map(_.code.expression),
         storage = script.map(_.storage.expression),
+        storageMicheline = script.flatMap(_.storage_micheline.map(_.expression)),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         storageSize = metadata.operation_result.storage_size.flatMap(extractBigDecimal),
@@ -971,25 +972,46 @@ private[tezos] object TezosDatabaseConversions {
       }
     }
 
-//  implicit val tzip16MetadataToTokenMetadataRow =
-//    new Conversion[Id, (String, String, String, String, (String, Tzip16Metadata)), Tables.MetadataRow] {
-//
-//      /** Takes a `FROM` object and retuns the `TO` object, with an effect `F`. */
-//      override def convert(
-//          from: (String, String, String, String, (String, Tzip16Metadata))
-//      ): Id[tezos.Tables.MetadataRow] = {
-//        val (metadataType, contract, owner, source, (rawJson, metadata)) = from
-//        val sourceType = source.takeWhile(_ != ':')
-//        Tables.MetadataRow(
-//          contractAddress = contract,
-//          ownerAddress = owner,
-//          key = metadata.name,
-//          value = rawJson.some,
-//          source = Some(source),
-//          sourceType = Some(sourceType),
-//          metadataType = Some(metadataType)
-//        )
-//      }
-//    }
+  implicit val tzip16MetadataToTokenMetadataRow =
+    new Conversion[Id, ((Tables.OperationsRow, String), (String, Tzip16Metadata)), Tables.MetadataRow] {
+
+      /** Takes a `FROM` object and retuns the `TO` object, with an effect `F`. */
+      override def convert(
+          from: ((Tables.OperationsRow, String), (String, Tzip16Metadata))
+      ): Id[tezos.Tables.MetadataRow] = {
+        val ((rt, str), (rawJson, metadata)) = from
+        Tables.MetadataRow(
+          address = rt.source.get,
+          rawMetadata = rawJson,
+          desctiption = Some(metadata.description),
+          name = metadata.name,
+          lastUpdated = Some(Timestamp.from(Instant.now))
+        )
+      }
+    }
+
+  implicit val tzip16MetadataToNftsRow =
+    new Conversion[
+      Id,
+      ((Tables.RegisteredTokensRow, Tables.OperationsRow, String), (String, Tzip16Metadata)),
+      Tables.NftsRow
+    ] {
+
+      /** Takes a `FROM` object and retuns the `TO` object, with an effect `F`. */
+      override def convert(
+          from: ((Tables.RegisteredTokensRow, Tables.OperationsRow, String), (String, Tzip16Metadata))
+      ): Id[tezos.Tables.NftsRow] = {
+        val ((ar, op, str), (rawJson, metadata)) = from
+        Tables.NftsRow(
+          contractAddress = ar.accountId,
+          contractName = ar.name,
+          nftAddress = op.source.get,
+          assetType = metadata.description,
+          assetLocation = metadata.source.flatMap(_.location).getOrElse("d/k"),
+          rawMetadata = rawJson,
+          lastUpdated = Some(Timestamp.from(Instant.now))
+        )
+      }
+    }
 
 }

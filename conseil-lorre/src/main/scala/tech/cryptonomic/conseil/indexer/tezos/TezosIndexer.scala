@@ -53,6 +53,7 @@ class TezosIndexer private (
     accountsProcessor: AccountsProcessor,
     bakersProcessor: BakersProcessor,
     rightsProcessor: BakingAndEndorsingRightsProcessor,
+    metadataProcessor: MetadataProcessor,
     accountsResetHandler: AccountsResetHandler,
     forkHandler: ForkHandler[Future, TezosBlockHash],
     terminationSequence: () => Future[ShutdownComplete]
@@ -71,6 +72,14 @@ class TezosIndexer private (
     logger.info("I'm scheduling the concurrent tasks to update baking and endorsing rights")
     system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
       rightsProcessor.writeFutureRights()
+    )
+  }
+
+  /** Schedules method for fetching TZIP-16 metadata */
+  if (featureFlags.metadataFetchingIsIn) {
+    logger.info("I'm scheduling the concurrent tasks to fetch TZIP-16 metadata")
+    system.scheduler.schedule(lorreConf.tzipMetadata.initDelay, lorreConf.tzipMetadata.interval)(
+      metadataProcessor.processMetadata
     )
   }
 
@@ -94,6 +103,7 @@ class TezosIndexer private (
       iteration: Int,
       accountResetEvents: AccountResetEvents
   ): Unit = {
+    Thread.sleep(12312312311L)
     val processing = for {
       maxLevel <- indexedData.fetchMaxLevel
       reloadedAccountEvents <- processFork(maxLevel)
@@ -244,6 +254,7 @@ class TezosIndexer private (
         ),
       Duration.Inf
     )
+    ()
   }
 
   override def stop(): Future[ShutdownComplete] = terminationSequence()
@@ -389,6 +400,11 @@ object TezosIndexer extends ConseilLogSupport {
       tzip16MetadataOperator
     )
 
+    val metadataProcessor = new MetadataProcessor(
+      tzip16MetadataOperator,
+      db
+    )
+
     /* A single component will provide all required search functions for the fork-handler */
     val forkSearchEngine = new TezosForkSearchEngine(
       nodeOps = nodeOperator,
@@ -427,6 +443,7 @@ object TezosIndexer extends ConseilLogSupport {
       accountsProcessor,
       bakersProcessor,
       rightsProcessor,
+      metadataProcessor,
       accountsResetHandler,
       forkHandler,
       gracefulTermination

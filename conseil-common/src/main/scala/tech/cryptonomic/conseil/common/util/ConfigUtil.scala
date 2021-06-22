@@ -113,12 +113,9 @@ object ConfigUtil {
         val reader: CsvReader[ReadResult[Row]] =
           validSource.asCsvReader[Row](rfc.withHeader.withCellSeparator(separator))
 
-        println(reader)
         // separates List[Either[L, R]] into List[L] and List[R]
-        val (errors, rows) = reader.toList.foldRight((List.empty[ReadError], List.empty[Row])) {
-          (acc, pair) =>
-            println(pair)
-            acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimStringFields(r) :: pair._2))
+        val (errors, rows) = reader.toList.foldRight((List.empty[ReadError], List.empty[Row])) { (acc, pair) =>
+          acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimStringFields(r) :: pair._2))
         }
 
         if (errors.nonEmpty) {

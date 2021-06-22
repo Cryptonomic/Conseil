@@ -13,7 +13,14 @@ import tech.cryptonomic.conseil.common.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.Tables.{GovernanceRow, NftsRow, OriginatedAccountMapsRow, RegisteredTokensRow}
+import tech.cryptonomic.conseil.common.tezos.Tables.{
+  AccountsRow,
+  GovernanceRow,
+  NftsRow,
+  OperationsRow,
+  OriginatedAccountMapsRow,
+  RegisteredTokensRow
+}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.ConfigUtil
@@ -532,19 +539,26 @@ object TezosDatabaseOperations extends ConseilLogSupport {
 //    )
 //  }
 
-
   def getTzip16Contracts(): DBIO[Seq[RegisteredTokensRow]] =
     Tables.RegisteredTokens.filter(_.isTzip16).result
 
   def getNftTokensForAccount(accountId: String): DBIO[Seq[NftsRow]] =
-    Tables.Nfts.filter(_.contractAddress == accountId).result
+    Tables.Nfts.filter(_.contractAddress === accountId).result
 
-  def getAccountById(accountId: String) =
-    Tables.Accounts.filter(_.accountId === accountId).result
+  def getAccountById(accountId: String): DBIO[Option[AccountsRow]] =
+    Tables.Accounts.filter(_.accountId === accountId).result.headOption
 
-  def getOperationsByAccount(accountId: String) =
-    Tables.Operations.filter(_.destination === accountId).result
+  def getInternalTransactionsParameters(accountId: String) =
+    Tables.Operations
+      .filter(op => op.destination === accountId && op.internal === true)
+      .map(_.parametersMicheline)
+      .result
 
+  def getOriginationByAccount(accountId: String): DBIO[Seq[OperationsRow]] =
+    Tables.Operations
+      .filter(x => x.kind === "origination")
+      .filter(x => x.originatedContracts === accountId)
+      .result
 
   /**
     * Writes accounts to the database and record the keys (hashes) to later save complete bakers information relative to each block

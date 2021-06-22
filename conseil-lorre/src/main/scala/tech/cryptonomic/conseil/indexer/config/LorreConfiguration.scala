@@ -22,6 +22,7 @@ final case class LorreConfiguration(
     headHash: Option[String],
     chainEvents: List[ChainEvent],
     blockRightsFetching: BakingAndEndorsingRights,
+    tzipMetadata: TzipMetadata,
     enabledFeatures: Features
 )
 
@@ -33,6 +34,12 @@ final case class BakingAndEndorsingRights(
     cycleSize: Int,
     fetchSize: Int,
     updateSize: Int
+)
+
+/** configuration for fetching baking and endorsing rights */
+final case class TzipMetadata(
+    initDelay: FiniteDuration,
+    interval: FiniteDuration
 )
 
 /** details how to handle data pagination when fetching from the chain */
@@ -48,7 +55,8 @@ final case class BatchFetchConfiguration(
 /** custom select specific features to be enabled when chain-indexing */
 final case class Features(
     blockRightsFetchingIsOn: Boolean,
-    forkHandlingIsOn: Boolean
+    forkHandlingIsOn: Boolean,
+    metadataFetchingIsIn: Boolean
 )
 
 /** sodium library references */

@@ -374,7 +374,6 @@ object TokenContracts extends ConseilLogSupport {
 
     private def proceduralDecode(hex: String): String = {
 
-      logger.info(s"trying to decode $hex")
       val bytes = new Array[Byte](hex.length / 2)
 
       var i = 0
@@ -404,11 +403,19 @@ object TokenContracts extends ConseilLogSupport {
       )
 
       val fromIpfs = parsed.toOption
-        .flatMap(_.findInstruction(MichelsonBytesConstant(""), startsWith = Some("69706673")).sortBy(_.length).headOption)
+        .flatMap(
+          _.findInstruction(MichelsonBytesConstant(""), startsWith = Some("69706673")).sortBy(_.length).headOption
+        )
       val fromHttp = parsed.toOption
-        .flatMap(_.findInstruction(MichelsonBytesConstant(""), startsWith = Some("68747470")).sortBy(_.length).headOption)
+        .flatMap(
+          _.findInstruction(MichelsonBytesConstant(""), startsWith = Some("68747470")).sortBy(_.length).headOption
+        )
       val fromTezosStorage = parsed.toOption
-        .flatMap(_.findInstruction(MichelsonBytesConstant(""), startsWith = Some("74657a6f732d73746f72616765")).sortBy(_.length).headOption)
+        .flatMap(
+          _.findInstruction(MichelsonBytesConstant(""), startsWith = Some("74657a6f732d73746f72616765"))
+            .sortBy(_.length)
+            .headOption
+        )
       for {
         pth <- path.orElse(fromIpfs).orElse(fromHttp).orElse(fromTezosStorage)
         metadataUrl <- parsed.toOption.flatMap(_.getAtPath(pth)).collect {

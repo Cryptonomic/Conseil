@@ -143,11 +143,15 @@ CREATE TABLE tezos.metadata (
     raw_metadata text NOT NULL,
     name text NOT NULL,
     desctiption text,
-    last_updated timestamp
+    last_updated timestamp,
+    PRIMARY KEY(address, name)
 );
 
 CREATE TABLE tezos.nfts (
     contract_address text NOT NULL,
+    nft_address text NOT NULL,
+    op_group_hash text NOT NULL,
+    block_level integer NOT NULL,
     contract_name text NOT NULL,
     asset_type text NOT NULL,
     asset_location text NOT NULL,
@@ -479,6 +483,7 @@ CREATE TABLE tezos.operations (
     delegatable boolean,
     script character varying,
     storage character varying,
+    storage_micheline character varying,
     status character varying,
     consumed_gas numeric,
     storage_size numeric,

@@ -31,6 +31,8 @@ import scala.util.control.NoStackTrace
 import scala.util.{Failure, Try}
 import cats.instances._
 import cats.implicits._
+import tech.cryptonomic.conseil.common.tezos.Tables
+import tech.cryptonomic.conseil.common.tezos.Tables.OperationsRow
 
 object Tzip16MetadataJsonDecoders {
 
@@ -69,10 +71,10 @@ class Tzip16MetadataOperator(
 
   private type FutureFetcher = DataFetcher[Future, List, Throwable]
 
-  def getMetadataWithOrigination(
-      addresses: List[(Origination, String)]
-  ): Future[List[((Origination, String), Option[(String, Tzip16Metadata)])]] =
-    fetch[(Origination, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
+  def getMetadataWithOperationsRow(
+      addresses: List[(OperationsRow, String)]
+  ): Future[List[((OperationsRow, String), Option[(String, Tzip16Metadata)])]] =
+    fetch[(OperationsRow, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
       .run(addresses)
 
   def getMetadataWithIntTransaction(
@@ -80,6 +82,115 @@ class Tzip16MetadataOperator(
   ): Future[List[((InternalOperationResults.Transaction, String), Option[(String, Tzip16Metadata)])]] =
     fetch[(InternalOperationResults.Transaction, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
       .run(addresses)
+
+  def getMetadataWithRegisteredTokensRow(
+      addresses: List[(Tables.RegisteredTokensRow, String)]
+  ): Future[List[((Tables.RegisteredTokensRow, String), Option[(String, Tzip16Metadata)])]] =
+    fetch[(Tables.RegisteredTokensRow, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
+      .run(addresses)
+  def getMetadataWithAccountsRow(
+      addresses: List[(Tables.AccountsRow, String)]
+  ): Future[List[((Tables.AccountsRow, String), Option[(String, Tzip16Metadata)])]] =
+    fetch[(Tables.AccountsRow, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
+      .run(addresses)
+
+  implicit val metadataFetcherAccountsRow: FutureFetcher {
+    type In = (Tables.AccountsRow, String)
+
+    type Out = Option[(String, Tzip16Metadata)]
+
+    type Encoded = String
+  } = new FutureFetcher {
+
+    /** the input type, e.g. ids of data */
+    override type In = (Tables.AccountsRow, String)
+
+    /** the output type, e.g. the decoded block data */
+    override type Out = Option[(String, Tzip16Metadata)]
+
+    /** the encoded representation type used e.g. some Json representation */
+    override type Encoded = String
+
+    private val makeUrl = (key: In) => key._2
+
+    /** an effectful function from a collection of inputs `T[In]`
+      * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
+      */
+    override val fetchData =
+      Kleisli(
+        fetchKeys => {
+          val hashes = fetchKeys
+          logger.info("Fetching tzip metadata")
+          node.runBatchedGetQuery(fetchKeys, makeUrl, 2).onError {
+            case err =>
+              val showHashes = hashes.mkString(", ")
+              logger
+                .error(
+                  s"I encountered problems while fetching baking rights from TZIP-16 for blocks $showHashes. The error says ${err.getMessage}"
+                )
+                .pure[Future]
+          }
+        }
+      )
+
+    /** an effectful function that decodes the json value to an output `Out`*/
+    override val decodeData: Kleisli[Future, String, Option[(String, Tzip16Metadata)]] = Kleisli { json =>
+      import cats.syntax.functor._
+      import io.circe.parser.decode
+      decode[Tzip16Metadata](json).toOption
+        .pure[Future]
+        .map(_.map(json -> _))
+    }
+  }
+
+  implicit val metadataFetcherRegisteredTokensRow: FutureFetcher {
+    type In = (Tables.RegisteredTokensRow, String)
+
+    type Out = Option[(String, Tzip16Metadata)]
+
+    type Encoded = String
+  } = new FutureFetcher {
+
+    /** the input type, e.g. ids of data */
+    override type In = (Tables.RegisteredTokensRow, String)
+
+    /** the output type, e.g. the decoded block data */
+    override type Out = Option[(String, Tzip16Metadata)]
+
+    /** the encoded representation type used e.g. some Json representation */
+    override type Encoded = String
+
+    private val makeUrl = (key: In) => key._2
+
+    /** an effectful function from a collection of inputs `T[In]`
+      * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
+      */
+    override val fetchData =
+      Kleisli(
+        fetchKeys => {
+          val hashes = fetchKeys
+          logger.info("Fetching tzip metadata")
+          node.runBatchedGetQuery(fetchKeys, makeUrl, 2).onError {
+            case err =>
+              val showHashes = hashes.mkString(", ")
+              logger
+                .error(
+                  s"I encountered problems while fetching baking rights from TZIP-16 for blocks $showHashes. The error says ${err.getMessage}"
+                )
+                .pure[Future]
+          }
+        }
+      )
+
+    /** an effectful function that decodes the json value to an output `Out`*/
+    override val decodeData: Kleisli[Future, String, Option[(String, Tzip16Metadata)]] = Kleisli { json =>
+      import cats.syntax.functor._
+      import io.circe.parser.decode
+      decode[Tzip16Metadata](json).toOption
+        .pure[Future]
+        .map(_.map(json -> _))
+    }
+  }
 
   implicit val metadataFetcher: FutureFetcher {
     type In = (InternalOperationResults.Transaction, String)
@@ -131,7 +242,7 @@ class Tzip16MetadataOperator(
   }
 
   implicit val metadataFetcherOrigination: FutureFetcher {
-    type In = (Origination, String)
+    type In = (OperationsRow, String)
 
     type Out = Option[(String, Tzip16Metadata)]
 
@@ -139,7 +250,7 @@ class Tzip16MetadataOperator(
   } = new FutureFetcher {
 
     /** the input type, e.g. ids of data */
-    override type In = (Origination, String)
+    override type In = (OperationsRow, String)
 
     /** the output type, e.g. the decoded block data */
     override type Out = Option[(String, Tzip16Metadata)]
