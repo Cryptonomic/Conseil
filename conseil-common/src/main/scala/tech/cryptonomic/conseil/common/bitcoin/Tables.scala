@@ -523,7 +523,7 @@ trait Tables {
     *  @param size Database column size SqlType(int4)
     *  @param vsize Database column vsize SqlType(int4)
     *  @param weight Database column weight SqlType(int4)
-    *  @param version Database column version SqlType(int4)
+    *  @param version Database column version SqlType(int8)
     *  @param lockTime Database column lock_time SqlType(timestamp)
     *  @param blockTime Database column block_time SqlType(timestamp) */
   case class TransactionsRow(
@@ -535,7 +535,7 @@ trait Tables {
       size: Int,
       vsize: Int,
       weight: Int,
-      version: Int,
+      version: Long,
       lockTime: java.sql.Timestamp,
       blockTime: java.sql.Timestamp
   )
@@ -544,7 +544,8 @@ trait Tables {
   implicit def GetResultTransactionsRow(
       implicit e0: GR[String],
       e1: GR[Int],
-      e2: GR[java.sql.Timestamp]
+      e2: GR[Long],
+      e3: GR[java.sql.Timestamp]
   ): GR[TransactionsRow] = GR { prs =>
     import prs._
     TransactionsRow.tupled(
@@ -557,7 +558,7 @@ trait Tables {
         <<[Int],
         <<[Int],
         <<[Int],
-        <<[Int],
+        <<[Long],
         <<[java.sql.Timestamp],
         <<[java.sql.Timestamp]
       )
@@ -622,8 +623,8 @@ trait Tables {
     /** Database column weight SqlType(int4) */
     val weight: Rep[Int] = column[Int]("weight")
 
-    /** Database column version SqlType(int4) */
-    val version: Rep[Int] = column[Int]("version")
+    /** Database column version SqlType(int8) */
+    val version: Rep[Long] = column[Long]("version")
 
     /** Database column lock_time SqlType(timestamp) */
     val lockTime: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("lock_time")

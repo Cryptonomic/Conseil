@@ -59,6 +59,18 @@
     schema: tezos
     name: token_balances
 - table:
+    schema: tezos
+    name: processed_chain_events
+- table:
+    schema: tezos
+    name: accounts_checkpoint
+- table:
+    schema: tezos
+    name: bakers_checkpoint
+- table:
+    schema: tezos
+    name: forks
+- table:
     schema: bitcoin
     name: blocks
 - table:

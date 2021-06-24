@@ -824,7 +824,7 @@ CREATE TABLE bitcoin.transactions (
   size integer NOT NULL,
   vsize integer NOT NULL,
   weight integer NOT NULL,
-  version integer NOT NULL,
+  version bigint NOT NULL,
   lock_time timestamp without time zone NOT NULL,
   block_time timestamp without time zone NOT NULL
 );

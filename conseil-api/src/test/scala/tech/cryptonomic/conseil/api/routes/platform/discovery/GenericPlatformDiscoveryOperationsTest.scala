@@ -506,7 +506,7 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("weight", "Weight", DataType.Int, None, KeyType.NonKey, "transactions"),
             Attribute("hash", "Hash", DataType.String, None, KeyType.NonKey, "transactions"),
             Attribute("hex", "Hex", DataType.String, None, KeyType.NonKey, "transactions"),
-            Attribute("version", "Version", DataType.Int, None, KeyType.NonKey, "transactions"),
+            Attribute("version", "Version", DataType.LargeInt, None, KeyType.NonKey, "transactions"),
             Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "transactions"),
             Attribute("size", "Size", DataType.Int, None, KeyType.NonKey, "transactions"),
             Attribute("vsize", "Vsize", DataType.Int, None, KeyType.NonKey, "transactions"),

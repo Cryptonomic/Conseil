@@ -30,7 +30,7 @@ class MetadataService(
 
   private val entities = {
     def futureEntities(path: NetworkPath): List[Entity] =
-      Await.result(platformDiscoveryOperations.getEntities(path), 5 second)
+      Await.result(platformDiscoveryOperations.getEntities(path), 10 second)
 
     networks.values.flatten
       .map(_.path)

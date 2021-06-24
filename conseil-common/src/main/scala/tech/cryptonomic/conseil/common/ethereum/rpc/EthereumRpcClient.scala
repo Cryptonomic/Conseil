@@ -160,8 +160,8 @@ class EthereumClient[F[_]: Concurrent](
               .through(client.stream[EthCall.Params, String](batchSize = 1))
               .handleErrorWith {
                 // if balanceOf is not implemented by contract return 0x0
-                case RpcException(-32000, _, _) =>
-                  Stream.emit("0x0")
+                case ex =>
+                  Stream.emit("0x0").evalTap(_ => Concurrent[F].delay(logger.error(ex)))
               }
               .map(balance => (address, balance))
           }
@@ -261,8 +261,8 @@ class EthereumClient[F[_]: Concurrent](
             }
             .handleErrorWith {
               // if any of the methods is not defined on a contract do not add token data
-              case RpcException(-32000, _, _) =>
-                Stream.emit(token)
+              case ex =>
+                Stream.emit(token).evalTap(_ => Concurrent[F].delay(logger.error(ex)))
             }
 
         case account => Stream.emit(account)
