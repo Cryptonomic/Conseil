@@ -1,7 +1,8 @@
 package tech.cryptonomic.conseil.common.config
 
-import java.net.URL
+import com.typesafe.config.Config
 
+import java.net.URL
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
 import scala.concurrent.duration.Duration
 
@@ -99,6 +100,9 @@ object Platforms {
 
     /** Defines the name of the network for specific blockchain */
     def network: String
+
+    /**  */
+    def db: Config
   }
 
   /** collects all config related to a tezos network */
@@ -106,9 +110,13 @@ object Platforms {
       network: String,
       enabled: Boolean,
       node: TezosNodeConfiguration,
+      db: Config,
       tns: Option[TNSContractConfiguration]
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Tezos
+//
+//    lazy val db = Database.forConfig(s"databases.${platform.name}.${network}.db")
+//    lazy val a = ConfigFactory.load().getConfigList("").get(0).getConfig("db")
   }
 
   /** configurations to describe a bitcoin node */
@@ -136,6 +144,7 @@ object Platforms {
       network: String,
       enabled: Boolean,
       node: BitcoinNodeConfiguration,
+      db: Config,
       batching: BitcoinBatchFetchConfiguration
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Bitcoin
@@ -176,6 +185,7 @@ object Platforms {
       network: String,
       enabled: Boolean,
       node: URL,
+      db: Config,
       retry: EthereumRetryConfiguration,
       batching: EthereumBatchFetchConfiguration
   ) extends PlatformConfiguration {
@@ -187,12 +197,13 @@ object Platforms {
       network: String,
       enabled: Boolean,
       node: URL,
+      db: Config,
       retry: EthereumRetryConfiguration,
       batching: EthereumBatchFetchConfiguration
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Quorum
 
-    lazy val toEthereumConfiguration = EthereumConfiguration(network, enabled, node, retry, batching)
+    lazy val toEthereumConfiguration = EthereumConfiguration(network, enabled, node, db, retry, batching)
   }
 
 }
