@@ -1,8 +1,10 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
-import tech.cryptonomic.conseil.api.routes.platform.data.{ApiDataEndpoints, ApiDataJsonSchemas}
+import tech.cryptonomic.conseil.api.routes.platform.data.{ApiDataEndpoints, ApiDataJsonSchemas, ApiDataTypes}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 import endpoints.algebra
+import tech.cryptonomic.conseil.api.routes.validation.Validation.QueryValidating
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes
 
 /** Trait containing endpoints definition */
 trait BitcoinDataEndpoints
@@ -11,7 +13,13 @@ trait BitcoinDataEndpoints
     with ApiDataJsonSchemas
     with BitcoinFilterFromQueryString {
 
-  private val root = path / "v2" / "data" / "bitcoin" / segment[String](name = "network")
+  private val platform = "bitcoin"
+
+  private val root = path / "v2" / "data" / platform / segment[String](name = "network")
+
+  def bitcoinQueryEndpoint: Endpoint[(String, String, ApiDataTypes.ApiQuery, Option[String]), Option[
+    QueryValidating[DataTypes.QueryResponseWithOutput]
+  ]] = queryEndpoint(platform)
 
   /** V2 Blocks endpoint definition */
   def bitcoinBlocksEndpoint: Endpoint[((String, BitcoinFilter), Option[String]), Option[List[QueryResponse]]] =

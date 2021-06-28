@@ -30,16 +30,24 @@ class BitcoinOperations[F[_]: Concurrent](
     *
     * @param depth Can be: Newest, Everything or Custom
     */
-  def loadBlocks(depth: Depth): Stream[F, Unit] =
+  def loadBlocks(depth: Depth, headHash: Option[String]): Stream[F, Unit] =
     Stream
       .eval(tx.transact(persistence.getLatestIndexedBlock))
-      .zip(bitcoinClient.getBlockChainInfo)
       .flatMap {
-        case (block, info) =>
+        case latest if headHash.isDefined =>
+          Stream(latest)
+            .zip(Stream.emit(headHash.get).through(bitcoinClient.getBlockByHash(batchSize = 1)).map(_.height))
+        case latest =>
+          Stream(latest)
+            .zip(bitcoinClient.getBlockChainInfo.map(_.blocks))
+
+      }
+      .flatMap {
+        case (block, latestBlock) =>
           depth match {
-            case Newest => loadBlocksWithTransactions(block.map(_.height + 1).getOrElse(1) to info.blocks)
-            case Everything => loadBlocksWithTransactions(1 to info.blocks)
-            case Custom(depth) => loadBlocksWithTransactions((info.blocks - depth) to info.blocks)
+            case Newest => loadBlocksWithTransactions(block.map(_.level + 1).getOrElse(1) to latestBlock)
+            case Everything => loadBlocksWithTransactions(1 to latestBlock)
+            case Custom(depth) => loadBlocksWithTransactions(math.max(latestBlock - depth, 1) to latestBlock)
           }
       }
 
@@ -55,7 +63,7 @@ class BitcoinOperations[F[_]: Concurrent](
       .flatMap(
         existingBlocks =>
           Stream
-            .range(range.start, range.end)
+            .range(range.start, range.end + 1)
             .filter(height => !existingBlocks.contains(height))
             .through(bitcoinClient.getBlockHash(batchConf.hashBatchSize))
             .through(bitcoinClient.getBlockByHash(batchConf.blocksBatchSize))

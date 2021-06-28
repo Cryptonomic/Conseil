@@ -30,9 +30,9 @@ class BitcoinPersistence[F[_]: Concurrent] {
   ): DBIOAction[Unit, NoStream, Effect.Write] =
     DBIO.seq(
       Tables.Blocks += block.convertTo[Tables.BlocksRow],
-      Tables.Transactions ++= transactions.map(_.convertTo[Tables.TransactionsRow]),
-      Tables.Inputs ++= transactions.flatMap(t => t.vin.map(c => (t, c))).map(_.convertTo[Tables.InputsRow]),
-      Tables.Outputs ++= transactions.flatMap(t => t.vout.map(c => (t, c))).map(_.convertTo[Tables.OutputsRow])
+      Tables.Transactions ++= transactions.map(t => (t, block)).map(_.convertTo[Tables.TransactionsRow]),
+      Tables.Inputs ++= transactions.flatMap(t => t.vin.map(c => (t, c, block))).map(_.convertTo[Tables.InputsRow]),
+      Tables.Outputs ++= transactions.flatMap(t => t.vout.map(c => (t, c, block))).map(_.convertTo[Tables.OutputsRow])
     )
 
   /**
@@ -41,13 +41,13 @@ class BitcoinPersistence[F[_]: Concurrent] {
     * @param range Inclusive range of the block's height
     */
   def getIndexedBlockHeights(range: Range.Inclusive): DBIO[Seq[Int]] =
-    Tables.Blocks.filter(_.height between (range.start, range.end)).map(_.height).result
+    Tables.Blocks.filter(_.level between (range.start, range.end)).map(_.level).result
 
   /**
     * Get the latest block from the database.
     */
   def getLatestIndexedBlock: DBIO[Option[Tables.BlocksRow]] =
-    Tables.Blocks.sortBy(_.height.desc).take(1).result.headOption
+    Tables.Blocks.sortBy(_.level.desc).take(1).result.headOption
 }
 
 object BitcoinPersistence {
@@ -70,7 +70,7 @@ object BitcoinPersistence {
         size = from.size,
         strippedSize = from.strippedsize,
         weight = from.weight,
-        height = from.height,
+        level = from.height,
         version = from.version,
         versionHex = from.versionHex,
         merkleRoot = from.merkleroot,
@@ -91,22 +91,24 @@ object BitcoinPersistence {
     * TODO: This conversion should be done with the Chimney,
     *       but it's blocked due to the https://github.com/scala/bug/issues/11157
     */
-  implicit val transactionToTransactionsRow: Conversion[Id, Transaction, Tables.TransactionsRow] =
-    new Conversion[Id, Transaction, Tables.TransactionsRow] {
-      override def convert(from: Transaction) =
-        Tables.TransactionsRow(
-          txid = from.txid,
-          blockhash = from.blockhash,
-          hash = from.hash,
-          hex = from.hex,
-          size = from.size,
-          vsize = from.vsize,
-          weight = from.weight,
-          version = from.version,
-          lockTime = Timestamp.from(Instant.ofEpochSecond(from.locktime)),
-          blockTime = Timestamp.from(Instant.ofEpochSecond(from.blocktime)),
-          time = Timestamp.from(Instant.ofEpochSecond(from.time))
-        )
+  implicit val transactionToTransactionsRow: Conversion[Id, (Transaction, Block), Tables.TransactionsRow] =
+    new Conversion[Id, (Transaction, Block), Tables.TransactionsRow] {
+      override def convert(from: (Transaction, Block)) = from match {
+        case (transaction, block) =>
+          Tables.TransactionsRow(
+            txid = transaction.txid,
+            blockHash = transaction.blockhash,
+            blockLevel = block.height,
+            hash = transaction.hash,
+            hex = transaction.hex,
+            size = transaction.size,
+            vsize = transaction.vsize,
+            weight = transaction.weight,
+            version = transaction.version,
+            lockTime = Timestamp.from(Instant.ofEpochSecond(transaction.locktime)),
+            blockTime = Timestamp.from(Instant.ofEpochSecond(transaction.blocktime))
+          )
+      }
     }
 
   /**
@@ -114,12 +116,15 @@ object BitcoinPersistence {
     * TODO: This conversion should be done with the Chimney,
     *       but it's blocked due to the https://github.com/scala/bug/issues/11157
     */
-  implicit val inputToInputsRow: Conversion[Id, (Transaction, TransactionInput), Tables.InputsRow] =
-    new Conversion[Id, (Transaction, TransactionInput), Tables.InputsRow] {
-      override def convert(from: (Transaction, TransactionInput)) = from match {
-        case (transaction, input) =>
+  implicit val inputToInputsRow: Conversion[Id, (Transaction, TransactionInput, Block), Tables.InputsRow] =
+    new Conversion[Id, (Transaction, TransactionInput, Block), Tables.InputsRow] {
+      override def convert(from: (Transaction, TransactionInput, Block)) = from match {
+        case (transaction, input, block) =>
           Tables.InputsRow(
             txid = transaction.txid,
+            blockHash = block.hash,
+            blockLevel = block.height,
+            blockTime = Timestamp.from(Instant.ofEpochSecond(block.time)),
             outputTxid = input.txid,
             vOut = input.vout,
             scriptSigAsm = input.scriptSig.map(_.asm),
@@ -136,12 +141,15 @@ object BitcoinPersistence {
     * TODO: This conversion should be done with the Chimney,
     *       but it's blocked due to the https://github.com/scala/bug/issues/11157
     */
-  implicit val outputToOutputRow: Conversion[Id, (Transaction, TransactionOutput), Tables.OutputsRow] =
-    new Conversion[Id, (Transaction, TransactionOutput), Tables.OutputsRow] {
-      override def convert(from: (Transaction, TransactionOutput)) = from match {
-        case (transaction, output) =>
+  implicit val outputToOutputRow: Conversion[Id, (Transaction, TransactionOutput, Block), Tables.OutputsRow] =
+    new Conversion[Id, (Transaction, TransactionOutput, Block), Tables.OutputsRow] {
+      override def convert(from: (Transaction, TransactionOutput, Block)) = from match {
+        case (transaction, output, block) =>
           Tables.OutputsRow(
             txid = transaction.txid,
+            blockHash = block.hash,
+            blockLevel = block.height,
+            blockTime = Timestamp.from(Instant.ofEpochSecond(block.time)),
             value = output.value,
             n = output.n,
             scriptPubKeyAsm = output.scriptPubKey.asm,

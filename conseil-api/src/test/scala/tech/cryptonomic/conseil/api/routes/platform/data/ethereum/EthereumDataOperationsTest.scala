@@ -151,7 +151,7 @@ class EthereumDataOperationsTest
         val tokensHistoryRow = TokensHistoryRow(
           tokenAddress = "0x1",
           blockHash = "0x1",
-          blockNumber = 1,
+          blockLevel = 1,
           transactionHash = "0x1",
           accountAddress = "0x0",
           value = BigDecimal("1.0"),
@@ -163,7 +163,7 @@ class EthereumDataOperationsTest
           found <- sut.selectWithPredicates(
             "ethereum",
             table = Tables.TokensHistory.baseTableRow.tableName,
-            columns = List(SimpleField("account_address"), SimpleField("block_number"), SimpleField("asof")),
+            columns = List(SimpleField("account_address"), SimpleField("block_level"), SimpleField("asof")),
             predicates = List.empty,
             ordering = List(),
             aggregation = List.empty,
@@ -179,7 +179,7 @@ class EthereumDataOperationsTest
         result shouldBe List(
           Map(
             "account_address" -> Some("0x0"),
-            "block_number" -> Some(1),
+            "block_level" -> Some(1),
             "asof" -> Some(new Timestamp(1)),
             "r" -> Some(1)
           )
@@ -192,7 +192,7 @@ class EthereumDataOperationsTest
           TokensHistoryRow(
             tokenAddress = "0x1",
             blockHash = "0x1",
-            blockNumber = 1,
+            blockLevel = 1,
             transactionHash = "0x1",
             accountAddress = "0x0",
             value = BigDecimal("1.0"),
@@ -201,7 +201,7 @@ class EthereumDataOperationsTest
           TokensHistoryRow(
             tokenAddress = "0x1",
             blockHash = "0x2",
-            blockNumber = 2,
+            blockLevel = 2,
             transactionHash = "0x1",
             accountAddress = "0x0",
             value = BigDecimal("2.0"),
@@ -210,7 +210,7 @@ class EthereumDataOperationsTest
           TokensHistoryRow(
             tokenAddress = "0x1",
             blockHash = "0x3",
-            blockNumber = 3,
+            blockLevel = 3,
             transactionHash = "0x1",
             accountAddress = "0x0",
             value = BigDecimal("3.0"),
@@ -223,7 +223,7 @@ class EthereumDataOperationsTest
           found <- sut.selectWithPredicates(
             "ethereum",
             table = Tables.TokensHistory.baseTableRow.tableName,
-            columns = List(SimpleField("account_address"), SimpleField("block_number"), SimpleField("asof")),
+            columns = List(SimpleField("account_address"), SimpleField("block_level"), SimpleField("asof")),
             predicates = List.empty,
             ordering = List(),
             aggregation = List.empty,
@@ -239,7 +239,7 @@ class EthereumDataOperationsTest
         result shouldBe List(
           Map(
             "account_address" -> Some("0x0"),
-            "block_number" -> Some(2),
+            "block_level" -> Some(2),
             "asof" -> Some(new Timestamp(2)),
             "r" -> Some(1)
           )
@@ -251,7 +251,7 @@ class EthereumDataOperationsTest
           TokensHistoryRow(
             tokenAddress = "0x1",
             blockHash = "0x1",
-            blockNumber = 1,
+            blockLevel = 1,
             transactionHash = "0x1",
             accountAddress = "0x1",
             value = BigDecimal("1.0"),
@@ -260,7 +260,7 @@ class EthereumDataOperationsTest
           TokensHistoryRow(
             tokenAddress = "0x1",
             blockHash = "0x2",
-            blockNumber = 2,
+            blockLevel = 2,
             transactionHash = "0x1",
             accountAddress = "0x2",
             value = BigDecimal("2.0"),
@@ -269,7 +269,7 @@ class EthereumDataOperationsTest
           TokensHistoryRow(
             tokenAddress = "0x1",
             blockHash = "0x3",
-            blockNumber = 3,
+            blockLevel = 3,
             transactionHash = "0x1",
             accountAddress = "0x3",
             value = BigDecimal("3.0"),
@@ -282,7 +282,7 @@ class EthereumDataOperationsTest
           found <- sut.selectWithPredicates(
             "ethereum",
             table = Tables.TokensHistory.baseTableRow.tableName,
-            columns = List(SimpleField("account_address"), SimpleField("block_number"), SimpleField("asof")),
+            columns = List(SimpleField("account_address"), SimpleField("block_level"), SimpleField("asof")),
             predicates = List.empty,
             ordering = List(),
             aggregation = List.empty,
@@ -298,13 +298,13 @@ class EthereumDataOperationsTest
         result shouldBe List(
           Map(
             "account_address" -> Some("0x1"),
-            "block_number" -> Some(1),
+            "block_level" -> Some(1),
             "asof" -> Some(new Timestamp(1)),
             "r" -> Some(1)
           ),
           Map(
             "account_address" -> Some("0x2"),
-            "block_number" -> Some(2),
+            "block_level" -> Some(2),
             "asof" -> Some(new Timestamp(2)),
             "r" -> Some(1)
           )
@@ -316,7 +316,7 @@ class EthereumDataOperationsTest
         val accountsHistoryRow = AccountsHistoryRow(
           address = "0x1",
           blockHash = "0x1",
-          blockNumber = 1,
+          blockLevel = 1,
           balance = BigDecimal("1.0"),
           asof = new Timestamp(1)
         )
@@ -326,7 +326,7 @@ class EthereumDataOperationsTest
           found <- sut.selectWithPredicates(
             "ethereum",
             table = Tables.AccountsHistory.baseTableRow.tableName,
-            columns = List(SimpleField("address"), SimpleField("block_number"), SimpleField("asof")),
+            columns = List(SimpleField("address"), SimpleField("block_level"), SimpleField("asof")),
             predicates = List.empty,
             ordering = List(),
             aggregation = List.empty,
@@ -342,7 +342,7 @@ class EthereumDataOperationsTest
         result shouldBe List(
           Map(
             "address" -> Some("0x1"),
-            "block_number" -> Some(1),
+            "block_level" -> Some(1),
             "asof" -> Some(new Timestamp(1)),
             "r" -> Some(1)
           )
@@ -354,21 +354,21 @@ class EthereumDataOperationsTest
           AccountsHistoryRow(
             address = "0x1",
             blockHash = "0x1",
-            blockNumber = 1,
+            blockLevel = 1,
             balance = BigDecimal("1.0"),
             asof = new Timestamp(1)
           ),
           AccountsHistoryRow(
             address = "0x1",
             blockHash = "0x2",
-            blockNumber = 2,
+            blockLevel = 2,
             balance = BigDecimal("2.0"),
             asof = new Timestamp(2)
           ),
           AccountsHistoryRow(
             address = "0x1",
             blockHash = "0x3",
-            blockNumber = 3,
+            blockLevel = 3,
             balance = BigDecimal("3.0"),
             asof = new Timestamp(3)
           )
@@ -379,7 +379,7 @@ class EthereumDataOperationsTest
           found <- sut.selectWithPredicates(
             "ethereum",
             table = Tables.AccountsHistory.baseTableRow.tableName,
-            columns = List(SimpleField("address"), SimpleField("block_number"), SimpleField("asof")),
+            columns = List(SimpleField("address"), SimpleField("block_level"), SimpleField("asof")),
             predicates = List.empty,
             ordering = List(),
             aggregation = List.empty,
@@ -395,7 +395,7 @@ class EthereumDataOperationsTest
         result shouldBe List(
           Map(
             "address" -> Some("0x1"),
-            "block_number" -> Some(2),
+            "block_level" -> Some(2),
             "asof" -> Some(new Timestamp(2)),
             "r" -> Some(1)
           )
@@ -407,21 +407,21 @@ class EthereumDataOperationsTest
           AccountsHistoryRow(
             address = "0x1",
             blockHash = "0x1",
-            blockNumber = 1,
+            blockLevel = 1,
             balance = BigDecimal("1.0"),
             asof = new Timestamp(1)
           ),
           AccountsHistoryRow(
             address = "0x2",
             blockHash = "0x2",
-            blockNumber = 2,
+            blockLevel = 2,
             balance = BigDecimal("2.0"),
             asof = new Timestamp(2)
           ),
           AccountsHistoryRow(
             address = "0x1",
             blockHash = "0x3",
-            blockNumber = 3,
+            blockLevel = 3,
             balance = BigDecimal("3.0"),
             asof = new Timestamp(3)
           )
@@ -432,7 +432,7 @@ class EthereumDataOperationsTest
           found <- sut.selectWithPredicates(
             "ethereum",
             table = Tables.AccountsHistory.baseTableRow.tableName,
-            columns = List(SimpleField("address"), SimpleField("block_number"), SimpleField("asof")),
+            columns = List(SimpleField("address"), SimpleField("block_level"), SimpleField("asof")),
             predicates = List.empty,
             ordering = List(),
             aggregation = List.empty,
@@ -448,13 +448,13 @@ class EthereumDataOperationsTest
         result shouldBe List(
           Map(
             "address" -> Some("0x1"),
-            "block_number" -> Some(1),
+            "block_level" -> Some(1),
             "asof" -> Some(new Timestamp(1)),
             "r" -> Some(1)
           ),
           Map(
             "address" -> Some("0x2"),
-            "block_number" -> Some(2),
+            "block_level" -> Some(2),
             "asof" -> Some(new Timestamp(2)),
             "r" -> Some(1)
           )
@@ -507,7 +507,7 @@ object EthereumDataOperationsTest {
     private val defaultTransaction = TransactionsRow(
       hash = "hash",
       blockHash = "blockHash",
-      blockNumber = 0,
+      blockLevel = 0,
       timestamp = Some(Timestamp.valueOf("2020-01-01 00:00:00")),
       source = "from",
       gas = BigDecimal("1"),
@@ -524,7 +524,7 @@ object EthereumDataOperationsTest {
     val transaction1: TransactionsRow = defaultTransaction.copy(
       hash = "hash1",
       blockHash = block1.hash,
-      blockNumber = block1.level,
+      blockLevel = block1.level,
       timestamp = Some(block1.timestamp),
       source = "from1",
       destination = Some("to"),
@@ -534,7 +534,7 @@ object EthereumDataOperationsTest {
     val transaction2: TransactionsRow = defaultTransaction.copy(
       hash = "hash2",
       blockHash = block2.hash,
-      blockNumber = block2.level,
+      blockLevel = block2.level,
       timestamp = Some(block2.timestamp),
       source = "from1",
       destination = Some("to"),
@@ -544,7 +544,7 @@ object EthereumDataOperationsTest {
     val transaction3: TransactionsRow = defaultTransaction.copy(
       hash = "hash3",
       blockHash = block3.hash,
-      blockNumber = block3.level,
+      blockLevel = block3.level,
       timestamp = Some(block3.timestamp),
       source = "from2",
       destination = Some("to3"),
@@ -558,7 +558,7 @@ object EthereumDataOperationsTest {
         LogsRow(
           address = "address",
           blockHash = block.hash,
-          blockNumber = block.level,
+          blockLevel = block.level,
           timestamp = Some(block.timestamp),
           data = "data",
           logIndex = 0,
@@ -578,7 +578,7 @@ object EthereumDataOperationsTest {
           transactionHash = transaction.hash,
           transactionIndex = transaction.transactionIndex,
           blockHash = block.hash,
-          blockNumber = block.level,
+          blockLevel = block.level,
           timestamp = Some(block.timestamp),
           contractAddress = Some("0x1"),
           cumulativeGasUsed = BigDecimal("1.0"),
@@ -597,7 +597,7 @@ object EthereumDataOperationsTest {
         TokenTransfersRow(
           tokenAddress = "0x1",
           blockHash = block.hash,
-          blockNumber = block.level,
+          blockLevel = block.level,
           timestamp = Some(block.timestamp),
           transactionHash = transaction.hash,
           logIndex = 0,
@@ -618,7 +618,7 @@ object EthereumDataOperationsTest {
         TokensHistoryRow(
           tokenAddress = "0x1",
           blockHash = block.hash,
-          blockNumber = block.level,
+          blockLevel = block.level,
           transactionHash = transaction.hash,
           accountAddress = "0x0",
           value = BigDecimal("1.0"),
@@ -637,7 +637,7 @@ object EthereumDataOperationsTest {
         AccountsRow(
           address = transaction.source,
           blockHash = transaction.blockHash,
-          blockNumber = transaction.blockNumber,
+          blockLevel = transaction.blockLevel,
           timestamp = Some(block.timestamp),
           balance = BigDecimal("1.0")
         )
@@ -654,8 +654,8 @@ object EthereumDataOperationsTest {
         tokenStandard = Some("ERC20"),
         name = Some("name"),
         symbol = Some("SYM"),
-        decimals = Some("18"),
-        totalSupply = Some("100")
+        decimals = Some(18),
+        totalSupply = Some(BigDecimal(100))
       )
     val accounts: Seq[AccountsRow] = List(account1, account2, account3)
 

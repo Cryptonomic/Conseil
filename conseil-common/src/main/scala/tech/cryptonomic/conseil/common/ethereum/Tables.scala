@@ -1,4 +1,5 @@
 package tech.cryptonomic.conseil.common.ethereum
+
 // AUTO-GENERATED Slick data model
 /** Stand-alone Slick data model for immediate use */
 object Tables extends {
@@ -30,7 +31,7 @@ trait Tables {
   /** Entity class storing rows of table Accounts
     *  @param address Database column address SqlType(text), PrimaryKey
     *  @param blockHash Database column block_hash SqlType(text)
-    *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param blockLevel Database column block_level SqlType(int4)
     *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
     *  @param balance Database column balance SqlType(numeric)
     *  @param bytecode Database column bytecode SqlType(text), Default(None)
@@ -38,12 +39,12 @@ trait Tables {
     *  @param tokenStandard Database column token_standard SqlType(text), Default(None)
     *  @param name Database column name SqlType(text), Default(None)
     *  @param symbol Database column symbol SqlType(text), Default(None)
-    *  @param decimals Database column decimals SqlType(text), Default(None)
-    *  @param totalSupply Database column total_supply SqlType(text), Default(None) */
+    *  @param decimals Database column decimals SqlType(int4), Default(None)
+    *  @param totalSupply Database column total_supply SqlType(numeric), Default(None) */
   case class AccountsRow(
       address: String,
       blockHash: String,
-      blockNumber: Int,
+      blockLevel: Int,
       timestamp: Option[java.sql.Timestamp] = None,
       balance: scala.math.BigDecimal,
       bytecode: Option[String] = None,
@@ -51,8 +52,8 @@ trait Tables {
       tokenStandard: Option[String] = None,
       name: Option[String] = None,
       symbol: Option[String] = None,
-      decimals: Option[String] = None,
-      totalSupply: Option[String] = None
+      decimals: Option[Int] = None,
+      totalSupply: Option[scala.math.BigDecimal] = None
   )
 
   /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */
@@ -61,7 +62,9 @@ trait Tables {
       e1: GR[Int],
       e2: GR[Option[java.sql.Timestamp]],
       e3: GR[scala.math.BigDecimal],
-      e4: GR[Option[String]]
+      e4: GR[Option[String]],
+      e5: GR[Option[Int]],
+      e6: GR[Option[scala.math.BigDecimal]]
   ): GR[AccountsRow] = GR { prs =>
     import prs._
     AccountsRow.tupled(
@@ -76,8 +79,8 @@ trait Tables {
         <<?[String],
         <<?[String],
         <<?[String],
-        <<?[String],
-        <<?[String]
+        <<?[Int],
+        <<?[scala.math.BigDecimal]
       )
     )
   }
@@ -88,7 +91,7 @@ trait Tables {
       (
         address,
         blockHash,
-        blockNumber,
+        blockLevel,
         timestamp,
         balance,
         bytecode,
@@ -106,7 +109,7 @@ trait Tables {
         (
           Rep.Some(address),
           Rep.Some(blockHash),
-          Rep.Some(blockNumber),
+          Rep.Some(blockLevel),
           timestamp,
           Rep.Some(balance),
           bytecode,
@@ -131,8 +134,8 @@ trait Tables {
     /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
 
-    /** Database column block_number SqlType(int4) */
-    val blockNumber: Rep[Int] = column[Int]("block_number")
+    /** Database column block_level SqlType(int4) */
+    val blockLevel: Rep[Int] = column[Int]("block_level")
 
     /** Database column timestamp SqlType(timestamp), Default(None) */
     val timestamp: Rep[Option[java.sql.Timestamp]] = column[Option[java.sql.Timestamp]]("timestamp", O.Default(None))
@@ -155,11 +158,15 @@ trait Tables {
     /** Database column symbol SqlType(text), Default(None) */
     val symbol: Rep[Option[String]] = column[Option[String]]("symbol", O.Default(None))
 
-    /** Database column decimals SqlType(text), Default(None) */
-    val decimals: Rep[Option[String]] = column[Option[String]]("decimals", O.Default(None))
+    /** Database column decimals SqlType(int4), Default(None) */
+    val decimals: Rep[Option[Int]] = column[Option[Int]]("decimals", O.Default(None))
 
-    /** Database column total_supply SqlType(text), Default(None) */
-    val totalSupply: Rep[Option[String]] = column[Option[String]]("total_supply", O.Default(None))
+    /** Database column total_supply SqlType(numeric), Default(None) */
+    val totalSupply: Rep[Option[scala.math.BigDecimal]] =
+      column[Option[scala.math.BigDecimal]]("total_supply", O.Default(None))
+
+    /** Index over (tokenStandard) (database name ix_accounts_token_standard) */
+    val index1 = index("ix_accounts_token_standard", tokenStandard)
   }
 
   /** Collection-like TableQuery object for table Accounts */
@@ -168,13 +175,13 @@ trait Tables {
   /** Entity class storing rows of table AccountsHistory
     *  @param address Database column address SqlType(text)
     *  @param blockHash Database column block_hash SqlType(text)
-    *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param blockLevel Database column block_level SqlType(int4)
     *  @param balance Database column balance SqlType(numeric)
     *  @param asof Database column asof SqlType(timestamp) */
   case class AccountsHistoryRow(
       address: String,
       blockHash: String,
-      blockNumber: Int,
+      blockLevel: Int,
       balance: scala.math.BigDecimal,
       asof: java.sql.Timestamp
   )
@@ -193,11 +200,11 @@ trait Tables {
   /** Table description of table accounts_history. Objects of this class serve as prototypes for rows in queries. */
   class AccountsHistory(_tableTag: Tag)
       extends profile.api.Table[AccountsHistoryRow](_tableTag, Some("ethereum"), "accounts_history") {
-    def * = (address, blockHash, blockNumber, balance, asof) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
+    def * = (address, blockHash, blockLevel, balance, asof) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(address), Rep.Some(blockHash), Rep.Some(blockNumber), Rep.Some(balance), Rep.Some(asof))).shaped.<>(
+      ((Rep.Some(address), Rep.Some(blockHash), Rep.Some(blockLevel), Rep.Some(balance), Rep.Some(asof))).shaped.<>(
         { r =>
           import r._; _1.map(_ => AccountsHistoryRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))
         },
@@ -210,8 +217,8 @@ trait Tables {
     /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
 
-    /** Database column block_number SqlType(int4) */
-    val blockNumber: Rep[Int] = column[Int]("block_number")
+    /** Database column block_level SqlType(int4) */
+    val blockLevel: Rep[Int] = column[Int]("block_level")
 
     /** Database column balance SqlType(numeric) */
     val balance: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("balance")
@@ -220,10 +227,13 @@ trait Tables {
     val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
 
     /** Primary key of AccountsHistory (database name accounts_history_pkey) */
-    val pk = primaryKey("accounts_history_pkey", (address, blockNumber))
+    val pk = primaryKey("accounts_history_pkey", (address, blockLevel))
 
     /** Index over (address) (database name ix_accounts_history_address) */
     val index1 = index("ix_accounts_history_address", address)
+
+    /** Index over (blockLevel) (database name ix_accounts_history_block_level) */
+    val index2 = index("ix_accounts_history_block_level", blockLevel)
   }
 
   /** Collection-like TableQuery object for table AccountsHistory */
@@ -443,6 +453,12 @@ trait Tables {
 
     /** Database column timestamp SqlType(timestamp) */
     val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
+
+    /** Index over (level) (database name ix_blocks_level) */
+    val index1 = index("ix_blocks_level", level)
+
+    /** Index over (timestamp) (database name ix_blocks_timestamp) */
+    val index2 = index("ix_blocks_timestamp", timestamp)
   }
 
   /** Collection-like TableQuery object for table Blocks */
@@ -451,7 +467,7 @@ trait Tables {
   /** Entity class storing rows of table Logs
     *  @param address Database column address SqlType(text)
     *  @param blockHash Database column block_hash SqlType(text)
-    *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param blockLevel Database column block_level SqlType(int4)
     *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
     *  @param data Database column data SqlType(text)
     *  @param logIndex Database column log_index SqlType(int4)
@@ -462,7 +478,7 @@ trait Tables {
   case class LogsRow(
       address: String,
       blockHash: String,
-      blockNumber: Int,
+      blockLevel: Int,
       timestamp: Option[java.sql.Timestamp] = None,
       data: String,
       logIndex: Int,
@@ -499,7 +515,7 @@ trait Tables {
   /** Table description of table logs. Objects of this class serve as prototypes for rows in queries. */
   class Logs(_tableTag: Tag) extends profile.api.Table[LogsRow](_tableTag, Some("ethereum"), "logs") {
     def * =
-      (address, blockHash, blockNumber, timestamp, data, logIndex, removed, topics, transactionHash, transactionIndex) <> (LogsRow.tupled, LogsRow.unapply)
+      (address, blockHash, blockLevel, timestamp, data, logIndex, removed, topics, transactionHash, transactionIndex) <> (LogsRow.tupled, LogsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -507,7 +523,7 @@ trait Tables {
         (
           Rep.Some(address),
           Rep.Some(blockHash),
-          Rep.Some(blockNumber),
+          Rep.Some(blockLevel),
           timestamp,
           Rep.Some(data),
           Rep.Some(logIndex),
@@ -530,8 +546,8 @@ trait Tables {
     /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
 
-    /** Database column block_number SqlType(int4) */
-    val blockNumber: Rep[Int] = column[Int]("block_number")
+    /** Database column block_level SqlType(int4) */
+    val blockLevel: Rep[Int] = column[Int]("block_level")
 
     /** Database column timestamp SqlType(timestamp), Default(None) */
     val timestamp: Rep[Option[java.sql.Timestamp]] = column[Option[java.sql.Timestamp]]("timestamp", O.Default(None))
@@ -560,6 +576,15 @@ trait Tables {
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
+
+    /** Index over (address) (database name ix_logs_address) */
+    val index1 = index("ix_logs_address", address)
+
+    /** Index over (blockLevel) (database name ix_logs_block_level) */
+    val index2 = index("ix_logs_block_level", blockLevel)
+
+    /** Index over (transactionHash) (database name ix_logs_hash) */
+    val index3 = index("ix_logs_hash", transactionHash)
   }
 
   /** Collection-like TableQuery object for table Logs */
@@ -569,7 +594,7 @@ trait Tables {
     *  @param transactionHash Database column transaction_hash SqlType(text)
     *  @param transactionIndex Database column transaction_index SqlType(int4)
     *  @param blockHash Database column block_hash SqlType(text)
-    *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param blockLevel Database column block_level SqlType(int4)
     *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
     *  @param contractAddress Database column contract_address SqlType(text), Default(None)
     *  @param cumulativeGasUsed Database column cumulative_gas_used SqlType(numeric)
@@ -581,7 +606,7 @@ trait Tables {
       transactionHash: String,
       transactionIndex: Int,
       blockHash: String,
-      blockNumber: Int,
+      blockLevel: Int,
       timestamp: Option[java.sql.Timestamp] = None,
       contractAddress: Option[String] = None,
       cumulativeGasUsed: scala.math.BigDecimal,
@@ -624,7 +649,7 @@ trait Tables {
         transactionHash,
         transactionIndex,
         blockHash,
-        blockNumber,
+        blockLevel,
         timestamp,
         contractAddress,
         cumulativeGasUsed,
@@ -641,7 +666,7 @@ trait Tables {
           Rep.Some(transactionHash),
           Rep.Some(transactionIndex),
           Rep.Some(blockHash),
-          Rep.Some(blockNumber),
+          Rep.Some(blockLevel),
           timestamp,
           contractAddress,
           Rep.Some(cumulativeGasUsed),
@@ -667,8 +692,8 @@ trait Tables {
     /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
 
-    /** Database column block_number SqlType(int4) */
-    val blockNumber: Rep[Int] = column[Int]("block_number")
+    /** Database column block_level SqlType(int4) */
+    val blockLevel: Rep[Int] = column[Int]("block_level")
 
     /** Database column timestamp SqlType(timestamp), Default(None) */
     val timestamp: Rep[Option[java.sql.Timestamp]] = column[Option[java.sql.Timestamp]]("timestamp", O.Default(None))
@@ -690,6 +715,12 @@ trait Tables {
 
     /** Database column root SqlType(text), Default(None) */
     val root: Rep[Option[String]] = column[Option[String]]("root", O.Default(None))
+
+    /** Index over (blockLevel) (database name ix_receipts_block_level) */
+    val index1 = index("ix_receipts_block_level", blockLevel)
+
+    /** Index over (transactionHash) (database name ix_receipts_hash) */
+    val index2 = index("ix_receipts_hash", transactionHash)
   }
 
   /** Collection-like TableQuery object for table Receipts */
@@ -698,7 +729,7 @@ trait Tables {
   /** Entity class storing rows of table TokensHistory
     *  @param accountAddress Database column account_address SqlType(text)
     *  @param blockHash Database column block_hash SqlType(text)
-    *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param blockLevel Database column block_level SqlType(int4)
     *  @param transactionHash Database column transaction_hash SqlType(text)
     *  @param tokenAddress Database column token_address SqlType(text)
     *  @param value Database column value SqlType(numeric)
@@ -706,7 +737,7 @@ trait Tables {
   case class TokensHistoryRow(
       accountAddress: String,
       blockHash: String,
-      blockNumber: Int,
+      blockLevel: Int,
       transactionHash: String,
       tokenAddress: String,
       value: scala.math.BigDecimal,
@@ -730,7 +761,7 @@ trait Tables {
   class TokensHistory(_tableTag: Tag)
       extends profile.api.Table[TokensHistoryRow](_tableTag, Some("ethereum"), "tokens_history") {
     def * =
-      (accountAddress, blockHash, blockNumber, transactionHash, tokenAddress, value, asof) <> (TokensHistoryRow.tupled, TokensHistoryRow.unapply)
+      (accountAddress, blockHash, blockLevel, transactionHash, tokenAddress, value, asof) <> (TokensHistoryRow.tupled, TokensHistoryRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -738,7 +769,7 @@ trait Tables {
         (
           Rep.Some(accountAddress),
           Rep.Some(blockHash),
-          Rep.Some(blockNumber),
+          Rep.Some(blockLevel),
           Rep.Some(transactionHash),
           Rep.Some(tokenAddress),
           Rep.Some(value),
@@ -757,8 +788,8 @@ trait Tables {
     /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
 
-    /** Database column block_number SqlType(int4) */
-    val blockNumber: Rep[Int] = column[Int]("block_number")
+    /** Database column block_level SqlType(int4) */
+    val blockLevel: Rep[Int] = column[Int]("block_level")
 
     /** Database column transaction_hash SqlType(text) */
     val transactionHash: Rep[String] = column[String]("transaction_hash")
@@ -772,11 +803,14 @@ trait Tables {
     /** Database column asof SqlType(timestamp) */
     val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
 
-    /** Index over (accountAddress) (database name ix_account_address) */
-    val index1 = index("ix_account_address", accountAddress)
+    /** Index over (accountAddress) (database name ix_tokens_history_account_address) */
+    val index1 = index("ix_tokens_history_account_address", accountAddress)
 
-    /** Index over (tokenAddress) (database name ix_token_address) */
-    val index2 = index("ix_token_address", tokenAddress)
+    /** Index over (blockLevel) (database name ix_tokens_history_block_level) */
+    val index2 = index("ix_tokens_history_block_level", blockLevel)
+
+    /** Index over (tokenAddress) (database name ix_tokens_history_token_address) */
+    val index3 = index("ix_tokens_history_token_address", tokenAddress)
   }
 
   /** Collection-like TableQuery object for table TokensHistory */
@@ -785,7 +819,7 @@ trait Tables {
   /** Entity class storing rows of table TokenTransfers
     *  @param tokenAddress Database column token_address SqlType(text)
     *  @param blockHash Database column block_hash SqlType(text)
-    *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param blockLevel Database column block_level SqlType(int4)
     *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
     *  @param transactionHash Database column transaction_hash SqlType(text)
     *  @param logIndex Database column log_index SqlType(int4)
@@ -795,7 +829,7 @@ trait Tables {
   case class TokenTransfersRow(
       tokenAddress: String,
       blockHash: String,
-      blockNumber: Int,
+      blockLevel: Int,
       timestamp: Option[java.sql.Timestamp] = None,
       transactionHash: String,
       logIndex: Int,
@@ -831,7 +865,7 @@ trait Tables {
   class TokenTransfers(_tableTag: Tag)
       extends profile.api.Table[TokenTransfersRow](_tableTag, Some("ethereum"), "token_transfers") {
     def * =
-      (tokenAddress, blockHash, blockNumber, timestamp, transactionHash, logIndex, fromAddress, toAddress, value) <> (TokenTransfersRow.tupled, TokenTransfersRow.unapply)
+      (tokenAddress, blockHash, blockLevel, timestamp, transactionHash, logIndex, fromAddress, toAddress, value) <> (TokenTransfersRow.tupled, TokenTransfersRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -839,7 +873,7 @@ trait Tables {
         (
           Rep.Some(tokenAddress),
           Rep.Some(blockHash),
-          Rep.Some(blockNumber),
+          Rep.Some(blockLevel),
           timestamp,
           Rep.Some(transactionHash),
           Rep.Some(logIndex),
@@ -861,8 +895,8 @@ trait Tables {
     /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
 
-    /** Database column block_number SqlType(int4) */
-    val blockNumber: Rep[Int] = column[Int]("block_number")
+    /** Database column block_level SqlType(int4) */
+    val blockLevel: Rep[Int] = column[Int]("block_level")
 
     /** Database column timestamp SqlType(timestamp), Default(None) */
     val timestamp: Rep[Option[java.sql.Timestamp]] = column[Option[java.sql.Timestamp]]("timestamp", O.Default(None))
@@ -881,6 +915,18 @@ trait Tables {
 
     /** Database column value SqlType(numeric) */
     val value: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("value")
+
+    /** Index over (tokenAddress) (database name ix_token_transfers_address) */
+    val index1 = index("ix_token_transfers_address", tokenAddress)
+
+    /** Index over (blockLevel) (database name ix_token_transfers_block_level) */
+    val index2 = index("ix_token_transfers_block_level", blockLevel)
+
+    /** Index over (fromAddress) (database name ix_token_transfers_from) */
+    val index3 = index("ix_token_transfers_from", fromAddress)
+
+    /** Index over (toAddress) (database name ix_token_transfers_to) */
+    val index4 = index("ix_token_transfers_to", toAddress)
   }
 
   /** Collection-like TableQuery object for table TokenTransfers */
@@ -889,7 +935,7 @@ trait Tables {
   /** Entity class storing rows of table Transactions
     *  @param hash Database column hash SqlType(text), PrimaryKey
     *  @param blockHash Database column block_hash SqlType(text)
-    *  @param blockNumber Database column block_number SqlType(int4)
+    *  @param blockLevel Database column block_level SqlType(int4)
     *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
     *  @param source Database column source SqlType(text)
     *  @param gas Database column gas SqlType(numeric)
@@ -905,7 +951,7 @@ trait Tables {
   case class TransactionsRow(
       hash: String,
       blockHash: String,
-      blockNumber: Int,
+      blockLevel: Int,
       timestamp: Option[java.sql.Timestamp] = None,
       source: String,
       gas: scala.math.BigDecimal,
@@ -957,7 +1003,7 @@ trait Tables {
       (
         hash,
         blockHash,
-        blockNumber,
+        blockLevel,
         timestamp,
         source,
         gas,
@@ -978,7 +1024,7 @@ trait Tables {
         (
           Rep.Some(hash),
           Rep.Some(blockHash),
-          Rep.Some(blockNumber),
+          Rep.Some(blockLevel),
           timestamp,
           Rep.Some(source),
           Rep.Some(gas),
@@ -1027,8 +1073,8 @@ trait Tables {
     /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
 
-    /** Database column block_number SqlType(int4) */
-    val blockNumber: Rep[Int] = column[Int]("block_number")
+    /** Database column block_level SqlType(int4) */
+    val blockLevel: Rep[Int] = column[Int]("block_level")
 
     /** Database column timestamp SqlType(timestamp), Default(None) */
     val timestamp: Rep[Option[java.sql.Timestamp]] = column[Option[java.sql.Timestamp]]("timestamp", O.Default(None))
@@ -1072,6 +1118,15 @@ trait Tables {
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
+
+    /** Index over (blockLevel) (database name ix_transactions_block_level) */
+    val index1 = index("ix_transactions_block_level", blockLevel)
+
+    /** Index over (destination) (database name ix_transactions_destination) */
+    val index2 = index("ix_transactions_destination", destination)
+
+    /** Index over (source) (database name ix_transactions_source) */
+    val index3 = index("ix_transactions_source", source)
   }
 
   /** Collection-like TableQuery object for table Transactions */

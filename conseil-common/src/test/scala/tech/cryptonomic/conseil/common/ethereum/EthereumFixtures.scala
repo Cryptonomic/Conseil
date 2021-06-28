@@ -124,6 +124,14 @@ trait EthereumFixtures {
       |  "id": "requestId"
       |}]""".stripMargin
 
+    // Json result for the failed: eth_call
+    val failedCallResponse =
+      """[{
+      |  "jsonrpc":"2.0",
+      |  "id":"requestId",
+      |  "error":{"code":-32000,"message":"exception message"}
+      |}]""".stripMargin
+
     // Json result for the: eth_getBalance
     val getBalanceResponse =
       """[{
@@ -244,14 +252,27 @@ trait EthereumFixtures {
       blockNumber = "0x18e70",
       timestamp = "0x55d21481",
       balance = BigDecimal("1.0"),
-      bytecode = Some(Bytecode("0x0")),
-      tokenStandard = None,
+      bytecode = Some(Bytecode(BytecodeFixtures.erc20)),
+      tokenStandard = Some(TokenStandards.ERC20),
       name = None,
       symbol = None,
       decimals = None,
       totalSupply = None
     )
 
+    val contractAccountResultErc20 = Account(
+      address = "0x123",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = "0x18e70",
+      timestamp = "0x55d21481",
+      balance = BigDecimal("1.0"),
+      bytecode = Some(Bytecode(BytecodeFixtures.erc20)),
+      tokenStandard = Some(TokenStandards.ERC20),
+      name = Some(""),
+      symbol = Some(""),
+      decimals = Some(0),
+      totalSupply = Some(BigDecimal(0))
+    )
     val contractTokenAccountResult = Account(
       address = "0x123",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
@@ -273,6 +294,15 @@ trait EthereumFixtures {
       isErc20 = false,
       isErc721 = false,
       bytecode = Bytecode("0x0")
+    )
+
+    val contractResultErc20 = Contract(
+      address = "0x123",
+      blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
+      blockNumber = "0x18e70",
+      isErc20 = true,
+      isErc721 = false,
+      bytecode = Bytecode(BytecodeFixtures.erc20)
     )
 
     val tokenResult = Token(
@@ -348,7 +378,7 @@ trait EthereumFixtures {
     val transactionRow = Tables.TransactionsRow(
       hash = "0x3cfcdc56f1ecf4aef8b95dddc9f5b727593b56238bfad7b1932efdfdf9e49fcd",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      blockNumber = 102000,
+      blockLevel = 102000,
       timestamp = Some(Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))),
       source = "0xd9666150a9da92d9108198a4072970805a8b3428",
       gas = Utils.hexStringToBigDecimal("0x5208"),
@@ -366,7 +396,7 @@ trait EthereumFixtures {
     val logRow = Tables.LogsRow(
       address = "0xdac17f958d2ee523a2206206994597c13d831ec7",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      blockNumber = 102000,
+      blockLevel = 102000,
       timestamp = None,
       data = "0x000000000000000000000000000000000000000000000000000000003b9aca00",
       logIndex = 0,
@@ -381,7 +411,7 @@ trait EthereumFixtures {
       transactionHash = "0x3cfcdc56f1ecf4aef8b95dddc9f5b727593b56238bfad7b1932efdfdf9e49fcd",
       transactionIndex = 0,
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      blockNumber = 102000,
+      blockLevel = 102000,
       timestamp = Some(Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))),
       contractAddress = Some("0x123"),
       cumulativeGasUsed = Utils.hexStringToBigDecimal("0x5208"),
@@ -395,7 +425,7 @@ trait EthereumFixtures {
     val accountFromRow = Tables.AccountsRow(
       address = "0xd9666150a9da92d9108198a4072970805a8b3428",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      blockNumber = 102000,
+      blockLevel = 102000,
       timestamp = Some(Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))),
       balance = BigDecimal("1.0"),
       bytecode = None,
@@ -409,7 +439,7 @@ trait EthereumFixtures {
     val accountToRow = Tables.AccountsRow(
       address = "0x32be343b94f860124dc4fee278fdcbd38c102d88",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      blockNumber = 102000,
+      blockLevel = 102000,
       timestamp = Some(Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))),
       balance = BigDecimal("1.0"),
       bytecode = None,
@@ -423,7 +453,7 @@ trait EthereumFixtures {
     val accountHistoryFromRow = Tables.AccountsHistoryRow(
       address = "0xd9666150a9da92d9108198a4072970805a8b3428",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      blockNumber = 102000,
+      blockLevel = 102000,
       balance = BigDecimal("1.0"),
       asof = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))
     )
@@ -431,7 +461,7 @@ trait EthereumFixtures {
     val accountHistoryToRow = Tables.AccountsHistoryRow(
       address = "0x32be343b94f860124dc4fee278fdcbd38c102d88",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      blockNumber = 102000,
+      blockLevel = 102000,
       balance = BigDecimal("1.0"),
       asof = Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))
     )
@@ -439,7 +469,7 @@ trait EthereumFixtures {
     val contractTokenAccountHistoryRow = Tables.AccountsHistoryRow(
       address = "0x123",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      blockNumber = 102000,
+      blockLevel = 102000,
       balance = BigDecimal("1.0"),
       asof = Timestamp.from(Instant.parse("1970-01-01T00:02:03.00Z"))
     )
@@ -447,7 +477,7 @@ trait EthereumFixtures {
     val tokenTransferRow = Tables.TokenTransfersRow(
       tokenAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      blockNumber = 102000,
+      blockLevel = 102000,
       timestamp = Some(Timestamp.from(Instant.parse("2015-08-17T17:06:09.00Z"))),
       transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
       logIndex = 0,
@@ -459,7 +489,7 @@ trait EthereumFixtures {
     val tokenBalanceFromRow = Tables.TokensHistoryRow(
       tokenAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",
-      blockNumber = 102000,
+      blockLevel = 102000,
       transactionHash = "0x808dc2cefe4e26c7bac2262930497cfcc20c37729cb3eaa8517fbf76b08a52c7",
       accountAddress = "0x000000000000000000000000fdb16996831753d5331ff813c29a93c76834a0ad",
       value = BigDecimal("0.0"),

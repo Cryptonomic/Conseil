@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.api
 
 import java.util.UUID
-
 import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.server.Directives._

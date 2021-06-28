@@ -41,7 +41,7 @@ class BitcoinOperationsTest extends ConseilSpec with MockFactory {
         (bitcoinClientMock.getBlockChainInfo _) expects () returning (Stream(BlockchainInfo("mainnet", 10)).covary[IO])
 
         // run
-        bitcoinOperationsStub.loadBlocks(Newest).compile.drain.unsafeRunSync()
+        bitcoinOperationsStub.loadBlocks(Newest, None).compile.drain.unsafeRunSync()
       }
 
       "run indexer for the all blocks" in new BitcoinOperationsStubs {
@@ -60,7 +60,7 @@ class BitcoinOperationsTest extends ConseilSpec with MockFactory {
         (bitcoinClientMock.getBlockChainInfo _) expects () returning (Stream(BlockchainInfo("mainnet", 10)).covary[IO])
 
         // run
-        bitcoinOperationsStub.loadBlocks(Everything).compile.drain.unsafeRunSync()
+        bitcoinOperationsStub.loadBlocks(Everything, None).compile.drain.unsafeRunSync()
       }
 
       "run indexer for the custom blocks range" in new BitcoinOperationsStubs {
@@ -74,13 +74,13 @@ class BitcoinOperationsTest extends ConseilSpec with MockFactory {
 
         // check if the method gets the latest block at the beginning
         (bitcoinPersistenceMock.getLatestIndexedBlock _) expects ()
-        (txMock.transact[Option[Tables.BlocksRow]] _) expects (*) returning (IO(Some(blockRow.copy(height = 3))))
+        (txMock.transact[Option[Tables.BlocksRow]] _) expects (*) returning (IO(Some(blockRow.copy(level = 3))))
 
         // mock Bitcoin client calls
         (bitcoinClientMock.getBlockChainInfo _) expects () returning (Stream(BlockchainInfo("mainnet", 10)).covary[IO])
 
         // run
-        bitcoinOperationsStub.loadBlocks(Custom(3)).compile.drain.unsafeRunSync()
+        bitcoinOperationsStub.loadBlocks(Custom(3), None).compile.drain.unsafeRunSync()
       }
     }
 
@@ -120,7 +120,7 @@ class BitcoinOperationsTest extends ConseilSpec with MockFactory {
       size = 1,
       strippedSize = 1,
       weight = 1,
-      height = 5,
+      level = 5,
       version = 1,
       versionHex = "00000001",
       merkleRoot = "merkleRoot",

@@ -30,19 +30,20 @@ case class BitcoinDataRoutes(
   private val platformPath = PlatformPath("bitcoin")
 
   /** V2 Route implementation for query endpoint */
-  override val postRoute: Route = queryEndpoint.implementedByAsync {
-    case (platform, network, entity, apiQuery, _) =>
-      val path = EntityPath(entity, NetworkPath(network, PlatformPath(platform)))
+  override val postRoute: Route = bitcoinQueryEndpoint.implementedByAsync {
+    case (network, entity, apiQuery, _) =>
+      val path = EntityPath(entity, NetworkPath(network, platformPath))
 
       pathValidation(path) {
         apiQuery
           .validate(path, metadataService, metadataConfiguration)
           .flatMap { validationResult =>
             validationResult.map { validQuery =>
-              operations.queryWithPredicates(platform, entity, validQuery.withLimitCap(maxQueryResultSize)).map {
-                queryResponses =>
+              operations
+                .queryWithPredicates(platformPath.platform, entity, validQuery.withLimitCap(maxQueryResultSize))
+                .map { queryResponses =>
                   QueryResponseWithOutput(queryResponses, validQuery.output)
-              }
+                }
             }.left.map(Future.successful).bisequence
           }
           .map(Some(_))

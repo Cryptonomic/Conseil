@@ -16,6 +16,18 @@ class UtilsTest extends ConseilSpec {
         Utils.hexStringToBigDecimal("0x1") shouldBe 0x1
       }
 
+      "convert empty hex to big decimal" in {
+        Utils.hexStringToBigDecimal("0x") shouldBe 0
+      }
+
+      "convert hex to Option[Int]" in {
+        Utils.hexToInt("0x1") shouldBe Some(1)
+      }
+
+      "convert empty hex to None" in {
+        Utils.hexToInt("0x") shouldBe None
+      }
+
       "truncate empty hex string" in {
         Utils.truncateEmptyHexString("0x") shouldBe ""
       }
@@ -24,5 +36,10 @@ class UtilsTest extends ConseilSpec {
         Utils.truncateEmptyHexString("0x1") shouldBe "0x1"
       }
 
+      "convert hex to string containing Unicode characters" in {
+        Utils.hexToString(
+          "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000004f09fa68400000000000000000000000000000000000000000000000000000000"
+        ) shouldBe "\uD83E\uDD84"
+      }
     }
 }

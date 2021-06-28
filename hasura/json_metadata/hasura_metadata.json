@@ -3,8 +3,227 @@
   "tables": [
     {
       "table": {
+        "schema": "bitcoin",
+        "name": "accounts"
+      }
+    },
+    {
+      "table": {
+        "schema": "bitcoin",
+        "name": "blocks"
+      },
+      "array_relationships": [
+        {
+          "name": "transactions",
+          "using": {
+            "foreign_key_constraint_on": {
+              "column": "blockhash",
+              "table": {
+                "schema": "bitcoin",
+                "name": "transactions"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "table": {
+        "schema": "bitcoin",
+        "name": "inputs"
+      },
+      "object_relationships": [
+        {
+          "name": "transaction",
+          "using": {
+            "foreign_key_constraint_on": "txid"
+          }
+        }
+      ]
+    },
+    {
+      "table": {
+        "schema": "bitcoin",
+        "name": "outputs"
+      },
+      "object_relationships": [
+        {
+          "name": "transaction",
+          "using": {
+            "foreign_key_constraint_on": "txid"
+          }
+        }
+      ]
+    },
+    {
+      "table": {
+        "schema": "bitcoin",
+        "name": "transactions"
+      },
+      "object_relationships": [
+        {
+          "name": "block",
+          "using": {
+            "foreign_key_constraint_on": "blockhash"
+          }
+        }
+      ],
+      "array_relationships": [
+        {
+          "name": "inputs",
+          "using": {
+            "foreign_key_constraint_on": {
+              "column": "txid",
+              "table": {
+                "schema": "bitcoin",
+                "name": "inputs"
+              }
+            }
+          }
+        },
+        {
+          "name": "outputs",
+          "using": {
+            "foreign_key_constraint_on": {
+              "column": "txid",
+              "table": {
+                "schema": "bitcoin",
+                "name": "outputs"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "table": {
+        "schema": "ethereum",
+        "name": "accounts"
+      }
+    },
+    {
+      "table": {
+        "schema": "ethereum",
+        "name": "accounts_history"
+      }
+    },
+    {
+      "table": {
+        "schema": "ethereum",
+        "name": "blocks"
+      },
+      "array_relationships": [
+        {
+          "name": "logs",
+          "using": {
+            "foreign_key_constraint_on": {
+              "column": "block_hash",
+              "table": {
+                "schema": "ethereum",
+                "name": "logs"
+              }
+            }
+          }
+        },
+        {
+          "name": "transactions",
+          "using": {
+            "foreign_key_constraint_on": {
+              "column": "block_hash",
+              "table": {
+                "schema": "ethereum",
+                "name": "transactions"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "table": {
+        "schema": "ethereum",
+        "name": "contracts"
+      }
+    },
+    {
+      "table": {
+        "schema": "ethereum",
+        "name": "logs"
+      },
+      "object_relationships": [
+        {
+          "name": "block",
+          "using": {
+            "foreign_key_constraint_on": "block_hash"
+          }
+        }
+      ]
+    },
+    {
+      "table": {
+        "schema": "ethereum",
+        "name": "receipts"
+      }
+    },
+    {
+      "table": {
+        "schema": "ethereum",
+        "name": "token_transfers"
+      }
+    },
+    {
+      "table": {
+        "schema": "ethereum",
+        "name": "tokens"
+      }
+    },
+    {
+      "table": {
+        "schema": "ethereum",
+        "name": "tokens_history"
+      }
+    },
+    {
+      "table": {
+        "schema": "ethereum",
+        "name": "transactions"
+      },
+      "object_relationships": [
+        {
+          "name": "block",
+          "using": {
+            "foreign_key_constraint_on": "block_hash"
+          }
+        }
+      ]
+    },
+    {
+      "table": {
         "schema": "tezos",
         "name": "accounts"
+      },
+      "object_relationships": [
+        {
+          "name": "block",
+          "using": {
+            "manual_configuration": {
+              "remote_table": {
+                "schema": "tezos",
+                "name": "blocks"
+              },
+              "column_mapping": {
+                "fork_id": "fork_id",
+                "block_id": "hash"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "table": {
+        "schema": "tezos",
+        "name": "accounts_checkpoint"
       }
     },
     {
@@ -23,6 +242,29 @@
       "table": {
         "schema": "tezos",
         "name": "bakers"
+      },
+      "object_relationships": [
+        {
+          "name": "block",
+          "using": {
+            "manual_configuration": {
+              "remote_table": {
+                "schema": "tezos",
+                "name": "blocks"
+              },
+              "column_mapping": {
+                "fork_id": "fork_id",
+                "block_id": "hash"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "table": {
+        "schema": "tezos",
+        "name": "bakers_checkpoint"
       }
     },
     {
@@ -35,7 +277,24 @@
       "table": {
         "schema": "tezos",
         "name": "baking_rights"
-      }
+      },
+      "object_relationships": [
+        {
+          "name": "block",
+          "using": {
+            "manual_configuration": {
+              "remote_table": {
+                "schema": "tezos",
+                "name": "blocks"
+              },
+              "column_mapping": {
+                "block_hash": "hash",
+                "fork_id": "fork_id"
+              }
+            }
+          }
+        }
+      ]
     },
     {
       "table": {
@@ -59,18 +318,133 @@
       "table": {
         "schema": "tezos",
         "name": "blocks"
-      }
+      },
+      "array_relationships": [
+        {
+          "name": "accounts",
+          "using": {
+            "manual_configuration": {
+              "remote_table": {
+                "schema": "tezos",
+                "name": "accounts"
+              },
+              "column_mapping": {
+                "fork_id": "fork_id",
+                "hash": "block_id"
+              }
+            }
+          }
+        },
+        {
+          "name": "bakers",
+          "using": {
+            "manual_configuration": {
+              "remote_table": {
+                "schema": "tezos",
+                "name": "bakers"
+              },
+              "column_mapping": {
+                "fork_id": "fork_id",
+                "hash": "block_id"
+              }
+            }
+          }
+        },
+        {
+          "name": "baking_rights",
+          "using": {
+            "manual_configuration": {
+              "remote_table": {
+                "schema": "tezos",
+                "name": "baking_rights"
+              },
+              "column_mapping": {
+                "fork_id": "fork_id",
+                "hash": "block_hash"
+              }
+            }
+          }
+        },
+        {
+          "name": "endorsing_rights",
+          "using": {
+            "manual_configuration": {
+              "remote_table": {
+                "schema": "tezos",
+                "name": "endorsing_rights"
+              },
+              "column_mapping": {
+                "fork_id": "fork_id",
+                "hash": "block_hash"
+              }
+            }
+          }
+        },
+        {
+          "name": "operation_groups",
+          "using": {
+            "manual_configuration": {
+              "remote_table": {
+                "schema": "tezos",
+                "name": "operation_groups"
+              },
+              "column_mapping": {
+                "fork_id": "fork_id",
+                "hash": "block_id"
+              }
+            }
+          }
+        },
+        {
+          "name": "operations",
+          "using": {
+            "manual_configuration": {
+              "remote_table": {
+                "schema": "tezos",
+                "name": "operations"
+              },
+              "column_mapping": {
+                "fork_id": "fork_id",
+                "hash": "block_hash"
+              }
+            }
+          }
+        }
+      ]
     },
     {
       "table": {
         "schema": "tezos",
         "name": "endorsing_rights"
-      }
+      },
+      "object_relationships": [
+        {
+          "name": "block",
+          "using": {
+            "manual_configuration": {
+              "remote_table": {
+                "schema": "tezos",
+                "name": "blocks"
+              },
+              "column_mapping": {
+                "block_hash": "hash",
+                "fork_id": "fork_id"
+              }
+            }
+          }
+        }
+      ]
     },
     {
       "table": {
         "schema": "tezos",
         "name": "fees"
+      }
+    },
+    {
+      "table": {
+        "schema": "tezos",
+        "name": "forks"
       }
     },
     {
@@ -89,18 +463,92 @@
       "table": {
         "schema": "tezos",
         "name": "operation_groups"
-      }
+      },
+      "object_relationships": [
+        {
+          "name": "block",
+          "using": {
+            "manual_configuration": {
+              "remote_table": {
+                "schema": "tezos",
+                "name": "blocks"
+              },
+              "column_mapping": {
+                "fork_id": "fork_id",
+                "block_id": "hash"
+              }
+            }
+          }
+        }
+      ],
+      "array_relationships": [
+        {
+          "name": "operations",
+          "using": {
+            "manual_configuration": {
+              "remote_table": {
+                "schema": "tezos",
+                "name": "operations"
+              },
+              "column_mapping": {
+                "fork_id": "fork_id",
+                "hash": "operation_group_hash",
+                "block_id": "block_hash"
+              }
+            }
+          }
+        }
+      ]
     },
     {
       "table": {
         "schema": "tezos",
         "name": "operations"
-      }
+      },
+      "object_relationships": [
+        {
+          "name": "block",
+          "using": {
+            "manual_configuration": {
+              "remote_table": {
+                "schema": "tezos",
+                "name": "blocks"
+              },
+              "column_mapping": {
+                "block_hash": "hash",
+                "fork_id": "fork_id"
+              }
+            }
+          }
+        },
+        {
+          "name": "operation_group",
+          "using": {
+            "manual_configuration": {
+              "remote_table": {
+                "schema": "tezos",
+                "name": "operation_groups"
+              },
+              "column_mapping": {
+                "block_hash": "block_id",
+                "fork_id": "fork_id",
+                "operation_group_hash": "hash"
+              }
+            }
+          }
+        }
+      ]
     },
     {
       "table": {
         "schema": "tezos",
         "name": "originated_account_maps"
+      }
+    },
+    {
+      "table": {
+        "schema": "tezos",
+        "name": "processed_chain_events"
       }
     },
     {

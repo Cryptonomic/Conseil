@@ -13,6 +13,6 @@ case class Account(
     tokenStandard: Option[TokenStandard] = None,
     name: Option[String] = None,
     symbol: Option[String] = None,
-    decimals: Option[String] = None,
-    totalSupply: Option[String] = None
+    decimals: Option[Int] = None,
+    totalSupply: Option[scala.math.BigDecimal] = None
 )
