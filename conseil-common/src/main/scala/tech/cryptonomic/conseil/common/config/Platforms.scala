@@ -1,9 +1,11 @@
 package tech.cryptonomic.conseil.common.config
 
 import com.typesafe.config.Config
+import slick.jdbc.JdbcBackend.Database
 
 import java.net.URL
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
+
 import scala.concurrent.duration.Duration
 
 /** defines configuration types for conseil available platforms */
@@ -74,6 +76,12 @@ object Platforms {
         .map { config =>
           Network(config.network, config.network.capitalize, config.platform.name, config.network)
         }
+
+    def getDatabase(platformName: String, network: String, enabled: Boolean = true): Config =
+      platforms
+        .filter(v => v.platform.name == platformName && v.network == network && v.enabled == enabled)
+        .map(_.db)
+        .head
   }
 
   /** configurations to describe a tezos node */
