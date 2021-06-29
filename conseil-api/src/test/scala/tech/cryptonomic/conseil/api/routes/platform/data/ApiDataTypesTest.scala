@@ -1,7 +1,8 @@
 package tech.cryptonomic.conseil.api.routes.platform.data
 
-import java.sql.Timestamp
+import com.typesafe.config.ConfigFactory
 
+import java.sql.Timestamp
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{BeforeAndAfterEach, OneInstancePerTest}
 import org.scalatest.LoneElement._
@@ -30,10 +31,29 @@ class ApiDataTypesTest extends ConseilSpec with MockFactory with BeforeAndAfterE
   def createMetadataService(stubbing: => Unit = ()): MetadataService = {
     stubbing
 
+    val dbCfg = ConfigFactory.parseString("""
+                                            |    db {
+                                            |      dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
+                                            |      properties {
+                                            |        user: "foo"
+                                            |        password: "bar"
+                                            |        url: "jdbc:postgresql://localhost:5432/postgres"
+                                            |      }
+                                            |      numThreads: 10
+                                            |      maxConnections: 10
+                                            |    }
+        """.stripMargin)
+
     new MetadataService(
       PlatformsConfiguration(
         List(
-          TezosConfiguration("alphanet", enabled = true, TezosNodeConfiguration("tezos-host", 123, "https://"), None)
+          TezosConfiguration(
+            "alphanet",
+            enabled = true,
+            TezosNodeConfiguration("tezos-host", 123, "https://"),
+            dbCfg,
+            None
+          )
         )
       ),
       TransparentUnitTransformation,

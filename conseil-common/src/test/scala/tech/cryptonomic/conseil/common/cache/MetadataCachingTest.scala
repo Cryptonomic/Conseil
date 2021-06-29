@@ -28,14 +28,15 @@ class MetadataCachingTest extends ConseilSpec with OneInstancePerTest {
 
       "init attributes cache" in {
         val emptyAttributesCache: AttributesCache =
-          Map(AttributesCacheKey("testPlatform", "testTable") -> CacheEntry(0L, List()))
+          Map(AttributesCacheKey("testPlatform", "testNetwork", "testTable") -> CacheEntry(0L, List()))
         sut.fillAttributesCache(emptyAttributesCache).unsafeRunSync()
 
-        sut.getAttributes(AttributesCacheKey("not valid", "testTable")).unsafeRunSync() shouldBe None
-        sut.getAttributes(AttributesCacheKey("testPlatform", "not valid")).unsafeRunSync() shouldBe None
-        sut.getAttributes(AttributesCacheKey("testPlatform", "")).unsafeRunSync() shouldBe None
-        sut.getAttributes(AttributesCacheKey("", "")).unsafeRunSync() shouldBe None
-        sut.getAttributes(AttributesCacheKey("testPlatform", "testTable")).unsafeRunSync() shouldBe Some(
+        sut.getAttributes(AttributesCacheKey("not valid", "testNetwork", "testTable")).unsafeRunSync() shouldBe None
+        sut.getAttributes(AttributesCacheKey("testPlatform", "not valid", "testTable")).unsafeRunSync() shouldBe None
+        sut.getAttributes(AttributesCacheKey("testPlatform", "testNetwork", "not valid")).unsafeRunSync() shouldBe None
+        sut.getAttributes(AttributesCacheKey("testPlatform", "testNetwork", "")).unsafeRunSync() shouldBe None
+        sut.getAttributes(AttributesCacheKey("", "", "")).unsafeRunSync() shouldBe None
+        sut.getAttributes(AttributesCacheKey("testPlatform", "testNetwork", "testTable")).unsafeRunSync() shouldBe Some(
           CacheEntry(0L, List())
         )
       }
@@ -53,18 +54,23 @@ class MetadataCachingTest extends ConseilSpec with OneInstancePerTest {
 
       "init attribute values cache" in {
         val attributeValuesCache: AttributeValuesCache =
-          Map(AttributeValuesCacheKey("platform", "table", "column") -> CacheEntry(0L, RadixTree[String, String]()))
+          Map(
+            AttributeValuesCacheKey("platform", "network", "table", "column") -> CacheEntry(
+                  0L,
+                  RadixTree[String, String]()
+                )
+          )
         sut.fillAttributeValuesCache(attributeValuesCache).unsafeRunSync()
 
         sut
           .getAttributeValues(
-            AttributeValuesCacheKey("not valid", "not valid", "not valid either")
+            AttributeValuesCacheKey("not valid", "not valid", "not valid", "not valid either")
           )
           .unsafeRunSync() shouldBe None
 
         val CacheEntry(_, result) = sut
           .getAttributeValues(
-            AttributeValuesCacheKey("platform", "table", "column")
+            AttributeValuesCacheKey("platform", "network", "table", "column")
           )
           .unsafeRunSync()
           .value
@@ -97,31 +103,41 @@ class MetadataCachingTest extends ConseilSpec with OneInstancePerTest {
 
       "insert/update values in attributes cache" in {
         val emptyAttributesCache: AttributesCache =
-          Map(AttributesCacheKey("testPlatform", "testEntity") -> CacheEntry(0L, List()))
+          Map(AttributesCacheKey("testPlatform", "testNetwork", "testEntity") -> CacheEntry(0L, List()))
         val attributesList = List(Attribute("a", "b", DataType.String, None, KeyType.NonKey, "c"))
         val updatedAttributesList = List(Attribute("x", "y", DataType.String, None, KeyType.NonKey, "z"))
         sut.fillAttributesCache(emptyAttributesCache).unsafeRunSync()
 
         // insert
-        sut.putAttributes(AttributesCacheKey("testPlatform", "differentTestEntity"), attributesList).unsafeRunSync()
+        sut
+          .putAttributes(AttributesCacheKey("testPlatform", "testNetwork", "differentTestEntity"), attributesList)
+          .unsafeRunSync()
         val CacheEntry(_, insertResult) =
-          sut.getAttributes(AttributesCacheKey("testPlatform", "differentTestEntity")).unsafeRunSync().value
+          sut
+            .getAttributes(AttributesCacheKey("testPlatform", "testNetwork", "differentTestEntity"))
+            .unsafeRunSync()
+            .value
         insertResult shouldBe attributesList
 
         // update
         sut
-          .putAttributes(AttributesCacheKey("testPlatform", "differentTestEntity"), updatedAttributesList)
+          .putAttributes(
+            AttributesCacheKey("testPlatform", "testNetwork", "differentTestEntity"),
+            updatedAttributesList
+          )
           .unsafeRunSync()
 
-        sut.getAttributes(AttributesCacheKey("testPlatform", "differentTestEntity")).unsafeRunSync() match {
+        sut
+          .getAttributes(AttributesCacheKey("testPlatform", "testNetwork", "differentTestEntity"))
+          .unsafeRunSync() match {
           case Some(CacheEntry(_, updateResult)) => updateResult shouldBe updatedAttributesList
           case None => fail("Expected some `CacheEntity`, but got None")
         }
 
         sut.getAllAttributes.unsafeRunSync().mapValues(_.value) shouldBe
           Map(
-            AttributesCacheKey("testPlatform", "testEntity") -> List(),
-            AttributesCacheKey("testPlatform", "differentTestEntity") -> List(
+            AttributesCacheKey("testPlatform", "testNetwork", "testEntity") -> List(),
+            AttributesCacheKey("testPlatform", "testNetwork", "differentTestEntity") -> List(
                   Attribute("x", "y", DataType.String, None, KeyType.NonKey, "z")
                 )
           )
@@ -129,27 +145,39 @@ class MetadataCachingTest extends ConseilSpec with OneInstancePerTest {
 
       "insert/update values in attribute values cache" in {
         val emptyAttributeValuesCache: AttributeValuesCache =
-          Map(AttributeValuesCacheKey("platform", "table", "column") -> CacheEntry(0L, RadixTree[String, String]()))
+          Map(
+            AttributeValuesCacheKey("platform", "network", "table", "column") -> CacheEntry(
+                  0L,
+                  RadixTree[String, String]()
+                )
+          )
         val attributeValuesTree = RadixTree[String, String]("a" -> "a")
         val updatedAttributeValuesTree = RadixTree[String, String]("b" -> "b")
         sut.fillAttributeValuesCache(emptyAttributeValuesCache).unsafeRunSync()
 
         // insert
         sut
-          .putAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2"), attributeValuesTree)
+          .putAttributeValues(AttributeValuesCacheKey("platform", "network", "table2", "column2"), attributeValuesTree)
           .unsafeRunSync()
 
-        sut.getAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2")).unsafeRunSync() match {
+        sut
+          .getAttributeValues(AttributeValuesCacheKey("platform", "network", "table2", "column2"))
+          .unsafeRunSync() match {
           case Some(CacheEntry(_, insertResult)) => insertResult.values.toList shouldBe List("a")
           case None => fail("Expected some `CacheEntity`, but got None")
         }
 
         // update
         sut
-          .putAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2"), updatedAttributeValuesTree)
+          .putAttributeValues(
+            AttributeValuesCacheKey("platform", "network", "table2", "column2"),
+            updatedAttributeValuesTree
+          )
           .unsafeRunSync()
 
-        sut.getAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2")).unsafeRunSync() match {
+        sut
+          .getAttributeValues(AttributeValuesCacheKey("platform", "network", "table2", "column2"))
+          .unsafeRunSync() match {
           case Some(CacheEntry(_, updateResult)) => updateResult.values.toList shouldBe List("b")
           case None => fail("Expected some `CacheEntity`, but got None")
         }
@@ -181,10 +209,10 @@ class MetadataCachingTest extends ConseilSpec with OneInstancePerTest {
       }
 
       "handle attributes for multiple platforms" in {
-        val attributesKey1 = AttributesCacheKey("platform", "table")
+        val attributesKey1 = AttributesCacheKey("platform", "network", "table")
         val attributes1 = List(Attribute("a", "b", DataType.String, None, KeyType.NonKey, "c"))
 
-        val attributesKey2 = AttributesCacheKey("platform-new", "table-new")
+        val attributesKey2 = AttributesCacheKey("platform-new", "network-new", "table-new")
         val attributes2 = List(Attribute("d", "e", DataType.String, None, KeyType.NonKey, "f"))
 
         val attributesCache: AttributesCache = Map(
@@ -199,10 +227,10 @@ class MetadataCachingTest extends ConseilSpec with OneInstancePerTest {
       }
 
       "handle attribute values for multiple platforms" in {
-        val attributesValueKey1 = AttributeValuesCacheKey("platform", "table", "column")
+        val attributesValueKey1 = AttributeValuesCacheKey("platform", "network", "table", "column")
         val attributesValue1 = RadixTree[String, String]("a" -> "a")
 
-        val attributesValueKey2 = AttributeValuesCacheKey("platform-new", "table-new", "column-new")
+        val attributesValueKey2 = AttributeValuesCacheKey("platform-new", "network-new", "table-new", "column-new")
         val attributesValue2 = RadixTree[String, String]("b" -> "b")
 
         val attributesValueCache: AttributeValuesCache = Map(

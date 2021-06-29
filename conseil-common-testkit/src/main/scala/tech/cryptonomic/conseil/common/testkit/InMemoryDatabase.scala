@@ -40,6 +40,8 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach with In
        |  }
     """.stripMargin
 
+  lazy val dbConfig = ConfigFactory.parseString(confString)
+
   lazy val dbHandler: Database = Database.forConfig("testdb", config = ConfigFactory.parseString(confString))
 
   override protected def beforeAll(): Unit = {

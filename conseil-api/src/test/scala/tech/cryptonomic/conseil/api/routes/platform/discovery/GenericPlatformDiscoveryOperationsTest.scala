@@ -2,9 +2,9 @@ package tech.cryptonomic.conseil.api.routes.platform.discovery
 
 import java.sql.Timestamp
 import java.time.LocalDateTime
-
 import cats.effect.{ContextShift, IO}
 import com.softwaremill.diffx.scalatest.DiffMatcher
+import com.typesafe.config.ConfigFactory
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.IntegrationPatience
 import slick.dbio
@@ -41,9 +41,27 @@ class GenericPlatformDiscoveryOperationsTest
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  val metadataOperations: DBIORunner = new DBIORunner {
+  val dbioRunner = new DBIORunner {
     override def runQuery[A](action: dbio.DBIO[A]): Future[A] = dbHandler.run(action)
   }
+  val metadataOperations: Map[(String, String), DBIORunner] = Map(
+    ("tezos", "alphanet") -> dbioRunner,
+    ("bitcoin", "mainnet") -> dbioRunner
+  )
+
+  val dbCfg = ConfigFactory.parseString("""
+    |    db {
+    |      dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
+    |      properties {
+    |        user: "foo"
+    |        password: "bar"
+    |        url: "jdbc:postgresql://localhost:5432/postgres"
+    |      }
+    |      numThreads: 10
+    |      maxConnections: 10
+    |    }
+        """.stripMargin)
+
   implicit val contextShift: ContextShift[IO] = IO.contextShift(implicitly[ExecutionContext])
 
   val metadataCaching: MetadataCaching[IO] = MetadataCaching.empty[IO].unsafeRunSync()
@@ -71,6 +89,7 @@ class GenericPlatformDiscoveryOperationsTest
               "alphanet",
               enabled = true,
               TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
+              dbCfg,
               None
             )
           )
@@ -86,6 +105,7 @@ class GenericPlatformDiscoveryOperationsTest
               "alphanet",
               enabled = true,
               TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
+              dbCfg,
               None
             ),
             TezosConfiguration(
@@ -97,6 +117,7 @@ class GenericPlatformDiscoveryOperationsTest
                 port = 8732,
                 pathPrefix = "tezos/alphanet/"
               ),
+              dbCfg,
               None
             )
           )
@@ -111,6 +132,7 @@ class GenericPlatformDiscoveryOperationsTest
               "alphanet",
               enabled = true,
               TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
+              dbCfg,
               None
             ),
             BitcoinConfiguration(
@@ -123,6 +145,7 @@ class GenericPlatformDiscoveryOperationsTest
                 username = "username",
                 password = "password"
               ),
+              dbCfg,
               BitcoinBatchFetchConfiguration(
                 indexerThreadsCount = 1,
                 httpFetchThreadsCount = 1,
@@ -581,7 +604,7 @@ class GenericPlatformDiscoveryOperationsTest
             None,
             forkId = Fork.mainForkId
           )
-        metadataOperations.runQuery(TezosT.Fees ++= List(fee)).isReadyWithin(5 seconds)
+        metadataOperations(("tezos", "alphanet")).runQuery(TezosT.Fees ++= List(fee)).isReadyWithin(5 seconds)
 
         sut
           .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), None)

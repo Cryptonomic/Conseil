@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.indexer.config
 
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 import tech.cryptonomic.conseil.common.config.Platforms.{TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.Loaders._
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.Natural
@@ -52,6 +52,16 @@ class LorreAppConfigTest extends ConseilSpec {
                                               |      port: 8732
                                               |      path-prefix: "tezos/alphanet/"
                                               |    }
+                                              |    db {
+                                              |      dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
+                                              |      properties {
+                                              |        user: "foo"
+                                              |        password: "bar"
+                                              |        url: "jdbc:postgresql://localhost:5432/postgres"
+                                              |      }
+                                              |      numThreads: 10
+                                              |      maxConnections: 10
+                                              |    }
                                               |  }
                                               |]
         """.stripMargin)
@@ -61,6 +71,7 @@ class LorreAppConfigTest extends ConseilSpec {
           "alphanet",
           enabled = true,
           TezosNodeConfiguration("localhost", 8732, "http", "tezos/alphanet/"),
+          cfg.getConfigList("platforms").get(0).getConfig("db"),
           None
         )
       }
@@ -78,6 +89,16 @@ class LorreAppConfigTest extends ConseilSpec {
                                             |      port: 8732
                                             |      pathPrefix: "tezos/alphanet/"
                                             |    }
+                                            |    db {
+                                            |      dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
+                                            |      properties {
+                                            |        user: "foo"
+                                            |        password: "bar"
+                                            |        url: "jdbc:postgresql://localhost:5432/postgres"
+                                            |      }
+                                            |      numThreads: 10
+                                            |      maxConnections: 10
+                                            |    }
                                             |  }
                                             |]
         """.stripMargin)
@@ -87,6 +108,7 @@ class LorreAppConfigTest extends ConseilSpec {
           "alphanet",
           enabled = true,
           TezosNodeConfiguration("localhost", 8732, "http"),
+          cfg.getConfigList("platforms").get(0).getConfig("db"),
           None
         )
       }

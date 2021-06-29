@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.api.metadata
 
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import com.typesafe.config.ConfigFactory
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{BeforeAndAfterEach, OneInstancePerTest}
@@ -35,15 +36,35 @@ class MetadataServiceTest
   private val platformDiscoveryOperations: TestPlatformDiscoveryOperations = new TestPlatformDiscoveryOperations
   private val cacheOverrides: AttributeValuesCacheConfiguration = stub[AttributeValuesCacheConfiguration]
 
+  private val dbCfg = ConfigFactory.parseString("""
+                                          |    db {
+                                          |      dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
+                                          |      properties {
+                                          |        user: "foo"
+                                          |        password: "bar"
+                                          |        url: "jdbc:postgresql://localhost:5432/postgres"
+                                          |      }
+                                          |      numThreads: 10
+                                          |      maxConnections: 10
+                                          |    }
+        """.stripMargin)
+
   private val sut = (metadataOverridesConfiguration: Map[PlatformName, PlatformConfiguration]) =>
     new MetadataService(
       PlatformsConfiguration(
         List(
-          TezosConfiguration("mainnet", enabled = true, TezosNodeConfiguration("tezos-host", 123, "https://"), None),
+          TezosConfiguration(
+            "mainnet",
+            enabled = true,
+            TezosNodeConfiguration("tezos-host", 123, "https://"),
+            dbCfg,
+            None
+          ),
           BitcoinConfiguration(
             "testnet",
             enabled = false,
             BitcoinNodeConfiguration("host", 0, "protocol", "username", "password"),
+            dbCfg,
             BitcoinBatchFetchConfiguration(1, 1, 1, 1, 1)
           )
         )

@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.common.config
 
+import com.typesafe.config.ConfigFactory
 import tech.cryptonomic.conseil.common.config.Platforms.{
   BitcoinBatchFetchConfiguration,
   BitcoinConfiguration,
@@ -13,11 +14,25 @@ import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class PlatformsTest extends ConseilSpec {
 
+  private val dbCfg = ConfigFactory.parseString("""
+        |    db {
+        |      dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
+        |      properties {
+        |        user: "foo"
+        |        password: "bar"
+        |        url: "jdbc:postgresql://localhost:5432/postgres"
+        |      }
+        |      numThreads: 10
+        |      maxConnections: 10
+        |    }
+        """.stripMargin)
+
   private val configTezosNode = TezosNodeConfiguration("host", 0, "protocol")
-  private val configTezos = TezosConfiguration("mainnet", enabled = true, configTezosNode, None)
+  private val configTezos = TezosConfiguration("mainnet", enabled = true, configTezosNode, dbCfg, None)
   private val configBitcoinNode = BitcoinNodeConfiguration("host", 0, "protocol", "username", "password")
   private val configBitcoinBatching = BitcoinBatchFetchConfiguration(1, 1, 1, 1, 1)
-  private val configBitcoin = BitcoinConfiguration("testnet", enabled = false, configBitcoinNode, configBitcoinBatching)
+  private val configBitcoin =
+    BitcoinConfiguration("testnet", enabled = false, configBitcoinNode, dbCfg, configBitcoinBatching)
   private val config = PlatformsConfiguration(List(configTezos, configBitcoin))
 
   private val platformTezos = PlatformDiscoveryTypes.Platform("tezos", "Tezos")

@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
 import java.sql.Timestamp
-
 import org.scalatest.concurrent.IntegrationPatience
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.BitcoinInMemoryDatabaseSetup
@@ -24,7 +23,7 @@ class BitcoinDataOperationsTest
     with BitcoinDataOperationsTest.Fixtures {
 
   "BitcoinDataOperations" should {
-      val sut = new BitcoinDataOperations {
+      val sut = new BitcoinDataOperations(dbConfig) {
         override lazy val dbReadHandle = dbHandler
       }
 

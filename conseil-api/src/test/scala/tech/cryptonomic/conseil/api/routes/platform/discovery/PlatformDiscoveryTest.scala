@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.api.routes.platform.discovery
 
 import akka.http.scaladsl.model.{ContentTypes, StatusCodes}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import com.typesafe.config.ConfigFactory
 import org.scalamock.scalatest.MockFactory
 import io.circe._
 import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
@@ -26,6 +27,19 @@ class PlatformDiscoveryTest extends ConseilSpec with ScalatestRouteTest with Moc
       val platformDiscoveryOperations = new TestPlatformDiscoveryOperations
       val cacheOverrides = stub[AttributeValuesCacheConfiguration]
 
+      val dbCfg = ConfigFactory.parseString("""
+                                                    |    db {
+                                                    |      dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
+                                                    |      properties {
+                                                    |        user: "foo"
+                                                    |        password: "bar"
+                                                    |        url: "jdbc:postgresql://localhost:5432/postgres"
+                                                    |      }
+                                                    |      numThreads: 10
+                                                    |      maxConnections: 10
+                                                    |    }
+        """.stripMargin)
+
       val sut = (metadataOverridesConfiguration: Map[PlatformName, PlatformConfiguration]) =>
         PlatformDiscovery(
           new MetadataService(
@@ -35,6 +49,7 @@ class PlatformDiscoveryTest extends ConseilSpec with ScalatestRouteTest with Moc
                   "mainnet",
                   enabled = true,
                   TezosNodeConfiguration("tezos-host", 123, "https://"),
+                  dbCfg,
                   None
                 )
               )
