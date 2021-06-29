@@ -152,40 +152,49 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
       case Platforms.Tezos =>
         val operations = new TezosDataOperations(
           config.platforms
-            .getDatabase(Platforms.Tezos.name, config.platforms.getNetworks(Platforms.Tezos.name).head.name)
+            .getDbConfig(Platforms.Tezos.name, config.platforms.getNetworks(Platforms.Tezos.name).head.name)
         )
         TezosDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
       case Platforms.Bitcoin =>
         val operations = new BitcoinDataOperations(
           config.platforms
-            .getDatabase(Platforms.Bitcoin.name, config.platforms.getNetworks(Platforms.Bitcoin.name).head.name)
+            .getDbConfig(Platforms.Bitcoin.name, config.platforms.getNetworks(Platforms.Bitcoin.name).head.name)
         )
         BitcoinDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
       case Platforms.Ethereum =>
         val operations = new EthereumDataOperations(
           Platforms.Ethereum.name,
           config.platforms
-            .getDatabase(Platforms.Ethereum.name, config.platforms.getNetworks(Platforms.Ethereum.name).head.name)
+            .getDbConfig(Platforms.Ethereum.name, config.platforms.getNetworks(Platforms.Ethereum.name).head.name)
         )
         EthereumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
       case Platforms.Quorum =>
         val operations = new EthereumDataOperations(
           Platforms.Quorum.name,
           config.platforms
-            .getDatabase(Platforms.Quorum.name, config.platforms.getNetworks(Platforms.Quorum.name).head.name)
+            .getDbConfig(Platforms.Quorum.name, config.platforms.getNetworks(Platforms.Quorum.name).head.name)
         )
         QuorumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
     }
 
     private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
     private val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
-    private val metadataOperations: DatabaseRunner = new DatabaseRunner {
-      override lazy val dbReadHandle = DatabaseUtil.conseilDb
-    }
+//    private val metadataOperations: DatabaseRunner = new DatabaseRunner {
+//      override lazy val dbReadHandle = DatabaseUtil.conseilDb
+//    }
+
+    private val metadataOps: Map[(String, String), DatabaseRunner] = config.platforms
+      .getDatabases()
+      .mapValues(
+        db =>
+          new DatabaseRunner {
+            override lazy val dbReadHandle = db
+          }
+      )
 
     lazy val cachedDiscoveryOperations: GenericPlatformDiscoveryOperations =
       new GenericPlatformDiscoveryOperations(
-        metadataOperations,
+        metadataOps,
         metadataCaching,
         cacheOverrides,
         config.server.cacheTTL,

@@ -77,11 +77,18 @@ object Platforms {
           Network(config.network, config.network.capitalize, config.platform.name, config.network)
         }
 
-    def getDatabase(platformName: String, network: String, enabled: Boolean = true): Config =
+    def getDbConfig(platformName: String, network: String, enabled: Boolean = true): Config =
       platforms
         .filter(v => v.platform.name == platformName && v.network == network && v.enabled == enabled)
         .map(_.db)
         .head
+
+    def getDatabases(enabled: Boolean = true): Map[(String, String), Database] =
+      platforms
+        .filter(_.enabled == enabled)
+        .map(c => (c.platform.name, c.network) -> Database.forConfig("", c.db))
+        .toMap
+
   }
 
   /** configurations to describe a tezos node */
