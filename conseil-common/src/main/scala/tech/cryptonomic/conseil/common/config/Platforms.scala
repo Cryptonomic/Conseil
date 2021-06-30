@@ -116,7 +116,7 @@ object Platforms {
     /** Defines the name of the network for specific blockchain */
     def network: String
 
-    /**  */
+    /** View on the db config object */
     def db: Config
   }
 
@@ -129,9 +129,6 @@ object Platforms {
       tns: Option[TNSContractConfiguration]
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Tezos
-//
-//    lazy val db = Database.forConfig(s"databases.${platform.name}.${network}.db")
-//    lazy val a = ConfigFactory.load().getConfigList("").get(0).getConfig("db")
   }
 
   /** configurations to describe a bitcoin node */

@@ -51,22 +51,11 @@ class GenericPlatformDiscoveryOperations(
 
   /** Method for initializing values of the cache */
   def init(config: List[(Platform, Network)]): Future[Unit] = {
-    val entities = config.map {
-      case (platform, network) =>
-        IO.fromFuture(
-          IO(dbRunners((platform.name, network.name)).runQuery(preCacheEntities(platform.name, network.name)))
-        )
-    }.sequence.map(_.reduce(_ ++ _))
+    val entities = preCacheEntities(config)
 
-    val attributes = config.map {
-      case (platform, network) =>
-        IO.fromFuture(IO(dbRunners(platform.name, network.name).runQuery(preCacheAttributes(platform, network))))
-    }.sequence.map(_.reduce(_ ++ _))
+    val attributes = preCacheAttributes(config)
 
-    val attributeValues = config.map {
-      case (platform, network) =>
-        IO.fromFuture(IO(dbRunners(platform.name, network.name).runQuery(preCacheAttributeValues(platform, network))))
-    }.sequence.map(_.reduce(_ ++ _))
+    val attributeValues = preCacheAttributeValues(config)
 
     (
       entities flatMap caching.fillEntitiesCache,
@@ -77,11 +66,14 @@ class GenericPlatformDiscoveryOperations(
 
   /** Pre-caching attributes from slick without cardinality for multiple platforms
     *
-    * @param  platforms list of platforms for which we want to fetch attributes
-    * @return database action with attributes to be cached
+    * @param  xs list of platform-network pairs for which we want to fetch attributes
+    * @return  attributes to be cached
     **/
-//  private def preCacheAttributes(platforms: List[Platform]): DBIO[AttributesCache] =
-//    DBIO.sequence(platforms.map(preCacheAttributes)).map(_.reduce(_ ++ _))
+  private def preCacheAttributes(xs: List[(Platform, Network)]): IO[AttributesCache] =
+    xs.map {
+      case (platform, network) =>
+        IO.fromFuture(IO(dbRunners(platform.name, network.name).runQuery(preCacheAttributes(platform, network))))
+    }.sequence.map(_.reduce(_ ++ _))
 
   /** Pre-caching attributes from slick without cardinality
     *
@@ -161,11 +153,14 @@ class GenericPlatformDiscoveryOperations(
 
   /** Pre-caching attribute values from slick for multiple platforms
     *
-    * @param  platforms the list of platforms for which we want to fetch attribute values
+    * @param  xs list of platform-network pairs for which we want to fetch attribute values
     * @return database action with attribute values to be cached
     * */
-//  private def preCacheAttributeValues(platforms: List[Platform]): DBIO[AttributeValuesCache] =
-//    DBIO.sequence(platforms.map(preCacheAttributeValues)).map(_.reduce(_ ++ _))
+  private def preCacheAttributeValues(xs: List[(Platform, Network)]): IO[AttributeValuesCache] =
+    xs.map {
+      case (platform, network) =>
+        IO.fromFuture(IO(dbRunners(platform.name, network.name).runQuery(preCacheAttributeValues(platform, network))))
+    }.sequence.map(_.reduce(_ ++ _))
 
   /** Pre-caching attribute values from slick for specific platform
     *
@@ -218,12 +213,15 @@ class GenericPlatformDiscoveryOperations(
   /** Pre-caching entities values from slick for multiple platform-network pairs
     *
     * @param xs list of platform-network pairs for which we want to fetch entities
-    * @return database action with entities to be cached
+    * @return entities to be cached
     * */
-//  private def preCacheEntities(xs: List[(Platform, Network)]): DBIO[EntitiesCache] =
-//    DBIO
-//      .sequence(xs.map { case (platform, network) => preCacheEntities(platform.name, network.name) })
-//      .map(_.reduce(_ ++ _))
+  private def preCacheEntities(xs: List[(Platform, Network)]): IO[EntitiesCache] =
+    xs.map {
+      case (platform, network) =>
+        IO.fromFuture(
+          IO(dbRunners((platform.name, network.name)).runQuery(preCacheEntities(platform.name, network.name)))
+        )
+    }.sequence.map(_.reduce(_ ++ _))
 
   /** Pre-caching entities values from slick for specific platform-network pair
     *

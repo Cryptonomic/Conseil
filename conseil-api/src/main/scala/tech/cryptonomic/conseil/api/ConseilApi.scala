@@ -179,11 +179,8 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
 
     private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
     private val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
-//    private val metadataOperations: DatabaseRunner = new DatabaseRunner {
-//      override lazy val dbReadHandle = DatabaseUtil.conseilDb
-//    }
 
-    private val metadataOps: Map[(String, String), DatabaseRunner] = config.platforms
+    private val metadataOperations: Map[(String, String), DatabaseRunner] = config.platforms
       .getDatabases()
       .mapValues(
         db =>
@@ -194,7 +191,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
 
     lazy val cachedDiscoveryOperations: GenericPlatformDiscoveryOperations =
       new GenericPlatformDiscoveryOperations(
-        metadataOps,
+        metadataOperations,
         metadataCaching,
         cacheOverrides,
         config.server.cacheTTL,

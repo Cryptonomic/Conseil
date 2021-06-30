@@ -15,7 +15,7 @@ import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 class PlatformsTest extends ConseilSpec {
 
   private val dbCfg = ConfigFactory.parseString("""
-        |    db {
+        |    {
         |      dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
         |      properties {
         |        user: "foo"
@@ -57,6 +57,14 @@ class PlatformsTest extends ConseilSpec {
       "return allow to ask for networks, for disabled platforms and specific name" in {
         config.getNetworks("tezos", enabled = false) shouldBe empty
         config.getNetworks("bitcoin", enabled = false) should contain only networkBitcoin
+      }
+
+      "return configs for enabled platforms" in {
+        config.getDbConfig("tezos", "mainnet") shouldBe dbCfg
+      }
+
+      "return databases for enabled platforms" in {
+        config.getDatabases().keys.toList should contain theSameElementsAs List(("tezos", "mainnet"))
       }
     }
 }
