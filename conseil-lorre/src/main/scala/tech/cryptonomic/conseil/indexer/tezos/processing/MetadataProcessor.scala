@@ -5,7 +5,15 @@ import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Micheline
 import tech.cryptonomic.conseil.indexer.config
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts.Tzip16
-import tech.cryptonomic.conseil.indexer.tezos.{TezosGovernanceOperations, TezosIndexedDataOperations, TezosNamesOperations, TezosNodeOperator, Tzip16MetadataJsonDecoders, Tzip16MetadataOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.indexer.tezos.{
+  TezosGovernanceOperations,
+  TezosIndexedDataOperations,
+  TezosNamesOperations,
+  TezosNodeOperator,
+  Tzip16MetadataJsonDecoders,
+  Tzip16MetadataOperator,
+  TezosDatabaseOperations => TezosDb
+}
 import cats.instances.future._
 import cats.syntax.applicative._
 import cats.implicits._
@@ -19,7 +27,8 @@ import scala.util.Try
 class MetadataProcessor(
     metadataOperator: Tzip16MetadataOperator,
     db: Database
-)(implicit mat: ActorMaterializer) extends ConseilLogSupport {
+)(implicit mat: ActorMaterializer)
+    extends ConseilLogSupport {
 
   def processMetadata(implicit ec: ExecutionContext): Future[Option[Int]] = {
     logger.info("Starting processing metadata")
@@ -122,7 +131,6 @@ class MetadataProcessor(
           import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
           import tech.cryptonomic.conseil.indexer.tezos.TezosDatabaseConversions._
           import tech.cryptonomic.conseil.common.sql.CustomProfileExtension.api._
-
 
           val nftsUpd = metadataOperator
             .getMetadataWithRegisteredTokensRow(nftIpfs.distinct ::: nftHttp.distinct)

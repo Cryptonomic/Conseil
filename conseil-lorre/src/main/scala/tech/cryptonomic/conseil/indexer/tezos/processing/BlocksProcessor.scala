@@ -36,8 +36,7 @@ class BlocksProcessor(
     db: Database,
     tnsOperations: TezosNamesOperations,
     accountsProcessor: AccountsProcessor,
-    bakersProcessor: BakersProcessor,
-    metadataOperator: Tzip16MetadataOperator
+    bakersProcessor: BakersProcessor
 )(implicit tokens: TokenContracts, tns: TNSContract)
     extends ConseilLogSupport {
 
@@ -63,7 +62,6 @@ class BlocksProcessor(
 
     for {
       _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
-      //_ <- processTzip16Metadata(blocks)
       _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
       bakersCheckpoints <- accountsProcessor.processAccountsForBlocks(accountUpdates) // should this fail, we still recover data from the checkpoint
       _ <- bakersProcessor.processBakersForBlocks(bakersCheckpoints)
@@ -73,91 +71,6 @@ class BlocksProcessor(
     } yield results.size
 
   }
-
-//  private def processTzip16Metadata(blocks: List[Block])(implicit ec: ExecutionContext): Future[Option[Int]] = {
-//    val internalTransactionResults = blocks.flatMap { block =>
-//      block.operationGroups.flatMap { opGroups =>
-//        opGroups.contents.collect {
-//          case TezosTypes.Transaction(_, _, _, _, _, _, _, _, _, metadata) =>
-//            metadata.internal_operation_results.toList.flatten.collect {
-//              case transaction: InternalOperationResults.Transaction => transaction
-//            }
-//        }
-//      }
-//    }.flatten
-//
-//    val originations = blocks.flatMap { block =>
-//      block.operationGroups.map { opGroups =>
-//        opGroups.contents.collect {
-//          case o: TezosTypes.Origination =>
-//            o
-//        }
-//      }
-//    }.flatten
-//
-//    val origiRes = originations.flatMap { orig =>
-//      orig.script.flatMap { x =>
-//        x.storage_micheline.map { xx =>
-//          orig -> Tzip16
-//            .extractTzip16MetadataLocationFromParameters(xx, None)
-//        }
-//      }.toList
-//    }.filter {
-//      case (_, location) => location.nonEmpty
-//    }.map(x => x._1 -> x._2.get)
-//
-////    val metadataFromOrigination = metadataOperator.getMetadataWithOperationsRow(origiRes).map { result =>
-////      result
-////        .filter(
-////          res => res._2.isDefined && res._1._1.metadata.operation_result.originated_contracts.toList.flatten.nonEmpty
-////        )
-////        .map {
-////          case ((transaction, location), Some((raw, meta))) =>
-////            (
-////              "origination",
-////              transaction.metadata.operation_result.originated_contracts.get.head.id,
-////              transaction.source.value,
-////              location,
-////              (raw, meta)
-////            )
-////        }
-////    }
-//
-//    val itrPathMichelinePairFut = internalTransactionResults.traverse { itr =>
-//      db.run(TezosDb.getContractMetadataPath(itr.destination.id)).map {
-//        case Some(path) =>
-//          itr.parameters_micheline.toList.map {
-//            case Left(value) => (itr, path, value.value)
-//            case Right(value) => (itr, path, value)
-//          }
-//        case None => List.empty
-//      }
-//    }.map(_.flatten)
-//
-//    val metadataFromTransaction = itrPathMichelinePairFut.flatMap { pathMichelinePair =>
-//      val res = pathMichelinePair.map {
-//        case (itr, path, micheline) =>
-//          itr -> Tzip16
-//                .extractTzip16MetadataLocationFromParameters(micheline, Some(path))
-//      }.filter {
-//        case (_, location) => location.nonEmpty
-//      }.map(x => x._1 -> x._2.get)
-//
-//      metadataOperator.getMetadataWithIntTransaction(res).map { result =>
-//        result.filter(_._2.isDefined).map {
-//          case ((transaction, location), Some((raw, meta))) =>
-//            ("transaction", transaction.destination.id, transaction.source.value, location, (raw, meta))
-//        }
-//      }
-//    }
-//
-//    for {
-//      tokenMetadata <- metadataFromTransaction
-//      originationMetadata <- metadataFromOrigination
-//      concatenatedMetadata = tokenMetadata ::: originationMetadata
-//      //insertResult <- db.run(TezosDb.writeMetadata(concatenatedMetadata))
-//    } yield None //insertResult
-//  }
 
   /** Prepares and stores statistics for voting periods of the
     * blocks passed in.

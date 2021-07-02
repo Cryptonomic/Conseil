@@ -385,7 +385,11 @@ object TokenContracts extends ConseilLogSupport {
 
     }
 
-    def extractTzip16MetadataLocationFromParameters(paramCode: Micheline, path: Option[String], locationType: Option[String] = Some("ipfs")): Option[String] = {
+    def extractTzip16MetadataLocationFromParameters(
+        paramCode: Micheline,
+        path: Option[String],
+        locationType: Option[String] = Some("ipfs")
+    ): Option[String] = {
       val parsed = JsonParser.parse[MichelsonInstruction](paramCode.expression)
 
       parsed.left.foreach(
@@ -401,7 +405,6 @@ object TokenContracts extends ConseilLogSupport {
       parsed.foreach(
         michelson => logger.debug(s"I parsed a tzip-16 parameters value as $michelson")
       )
-
 
       val extractedLocation = locationType match {
         case Some("ipfs") =>

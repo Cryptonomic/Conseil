@@ -395,8 +395,7 @@ object TezosIndexer extends ConseilLogSupport {
       db,
       tnsOperations,
       accountsProcessor,
-      bakersProcessor,
-      tzip16MetadataOperator
+      bakersProcessor
     )
 
     val metadataProcessor = new MetadataProcessor(

@@ -89,9 +89,8 @@ class Tzip16MetadataOperator(
     fetch[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
       .run(addresses)
 
-
   def getHttpMetadataWithRegisteredTokensRow(
-    addresses: List[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String)]
+      addresses: List[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String)]
   ): Future[List[((Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), Option[(String, Tzip16Metadata)])]] =
     fetch[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
       .run(addresses)
