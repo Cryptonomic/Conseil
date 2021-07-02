@@ -529,31 +529,21 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     Tables.TezosNames.insertOrUpdateAll(names.map(_.convertTo[Tables.TezosNamesRow]))
   }
 
-//  def writeMetadata(metadata: List[(String, String, String, String, (String, Tzip16Metadata))]): DBIO[Option[Int]] = {
-//    import CustomProfileExtension.api._
-//    Tables.Metadata.insertOrUpdateAll(
-//      metadata
-//        .map(_.convertTo[Tables.MetadataRow])
-//        .groupBy(x => (x.key, x.ownerAddress, x.contractAddress))
-//        .map(x => x._2.head)
-//    )
-//  }
-
+  /** Fetches tzip16 compatible contracts */
   def getTzip16Contracts(): DBIO[Seq[RegisteredTokensRow]] =
     Tables.RegisteredTokens.filter(_.isTzip16).result
 
-  def getNftTokensForAccount(accountId: String): DBIO[Seq[NftsRow]] =
-    Tables.Nfts.filter(_.contractAddress === accountId).result
+  /** Fetches NFTs from big maps */
+  def getInternalBigMapNfts(bigMapId: Int) =
+    Tables.BigMapContents.filter(_.bigMapId === BigDecimal(bigMapId)).result
 
-  def getAccountById(accountId: String): DBIO[Option[AccountsRow]] =
-    Tables.Accounts.filter(_.accountId === accountId).result.headOption
-
-  def getInternalTransactionsParameters(accountId: String) =
+  /** Fetches internal transaction with destination */
+  def getInternalTransactionsFromDestination(accountId: String) =
     Tables.Operations
       .filter(op => op.destination === accountId && op.internal === true)
-      .map(_.parametersMicheline)
       .result
 
+  /** Fetches origination operation for given account */
   def getOriginationByAccount(accountId: String): DBIO[Seq[OperationsRow]] =
     Tables.Operations
       .filter(x => x.kind === "origination")

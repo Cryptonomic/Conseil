@@ -84,10 +84,18 @@ class Tzip16MetadataOperator(
       .run(addresses)
 
   def getMetadataWithRegisteredTokensRow(
-      addresses: List[(Tables.RegisteredTokensRow, String)]
-  ): Future[List[((Tables.RegisteredTokensRow, String), Option[(String, Tzip16Metadata)])]] =
-    fetch[(Tables.RegisteredTokensRow, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
+      addresses: List[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String)]
+  ): Future[List[((Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), Option[(String, Tzip16Metadata)])]] =
+    fetch[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
       .run(addresses)
+
+
+  def getHttpMetadataWithRegisteredTokensRow(
+    addresses: List[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String)]
+  ): Future[List[((Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), Option[(String, Tzip16Metadata)])]] =
+    fetch[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
+      .run(addresses)
+
   def getMetadataWithAccountsRow(
       addresses: List[(Tables.AccountsRow, String)]
   ): Future[List[((Tables.AccountsRow, String), Option[(String, Tzip16Metadata)])]] =
@@ -144,7 +152,7 @@ class Tzip16MetadataOperator(
   }
 
   implicit val metadataFetcherRegisteredTokensRow: FutureFetcher {
-    type In = (Tables.RegisteredTokensRow, String)
+    type In = (Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String)
 
     type Out = Option[(String, Tzip16Metadata)]
 
@@ -152,7 +160,7 @@ class Tzip16MetadataOperator(
   } = new FutureFetcher {
 
     /** the input type, e.g. ids of data */
-    override type In = (Tables.RegisteredTokensRow, String)
+    override type In = (Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String)
 
     /** the output type, e.g. the decoded block data */
     override type Out = Option[(String, Tzip16Metadata)]
@@ -160,7 +168,7 @@ class Tzip16MetadataOperator(
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (key: In) => key._2
+    private val makeUrl = (key: In) => key._3
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`

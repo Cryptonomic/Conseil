@@ -76,9 +76,9 @@ class TezosIndexer private (
   }
 
   /** Schedules method for fetching TZIP-16 metadata */
-  if (featureFlags.metadataFetchingIsIn) {
+  if (featureFlags.metadataFetchingIsOn) {
     logger.info("I'm scheduling the concurrent tasks to fetch TZIP-16 metadata")
-    system.scheduler.schedule(lorreConf.tzipMetadata.initDelay, lorreConf.tzipMetadata.interval)(
+    system.scheduler.schedule(lorreConf.metadataFetching.initDelay, lorreConf.metadataFetching.interval)(
       metadataProcessor.processMetadata
     )
   }
@@ -103,7 +103,6 @@ class TezosIndexer private (
       iteration: Int,
       accountResetEvents: AccountResetEvents
   ): Unit = {
-    Thread.sleep(12312312311L)
     val processing = for {
       maxLevel <- indexedData.fetchMaxLevel
       reloadedAccountEvents <- processFork(maxLevel)

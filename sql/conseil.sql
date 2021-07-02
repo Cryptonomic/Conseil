@@ -80,7 +80,7 @@ CREATE TABLE tezos.baker_registry (
 
 CREATE TABLE tezos.known_addresses (
     address character varying NOT NULL,
-    alias character varying
+    alias character varying NOT NULL
 );
 
 CREATE TABLE tezos.governance (
@@ -149,14 +149,13 @@ CREATE TABLE tezos.metadata (
 
 CREATE TABLE tezos.nfts (
     contract_address text NOT NULL,
-    nft_address text NOT NULL,
     op_group_hash text NOT NULL,
-    block_level integer NOT NULL,
+    block_level bigint NOT NULL,
+    timestamp timestamp NOT NULL,
     contract_name text NOT NULL,
     asset_type text NOT NULL,
     asset_location text NOT NULL,
-    raw_metadata text NOT NULL,
-    last_updated timestamp
+    raw_metadata text NOT NULL
 );
 
 CREATE TABLE tezos.token_balances (
@@ -539,6 +538,7 @@ CREATE TABLE tezos.big_map_contents (
     key_hash character varying,
     operation_group_id character varying,
     value character varying,
+    value_micheline character varying,
     block_level bigint,
     "timestamp" timestamp without time zone,
     cycle integer,
@@ -812,8 +812,6 @@ ALTER TABLE ONLY tezos.operations
     REFERENCES tezos.operation_groups(hash, block_id, fork_id)
     DEFERRABLE INITIALLY IMMEDIATE;
 
-
-
 --
 -- PostgreSQL database dump complete
 --
@@ -1004,31 +1002,13 @@ CREATE TABLE ethereum.logs (
 ALTER TABLE ONLY ethereum.logs
   ADD CONSTRAINT ethereum_logs_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES ethereum.blocks(hash);
 
-CREATE TABLE ethereum.contracts (
-  address text NOT NULL,
-  block_hash text NOT NULL,
-  block_number integer NOT NULL,
-  bytecode text NOT NULL,
-  is_erc20 boolean NOT NULL DEFAULT false,
-  is_erc721 boolean NOT NULL DEFAULT false
-);
-
-CREATE TABLE ethereum.tokens (
-  address text NOT NULL,
-  block_hash text NOT NULL,
-  block_number integer NOT NULL,
-  name text NOT NULL,
-  symbol text NOT NULL,
-  decimals text NOT NULL,
-  total_supply text NOT NULL
-);
-
 CREATE TABLE ethereum.token_transfers (
   token_address text NOT NULL,
   block_hash text NOT NULL,
   block_level integer NOT NULL,
   timestamp timestamp without time zone,
   transaction_hash text NOT NULL,
+  log_index integer NOT NULL,
   from_address text NOT NULL,
   to_address text NOT NULL,
   value numeric NOT NULL

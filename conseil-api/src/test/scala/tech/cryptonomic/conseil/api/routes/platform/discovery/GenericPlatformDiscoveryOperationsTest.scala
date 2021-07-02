@@ -320,6 +320,7 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("delegatable", "Delegatable", DataType.Boolean, None, KeyType.NonKey, "operations"),
             Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("storage_micheline", "Storage micheline", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("status", "Status", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.NonKey, "operations"),
             Attribute("storage_size", "Storage size", DataType.Decimal, None, KeyType.NonKey, "operations"),
@@ -443,6 +444,7 @@ class GenericPlatformDiscoveryOperationsTest
               "big_map_contents"
             ),
             Attribute("value", "Value", DataType.String, None, KeyType.NonKey, "big_map_contents"),
+            Attribute("value_micheline", "Value micheline", DataType.String, None, KeyType.NonKey, "big_map_contents"),
             Attribute("block_level", "Block level", DataType.LargeInt, None, KeyType.NonKey, "big_map_contents"),
             Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "big_map_contents"),
             Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "big_map_contents"),

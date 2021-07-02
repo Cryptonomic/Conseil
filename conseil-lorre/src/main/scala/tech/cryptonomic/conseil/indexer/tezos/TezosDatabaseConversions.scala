@@ -993,23 +993,24 @@ private[tezos] object TezosDatabaseConversions {
   implicit val tzip16MetadataToNftsRow =
     new Conversion[
       Id,
-      ((Tables.RegisteredTokensRow, Tables.OperationsRow, String), (String, Tzip16Metadata)),
+      ((Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), (String, Tzip16Metadata)),
       Tables.NftsRow
     ] {
 
       /** Takes a `FROM` object and retuns the `TO` object, with an effect `F`. */
       override def convert(
-          from: ((Tables.RegisteredTokensRow, Tables.OperationsRow, String), (String, Tzip16Metadata))
+          from: ((Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), (String, Tzip16Metadata))
       ): Id[tezos.Tables.NftsRow] = {
-        val ((ar, op, str), (rawJson, metadata)) = from
+        val ((ar, bm, str), (rawJson, metadata)) = from
         Tables.NftsRow(
           contractAddress = ar.accountId,
           contractName = ar.name,
-          nftAddress = op.source.get,
           assetType = metadata.description,
-          assetLocation = metadata.source.flatMap(_.location).getOrElse("d/k"),
+          assetLocation = metadata.source.flatMap(_.location).getOrElse(str),
           rawMetadata = rawJson,
-          lastUpdated = Some(Timestamp.from(Instant.now))
+          timestamp = Timestamp.from(Instant.now),
+          opGroupHash = bm.operationGroupId.get,
+          blockLevel = bm.blockLevel.get
         )
       }
     }

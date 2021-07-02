@@ -22,7 +22,7 @@ final case class LorreConfiguration(
     headHash: Option[String],
     chainEvents: List[ChainEvent],
     blockRightsFetching: BakingAndEndorsingRights,
-    tzipMetadata: TzipMetadata,
+    metadataFetching: TzipMetadata,
     enabledFeatures: Features
 )
 
@@ -56,7 +56,7 @@ final case class BatchFetchConfiguration(
 final case class Features(
     blockRightsFetchingIsOn: Boolean,
     forkHandlingIsOn: Boolean,
-    metadataFetchingIsIn: Boolean
+    metadataFetchingIsOn: Boolean
 )
 
 /** sodium library references */

@@ -385,7 +385,7 @@ object TokenContracts extends ConseilLogSupport {
 
     }
 
-    def extractTzip16MetadataLocationFromParameters(paramCode: Micheline, path: Option[String]): Option[String] = {
+    def extractTzip16MetadataLocationFromParameters(paramCode: Micheline, path: Option[String], locationType: Option[String] = Some("ipfs")): Option[String] = {
       val parsed = JsonParser.parse[MichelsonInstruction](paramCode.expression)
 
       parsed.left.foreach(
@@ -402,22 +402,23 @@ object TokenContracts extends ConseilLogSupport {
         michelson => logger.debug(s"I parsed a tzip-16 parameters value as $michelson")
       )
 
-      val fromIpfs = parsed.toOption
-        .flatMap(
-          _.findInstruction(MichelsonBytesConstant(""), startsWith = Some("69706673")).sortBy(_.length).headOption
-        )
-      val fromHttp = parsed.toOption
-        .flatMap(
-          _.findInstruction(MichelsonBytesConstant(""), startsWith = Some("68747470")).sortBy(_.length).headOption
-        )
-      val fromTezosStorage = parsed.toOption
-        .flatMap(
-          _.findInstruction(MichelsonBytesConstant(""), startsWith = Some("74657a6f732d73746f72616765"))
-            .sortBy(_.length)
-            .headOption
-        )
+
+      val extractedLocation = locationType match {
+        case Some("ipfs") =>
+          parsed.toOption
+            .flatMap(
+              _.findInstruction(MichelsonBytesConstant(""), startsWith = Some("69706673")).sortBy(_.length).headOption
+            )
+        case Some("http") =>
+          parsed.toOption
+            .flatMap(
+              _.findInstruction(MichelsonBytesConstant(""), startsWith = Some("68747470")).sortBy(_.length).headOption
+            )
+        case None => None
+      }
+
       for {
-        pth <- path.orElse(fromIpfs).orElse(fromHttp).orElse(fromTezosStorage)
+        pth <- path.orElse(extractedLocation)
         metadataUrl <- parsed.toOption.flatMap(_.getAtPath(pth)).collect {
           case MichelsonBytesConstant(mu) =>
             mu
