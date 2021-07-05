@@ -434,7 +434,7 @@ class TezosMetadataInterface(
    * The returned flow is the streaming req/res exchange, paired with a correlation T
    */
   private def loggedRpcFlow[T] =
-    if (false)
+    if (node.traceCalls)
       Flow[(HttpRequest, T)]
         .log("Tzip node rpc request", { case (req, cid) => s"Corr-Id $cid: ${req.uri}" })(log = batchedRpcTraceLogger)
         .withAttributes(
