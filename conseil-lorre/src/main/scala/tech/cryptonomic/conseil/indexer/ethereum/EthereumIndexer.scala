@@ -1,17 +1,16 @@
 package tech.cryptonomic.conseil.indexer.ethereum
 
-import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.{Executors, ThreadFactory}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
-
 import cats.effect.{IO, Resource}
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.middleware.Retry
 import slick.jdbc.PostgresProfile.api._
 import slickeffect.Transactor
 import slickeffect.transactor.{config => transactorConfig}
-
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.common.config.Platforms
@@ -35,12 +34,37 @@ class EthereumIndexer(
   /**
     * Executor for the rpc client, timer and to handle stop method.
     */
-  private val indexerExecutor = Executors.newFixedThreadPool(ethereumConf.batching.indexerThreadsCount)
+  private val indexerExecutor = Executors.newCachedThreadPool(
+    new ThreadFactory {
+      private val counter = new AtomicLong(0L)
+
+      def newThread(r: Runnable) = {
+        val th = new Thread(r)
+        th.setName("2eon-io-thread-" +
+          counter.getAndIncrement.toString)
+        th.setDaemon(true)
+        th
+      }
+    })
 
   /**
     * Dedicated executor for the http4s.
     */
   private val httpExecutor = Executors.newFixedThreadPool(ethereumConf.batching.httpFetchThreadsCount)
+
+  private val dbPool = Executors.newCachedThreadPool(
+    new ThreadFactory {
+      private val counter = new AtomicLong(0L)
+
+      def newThread(r: Runnable) = {
+        val th = new Thread(r)
+        th.setName("eon-io-thread-" +
+          counter.getAndIncrement.toString)
+        th.setDaemon(true)
+        th
+      }
+    })
+
 
   /**
     * [[cats.ContextShift]] is the equivalent to [[ExecutionContext]],
@@ -103,6 +127,7 @@ class EthereumIndexer(
     IO.delay {
       indexerExecutor.shutdown()
       httpExecutor.shutdown()
+      dbPool.shutdown()
       LorreIndexer.ShutdownComplete
     }.unsafeToFuture
 
@@ -123,7 +148,7 @@ class EthereumIndexer(
         .fromDatabase[IO](IO.delay(DatabaseUtil.lorreDb))
         .map(_.configure(transactorConfig.transactionally)) // run operations in transaction
 
-      ethereumOperations <- EthereumOperations.resource(rpcClient, tx, ethereumConf.batching)
+      ethereumOperations <- EthereumOperations.resource(rpcClient, tx, ethereumConf.batching, ExecutionContext.fromExecutor(dbPool))
     } yield ethereumOperations
 }
 

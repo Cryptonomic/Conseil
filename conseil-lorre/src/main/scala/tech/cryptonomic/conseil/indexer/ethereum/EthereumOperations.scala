@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.indexer.ethereum
 
+import java.util.concurrent.ExecutorService
+
 import cats.effect.{Concurrent, Resource}
 import fs2.Stream
 import slickeffect.Transactor
@@ -24,7 +26,8 @@ class EthereumOperations[F[_]: Concurrent](
     ethereumClient: EthereumClient[F],
     persistence: EthereumPersistence[F],
     tx: Transactor[F],
-    batchConf: EthereumBatchFetchConfiguration
+    batchConf: EthereumBatchFetchConfiguration,
+    ec: ExecutionContext
 ) extends ConseilLogSupport {
 
   /**
@@ -129,7 +132,7 @@ class EthereumOperations[F[_]: Concurrent](
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap(
                     accounts =>
-                      tx.transact(persistence.upsertAccounts(accounts.toList.distinct)(ExecutionContext.global))
+                      tx.transact(persistence.upsertAccounts(accounts.toList.distinct)(ec))
                   )
                   .evalTap(accounts => tx.transact(persistence.createAccountBalances(accounts.toList.distinct)))
                   .map(_ => (block, txs, receipts, logs))
@@ -187,10 +190,11 @@ object EthereumOperations {
   def resource[F[_]: Concurrent](
       rpcClient: RpcClient[F],
       tx: Transactor[F],
-      batchConf: EthereumBatchFetchConfiguration
+      batchConf: EthereumBatchFetchConfiguration,
+      ec: ExecutionContext
   ): Resource[F, EthereumOperations[F]] =
     for {
       ethereumClient <- EthereumClient.resource(rpcClient)
       persistence <- EthereumPersistence.resource
-    } yield new EthereumOperations[F](ethereumClient, persistence, tx, batchConf)
+    } yield new EthereumOperations[F](ethereumClient, persistence, tx, batchConf, ec)
 }
