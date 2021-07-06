@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.indexer.tezos
 import java.sql.Timestamp
 import java.time.{Instant, ZoneOffset}
 
-import cats.effect.Async
+import cats.effect.{Async, LiftIO}
 import cats.implicits._
 import scribe._
 import slick.jdbc.PostgresProfile.api._
@@ -29,6 +29,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.math
 import scala.util.{Failure, Success}
 import java.{util => ju}
+
 import slick.dbio.DBIOAction
 
 /**

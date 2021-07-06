@@ -2,8 +2,11 @@ package tech.cryptonomic.conseil.indexer.ethereum
 
 import java.util.concurrent.ExecutorService
 
-import cats.effect.{Concurrent, Resource}
-import fs2.Stream
+import cats.Functor
+import cats.effect.{Concurrent, ContextShift, IO, Resource}
+import cats.implicits.catsSyntaxApplicativeId
+import fs2.{INothing, Stream}
+import slick.jdbc.PostgresProfile.backend.Database
 import slickeffect.Transactor
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.config.Platforms.EthereumBatchFetchConfiguration
@@ -12,7 +15,7 @@ import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence
 import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumClient
 import tech.cryptonomic.conseil.indexer.config.{Custom, Depth, Everything, Newest}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Ethereum operations for Lorre.
@@ -22,13 +25,16 @@ import scala.concurrent.ExecutionContext
   * @param tx [[slickeffect.Transactor]] to perform a Slick operations on the database
   * @param batchConf Configuration containing batch fetch values
   */
-class EthereumOperations[F[_]: Concurrent](
-    ethereumClient: EthereumClient[F],
-    persistence: EthereumPersistence[F],
-    tx: Transactor[F],
+class EthereumOperations(
+    ethereumClient: EthereumClient[IO],
+    persistence: EthereumPersistence[IO],
     batchConf: EthereumBatchFetchConfiguration,
-    ec: ExecutionContext
+    ec: ExecutionContext,
+    db: Database
 ) extends ConseilLogSupport {
+
+  private implicit val eec: ExecutionContext = ec
+  private implicit val cs: ContextShift[cats.effect.IO] = IO.contextShift(ec)
 
   /**
     * SHA-3 signature for: Transfer(address,address,uint256)
@@ -40,9 +46,14 @@ class EthereumOperations[F[_]: Concurrent](
     *
     * @param depth Can be: Newest, Everything or Custom
     */
-  def loadBlocksAndLogs(depth: Depth, headHash: Option[String]): Stream[F, Unit] =
+  def loadBlocksAndLogs(depth: Depth, headHash: Option[String]) =
     Stream
-      .eval(tx.transact(persistence.getLatestIndexedBlock))
+      .eval{
+        IO.fromFuture(IO(db.run(persistence.getLatestIndexedBlock).map { x =>
+        db.close()
+        x
+      }))
+      }
       .flatMap {
         case latest if headHash.isDefined =>
           Stream(latest)
@@ -73,17 +84,22 @@ class EthereumOperations[F[_]: Concurrent](
     *
     * @param range Inclusive range of the block's height
     */
-  def loadBlocksWithTransactions(range: Range.Inclusive): Stream[F, Unit] =
+  def loadBlocksWithTransactions(range: Range.Inclusive) =
     Stream
-      .eval(tx.transact(persistence.getIndexedBlockHeights(range)))
-      .evalTap(
-        _ =>
-          Concurrent[F].delay(
-            logger.info(
-              s"Block range: $range"
-            )
-          )
-      )
+      .eval {
+        IO.fromFuture(IO(db.run(persistence.getIndexedBlockHeights(range)).map { x =>
+          db.close()
+          x
+        }))
+      }
+//      .evalTap(
+//        xx =>
+//          Concurrent[IO].delay(
+//            logger.info(
+//              s"Block range: $range"
+//            )
+//          )
+//      )
       .flatMap(
         existingBlocks =>
           Stream
@@ -118,8 +134,17 @@ class EthereumOperations[F[_]: Concurrent](
                   .through(ethereumClient.getContractBalance(block))
                   .through(ethereumClient.addTokenInfo)
                   .chunkN(Integer.MAX_VALUE)
-                  .evalTap(accounts => tx.transact(persistence.createContractAccounts(accounts.toList)))
-                  .evalTap(accounts => tx.transact(persistence.createAccountBalances(accounts.toList)))
+                  .evalTap{accounts => IO.fromFuture(IO(db.run(persistence.createContractAccounts(accounts.toList)).map { x =>
+                    db.close()
+                    x
+                  }))
+                  }
+                  .evalTap{
+                    accounts => IO.fromFuture(IO(db.run(persistence.createAccountBalances(accounts.toList)).map { x =>
+                      db.close()
+                      x
+                    }))
+                  }
                   .map(_ => (block, txs, receipts, logs))
               case (block, txs, receipts, logs) => Stream.emit((block, txs, receipts, logs))
             }
@@ -132,9 +157,17 @@ class EthereumOperations[F[_]: Concurrent](
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap(
                     accounts =>
-                      tx.transact(persistence.upsertAccounts(accounts.toList.distinct)(ec))
+                      IO.fromFuture(IO(db.run(persistence.upsertAccounts(accounts.toList.distinct)(ec)).map { x =>
+                        db.close()
+                        x
+                      }))
                   )
-                  .evalTap(accounts => tx.transact(persistence.createAccountBalances(accounts.toList.distinct)))
+                  .evalTap{
+                    accounts => IO.fromFuture(IO(db.run(persistence.createAccountBalances(accounts.toList.distinct)).map { x =>
+                      db.close()
+                      x
+                    }))
+                  }
                   .map(_ => (block, txs, receipts, logs))
               case (block, txs, receipts, logs) => Stream.emit((block, txs, receipts, logs))
             }
@@ -147,7 +180,13 @@ class EthereumOperations[F[_]: Concurrent](
                   .filter(log => log.topics.size == 3 && log.topics.contains(tokenTransferSignature))
                   .through(ethereumClient.getTokenTransfer(block))
                   .chunkN(Integer.MAX_VALUE)
-                  .evalTap(tokenTransfers => tx.transact(persistence.createTokenTransfers(tokenTransfers.toList)))
+                  .evalTap{ tokenTransfers =>
+
+                    IO.fromFuture(IO(db.run(persistence.createTokenTransfers(tokenTransfers.toList)).map { x =>
+                      db.close()
+                      x
+                    }))
+                  }
                   .map(tokenTransfers => (block, txs, receipts, tokenTransfers.toList))
               case (block, txs, receipts, _) => Stream.emit((block, txs, receipts, Nil))
             }
@@ -157,22 +196,30 @@ class EthereumOperations[F[_]: Concurrent](
                   .emits(tokenTransfers)
                   .through(ethereumClient.getTokenBalance(block))
                   .chunkN(Integer.MAX_VALUE)
-                  .evalTap(tokenBalances => tx.transact(persistence.createTokenBalances(tokenBalances.toList)))
+                  .evalTap { tokenBalances =>
+                    IO.fromFuture(IO(db.run(persistence.createTokenBalances(tokenBalances.toList)).map { x =>
+                      db.close()
+                      x
+                    }))
+                  }
                   .map(_ => (block, txs, receipts))
               case (block, txs, receipts, _) => Stream.emit((block, txs, receipts))
             }
-            .evalTap {
-              case (block, txs, receipts) if Integer.decode(block.number) % 10 == 0 =>
-                Concurrent[F].delay(
-                  logger.info(
-                    s"Save block with number: ${block.number} txs: ${txs.size} logs: ${receipts.map(_.logs.size).sum}"
-                  )
-                )
-              case _ => Concurrent[F].unit
-            }
+//            .evalTap {
+//              case (block, txs, receipts) if Integer.decode(block.number) % 10 == 0 =>
+//                Concurrent[IO].delay(
+//                  logger.info(
+//                    s"Save block with number: ${block.number} txs: ${txs.size} logs: ${receipts.map(_.logs.size).sum}"
+//                  )
+//                )
+//              case _ => Concurrent[IO].unit
+//            }
             .evalTap {
               case (block, txs, receipts) =>
-                tx.transact(persistence.createBlock(block, txs, receipts))
+                IO.fromFuture(IO(db.run(persistence.createBlock(block, txs, receipts)).map { x =>
+                  db.close()
+                  x
+                }))
             }
       )
       .drain
@@ -187,14 +234,14 @@ object EthereumOperations {
     * @param tx [[slickeffect.Transactor]] to perform a Slick operations on the database
     * @param batchConf Configuration containing batch fetch values
     */
-  def resource[F[_]: Concurrent](
-      rpcClient: RpcClient[F],
-      tx: Transactor[F],
+  def resource(
+      rpcClient: RpcClient[cats.effect.IO],
       batchConf: EthereumBatchFetchConfiguration,
-      ec: ExecutionContext
-  ): Resource[F, EthereumOperations[F]] =
+      ec: ExecutionContext,
+      db: Database
+  )(implicit c: Concurrent[cats.effect.IO]): Resource[IO, EthereumOperations] =
     for {
-      ethereumClient <- EthereumClient.resource(rpcClient)
-      persistence <- EthereumPersistence.resource
-    } yield new EthereumOperations[F](ethereumClient, persistence, tx, batchConf, ec)
+      ethereumClient <- EthereumClient.resource[cats.effect.IO](rpcClient)
+      persistence <- EthereumPersistence.resource[cats.effect.IO]
+    } yield new EthereumOperations(ethereumClient, persistence, batchConf, ec, db)
 }

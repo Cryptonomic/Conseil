@@ -134,7 +134,7 @@ class EthereumIndexer(
   /**
     * Lorre indexer for the Ethereum. This method creates all the dependencies and wraps it into the [[cats.Resource]].
     */
-  private def indexer: Resource[IO, EthereumOperations[IO]] =
+  private def indexer: Resource[IO, EthereumOperations] =
     for {
       httpClient <- BlazeClientBuilder[IO](httpEC).resource
 
@@ -148,7 +148,7 @@ class EthereumIndexer(
         .fromDatabase[IO](IO.delay(DatabaseUtil.lorreDb))
         .map(_.configure(transactorConfig.transactionally)) // run operations in transaction
 
-      ethereumOperations <- EthereumOperations.resource(rpcClient, tx, ethereumConf.batching, ExecutionContext.fromExecutor(dbPool))
+      ethereumOperations <- EthereumOperations.resource(rpcClient, ethereumConf.batching, ExecutionContext.fromExecutor(dbPool), DatabaseUtil.lorreDb)
     } yield ethereumOperations
 }
 
