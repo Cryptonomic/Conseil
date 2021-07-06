@@ -50,7 +50,7 @@ class EthereumOperations(
     Stream
       .eval{
         IO.fromFuture(IO(db.run(persistence.getLatestIndexedBlock).map { x =>
-        db.close()
+        //db.close()
         x
       }))
       }
@@ -88,7 +88,7 @@ class EthereumOperations(
     Stream
       .eval {
         IO.fromFuture(IO(db.run(persistence.getIndexedBlockHeights(range)).map { x =>
-          db.close()
+          //db.close()
           x
         }))
       }
@@ -135,13 +135,13 @@ class EthereumOperations(
                   .through(ethereumClient.addTokenInfo)
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap{accounts => IO.fromFuture(IO(db.run(persistence.createContractAccounts(accounts.toList)).map { x =>
-                    db.close()
+                    //db.close()
                     x
                   }))
                   }
                   .evalTap{
                     accounts => IO.fromFuture(IO(db.run(persistence.createAccountBalances(accounts.toList)).map { x =>
-                      db.close()
+                      //db.close()
                       x
                     }))
                   }
@@ -158,13 +158,13 @@ class EthereumOperations(
                   .evalTap(
                     accounts =>
                       IO.fromFuture(IO(db.run(persistence.upsertAccounts(accounts.toList.distinct)(ec)).map { x =>
-                        db.close()
+                        //db.close()
                         x
                       }))
                   )
                   .evalTap{
                     accounts => IO.fromFuture(IO(db.run(persistence.createAccountBalances(accounts.toList.distinct)).map { x =>
-                      db.close()
+                      //db.close()
                       x
                     }))
                   }
@@ -183,7 +183,7 @@ class EthereumOperations(
                   .evalTap{ tokenTransfers =>
 
                     IO.fromFuture(IO(db.run(persistence.createTokenTransfers(tokenTransfers.toList)).map { x =>
-                      db.close()
+                      //db.close()
                       x
                     }))
                   }
@@ -198,7 +198,7 @@ class EthereumOperations(
                   .chunkN(Integer.MAX_VALUE)
                   .evalTap { tokenBalances =>
                     IO.fromFuture(IO(db.run(persistence.createTokenBalances(tokenBalances.toList)).map { x =>
-                      db.close()
+                      //db.close()
                       x
                     }))
                   }
@@ -217,7 +217,7 @@ class EthereumOperations(
             .evalTap {
               case (block, txs, receipts) =>
                 IO.fromFuture(IO(db.run(persistence.createBlock(block, txs, receipts)).map { x =>
-                  db.close()
+                  //db.close()
                   x
                 }))
             }
