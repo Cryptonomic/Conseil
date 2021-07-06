@@ -92,14 +92,14 @@ class EthereumOperations(
           x
         }))
       }
-//      .evalTap(
-//        xx =>
-//          Concurrent[IO].delay(
-//            logger.info(
-//              s"Block range: $range"
-//            )
-//          )
-//      )
+      .evalTap(
+        _ =>
+          Concurrent[IO].delay(
+            logger.info(
+              s"Block range: $range"
+            )
+          )
+      )
       .flatMap(
         existingBlocks =>
           Stream
@@ -205,15 +205,15 @@ class EthereumOperations(
                   .map(_ => (block, txs, receipts))
               case (block, txs, receipts, _) => Stream.emit((block, txs, receipts))
             }
-//            .evalTap {
-//              case (block, txs, receipts) if Integer.decode(block.number) % 10 == 0 =>
-//                Concurrent[IO].delay(
-//                  logger.info(
-//                    s"Save block with number: ${block.number} txs: ${txs.size} logs: ${receipts.map(_.logs.size).sum}"
-//                  )
-//                )
-//              case _ => Concurrent[IO].unit
-//            }
+            .evalTap {
+              case (block, txs, receipts) if Integer.decode(block.number) % 10 == 0 =>
+                Concurrent[IO].delay(
+                  logger.info(
+                    s"Save block with number: ${block.number} txs: ${txs.size} logs: ${receipts.map(_.logs.size).sum}"
+                  )
+                )
+              case _ => Concurrent[IO].unit
+            }
             .evalTap {
               case (block, txs, receipts) =>
                 IO.fromFuture(IO(db.run(persistence.createBlock(block, txs, receipts)).map { x =>
