@@ -148,6 +148,7 @@ object Logging {
             .withHandler(formatter = sharedFormatter, minimumLevel = loggingConfig.outputLevel.map(Level(_)))
         case (_, Some(serviceName), logstashEndpoint) =>
           //outputs json formatting, based on logstash standards, possibly sending to an external server directly
+          warn("Setting json logging")
           val jsonHandler = JsonLogging.JsonWriter(serviceName, logstash = logstashEndpoint)
           Logger.root
             .clearHandlers()
