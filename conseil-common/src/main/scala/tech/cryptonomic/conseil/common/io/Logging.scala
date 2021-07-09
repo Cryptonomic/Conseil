@@ -94,6 +94,7 @@ object Logging {
       muted: Boolean = false,
       loggers: List[LoggerConfig] = List.empty,
       outputLevel: Option[String],
+      enableJsonOutput: Boolean,
       outputJsonWithServiceName: Option[String] = None,
       outputToLogstash: Option[URL] = None
   )
@@ -136,19 +137,23 @@ object Logging {
     /* Assigns the same formatting to any logger by defining it on the parent root logger */
     /* Cross-check config values to assess the appropriate logging schema */
     val configuredRootLogger =
-      (loggingConfig.muted, loggingConfig.outputJsonWithServiceName, loggingConfig.outputToLogstash) match {
+      (loggingConfig.muted, loggingConfig.enableJsonOutput, loggingConfig.outputToLogstash) match {
         case (true, _, _) =>
           //remove anything
           warn("Setting any logging to OFF")
           Logger.root.clearHandlers().clearModifiers().withModifier(LevelFilter.ExcludeAll)
-        case (_, None, _) =>
+        case (_, false, _) =>
           //standard out logger with shared formatting for any child
           Logger.root
             .clearHandlers()
             .withHandler(formatter = sharedFormatter, minimumLevel = loggingConfig.outputLevel.map(Level(_)))
-        case (_, Some(serviceName), logstashEndpoint) =>
+        case (_, true, logstashEndpoint) =>
           //outputs json formatting, based on logstash standards, possibly sending to an external server directly
-          val jsonHandler = JsonLogging.JsonWriter(serviceName, logstash = logstashEndpoint)
+          warn("Setting json logging")
+          val jsonHandler = JsonLogging.JsonWriter(
+            loggingConfig.outputJsonWithServiceName.getOrElse("conseil-service"),
+            logstash = logstashEndpoint
+          )
           Logger.root
             .clearHandlers()
             .withHandler(writer = jsonHandler, minimumLevel = loggingConfig.outputLevel.map(Level(_)))
