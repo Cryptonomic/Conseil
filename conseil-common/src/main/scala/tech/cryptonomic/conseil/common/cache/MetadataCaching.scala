@@ -21,11 +21,12 @@ object MetadataCaching {
   case class EntitiesCacheKey(platform: String, network: String) extends CacheKey {
     val key: String = s"$platform.$network"
   }
-  case class AttributesCacheKey(platform: String, table: String) extends CacheKey {
-    val key: String = s"$platform.$table"
+  case class AttributesCacheKey(platform: String, network: String, table: String) extends CacheKey {
+    val key: String = s"$platform.$network.$table"
   }
-  case class AttributeValuesCacheKey(platform: String, table: String, column: String) extends CacheKey {
-    val key: String = s"$platform.$table.$column"
+  case class AttributeValuesCacheKey(platform: String, network: String, table: String, column: String)
+      extends CacheKey {
+    val key: String = s"$platform.$network.$table.$column"
   }
 
   type Cache[K <: CacheKey, A] = Map[K, CacheEntry[A]]

@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
 import com.github.ghik.silencer.silent
+import com.typesafe.config.Config
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataOperations
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OperationType, Predicate}
@@ -22,7 +23,7 @@ object TezosDataOperations {
   private val nonInvalidatedPredicate = Predicate(InvalidationAwareAttribute, OperationType.isnull)
 }
 
-class TezosDataOperations extends ApiDataOperations {
+class TezosDataOperations(dbConfig: Config) extends ApiDataOperations {
   import TezosDataOperations._
 
   override protected val forkRelatedFields = Set("invalidated_asof", "fork_id")
@@ -38,7 +39,7 @@ class TezosDataOperations extends ApiDataOperations {
       nonInvalidatedPredicate :: Nil
   }
 
-  override lazy val dbReadHandle: Database = DatabaseUtil.conseilDb
+  override lazy val dbReadHandle: Database = Database.forConfig("", dbConfig)
 
   /**
     * Fetches the most recent block stored in the database.

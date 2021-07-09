@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.ethereum
 
+import com.typesafe.config.Config
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataOperations
 import tech.cryptonomic.conseil.common.ethereum.EthereumTypes.EthereumBlockHash
@@ -13,8 +14,8 @@ import scala.concurrent.{ExecutionContext, Future}
   *
   * @param prefix the name of the schema under which database are stored
   */
-class EthereumDataOperations(prefix: String) extends ApiDataOperations {
-  override lazy val dbReadHandle: Database = DatabaseUtil.conseilDb
+class EthereumDataOperations(prefix: String, dbConfig: Config) extends ApiDataOperations {
+  override lazy val dbReadHandle: Database = Database.forConfig("", dbConfig)
 
   /** Fetches the list of blocks for given query */
   def fetchBlocks(query: Query)(implicit ex: ExecutionContext): Future[Option[List[QueryResponse]]] =

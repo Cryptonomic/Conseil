@@ -22,7 +22,7 @@ class EthereumDataOperationsTest
     with EthereumDataOperationsTest.Fixtures {
 
   "EthereumDataOperations" should {
-      val sut = new EthereumDataOperations("ethereum") {
+      val sut = new EthereumDataOperations("ethereum", dbConfig) {
         override lazy val dbReadHandle = dbHandler
       }
 

@@ -150,24 +150,44 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
     implicit private val dispatcher: ExecutionContext = system.dispatchers.lookup("akka.http.dispatcher")
     private lazy val cache: Map[BlockchainPlatform, ApiDataRoutes] = forVisiblePlatforms {
       case Platforms.Tezos =>
-        val operations = new TezosDataOperations()
+        val operations = new TezosDataOperations(
+          config.platforms
+            .getDbConfig(Platforms.Tezos.name, config.platforms.getNetworks(Platforms.Tezos.name).head.name)
+        )
         TezosDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
       case Platforms.Bitcoin =>
-        val operations = new BitcoinDataOperations()
+        val operations = new BitcoinDataOperations(
+          config.platforms
+            .getDbConfig(Platforms.Bitcoin.name, config.platforms.getNetworks(Platforms.Bitcoin.name).head.name)
+        )
         BitcoinDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
       case Platforms.Ethereum =>
-        val operations = new EthereumDataOperations(Platforms.Ethereum.name)
+        val operations = new EthereumDataOperations(
+          Platforms.Ethereum.name,
+          config.platforms
+            .getDbConfig(Platforms.Ethereum.name, config.platforms.getNetworks(Platforms.Ethereum.name).head.name)
+        )
         EthereumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
       case Platforms.Quorum =>
-        val operations = new EthereumDataOperations(Platforms.Quorum.name)
+        val operations = new EthereumDataOperations(
+          Platforms.Quorum.name,
+          config.platforms
+            .getDbConfig(Platforms.Quorum.name, config.platforms.getNetworks(Platforms.Quorum.name).head.name)
+        )
         QuorumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
     }
 
     private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
     private val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
-    private val metadataOperations: DatabaseRunner = new DatabaseRunner {
-      override lazy val dbReadHandle = DatabaseUtil.conseilDb
-    }
+
+    private val metadataOperations: Map[(String, String), DatabaseRunner] = config.platforms
+      .getDatabases()
+      .mapValues(
+        db =>
+          new DatabaseRunner {
+            override lazy val dbReadHandle = db
+          }
+      )
 
     lazy val cachedDiscoveryOperations: GenericPlatformDiscoveryOperations =
       new GenericPlatformDiscoveryOperations(

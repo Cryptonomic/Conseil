@@ -6,6 +6,7 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.BeforeAndAfterEach
 import com.stephenn.scalatest.jsonassert.JsonMatchers
+import com.typesafe.config.ConfigFactory
 import tech.cryptonomic.conseil.api.metadata.{
   AttributeValuesCacheConfiguration,
   MetadataService,
@@ -43,7 +44,20 @@ class EthereumDataRoutesTest
   platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
   blockAttributes.foreach(platformDiscoveryOperations.addAttribute(testEntityPath, _))
 
-  private val conseilOps: EthereumDataOperations = new EthereumDataOperations("ethereum") {
+  val dbCfg = ConfigFactory.parseString("""
+                                          |    db {
+                                          |      dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
+                                          |      properties {
+                                          |        user: "foo"
+                                          |        password: "bar"
+                                          |        url: "jdbc:postgresql://localhost:5432/postgres"
+                                          |      }
+                                          |      numThreads: 10
+                                          |      maxConnections: 10
+                                          |    }
+        """.stripMargin)
+
+  private val conseilOps: EthereumDataOperations = new EthereumDataOperations("ethereum", dbCfg) {
     override def queryWithPredicates(prefix: String, tableName: String, query: Query, hideForkInvalid: Boolean = false)(
         implicit ec: ExecutionContext
     ): Future[List[QueryResponse]] =
@@ -58,6 +72,7 @@ class EthereumDataRoutesTest
             "mainnet",
             enabled = true,
             new URL("http://localhost"),
+            dbCfg,
             EthereumRetryConfiguration(1.second, 1),
             EthereumBatchFetchConfiguration(1, 1, 1, 1, 1, 1)
           )

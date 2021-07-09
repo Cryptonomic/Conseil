@@ -4,6 +4,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.stephenn.scalatest.jsonassert.JsonMatchers
+import com.typesafe.config.ConfigFactory
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.BeforeAndAfterEach
 import tech.cryptonomic.conseil.api.metadata.{
@@ -41,7 +42,20 @@ class BitcoinDataRoutesTest
   platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
   blockAttributes.foreach(platformDiscoveryOperations.addAttribute(testEntityPath, _))
 
-  private val conseilOps: BitcoinDataOperations = new BitcoinDataOperations {
+  val dbCfg = ConfigFactory.parseString("""
+                                          |    db {
+                                          |      dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
+                                          |      properties {
+                                          |        user: "foo"
+                                          |        password: "bar"
+                                          |        url: "jdbc:postgresql://localhost:5432/postgres"
+                                          |      }
+                                          |      numThreads: 10
+                                          |      maxConnections: 10
+                                          |    }
+        """.stripMargin)
+
+  private val conseilOps: BitcoinDataOperations = new BitcoinDataOperations(dbCfg) {
     override def queryWithPredicates(prefix: String, tableName: String, query: Query, hideForkInvalid: Boolean = false)(
         implicit ec: ExecutionContext
     ): Future[List[QueryResponse]] =
@@ -56,6 +70,7 @@ class BitcoinDataRoutesTest
             "mainnet",
             enabled = true,
             BitcoinNodeConfiguration("host", 0, "protocol", "username", "password"),
+            dbCfg,
             BitcoinBatchFetchConfiguration(1, 1, 1, 1, 1)
           )
         )

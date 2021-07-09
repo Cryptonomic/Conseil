@@ -27,7 +27,7 @@ class TezosForkDataOperationsTest
   import scala.concurrent.ExecutionContext.Implicits.global
   "TezosDataOperations" should {
 
-      val sut = new TezosDataOperations {
+      val sut = new TezosDataOperations(dbConfig) {
         override lazy val dbReadHandle = dbHandler
       }
 

@@ -26,18 +26,18 @@ import scala.concurrent.{ExecutionContext, Future}
 object GenericPlatformDiscoveryOperations {
 
   def apply(
-      dbRunner: DBIORunner,
+      dbRunners: Map[(String, String), DBIORunner],
       caching: MetadataCaching[IO],
       cacheOverrides: AttributeValuesCacheConfiguration,
       cacheTTL: FiniteDuration,
       highCardinalityLimit: Int
   )(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]): GenericPlatformDiscoveryOperations =
-    new GenericPlatformDiscoveryOperations(dbRunner, caching, cacheOverrides, cacheTTL, highCardinalityLimit)
+    new GenericPlatformDiscoveryOperations(dbRunners, caching, cacheOverrides, cacheTTL, highCardinalityLimit)
 }
 
 /** Class providing the implementation of the metadata calls with caching */
 class GenericPlatformDiscoveryOperations(
-    dbRunner: DBIORunner,
+    dbRunners: Map[(String, String), DBIORunner],
     caching: MetadataCaching[IO],
     cacheOverrides: AttributeValuesCacheConfiguration,
     cacheTTL: FiniteDuration,
@@ -51,11 +51,11 @@ class GenericPlatformDiscoveryOperations(
 
   /** Method for initializing values of the cache */
   def init(config: List[(Platform, Network)]): Future[Unit] = {
-    val platforms = config.map(_._1)
+    val entities = preCacheEntities(config)
 
-    val entities = IO.fromFuture(IO(dbRunner.runQuery(preCacheEntities(config))))
-    val attributes = IO.fromFuture(IO(dbRunner.runQuery(preCacheAttributes(platforms))))
-    val attributeValues = IO.fromFuture(IO(dbRunner.runQuery(preCacheAttributeValues(platforms))))
+    val attributes = preCacheAttributes(config)
+
+    val attributeValues = preCacheAttributeValues(config)
 
     (
       entities flatMap caching.fillEntitiesCache,
@@ -66,18 +66,22 @@ class GenericPlatformDiscoveryOperations(
 
   /** Pre-caching attributes from slick without cardinality for multiple platforms
     *
-    * @param  platforms list of platforms for which we want to fetch attributes
-    * @return database action with attributes to be cached
+    * @param  xs list of platform-network pairs for which we want to fetch attributes
+    * @return  attributes to be cached
     **/
-  private def preCacheAttributes(platforms: List[Platform]): DBIO[AttributesCache] =
-    DBIO.sequence(platforms.map(preCacheAttributes)).map(_.reduce(_ ++ _))
+  private def preCacheAttributes(xs: List[(Platform, Network)]): IO[AttributesCache] =
+    xs.map {
+      case (platform, network) =>
+        IO.fromFuture(IO(dbRunners(platform.name, network.name).runQuery(preCacheAttributes(platform, network))))
+    }.sequence.map(_.reduce(_ ++ _))
 
   /** Pre-caching attributes from slick without cardinality
     *
     * @param  platform platform for which we want to fetch attributes
+    * @param network  network for which we want to fetch entities within specific platform
     * @return database action with attributes to be cached
     * */
-  private def preCacheAttributes(platform: Platform): DBIO[AttributesCache] = {
+  private def preCacheAttributes(platform: Platform, network: Network): DBIO[AttributesCache] = {
     val result = for {
       tables <- MTable.getTables(Some(""), Some(platform.name), Some(""), Some(Seq("TABLE", "VIEW")))
       columns <- getColumns(tables)
@@ -87,7 +91,7 @@ class GenericPlatformDiscoveryOperations(
       for {
         cols <- columns
         head <- cols.headOption.toVector
-        key = AttributesCacheKey(platform.name, head.table.name)
+        key = AttributesCacheKey(platform.name, network.name, head.table.name)
         entry = CacheEntry(0L, cols.map(c => makeAttributes(c, primaryKeys, indexes)).toList)
       } yield key -> entry
 
@@ -149,24 +153,27 @@ class GenericPlatformDiscoveryOperations(
 
   /** Pre-caching attribute values from slick for multiple platforms
     *
-    * @param  platforms the list of platforms for which we want to fetch attribute values
+    * @param  xs list of platform-network pairs for which we want to fetch attribute values
     * @return database action with attribute values to be cached
     * */
-  private def preCacheAttributeValues(platforms: List[Platform]): DBIO[AttributeValuesCache] =
-    DBIO.sequence(platforms.map(preCacheAttributeValues)).map(_.reduce(_ ++ _))
+  private def preCacheAttributeValues(xs: List[(Platform, Network)]): IO[AttributeValuesCache] =
+    xs.map {
+      case (platform, network) =>
+        IO.fromFuture(IO(dbRunners(platform.name, network.name).runQuery(preCacheAttributeValues(platform, network))))
+    }.sequence.map(_.reduce(_ ++ _))
 
   /** Pre-caching attribute values from slick for specific platform
     *
     * @param  platform platform for which we want to fetch attribute values
     * @return database action with attribute values to be cached
     * */
-  private def preCacheAttributeValues(platform: Platform): DBIO[AttributeValuesCache] =
+  private def preCacheAttributeValues(platform: Platform, network: Network): DBIO[AttributeValuesCache] =
     DBIO.sequence {
       cacheOverrides.getAttributesToCache.collect {
-        case (schema, table, column) if schema == platform.name =>
+        case (schema, network.name, table, column) if schema == platform.name =>
           selectDistinct(platform.name, table, column).map { values =>
             val radixTree = RadixTree(values.map(x => x.toLowerCase -> x): _*)
-            AttributeValuesCacheKey(platform.name, table, column) -> CacheEntry(now, radixTree)
+            AttributeValuesCacheKey(platform.name, network.name, table, column) -> CacheEntry(now, radixTree)
           }
       }
     }.map(_.toMap)
@@ -189,7 +196,10 @@ class GenericPlatformDiscoveryOperations(
               _ <- caching.putEntities(key, ent)
               _ <- contextShift.shift
               updatedEntities <- IO.fromFuture(
-                IO(dbRunner.runQuery(preCacheEntities(networkPath.up.platform, networkPath.network)))
+                IO(
+                  dbRunners((networkPath.up.platform, networkPath.network))
+                    .runQuery(preCacheEntities(networkPath.up.platform, networkPath.network))
+                )
               )
               _ <- caching.putEntities(key, updatedEntities(key).value)
             } yield ()).unsafeRunAsyncAndForget()
@@ -203,12 +213,15 @@ class GenericPlatformDiscoveryOperations(
   /** Pre-caching entities values from slick for multiple platform-network pairs
     *
     * @param xs list of platform-network pairs for which we want to fetch entities
-    * @return database action with entities to be cached
+    * @return entities to be cached
     * */
-  private def preCacheEntities(xs: List[(Platform, Network)]): DBIO[EntitiesCache] =
-    DBIO
-      .sequence(xs.map { case (platform, network) => preCacheEntities(platform.name, network.name) })
-      .map(_.reduce(_ ++ _))
+  private def preCacheEntities(xs: List[(Platform, Network)]): IO[EntitiesCache] =
+    xs.map {
+      case (platform, network) =>
+        IO.fromFuture(
+          IO(dbRunners((platform.name, network.name)).runQuery(preCacheEntities(platform.name, network.name)))
+        )
+    }.sequence.map(_.reduce(_ ++ _))
 
   /** Pre-caching entities values from slick for specific platform-network pair
     *
@@ -261,6 +274,7 @@ class GenericPlatformDiscoveryOperations(
                 test = attributeFilter.length >= minMatchLength,
                 right = getAttributeValuesFromCache(
                   attributePath.up.up.up.platform,
+                  attributePath.up.up.network,
                   attributePath.up.entity,
                   attributePath.attribute,
                   attributeFilter,
@@ -272,6 +286,7 @@ class GenericPlatformDiscoveryOperations(
               Right(
                 getAttributeValuesFromCache(
                   attributePath.up.up.up.platform,
+                  attributePath.up.up.network,
                   attributePath.up.entity,
                   attributePath.attribute,
                   "",
@@ -295,6 +310,7 @@ class GenericPlatformDiscoveryOperations(
                     attr =>
                       makeAttributesQuery(
                         attributePath.up.up.up.platform,
+                        attributePath.up.up.network,
                         attributePath.up.entity,
                         attr.name,
                         withFilter
@@ -312,23 +328,30 @@ class GenericPlatformDiscoveryOperations(
   /** Gets attribute values from cache and updates them if necessary */
   private def getAttributeValuesFromCache(
       platform: String,
+      network: String,
       tableName: String,
       columnName: String,
       attributeFilter: String,
       maxResultLength: Int
   ): Future[List[String]] =
     caching
-      .getAttributeValues(AttributeValuesCacheKey(platform, tableName, columnName))
+      .getAttributeValues(AttributeValuesCacheKey(platform, network, tableName, columnName))
       .flatMap {
         case Some(CacheEntry(last, radixTree)) if !cacheExpired(last) =>
           IO.pure(radixTree.filterPrefix(attributeFilter.toLowerCase).values.take(maxResultLength).toList)
         case Some(CacheEntry(_, oldRadixTree)) =>
           (for {
-            _ <- caching.putAttributeValues(AttributeValuesCacheKey(platform, tableName, columnName), oldRadixTree)
+            _ <- caching.putAttributeValues(
+              AttributeValuesCacheKey(platform, network, tableName, columnName),
+              oldRadixTree
+            )
             _ <- contextShift.shift
-            attributeValues <- IO.fromFuture(IO(makeAttributesQuery(platform, tableName, columnName, None)))
+            attributeValues <- IO.fromFuture(IO(makeAttributesQuery(platform, network, tableName, columnName, None)))
             radixTree = RadixTree(attributeValues.map(x => x.toLowerCase -> x): _*)
-            _ <- caching.putAttributeValues(AttributeValuesCacheKey(platform, tableName, columnName), radixTree)
+            _ <- caching.putAttributeValues(
+              AttributeValuesCacheKey(platform, network, tableName, columnName),
+              radixTree
+            )
           } yield ()).unsafeRunAsyncAndForget()
           IO.pure(oldRadixTree.filterPrefix(attributeFilter).values.take(maxResultLength).toList)
         case None =>
@@ -346,17 +369,18 @@ class GenericPlatformDiscoveryOperations(
     * */
   private def makeAttributesQuery(
       platform: String,
+      network: String,
       tableName: String,
       column: String,
       withFilter: Option[String]
   ): Future[List[String]] =
     withFilter match {
       case Some(filter) =>
-        dbRunner.runQuery(
+        dbRunners((platform, network)).runQuery(
           selectDistinctLike(platform, tableName, column, Sanitizer.sanitizeForSql(filter))
         )
       case None =>
-        dbRunner.runQuery(selectDistinct(platform, tableName, column))
+        dbRunners((platform, network)).runQuery(selectDistinct(platform, tableName, column))
     }
 
   /**
@@ -368,7 +392,7 @@ class GenericPlatformDiscoveryOperations(
   override def getTableAttributes(entityPath: EntityPath): Future[Option[List[Attribute]]] =
     caching.getCachingStatus.map { status =>
       if (status == Finished) {
-        val key = AttributesCacheKey(entityPath.up.up.platform, entityPath.entity)
+        val key = AttributesCacheKey(entityPath.up.up.platform, entityPath.up.network, entityPath.entity)
         caching
           .getAttributes(key)
           .flatMap { attributesOpt =>
@@ -406,7 +430,7 @@ class GenericPlatformDiscoveryOperations(
     */
   override def getTableAttributesWithoutUpdatingCache(entityPath: EntityPath): Future[Option[List[Attribute]]] =
     caching
-      .getAttributes(AttributesCacheKey(entityPath.up.up.platform, entityPath.entity))
+      .getAttributes(AttributesCacheKey(entityPath.up.up.platform, entityPath.up.network, entityPath.entity))
       .map { attrOpt =>
         attrOpt.map(_.value)
       }
@@ -414,7 +438,8 @@ class GenericPlatformDiscoveryOperations(
 
   /** Runs query and attributes with updated counts */
   private def getUpdatedAttributes(entityPath: EntityPath, columns: List[Attribute]): Future[List[Attribute]] =
-    dbRunner.runQuery(getUpdatedAttributesQuery(entityPath, columns))
+    dbRunners((entityPath.up.up.platform, entityPath.up.network))
+      .runQuery(getUpdatedAttributesQuery(entityPath, columns))
 
   /** Query for returning partial attributes with updated counts */
   private def getUpdatedAttributesQuery(entityPath: EntityPath, columns: List[Attribute]): DBIO[List[Attribute]] =
@@ -454,7 +479,7 @@ class GenericPlatformDiscoveryOperations(
       for {
         entCache <- caching.getEntities(EntitiesCacheKey(platform.name, network.name))
         attrCache <- entCache.toList
-          .map(_.value.map(e => AttributesCacheKey(platform.name, e.name)).toSet)
+          .map(_.value.map(e => AttributesCacheKey(platform.name, network.name, e.name)).toSet)
           .map(keys => caching.getAllAttributesByKeys(keys))
           .sequence
           .map(_.reduce(_ ++ _))
@@ -464,7 +489,8 @@ class GenericPlatformDiscoveryOperations(
             getAllUpdatedAttributes(platform.name, network.name, entC.value, attrCache)
         )
         _ <- updatedAttributes.traverse {
-          case (tableName, attr) => caching.putAttributes(AttributesCacheKey(platform.name, tableName), attr)
+          case (tableName, attr) =>
+            caching.putAttributes(AttributesCacheKey(platform.name, network.name, tableName), attr)
         }
       } yield ()
 
@@ -494,7 +520,7 @@ class GenericPlatformDiscoveryOperations(
         getUpdatedAttributesQuery(entityPath, attrs).map(entityName.key -> _)
     }
     val action = DBIO.sequence(queries).map(_.toList)
-    IO.fromFuture(IO(dbRunner.runQuery(action)))
+    IO.fromFuture(IO(dbRunners((platform, network)).runQuery(action)))
   }
 
 }

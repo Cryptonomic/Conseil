@@ -1,8 +1,11 @@
 package tech.cryptonomic.conseil.common.config
 
-import java.net.URL
+import com.typesafe.config.Config
+import slick.jdbc.JdbcBackend.Database
 
+import java.net.URL
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
+
 import scala.concurrent.duration.Duration
 
 /** defines configuration types for conseil available platforms */
@@ -73,6 +76,19 @@ object Platforms {
         .map { config =>
           Network(config.network, config.network.capitalize, config.platform.name, config.network)
         }
+
+    def getDbConfig(platformName: String, network: String, enabled: Boolean = true): Config =
+      platforms
+        .filter(v => v.platform.name == platformName && v.network == network && v.enabled == enabled)
+        .map(_.db)
+        .head
+
+    def getDatabases(enabled: Boolean = true): Map[(String, String), Database] =
+      platforms
+        .filter(_.enabled == enabled)
+        .map(c => (c.platform.name, c.network) -> Database.forConfig("", c.db))
+        .toMap
+
   }
 
   /** configurations to describe a tezos node */
@@ -99,6 +115,9 @@ object Platforms {
 
     /** Defines the name of the network for specific blockchain */
     def network: String
+
+    /** View on the db config object */
+    def db: Config
   }
 
   /** collects all config related to a tezos network */
@@ -106,6 +125,7 @@ object Platforms {
       network: String,
       enabled: Boolean,
       node: TezosNodeConfiguration,
+      db: Config,
       tns: Option[TNSContractConfiguration]
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Tezos
@@ -136,6 +156,7 @@ object Platforms {
       network: String,
       enabled: Boolean,
       node: BitcoinNodeConfiguration,
+      db: Config,
       batching: BitcoinBatchFetchConfiguration
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Bitcoin
@@ -176,6 +197,7 @@ object Platforms {
       network: String,
       enabled: Boolean,
       node: URL,
+      db: Config,
       retry: EthereumRetryConfiguration,
       batching: EthereumBatchFetchConfiguration
   ) extends PlatformConfiguration {
@@ -187,12 +209,13 @@ object Platforms {
       network: String,
       enabled: Boolean,
       node: URL,
+      db: Config,
       retry: EthereumRetryConfiguration,
       batching: EthereumBatchFetchConfiguration
   ) extends PlatformConfiguration {
     override val platform: BlockchainPlatform = Quorum
 
-    lazy val toEthereumConfiguration = EthereumConfiguration(network, enabled, node, retry, batching)
+    lazy val toEthereumConfiguration = EthereumConfiguration(network, enabled, node, db, retry, batching)
   }
 
 }

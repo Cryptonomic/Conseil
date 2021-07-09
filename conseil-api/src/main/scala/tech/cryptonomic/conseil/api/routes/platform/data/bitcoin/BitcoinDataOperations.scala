@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
+import com.typesafe.config.Config
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataOperations
 import tech.cryptonomic.conseil.common.bitcoin.BitcoinTypes.BitcoinBlockHash
@@ -8,8 +9,8 @@ import tech.cryptonomic.conseil.common.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class BitcoinDataOperations extends ApiDataOperations {
-  override lazy val dbReadHandle: Database = DatabaseUtil.conseilDb
+class BitcoinDataOperations(dbConfig: Config) extends ApiDataOperations {
+  override lazy val dbReadHandle: Database = Database.forConfig("", dbConfig)
 
   /** Fetches the list of blocks for given query */
   def fetchBlocks(query: Query)(implicit ex: ExecutionContext): Future[Option[List[QueryResponse]]] =

@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.api.metadata
 
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
-import tech.cryptonomic.conseil.common.config.Types.{AttributeName, EntityName, PlatformName}
+import tech.cryptonomic.conseil.common.config.Types.{AttributeName, EntityName, NetworkName, PlatformName}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.AttributeCacheConfiguration
 import tech.cryptonomic.conseil.common.metadata.{AttributePath, Path}
 import tech.cryptonomic.conseil.common.util.OptionUtil.when
@@ -30,11 +30,11 @@ class AttributeValuesCacheConfiguration(metadataConfiguration: MetadataConfigura
     when(metadataConfiguration.isVisible(path))(value).flatten
 
   /** extracts tuple (platform, entity, attribute) which needs to be cached */
-  def getAttributesToCache: List[(PlatformName, EntityName, AttributeName)] =
+  def getAttributesToCache: List[(PlatformName, NetworkName, EntityName, AttributeName)] =
     metadataConfiguration.allAttributes.filter {
       case (_, conf) => conf.cacheConfig.exists(_.cached)
     }.keys
       .filter(metadataConfiguration.isVisible)
-      .map(path => (path.up.up.up.platform, path.up.entity, path.attribute))
+      .map(path => (path.up.up.up.platform, path.up.up.network, path.up.entity, path.attribute))
       .toList
 }
