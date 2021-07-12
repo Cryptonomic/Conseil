@@ -127,6 +127,12 @@ object TezosOptics {
           acrossOperations composePrism
           selectTransaction
 
+    /** a function to traverse all of a block's origination operations */
+    val acrossOriginations: Traversal[Block, Origination] =
+      acrossOperationGroups composeTraversal
+          acrossOperations composePrism
+          selectOrigination
+
     /** a function to traverse all of a block's internal transaction operations */
     val acrossInternalTransactions: Traversal[Block, InternalOperationResults.Transaction] =
       acrossTransactions composeLens

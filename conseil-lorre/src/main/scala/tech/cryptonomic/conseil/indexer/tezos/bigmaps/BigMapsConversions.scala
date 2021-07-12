@@ -82,6 +82,7 @@ object BigMapsConversions extends ConseilLogSupport {
               keyHash = Some(keyHash.value),
               operationGroupId = opGroupHash.map(_.value),
               value = value.map(it => toMichelsonScript[MichelsonInstruction](it.expression)), //we're using instructions to represent data values
+              valueMicheline = value.map(_.expression),
               blockLevel = Some(ref.level),
               timestamp = ref.timestamp.map(Timestamp.from),
               cycle = ref.cycle,

@@ -66,6 +66,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
                       it.keyHash,
                       it.operationGroupId,
                       it.value,
+                      it.valueMicheline,
                       it.blockLevel,
                       it.timestamp,
                       it.cycle,

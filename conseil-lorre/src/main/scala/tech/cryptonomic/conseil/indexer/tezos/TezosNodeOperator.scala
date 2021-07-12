@@ -641,7 +641,8 @@ private[tezos] class TezosNodeOperator(
     */
   def getLatestBlocks(
       depth: Option[Int] = None,
-      headHash: Option[TezosBlockHash] = None
+      headHash: Option[TezosBlockHash] = None,
+      maxIndexedLevel: Option[BlockLevel] = None
   ): Future[PaginatedBlocksResults] =
     headHash
       .map(getBlock(_))
@@ -649,7 +650,8 @@ private[tezos] class TezosNodeOperator(
       .map { maxHead =>
         val headLevel = maxHead.data.header.level
         val headHash = maxHead.data.hash
-        val minLevel = depth.map(d => headLevel - d + 1).filter(_ >= 1).getOrElse(1L)
+        val minLevel =
+          depth.map(d => math.max(headLevel - d, maxIndexedLevel.getOrElse(1L)) + 1).filter(_ >= 1).getOrElse(1L)
         val paginatedResults = partitionLevelsRange(minLevel to headLevel).map(
           page => getBlocks((headHash, headLevel), page)
         )
@@ -689,6 +691,10 @@ private[tezos] class TezosNodeOperator(
       val copyInternalParametersToMicheline = (t: InternalOperationResults.Transaction) =>
         t.copy(parameters_micheline = t.parameters)
 
+      val copyOriginationToMicheline = (o: Origination) =>
+        o.copy(script = o.script.map(_.copy(storage_micheline = o.script.map(_.storage))))
+
+      val setOriginationMicheline = acrossOriginations.modify(copyOriginationToMicheline)
       val codeAlter = acrossScriptsCode.modify(toMichelsonScript[MichelsonInstruction])
       val storageAlter = acrossScriptsStorage.modify(toMichelsonScript[MichelsonInstruction])
 
@@ -703,7 +709,8 @@ private[tezos] class TezosNodeOperator(
       val parametersAlterToInternals = acrossInternalParameters.modify(toMichelsonScript[MichelsonInstruction])
 
       //each operation will convert a block to an updated version of block, therefore compose each transformation with the next
-      codeAlter andThen
+
+      setOriginationMicheline andThen codeAlter andThen
         storageAlter andThen
         setUnparsedMicheline andThen
         parametersAlter andThen

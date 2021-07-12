@@ -1,2 +1,2 @@
-id| name  | contract_type| account_id                           | scale
-1 | USDTez| FA1.2        | tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi9 | 6
+id| name  | contract_type| account_id                           | scale | interfaces																				| is_tzip16	| is_nft	| metadata_type| metadata_big_map_id	| metadata_big_map_type| metadata_path
+1 | USDTez| FA1.2        | tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi9 | 6     | ""															 												| false					| false 	| ""											| -1																		|	""																			| ""

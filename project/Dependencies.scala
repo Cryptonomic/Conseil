@@ -14,8 +14,8 @@ object Dependencies {
 
     val scribe = "3.1.3"
 
-    val slick = "3.3.0"
-    val slickPG = "0.18.0"
+    val slick = "3.3.3"
+    val slickPG = "0.19.6"
     val slickEffect = "0.3.0"
     val postgres = "42.1.4"
 

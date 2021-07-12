@@ -192,7 +192,8 @@ object TezosTypes {
   object Scripted {
     final case class Contracts(
         storage: Micheline,
-        code: Micheline
+        code: Micheline,
+        storage_micheline: Option[Micheline] = None
     )
   }
 
