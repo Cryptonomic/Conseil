@@ -27,6 +27,7 @@ trait Tables {
     BakingRights.schema,
     BalanceUpdates.schema,
     BigMapContents.schema,
+    BigMapContentsHistory.schema,
     BigMaps.schema,
     Blocks.schema,
     EndorsingRights.schema,
@@ -1578,6 +1579,100 @@ trait Tables {
 
   /** Collection-like TableQuery object for table BigMapContents */
   lazy val BigMapContents = new TableQuery(tag => new BigMapContents(tag))
+
+  /** Entity class storing rows of table BigMapContentsHistory
+    *  @param bigMapId Database column big_map_id SqlType(numeric)
+    *  @param key Database column key SqlType(varchar)
+    *  @param keyHash Database column key_hash SqlType(varchar), Default(None)
+    *  @param operationGroupId Database column operation_group_id SqlType(varchar), Default(None)
+    *  @param value Database column value SqlType(varchar), Default(None)
+    *  @param blockLevel Database column block_level SqlType(int8), Default(None)
+    *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
+    *  @param cycle Database column cycle SqlType(int4), Default(None)
+    *  @param period Database column period SqlType(int4), Default(None) */
+  case class BigMapContentsHistoryRow(
+      bigMapId: scala.math.BigDecimal,
+      key: String,
+      keyHash: Option[String] = None,
+      operationGroupId: Option[String] = None,
+      value: Option[String] = None,
+      blockLevel: Option[Long] = None,
+      timestamp: Option[java.sql.Timestamp] = None,
+      cycle: Option[Int] = None,
+      period: Option[Int] = None
+  )
+
+  /** GetResult implicit for fetching BigMapContentsHistoryRow objects using plain SQL queries */
+  implicit def GetResultBigMapContentsHistoryRow(
+      implicit e0: GR[scala.math.BigDecimal],
+      e1: GR[String],
+      e2: GR[Option[String]],
+      e3: GR[Option[Long]],
+      e4: GR[Option[java.sql.Timestamp]],
+      e5: GR[Option[Int]]
+  ): GR[BigMapContentsHistoryRow] = GR { prs =>
+    import prs._
+    BigMapContentsHistoryRow.tupled(
+      (
+        <<[scala.math.BigDecimal],
+        <<[String],
+        <<?[String],
+        <<?[String],
+        <<?[String],
+        <<?[Long],
+        <<?[java.sql.Timestamp],
+        <<?[Int],
+        <<?[Int]
+      )
+    )
+  }
+
+  /** Table description of table big_map_contents_history. Objects of this class serve as prototypes for rows in queries. */
+  class BigMapContentsHistory(_tableTag: Tag)
+      extends profile.api.Table[BigMapContentsHistoryRow](_tableTag, Some("tezos"), "big_map_contents_history") {
+    def * =
+      (bigMapId, key, keyHash, operationGroupId, value, blockLevel, timestamp, cycle, period) <> (BigMapContentsHistoryRow.tupled, BigMapContentsHistoryRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      ((Rep.Some(bigMapId), Rep.Some(key), keyHash, operationGroupId, value, blockLevel, timestamp, cycle, period)).shaped
+        .<>(
+          { r =>
+            import r._; _1.map(_ => BigMapContentsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8, _9)))
+          },
+          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        )
+
+    /** Database column big_map_id SqlType(numeric) */
+    val bigMapId: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("big_map_id")
+
+    /** Database column key SqlType(varchar) */
+    val key: Rep[String] = column[String]("key")
+
+    /** Database column key_hash SqlType(varchar), Default(None) */
+    val keyHash: Rep[Option[String]] = column[Option[String]]("key_hash", O.Default(None))
+
+    /** Database column operation_group_id SqlType(varchar), Default(None) */
+    val operationGroupId: Rep[Option[String]] = column[Option[String]]("operation_group_id", O.Default(None))
+
+    /** Database column value SqlType(varchar), Default(None) */
+    val value: Rep[Option[String]] = column[Option[String]]("value", O.Default(None))
+
+    /** Database column block_level SqlType(int8), Default(None) */
+    val blockLevel: Rep[Option[Long]] = column[Option[Long]]("block_level", O.Default(None))
+
+    /** Database column timestamp SqlType(timestamp), Default(None) */
+    val timestamp: Rep[Option[java.sql.Timestamp]] = column[Option[java.sql.Timestamp]]("timestamp", O.Default(None))
+
+    /** Database column cycle SqlType(int4), Default(None) */
+    val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
+
+    /** Database column period SqlType(int4), Default(None) */
+    val period: Rep[Option[Int]] = column[Option[Int]]("period", O.Default(None))
+  }
+
+  /** Collection-like TableQuery object for table BigMapContentsHistory */
+  lazy val BigMapContentsHistory = new TableQuery(tag => new BigMapContentsHistory(tag))
 
   /** Entity class storing rows of table BigMaps
     *  @param bigMapId Database column big_map_id SqlType(numeric), PrimaryKey

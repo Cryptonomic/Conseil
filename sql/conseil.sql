@@ -517,6 +517,18 @@ CREATE TABLE tezos.big_map_contents (
     PRIMARY KEY (big_map_id, key)
 );
 
+CREATE TABLE tezos.big_map_contents_history (
+    big_map_id numeric NOT NULL,
+    key character varying NOT NULL,
+    key_hash character varying,
+    operation_group_id character varying,
+    value character varying,
+    block_level bigint,
+    "timestamp" timestamp without time zone,
+    cycle integer,
+    period integer
+);
+
 CREATE INDEX big_map_id_idx ON tezos.big_map_contents USING btree (big_map_id);
 CREATE INDEX operation_group_id_idx ON tezos.big_map_contents USING btree (operation_group_id);
 CREATE INDEX combined_big_map_operation_group_ids_idx ON tezos.big_map_contents USING btree (big_map_id, operation_group_id);

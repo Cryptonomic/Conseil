@@ -20,6 +20,7 @@ trait TezosInMemoryDatabaseSetup extends InMemoryDatabaseSetup {
       Fixture.table(Tables.ProcessedChainEvents),
       Fixture.table(Tables.BigMaps),
       Fixture.table(Tables.BigMapContents),
+      Fixture.table(Tables.BigMapContentsHistory),
       Fixture.table(Tables.OriginatedAccountMaps),
       Fixture.table(Tables.Bakers),
       Fixture.table(Tables.BakersCheckpoint),
