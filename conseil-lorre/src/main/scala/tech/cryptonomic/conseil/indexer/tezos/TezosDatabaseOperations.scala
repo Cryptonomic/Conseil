@@ -94,8 +94,9 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     * @return         Database action to execute.
     */
   def writeBlocks(
-      blocks: List[Block]
-  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContract): DBIO[Unit] = {
+      blocks: List[Block],
+      tokenContracts: TokenContracts,
+  )(implicit ec: ExecutionContext, tnsContracts: TNSContract): DBIO[Unit] = {
     // Kleisli is a Function with effects, Kleisli[F, A, B] ~= A => F[B]
     import TezosDatabaseConversions.OperationTablesData
     import SymbolSourceLabels.Show._
@@ -393,10 +394,18 @@ object TezosDatabaseOperations extends ConseilLogSupport {
   def writeBlocksAndCheckpointAccounts(
       blocks: List[Block],
       accountUpdates: List[BlockTagged[List[AccountId]]]
-  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContract): DBIO[Option[Int]] = {
+  )(implicit ec: ExecutionContext, tnsContracts: TNSContract): DBIO[Option[Int]] = {
     logger.info("Writing blocks and account checkpoints to the DB...")
     //sequence both operations in a single transaction
-    (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
+    Tables.RegisteredTokens.result.flatMap { tokenRows =>
+      val xd = TokenContracts.fromConfig(
+        tokenRows.map {
+          case Tables.RegisteredTokensRow(_, tokenName, standard, accountId, _) =>
+            ContractId(accountId) -> standard
+        }.toList
+      )
+      (writeBlocks(blocks, xd) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
+    }
   }
 
   /**

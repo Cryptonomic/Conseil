@@ -353,7 +353,7 @@ object TezosIndexer extends ConseilLogSupport {
     /* read known token smart contracts from configuration, which represents crypto-assets internal to the chain
      * along with other static definitions to save in registry tables
      */
-    implicit val tokens: TokenContracts = parseCSVConfigurations()
+    val tokens: TokenContracts = parseCSVConfigurations()
 
     /* This is a smart contract acting as a Naming Service which associates accounts hashes to registered memorable names.
      * It's read from configuration and includes the possibility that none is actually defined
