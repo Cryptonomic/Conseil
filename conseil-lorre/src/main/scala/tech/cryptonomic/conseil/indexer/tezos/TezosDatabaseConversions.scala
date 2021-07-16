@@ -983,7 +983,7 @@ private[tezos] object TezosDatabaseConversions {
         Tables.MetadataRow(
           address = rt.source.get,
           rawMetadata = rawJson,
-          desctiption = Some(metadata.description),
+          description = Some(metadata.description),
           name = metadata.name,
           lastUpdated = Some(Timestamp.from(Instant.now))
         )

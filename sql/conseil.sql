@@ -142,7 +142,7 @@ CREATE TABLE tezos.metadata (
     address text NOT NULL,
     raw_metadata text NOT NULL,
     name text NOT NULL,
-    desctiption text,
+    description text,
     last_updated timestamp,
     PRIMARY KEY(address, name)
 );

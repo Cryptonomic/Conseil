@@ -2487,13 +2487,13 @@ trait Tables {
     *  @param address Database column address SqlType(text)
     *  @param rawMetadata Database column raw_metadata SqlType(text)
     *  @param name Database column name SqlType(text)
-    *  @param desctiption Database column desctiption SqlType(text), Default(None)
+    *  @param description Database column description SqlType(text), Default(None)
     *  @param lastUpdated Database column last_updated SqlType(timestamp), Default(None) */
   case class MetadataRow(
       address: String,
       rawMetadata: String,
       name: String,
-      desctiption: Option[String] = None,
+      description: Option[String] = None,
       lastUpdated: Option[java.sql.Timestamp] = None
   )
 
@@ -2509,11 +2509,11 @@ trait Tables {
 
   /** Table description of table metadata. Objects of this class serve as prototypes for rows in queries. */
   class Metadata(_tableTag: Tag) extends profile.api.Table[MetadataRow](_tableTag, Some("tezos"), "metadata") {
-    def * = (address, rawMetadata, name, desctiption, lastUpdated) <> (MetadataRow.tupled, MetadataRow.unapply)
+    def * = (address, rawMetadata, name, description, lastUpdated) <> (MetadataRow.tupled, MetadataRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(address), Rep.Some(rawMetadata), Rep.Some(name), desctiption, lastUpdated)).shaped.<>({ r =>
+      ((Rep.Some(address), Rep.Some(rawMetadata), Rep.Some(name), description, lastUpdated)).shaped.<>({ r =>
         import r._; _1.map(_ => MetadataRow.tupled((_1.get, _2.get, _3.get, _4, _5)))
       }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
 
@@ -2526,8 +2526,8 @@ trait Tables {
     /** Database column name SqlType(text) */
     val name: Rep[String] = column[String]("name")
 
-    /** Database column desctiption SqlType(text), Default(None) */
-    val desctiption: Rep[Option[String]] = column[Option[String]]("desctiption", O.Default(None))
+    /** Database column description SqlType(text), Default(None) */
+    val description: Rep[Option[String]] = column[Option[String]]("description", O.Default(None))
 
     /** Database column last_updated SqlType(timestamp), Default(None) */
     val lastUpdated: Rep[Option[java.sql.Timestamp]] =
