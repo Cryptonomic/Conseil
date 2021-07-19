@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.indexer.ethereum
 
 import cats.effect.{Concurrent, Resource}
+import cats.syntax.all._
 import fs2.Stream
 import slickeffect.Transactor
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
@@ -11,6 +12,7 @@ import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumClient
 import tech.cryptonomic.conseil.indexer.config.{Custom, Depth, Everything, Newest}
 
 import scala.concurrent.ExecutionContext
+import cats.Parallel
 
 /**
   * Ethereum operations for Lorre.
@@ -20,7 +22,7 @@ import scala.concurrent.ExecutionContext
   * @param tx [[slickeffect.Transactor]] to perform a Slick operations on the database
   * @param batchConf Configuration containing batch fetch values
   */
-class EthereumOperations[F[_]: Concurrent](
+class EthereumOperations[F[_]: Concurrent: Parallel](
     ethereumClient: EthereumClient[F],
     persistence: EthereumPersistence[F],
     tx: Transactor[F],
@@ -115,28 +117,22 @@ class EthereumOperations[F[_]: Concurrent](
                   .through(ethereumClient.getContractBalance(block))
                   .through(ethereumClient.addTokenInfo)
                   .chunkN(Integer.MAX_VALUE)
-                  .evalTap(accounts => tx.transact(persistence.createContractAccounts(accounts.toList)))
-                  .evalTap(accounts => tx.transact(persistence.createAccountBalances(accounts.toList)))
-                  .map(_ => (block, txs, receipts, logs))
-              case (block, txs, receipts, logs) => Stream.emit((block, txs, receipts, logs))
+                  .map(contractAccounts => (block, txs, receipts, logs, contractAccounts.toList))
+              case (block, txs, receipts, logs) => Stream.emit((block, txs, receipts, logs, Nil))
             }
             .flatMap {
-              case (block, txs, receipts, logs) if txs.size > 0 =>
+              case (block, txs, receipts, logs, contractAccounts) if txs.size > 0 =>
                 Stream
                   .emits(txs)
                   .filter(t => List(Some(t.from), t.to).forall(addr => !receipts.map(_.contractAddress).contains(addr)))
                   .through(ethereumClient.getAccountBalance(block))
                   .chunkN(Integer.MAX_VALUE)
-                  .evalTap(
-                    accounts =>
-                      tx.transact(persistence.upsertAccounts(accounts.toList.distinct)(ExecutionContext.global))
-                  )
-                  .evalTap(accounts => tx.transact(persistence.createAccountBalances(accounts.toList.distinct)))
-                  .map(_ => (block, txs, receipts, logs))
-              case (block, txs, receipts, logs) => Stream.emit((block, txs, receipts, logs))
+                  .map(accounts => (block, txs, receipts, logs, contractAccounts, accounts.toList.distinct))
+              case (block, txs, receipts, logs, contractAccounts) =>
+                Stream.emit((block, txs, receipts, logs, contractAccounts, Nil))
             }
             .flatMap {
-              case (block, txs, receipts, logs)
+              case (block, txs, receipts, logs, contractAccounts, accounts)
                   if logs.size > 0 && logs
                       .exists(log => log.topics.size == 3 && log.topics.contains(tokenTransferSignature)) =>
                 Stream
@@ -144,22 +140,29 @@ class EthereumOperations[F[_]: Concurrent](
                   .filter(log => log.topics.size == 3 && log.topics.contains(tokenTransferSignature))
                   .through(ethereumClient.getTokenTransfer(block))
                   .chunkN(Integer.MAX_VALUE)
-                  .evalTap(tokenTransfers => tx.transact(persistence.createTokenTransfers(tokenTransfers.toList)))
-                  .map(tokenTransfers => (block, txs, receipts, tokenTransfers.toList))
-              case (block, txs, receipts, _) => Stream.emit((block, txs, receipts, Nil))
+                  .map(
+                    tokenTransfers => (block, txs, receipts, logs, contractAccounts, accounts, tokenTransfers.toList)
+                  )
+              case (block, txs, receipts, logs, contractAccounts, accounts) =>
+                Stream.emit((block, txs, receipts, logs, contractAccounts, accounts, Nil))
             }
             .flatMap {
-              case (block, txs, receipts, tokenTransfers) if tokenTransfers.size > 0 =>
+              case (block, txs, receipts, logs, contractAccounts, accounts, tokenTransfers)
+                  if tokenTransfers.size > 0 =>
                 Stream
                   .emits(tokenTransfers)
                   .through(ethereumClient.getTokenBalance(block))
                   .chunkN(Integer.MAX_VALUE)
-                  .evalTap(tokenBalances => tx.transact(persistence.createTokenBalances(tokenBalances.toList)))
-                  .map(_ => (block, txs, receipts))
-              case (block, txs, receipts, _) => Stream.emit((block, txs, receipts))
+                  .map(
+                    tokenBalances =>
+                      (block, txs, receipts, logs, contractAccounts, accounts, tokenTransfers, tokenBalances.toList)
+                  )
+              case (block, txs, receipts, logs, contractAccounts, accounts, tokenTransfers) =>
+                Stream.emit((block, txs, receipts, logs, contractAccounts, accounts, tokenTransfers, Nil))
             }
             .evalTap {
-              case (block, txs, receipts) if Integer.decode(block.number) % 10 == 0 =>
+              case (block, txs, receipts, logs, contractAccounts, accounts, tokenTransfers, tokenBalances)
+                  if Integer.decode(block.number) % 10 == 0 =>
                 Concurrent[F].delay(
                   logger.info(
                     s"Save block with number: ${block.number} txs: ${txs.size} logs: ${receipts.map(_.logs.size).sum}"
@@ -168,8 +171,13 @@ class EthereumOperations[F[_]: Concurrent](
               case _ => Concurrent[F].unit
             }
             .evalTap {
-              case (block, txs, receipts) =>
-                tx.transact(persistence.createBlock(block, txs, receipts))
+              case (block, txs, receipts, logs, contractAccounts, accounts, tokenTransfers, tokenBalances) =>
+                tx.transact(persistence.createBlock(block, txs, receipts)) *>
+                    tx.transact(persistence.createContractAccounts(contractAccounts)) &>
+                    tx.transact(persistence.upsertAccounts(accounts)(ExecutionContext.global)) &>
+                    tx.transact(persistence.createAccountBalances(contractAccounts ++ accounts)) &>
+                    tx.transact(persistence.createTokenTransfers(tokenTransfers)) &>
+                    tx.transact(persistence.createTokenBalances(tokenBalances))
             }
       )
       .drain
@@ -184,7 +192,7 @@ object EthereumOperations {
     * @param tx [[slickeffect.Transactor]] to perform a Slick operations on the database
     * @param batchConf Configuration containing batch fetch values
     */
-  def resource[F[_]: Concurrent](
+  def resource[F[_]: Concurrent: Parallel](
       rpcClient: RpcClient[F],
       tx: Transactor[F],
       batchConf: EthereumBatchFetchConfiguration
