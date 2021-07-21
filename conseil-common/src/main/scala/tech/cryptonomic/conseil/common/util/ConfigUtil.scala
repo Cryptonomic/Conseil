@@ -59,6 +59,22 @@ object ConfigUtil {
         separator
       )
 
+    def readTableRowsFromCsvString[T <: AbstractTable[_], H <: HList](
+      csvString: String,
+      table: TableQuery[T],
+      separator: Char = ','
+    )(
+      implicit
+      hd: HeaderDecoder[T#TableElementType],
+      g: Generic.Aux[T#TableElementType, H],
+      m: Mapper.Aux[Trimmer.type, H, H]
+    ): Option[List[T#TableElementType]] =
+      readRowsFromCsvString[T#TableElementType, H](
+        csvString,
+        separator
+      )
+
+
     /** Reads a CSV file with tabular data, returning a set of rows to save in the database
       * This overload will use the provided csv file
       *
@@ -126,6 +142,44 @@ object ConfigUtil {
         rows
       }
     }
+
+    def readRowsFromCsvString[Row, H <: HList](
+      csvString: String,
+      separator: Char = ','
+    )(
+      implicit
+      hd: HeaderDecoder[Row],
+      g: Generic.Aux[Row, H],
+      m: Mapper.Aux[Trimmer.type, H, H]
+    ): Option[List[Row]] = {
+      import kantan.csv._
+      import kantan.csv.ops._
+
+      /* Uses a Generic to transform the instance into an HList, maps over it and convert it back into the case class */
+      def trimStringFields[C](c: C)(implicit g: Generic.Aux[C, H]): C = {
+        val hlist = g.to(c)
+        val trimmed = hlist.map(Trimmer)
+        g.from(trimmed)
+      }
+
+      Option(csvString).map { validSource =>
+        val reader: CsvReader[ReadResult[Row]] =
+          validSource.asCsvReader[Row](rfc.withHeader.withCellSeparator(separator))
+
+        // separates List[Either[L, R]] into List[L] and List[R]
+        val (errors, rows) = reader.toList.foldRight((List.empty[ReadError], List.empty[Row]))(
+          (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimStringFields(r) :: pair._2))
+        )
+
+        if (errors.nonEmpty) {
+          val messages = errors.map(_.getMessage).mkString("\n", "\n", "\n")
+          logger.error(s"Error while reading registered source from HTTP: $messages")
+        }
+
+        rows
+      }
+    }
+
 
   }
 

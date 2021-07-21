@@ -22,7 +22,8 @@ final case class LorreConfiguration(
     headHash: Option[String],
     chainEvents: List[ChainEvent],
     blockRightsFetching: BakingAndEndorsingRights,
-    enabledFeatures: Features
+    enabledFeatures: Features,
+    tokenContracts: TokenContracts
 )
 
 /** configuration for fetching baking and endorsing rights */
@@ -48,8 +49,16 @@ final case class BatchFetchConfiguration(
 /** custom select specific features to be enabled when chain-indexing */
 final case class Features(
     blockRightsFetchingIsOn: Boolean,
-    forkHandlingIsOn: Boolean
+    forkHandlingIsOn: Boolean,
+    registeredTokensIsOn: Boolean
 )
+
+final case class TokenContracts(
+    url: String,
+    initialDelay: FiniteDuration,
+    interval: FiniteDuration
+)
+
 
 /** sodium library references */
 final case class SodiumConfiguration(libraryPath: String) extends AnyVal with Product with Serializable

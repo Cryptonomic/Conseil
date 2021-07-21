@@ -142,7 +142,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       saveBlocksBalanceUpdatesAction,
       saveGroupsAction,
       saveOperationsAndBalances.traverse(blocks.flatMap(_.convertToA[List, OperationTablesData])),
-      saveBigMaps(blocks)
+      saveBigMaps(blocks)(ec, tokenContracts, tnsContracts)
     )
 
   }
@@ -825,7 +825,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       db: Database,
       table: TableQuery[A],
       network: String,
-      separator: Char = ','
+      separator: Char = ',',
+      clean: Boolean = false
   )(
       implicit hd: HeaderDecoder[A#TableElementType],
       g: Generic.Aux[A#TableElementType, H],
@@ -834,7 +835,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
   ): Future[(List[A#TableElementType], Option[Int])] =
     ConfigUtil.Csv.readTableRowsFromCsv(table, network, separator) match {
       case Some(rows) =>
-        db.run(insertWhenEmpty(table, rows))
+        db.run(insertWhenEmpty(table, rows, clean))
           .andThen {
             case Success(_) => logger.info(s"Written ${rows.size} ${table.baseTableRow.tableName} rows")
             case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
@@ -844,6 +845,34 @@ object TezosDatabaseOperations extends ConseilLogSupport {
         logger.warn(s"No csv configuration found to initialize table ${table.baseTableRow.tableName} for $network.")
         Future.successful(List.empty -> None)
     }
+
+
+  /** Reads and inserts CSV file to the database for the given table */
+  def initTableFromCsvString[A <: AbstractTable[_], H <: HList](
+    db: Database,
+    table: TableQuery[A],
+    csvString: String,
+    separator: Char = ',',
+    upsert: Boolean = false
+  )(
+    implicit hd: HeaderDecoder[A#TableElementType],
+    g: Generic.Aux[A#TableElementType, H],
+    m: Mapper.Aux[ConfigUtil.Csv.Trimmer.type, H, H],
+    ec: ExecutionContext
+  ): Future[(List[A#TableElementType], Option[Int])] =
+    ConfigUtil.Csv.readTableRowsFromCsvString(csvString, table, separator) match {
+      case Some(rows) =>
+        db.run(insertWhenEmpty(table, rows, upsert))
+          .andThen {
+            case Success(_) => logger.info(s"Written ${rows.size} ${table.baseTableRow.tableName} rows")
+            case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
+          }
+          .map(rows -> _)
+      case None =>
+        logger.warn(s"No csv configuration found to initialize table ${table.baseTableRow.tableName} from url.")
+        Future.successful(List.empty -> None)
+    }
+
 
   /** Write an audit log entry of a detected fork and some
     * reference data useful to analyse the event.

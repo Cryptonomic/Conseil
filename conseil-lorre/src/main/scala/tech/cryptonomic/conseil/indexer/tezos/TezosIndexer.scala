@@ -74,6 +74,14 @@ class TezosIndexer private (
     )
   }
 
+
+  if (featureFlags.registeredTokensIsOn) {
+    logger.info("I'm scheduling the concurrent tasks to update registered tokens")
+    system.scheduler.schedule(lorreConf.tokenContracts.initialDelay, lorreConf.tokenContracts.interval)(
+      RegisteredTokensFetcher.updateKeys(lorreConf.tokenContracts)
+    )
+  }
+
   /** Tries to fetch blocks head to verify if connection with Tezos node was successfully established */
   @tailrec
   private def checkTezosConnection(): Unit =
@@ -299,7 +307,7 @@ object TezosIndexer extends ConseilLogSupport {
     val bakersProcessor = new BakersProcessor(nodeOperator, db, batchingConf, lorreConf.blockRightsFetching)
 
     /* Reads csv resources to initialize db tables and smart contracts objects */
-    def parseCSVConfigurations(): TokenContracts = {
+    def parseCSVConfigurations(): Future[Unit] = {
       /* This will derive automatically all needed implicit arguments to convert csv rows into a proper table row
        * Using generic representations for case classes, provided by the `shapeless` library, it will create the
        * appropriate `kantan.csv.Decoder` for
@@ -321,39 +329,21 @@ object TezosIndexer extends ConseilLogSupport {
       import kantan.csv.generic._
       //we add any missing implicit decoder for column types, not provided by default from the library
       import tech.cryptonomic.conseil.common.util.ConfigUtil.Csv._
+      import cats.implicits._
 
       /* Inits tables with values from CSV files */
-      TezosDb.initTableFromCsv(db, Tables.KnownAddresses, selectedNetwork)
-      TezosDb.initTableFromCsv(db, Tables.BakerRegistry, selectedNetwork)
-
+      (TezosDb.initTableFromCsv(db, Tables.KnownAddresses, selectedNetwork),
+      TezosDb.initTableFromCsv(db, Tables.BakerRegistry, selectedNetwork),
+      TezosDb.initTableFromCsv(db, Tables.RegisteredTokens, selectedNetwork)).mapN {
+        case (_, _, _) => ()
+      }
       /* Here we want to initialize the registered tokens and additionally get the token data back
        * since it's needed to process calls to the same token smart contracts as the chain evolves
        */
-      val tokenContracts: TokenContracts = {
 
-        val tokenContractsFuture =
-          TezosDb.initTableFromCsv(db, Tables.RegisteredTokens, selectedNetwork).map {
-            case (tokenRows, _) =>
-              TokenContracts.fromConfig(
-                tokenRows.map {
-                  case Tables.RegisteredTokensRow(_, tokenName, standard, accountId, _) =>
-                    ContractId(accountId) -> standard
-                }
-              )
-
-          }
-
-        Await.result(tokenContractsFuture, 5.seconds)
-      }
-
-      //return the contracts definitions
-      tokenContracts
     }
 
-    /* read known token smart contracts from configuration, which represents crypto-assets internal to the chain
-     * along with other static definitions to save in registry tables
-     */
-    val tokens: TokenContracts = parseCSVConfigurations()
+    Await.result(parseCSVConfigurations(), 5.seconds)
 
     /* This is a smart contract acting as a Naming Service which associates accounts hashes to registered memorable names.
      * It's read from configuration and includes the possibility that none is actually defined
