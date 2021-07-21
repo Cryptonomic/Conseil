@@ -32,12 +32,12 @@ class DefaultDatabaseOperationsTest extends ConseilSpec with InMemoryDatabase wi
       }
 
       "insert data when table is empty" in {
-        dbHandler.run(insertWhenEmpty[Fees](Tables.Fees, fees)).futureValue.value shouldBe 5
+        dbHandler.run(insertWhenEmpty[Fees](Tables.Fees, fees, false)).futureValue.value shouldBe 5
       }
 
       "not insert data when table is not empty" in {
         dbHandler.run(Tables.Fees ++= fees).isReadyWithin(5 seconds) shouldBe true
-        dbHandler.run(insertWhenEmpty[Fees](Tables.Fees, fees)).futureValue.value shouldBe 0
+        dbHandler.run(insertWhenEmpty[Fees](Tables.Fees, fees, false)).futureValue.value shouldBe 0
       }
     }
 }

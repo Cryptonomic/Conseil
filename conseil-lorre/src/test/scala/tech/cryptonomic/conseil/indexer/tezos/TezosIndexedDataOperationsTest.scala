@@ -94,7 +94,7 @@ class TezosIndexedDataOperationsTest
 
         info(s"verifying with ${generatedBlocks.size} blocks for level $pickLevel")
 
-        Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)), 5.seconds)
+        Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks, noTokenContracts)), 5.seconds)
 
         // when
         val result = sut.fetchBlockAtLevel(pickLevel).futureValue.value
@@ -211,7 +211,7 @@ class TezosIndexedDataOperationsTest
 
         info(s"verifying with ${generatedBlocks.size} blocks")
 
-        Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)), 5.seconds)
+        Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks, noTokenContracts)), 5.seconds)
 
         // when
         val result = sut.fetchMaxLevel().futureValue
@@ -281,7 +281,7 @@ class TezosIndexedDataOperationsTest
         info(s"verifying with ${bakingRights.size} rights")
 
         val populate = for {
-          _ <- TezosDatabaseOperations.writeBlocks(List(block))
+          _ <- TezosDatabaseOperations.writeBlocks(List(block), noTokenContracts)
           Some(stored) <- TezosDatabaseOperations.upsertBakingRights(Map(fetchKey -> bakingRights))
         } yield stored
 
@@ -315,7 +315,7 @@ class TezosIndexedDataOperationsTest
         info(s"verifying with ${endorsingRights.size} rights")
 
         val populate = for {
-          _ <- TezosDatabaseOperations.writeBlocks(List(block))
+          _ <- TezosDatabaseOperations.writeBlocks(List(block), noTokenContracts)
           Some(stored) <- TezosDatabaseOperations.upsertEndorsingRights(Map(fetchKey -> endorsingRights))
         } yield stored
 
