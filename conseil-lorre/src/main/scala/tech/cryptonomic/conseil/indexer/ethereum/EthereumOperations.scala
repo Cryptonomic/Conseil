@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.indexer.ethereum
 
 import cats.effect.{Concurrent, Resource}
-import cats.syntax.all._
 import fs2.Stream
 import slickeffect.Transactor
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
@@ -12,7 +11,6 @@ import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumClient
 import tech.cryptonomic.conseil.indexer.config.{Custom, Depth, Everything, Newest}
 
 import scala.concurrent.ExecutionContext
-import cats.Parallel
 
 /**
   * Ethereum operations for Lorre.
@@ -22,7 +20,7 @@ import cats.Parallel
   * @param tx [[slickeffect.Transactor]] to perform a Slick operations on the database
   * @param batchConf Configuration containing batch fetch values
   */
-class EthereumOperations[F[_]: Concurrent: Parallel](
+class EthereumOperations[F[_]: Concurrent](
     ethereumClient: EthereumClient[F],
     persistence: EthereumPersistence[F],
     tx: Transactor[F],
@@ -172,12 +170,14 @@ class EthereumOperations[F[_]: Concurrent: Parallel](
             }
             .evalTap {
               case (block, txs, receipts, logs, contractAccounts, accounts, tokenTransfers, tokenBalances) =>
-                tx.transact(persistence.createBlock(block, txs, receipts)) *>
-                    tx.transact(persistence.createContractAccounts(contractAccounts)) &>
-                    tx.transact(persistence.upsertAccounts(accounts)(ExecutionContext.global)) &>
-                    tx.transact(persistence.createAccountBalances(contractAccounts ++ accounts)) &>
-                    tx.transact(persistence.createTokenTransfers(tokenTransfers)) &>
-                    tx.transact(persistence.createTokenBalances(tokenBalances))
+                tx.transact(
+                  persistence.createBlock(block, txs, receipts) andThen
+                      persistence.createContractAccounts(contractAccounts) andThen
+                      persistence.upsertAccounts(accounts)(ExecutionContext.global) andThen
+                      persistence.createAccountBalances(contractAccounts ++ accounts) andThen
+                      persistence.createTokenTransfers(tokenTransfers) andThen
+                      persistence.createTokenBalances(tokenBalances)
+                )
             }
       )
       .drain
@@ -192,7 +192,7 @@ object EthereumOperations {
     * @param tx [[slickeffect.Transactor]] to perform a Slick operations on the database
     * @param batchConf Configuration containing batch fetch values
     */
-  def resource[F[_]: Concurrent: Parallel](
+  def resource[F[_]: Concurrent](
       rpcClient: RpcClient[F],
       tx: Transactor[F],
       batchConf: EthereumBatchFetchConfiguration
