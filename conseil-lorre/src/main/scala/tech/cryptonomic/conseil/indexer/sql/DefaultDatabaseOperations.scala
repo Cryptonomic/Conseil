@@ -19,8 +19,8 @@ object DefaultDatabaseOperations {
       table: TableQuery[A],
       rows: List[A#TableElementType],
       upsert: Boolean
-  )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
-    if(upsert) {
+  )(implicit ec: ExecutionContext): DBIO[Option[Int]] =
+    if (upsert) {
       table.insertOrUpdateAll(rows)
     } else {
       table.exists.result.flatMap {
@@ -28,6 +28,5 @@ object DefaultDatabaseOperations {
         case false => table ++= rows
       }
     }
-  }
 
 }

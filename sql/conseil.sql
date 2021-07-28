@@ -124,15 +124,21 @@ CREATE TABLE tezos.processed_chain_events (
 --
 
 CREATE TABLE tezos.registered_tokens (
-    id integer PRIMARY KEY,
     name text NOT NULL,
-    contract_type text NOT NULL,
-    account_id text NOT NULL,
-    scale integer NOT NULL
+    symbol text NOT NULL,
+    decimals integer NOT NULL,
+    interfaces text NOT NULL,
+    address text NOT NULL,
+    token_index integer,
+    balance_map integer NOT NULL,
+    balance_key_type text NOT NULL,
+    balance_path text NOT NULL,
+    markets text NOT NULL,
+    farms text NOT NULL
 );
 
 CREATE TABLE tezos.token_balances (
-    token_id integer,
+    token_address text,
     address text NOT NULL,
     balance numeric NOT NULL,
     block_id character varying NOT NULL,
@@ -140,7 +146,7 @@ CREATE TABLE tezos.token_balances (
     asof timestamp without time zone NOT NULL,
     invalidated_asof timestamp,
     fork_id character varying NOT NULL,
-    PRIMARY KEY (token_id, address, block_level, fork_id)
+    PRIMARY KEY (token_address, address, block_level, fork_id)
 );
 
 CREATE TABLE tezos.tezos_names (

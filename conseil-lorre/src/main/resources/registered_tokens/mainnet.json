@@ -1,0 +1,28 @@
+[
+  {
+  "name": "Staker DAO",
+  "symbol": "SD symbol",
+  "decimals": 0,
+  "interfaces": ["TZIP-7-StakerDao"],
+  "address": "KT1EctCuorV2NfVb1XTQgvzJ88MQtWP8cMMv",
+  "tokenIndex": 1,
+  "balanceMap": 2,
+  "balanceKeyType": "address",
+  "balancePath": "path",
+  "markets": [],
+  "farms": []
+  },
+  {
+  "name": "USDtez",
+  "symbol": "USDtz",
+  "decimals": 6,
+  "interfaces": ["TZIP-7"],
+  "address": "KT1LN4LPSqTMS7Sd2CJw4bbDGRkMv2t68Fy9",
+  "tokenIndex": 1,
+  "balanceMap": 2,
+  "balanceKeyType": "address",
+  "balancePath": "path",
+  "markets": [],
+  "farms": []
+  }
+]

@@ -13,7 +13,7 @@ import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
-import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
+import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
 import tech.cryptonomic.conseil.indexer.LorreIndexer
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
@@ -74,11 +74,10 @@ class TezosIndexer private (
     )
   }
 
-
   if (featureFlags.registeredTokensIsOn) {
     logger.info("I'm scheduling the concurrent tasks to update registered tokens")
     system.scheduler.schedule(lorreConf.tokenContracts.initialDelay, lorreConf.tokenContracts.interval)(
-      RegisteredTokensFetcher.updateKeys(lorreConf.tokenContracts)
+      RegisteredTokensFetcher.updateRegisteredTokens(lorreConf.tokenContracts)
     )
   }
 
@@ -332,14 +331,16 @@ object TezosIndexer extends ConseilLogSupport {
       import cats.implicits._
 
       /* Inits tables with values from CSV files */
-      (TezosDb.initTableFromCsv(db, Tables.KnownAddresses, selectedNetwork),
-      TezosDb.initTableFromCsv(db, Tables.BakerRegistry, selectedNetwork),
-      TezosDb.initTableFromCsv(db, Tables.RegisteredTokens, selectedNetwork)).mapN {
+      (
+        TezosDb.initTableFromCsv(db, Tables.KnownAddresses, selectedNetwork),
+        TezosDb.initTableFromCsv(db, Tables.BakerRegistry, selectedNetwork),
+        TezosDb.initRegisteredTokensTableFromJson(db, selectedNetwork)
+      ).mapN {
         case (_, _, _) => ()
       }
       /* Here we want to initialize the registered tokens and additionally get the token data back
-       * since it's needed to process calls to the same token smart contracts as the chain evolves
-       */
+     * since it's needed to process calls to the same token smart contracts as the chain evolves
+     */
 
     }
 

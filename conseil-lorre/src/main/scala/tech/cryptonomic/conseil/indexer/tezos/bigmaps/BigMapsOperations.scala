@@ -385,14 +385,14 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       val blockData = tokenUpdate.block.data
 
       Tables.RegisteredTokens
-        .filter(_.accountId === tokenUpdate.tokenContractId.id)
-        .map(_.id)
+        .filter(_.address === tokenUpdate.tokenContractId.id)
+        .map(_.address)
         .result
         .map { results =>
           results.headOption.map(
             tokenId =>
               Tables.TokenBalancesRow(
-                tokenId,
+                tokenAddress = tokenId,
                 address = tokenUpdate.accountId.value,
                 balance = BigDecimal(tokenUpdate.balance),
                 blockId = blockData.hash.value,

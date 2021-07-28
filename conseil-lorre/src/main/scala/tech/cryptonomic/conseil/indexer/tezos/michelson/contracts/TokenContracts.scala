@@ -103,9 +103,9 @@ object TokenContracts extends ConseilLogSupport {
   implicit private def toolboxOrdering: Ordering[TokenToolbox] = Ordering.by(_.id.id)
 
   /* Creates a new toolbox, only if the standard is a known one, or returns an empty Option */
-  private def newToolbox(id: ContractId, standard: String): Option[TokenToolbox] =
-    PartialFunction.condOpt(standard) {
-      case "FA1.2" =>
+  private def newToolbox(id: ContractId, standard: String): Option[TokenToolbox] = {
+    PartialFunction.condOpt(standard.stripPrefix("[").stripSuffix("]").split(',')) {
+      case xs if xs.contains("TZIP-7") =>
         new TokenToolbox(id) {
           type PInfo = Nothing
           //parameters are not used for this kind of contract
@@ -120,7 +120,7 @@ object TokenContracts extends ConseilLogSupport {
               balance <- MichelineOps.parseBalanceFromMap(code)
             } yield accountId -> balance
         }
-      case "FA1.2-StakerDao" =>
+      case xs if xs.contains("TZIP-7-StakerDao") =>
         new TokenToolbox(id) {
           type PInfo = Map[String, AccountId]
 
@@ -138,6 +138,7 @@ object TokenContracts extends ConseilLogSupport {
 
         }
     }
+  }
 
   /** Builds a registry of token contracts with the token data passed-in
     *

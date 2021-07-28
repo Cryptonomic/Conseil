@@ -3108,47 +3108,121 @@ trait Tables {
   lazy val ProcessedChainEvents = new TableQuery(tag => new ProcessedChainEvents(tag))
 
   /** Entity class storing rows of table RegisteredTokens
-    *  @param id Database column id SqlType(int4), PrimaryKey
     *  @param name Database column name SqlType(text)
-    *  @param contractType Database column contract_type SqlType(text)
-    *  @param accountId Database column account_id SqlType(text)
-    *  @param scale Database column scale SqlType(int4) */
-  case class RegisteredTokensRow(id: Int, name: String, contractType: String, accountId: String, scale: Int)
+    *  @param symbol Database column symbol SqlType(text)
+    *  @param decimals Database column decimals SqlType(int4)
+    *  @param interfaces Database column interfaces SqlType(text)
+    *  @param address Database column address SqlType(text)
+    *  @param tokenIndex Database column token_index SqlType(int4), Default(None)
+    *  @param balanceMap Database column balance_map SqlType(int4)
+    *  @param balanceKeyType Database column balance_key_type SqlType(text)
+    *  @param balancePath Database column balance_path SqlType(text)
+    *  @param markets Database column markets SqlType(text)
+    *  @param farms Database column farms SqlType(text) */
+  case class RegisteredTokensRow(
+      name: String,
+      symbol: String,
+      decimals: Int,
+      interfaces: String,
+      address: String,
+      tokenIndex: Option[Int] = None,
+      balanceMap: Int,
+      balanceKeyType: String,
+      balancePath: String,
+      markets: String,
+      farms: String
+  )
 
   /** GetResult implicit for fetching RegisteredTokensRow objects using plain SQL queries */
-  implicit def GetResultRegisteredTokensRow(implicit e0: GR[Int], e1: GR[String]): GR[RegisteredTokensRow] = GR { prs =>
+  implicit def GetResultRegisteredTokensRow(
+      implicit e0: GR[String],
+      e1: GR[Int],
+      e2: GR[Option[Int]]
+  ): GR[RegisteredTokensRow] = GR { prs =>
     import prs._
-    RegisteredTokensRow.tupled((<<[Int], <<[String], <<[String], <<[String], <<[Int]))
+    RegisteredTokensRow.tupled(
+      (
+        <<[String],
+        <<[String],
+        <<[Int],
+        <<[String],
+        <<[String],
+        <<?[Int],
+        <<[Int],
+        <<[String],
+        <<[String],
+        <<[String],
+        <<[String]
+      )
+    )
   }
 
   /** Table description of table registered_tokens. Objects of this class serve as prototypes for rows in queries. */
   class RegisteredTokens(_tableTag: Tag)
       extends profile.api.Table[RegisteredTokensRow](_tableTag, Some("tezos"), "registered_tokens") {
-    def * = (id, name, contractType, accountId, scale) <> (RegisteredTokensRow.tupled, RegisteredTokensRow.unapply)
+    def * =
+      (name, symbol, decimals, interfaces, address, tokenIndex, balanceMap, balanceKeyType, balancePath, markets, farms) <> (RegisteredTokensRow.tupled, RegisteredTokensRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(id), Rep.Some(name), Rep.Some(contractType), Rep.Some(accountId), Rep.Some(scale))).shaped.<>(
+      (
+        (
+          Rep.Some(name),
+          Rep.Some(symbol),
+          Rep.Some(decimals),
+          Rep.Some(interfaces),
+          Rep.Some(address),
+          tokenIndex,
+          Rep.Some(balanceMap),
+          Rep.Some(balanceKeyType),
+          Rep.Some(balancePath),
+          Rep.Some(markets),
+          Rep.Some(farms)
+        )
+      ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => RegisteredTokensRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))
+          import r._;
+          _1.map(
+            _ =>
+              RegisteredTokensRow
+                .tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8.get, _9.get, _10.get, _11.get))
+          )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
 
-    /** Database column id SqlType(int4), PrimaryKey */
-    val id: Rep[Int] = column[Int]("id", O.PrimaryKey)
-
     /** Database column name SqlType(text) */
     val name: Rep[String] = column[String]("name")
 
-    /** Database column contract_type SqlType(text) */
-    val contractType: Rep[String] = column[String]("contract_type")
+    /** Database column symbol SqlType(text) */
+    val symbol: Rep[String] = column[String]("symbol")
 
-    /** Database column account_id SqlType(text) */
-    val accountId: Rep[String] = column[String]("account_id")
+    /** Database column decimals SqlType(int4) */
+    val decimals: Rep[Int] = column[Int]("decimals")
 
-    /** Database column scale SqlType(int4) */
-    val scale: Rep[Int] = column[Int]("scale")
+    /** Database column interfaces SqlType(text) */
+    val interfaces: Rep[String] = column[String]("interfaces")
+
+    /** Database column address SqlType(text) */
+    val address: Rep[String] = column[String]("address")
+
+    /** Database column token_index SqlType(int4), Default(None) */
+    val tokenIndex: Rep[Option[Int]] = column[Option[Int]]("token_index", O.Default(None))
+
+    /** Database column balance_map SqlType(int4) */
+    val balanceMap: Rep[Int] = column[Int]("balance_map")
+
+    /** Database column balance_key_type SqlType(text) */
+    val balanceKeyType: Rep[String] = column[String]("balance_key_type")
+
+    /** Database column balance_path SqlType(text) */
+    val balancePath: Rep[String] = column[String]("balance_path")
+
+    /** Database column markets SqlType(text) */
+    val markets: Rep[String] = column[String]("markets")
+
+    /** Database column farms SqlType(text) */
+    val farms: Rep[String] = column[String]("farms")
   }
 
   /** Collection-like TableQuery object for table RegisteredTokens */
@@ -3223,7 +3297,7 @@ trait Tables {
   lazy val TezosNames = new TableQuery(tag => new TezosNames(tag))
 
   /** Entity class storing rows of table TokenBalances
-    *  @param tokenId Database column token_id SqlType(int4)
+    *  @param tokenAddress Database column token_address SqlType(text)
     *  @param address Database column address SqlType(text)
     *  @param balance Database column balance SqlType(numeric)
     *  @param blockId Database column block_id SqlType(varchar)
@@ -3232,7 +3306,7 @@ trait Tables {
     *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
     *  @param forkId Database column fork_id SqlType(varchar) */
   case class TokenBalancesRow(
-      tokenId: Int,
+      tokenAddress: String,
       address: String,
       balance: scala.math.BigDecimal,
       blockId: String,
@@ -3244,17 +3318,16 @@ trait Tables {
 
   /** GetResult implicit for fetching TokenBalancesRow objects using plain SQL queries */
   implicit def GetResultTokenBalancesRow(
-      implicit e0: GR[Int],
-      e1: GR[String],
-      e2: GR[scala.math.BigDecimal],
-      e3: GR[Long],
-      e4: GR[java.sql.Timestamp],
-      e5: GR[Option[java.sql.Timestamp]]
+      implicit e0: GR[String],
+      e1: GR[scala.math.BigDecimal],
+      e2: GR[Long],
+      e3: GR[java.sql.Timestamp],
+      e4: GR[Option[java.sql.Timestamp]]
   ): GR[TokenBalancesRow] = GR { prs =>
     import prs._
     TokenBalancesRow.tupled(
       (
-        <<[Int],
+        <<[String],
         <<[String],
         <<[scala.math.BigDecimal],
         <<[String],
@@ -3270,13 +3343,13 @@ trait Tables {
   class TokenBalances(_tableTag: Tag)
       extends profile.api.Table[TokenBalancesRow](_tableTag, Some("tezos"), "token_balances") {
     def * =
-      (tokenId, address, balance, blockId, blockLevel, asof, invalidatedAsof, forkId) <> (TokenBalancesRow.tupled, TokenBalancesRow.unapply)
+      (tokenAddress, address, balance, blockId, blockLevel, asof, invalidatedAsof, forkId) <> (TokenBalancesRow.tupled, TokenBalancesRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       (
         (
-          Rep.Some(tokenId),
+          Rep.Some(tokenAddress),
           Rep.Some(address),
           Rep.Some(balance),
           Rep.Some(blockId),
@@ -3292,8 +3365,8 @@ trait Tables {
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
 
-    /** Database column token_id SqlType(int4) */
-    val tokenId: Rep[Int] = column[Int]("token_id")
+    /** Database column token_address SqlType(text) */
+    val tokenAddress: Rep[String] = column[String]("token_address")
 
     /** Database column address SqlType(text) */
     val address: Rep[String] = column[String]("address")
@@ -3318,7 +3391,7 @@ trait Tables {
     val forkId: Rep[String] = column[String]("fork_id")
 
     /** Primary key of TokenBalances (database name token_balances_pkey) */
-    val pk = primaryKey("token_balances_pkey", (tokenId, address, blockLevel, forkId))
+    val pk = primaryKey("token_balances_pkey", (tokenAddress, address, blockLevel, forkId))
   }
 
   /** Collection-like TableQuery object for table TokenBalances */

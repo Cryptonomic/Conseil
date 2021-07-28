@@ -29,7 +29,11 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.math
 import scala.util.{Failure, Success}
 import java.{util => ju}
+
 import slick.dbio.DBIOAction
+import tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
+
+import scala.io.Source
 
 /**
   * Functions for writing Tezos data to a database.
@@ -95,7 +99,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     */
   def writeBlocks(
       blocks: List[Block],
-      tokenContracts: TokenContracts,
+      tokenContracts: TokenContracts
   )(implicit ec: ExecutionContext, tnsContracts: TNSContract): DBIO[Unit] = {
     // Kleisli is a Function with effects, Kleisli[F, A, B] ~= A => F[B]
     import TezosDatabaseConversions.OperationTablesData
@@ -398,13 +402,13 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     logger.info("Writing blocks and account checkpoints to the DB...")
     //sequence both operations in a single transaction
     Tables.RegisteredTokens.result.flatMap { tokenRows =>
-      val xd = TokenContracts.fromConfig(
+      val tokens = TokenContracts.fromConfig(
         tokenRows.map {
-          case Tables.RegisteredTokensRow(_, tokenName, standard, accountId, _) =>
-            ContractId(accountId) -> standard
+          case Tables.RegisteredTokensRow(name, symbol, decimals, interfaces, address, _, _, _, _, _, _) =>
+            ContractId(address) -> interfaces
         }.toList
       )
-      (writeBlocks(blocks, xd) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
+      (writeBlocks(blocks, tokens) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
     }
   }
 
@@ -846,33 +850,61 @@ object TezosDatabaseOperations extends ConseilLogSupport {
         Future.successful(List.empty -> None)
     }
 
+  /** Reads json file for registered tokens */
+  def readJsonFile(network: String): List[RegisteredToken] = {
+    import io.circe.parser.decode
+    import RegisteredTokensFetcher.decoder
 
-  /** Reads and inserts CSV file to the database for the given table */
-  def initTableFromCsvString[A <: AbstractTable[_], H <: HList](
-    db: Database,
-    table: TableQuery[A],
-    csvString: String,
-    separator: Char = ',',
-    upsert: Boolean = false
-  )(
-    implicit hd: HeaderDecoder[A#TableElementType],
-    g: Generic.Aux[A#TableElementType, H],
-    m: Mapper.Aux[ConfigUtil.Csv.Trimmer.type, H, H],
-    ec: ExecutionContext
-  ): Future[(List[A#TableElementType], Option[Int])] =
-    ConfigUtil.Csv.readTableRowsFromCsvString(csvString, table, separator) match {
-      case Some(rows) =>
-        db.run(insertWhenEmpty(table, rows, upsert))
-          .andThen {
-            case Success(_) => logger.info(s"Written ${rows.size} ${table.baseTableRow.tableName} rows")
-            case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
-          }
-          .map(rows -> _)
-      case None =>
-        logger.warn(s"No csv configuration found to initialize table ${table.baseTableRow.tableName} from url.")
-        Future.successful(List.empty -> None)
+    val file = getClass.getResource(s"/registered_tokens/$network.json")
+    val content = Source.fromFile(file.toURI).getLines.mkString
+    decode[List[RegisteredToken]](content) match {
+      case Left(error) =>
+        logger.error(s"Something wrong with registered tokens file $error")
+        List.empty
+      case Right(x) => x
+    }
+  }
+
+  /** Inits registered_tokens table from json file when empty */
+  def initRegisteredTokensTableFromJson(db: Database, network: String)(implicit ec: ExecutionContext): Future[Unit] = {
+    db.run(Tables.RegisteredTokens.size.result).flatMap { size =>
+      if(size > 0) {
+        Future.successful(())
+      }
+      else {
+        initRegisteredTokensTable(db, readJsonFile(network))
+      }
+    }
+  }
+
+  /** Cleans and inserts registered tokens into db */
+  def initRegisteredTokensTable(db: Database, list: List[RegisteredToken])
+    (implicit ec: ExecutionContext): Future[Unit] = {
+    import io.scalaland.chimney.dsl._
+
+    def makeCsvTable(l: List[String]): String = "["+l.mkString(",")+"]"
+    logger.info(s"Trying to init reg tokens table $list")
+    val inserts = list.map { rt =>
+      rt
+        .into[Tables.RegisteredTokensRow]
+        .withFieldComputed(_.interfaces, x => makeCsvTable(x.interfaces))
+        .withFieldComputed(_.markets, x => makeCsvTable(x.markets))
+        .withFieldComputed(_.farms, x => makeCsvTable(x.farms))
+        .transform
     }
 
+    if(inserts.isEmpty) {
+      Future.successful(())
+    } else {
+    db.run(
+      DBIO.seq(
+        Tables.RegisteredTokens.delete.flatMap { _ =>
+          Tables.RegisteredTokens ++= inserts
+        }
+      ).transactionally
+    )
+    }
+  }
 
   /** Write an audit log entry of a detected fork and some
     * reference data useful to analyse the event.

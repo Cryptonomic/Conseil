@@ -1,51 +1,57 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.headers.RawHeader
-import akka.stream.Materializer
-import cats.effect.IO
-import cats.effect.concurrent.Ref
-import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
-import pureconfig.error.{ConfigReaderFailures, ThrowableFailure}
-import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
-import tech.cryptonomic.conseil.indexer.config.TokenContracts
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpRequest
-import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import tech.cryptonomic.conseil.common.tezos.Tables
+import akka.stream.Materializer
+import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
+import tech.cryptonomic.conseil.indexer.config.TokenContracts
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
-import scala.concurrent.duration._
 
+/** Helpers for fetching and updating registered tokens */
 object RegisteredTokensFetcher extends ErrorAccumulatingCirceSupport with ConseilLogSupport {
-  import kantan.csv.generic._
 
+  import io.circe.generic.semiauto._
 
-  /** Updates API keys from Nautilus-Cloud endpoint */
-  def updateKeys(
+  implicit val decoder = deriveDecoder[RegisteredToken]
+
+  case class RegisteredToken(
+    name: String,
+    symbol: String,
+    decimals: Int,
+    interfaces: List[String],
+    address: String,
+    tokenIndex: Int,
+    balanceMap: Int,
+    balanceKeyType: String,
+    balancePath: String,
+    markets: List[String],
+    farms: List[String]
+  )
+
+  /** Updates Registered tokens table from URL */
+  def updateRegisteredTokens(
     tc: TokenContracts
   )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: Materializer): Unit = {
     val update = for {
-      apiKeys <- Http()
+      tokens <- Http()
         .singleRequest(
           HttpRequest(uri = tc.url)
         )
-        .flatMap(_.entity.toStrict(10.seconds).map(_.data.utf8String))
-      _ = logger.info(s"Got... $apiKeys")
-      _ <- TezosDatabaseOperations.initTableFromCsvString(DatabaseUtil.lorreDb, Tables.RegisteredTokens, apiKeys, upsert = true)
-
+        .flatMap(Unmarshal(_).to[List[RegisteredToken]])
+      _ = logger.info(s"Got tokens: $tokens")
+      _ <- TezosDatabaseOperations.initRegisteredTokensTable(DatabaseUtil.lorreDb, tokens)
     } yield ()
 
     update onComplete {
-      case Success(_) => logger.info("Managed to update API keys")
-      case Failure(exception) => logger.error("Error during API keys update", exception)
+      case Success(_) => logger.info("Managed to update registered tokens")
+      case Failure(exception) => logger.error("Error during registered tokens update", exception)
     }
   }
-
-
-
 
 }
