@@ -33,7 +33,7 @@ class TokenContractsTest extends ConseilSpec {
         )
 
         //register the token info
-        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "[TZIP-7]"))
         //set the map id for the contract
         sut.setMapId(ledgerId, BigDecimal(mapId))
 
@@ -65,7 +65,7 @@ class TokenContractsTest extends ConseilSpec {
         )
 
         //register the token info
-        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "[TZIP-7]"))
         //set the map id for the contract
         sut.setMapId(ledgerId, BigDecimal(mapId))
 
@@ -105,7 +105,7 @@ class TokenContractsTest extends ConseilSpec {
         )
 
         //register the token info
-        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "[TZIP-7]"))
 
         //when
         val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
@@ -138,7 +138,7 @@ class TokenContractsTest extends ConseilSpec {
         )
 
         //register the token info
-        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "[TZIP-7]"))
         //set the map id for the contract
         sut.setMapId(ledgerId, BigDecimal(mapId))
 
