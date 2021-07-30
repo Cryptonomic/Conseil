@@ -114,9 +114,9 @@ object ConfigUtil {
           validSource.asCsvReader[Row](rfc.withHeader.withCellSeparator(separator))
 
         // separates List[Either[L, R]] into List[L] and List[R]
-        val (errors, rows) = reader.toList.foldRight((List.empty[ReadError], List.empty[Row]))(
-          (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimStringFields(r) :: pair._2))
-        )
+        val (errors, rows) = reader.toList.foldRight((List.empty[ReadError], List.empty[Row])) { (acc, pair) =>
+          acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimStringFields(r) :: pair._2))
+        }
 
         if (errors.nonEmpty) {
           val messages = errors.map(_.getMessage).mkString("\n", "\n", "\n")

@@ -128,7 +128,34 @@ CREATE TABLE tezos.registered_tokens (
     name text NOT NULL,
     contract_type text NOT NULL,
     account_id text NOT NULL,
-    scale integer NOT NULL
+    scale integer NOT NULL,
+    interfaces text NOT NULL,
+    is_tzip16 boolean NOT NULL,
+    is_nft boolean NOT NULL,
+    metadata_type text NOT NULL,
+    metadata_big_map_id integer NOT NULL,
+    metadata_big_map_type text NOT NULL,
+    metadata_path text NOT NULL
+);
+
+CREATE TABLE tezos.metadata (
+    address text NOT NULL,
+    raw_metadata text NOT NULL,
+    name text NOT NULL,
+    description text,
+    last_updated timestamp,
+    PRIMARY KEY(address, name)
+);
+
+CREATE TABLE tezos.nfts (
+    contract_address text NOT NULL,
+    op_group_hash text NOT NULL,
+    block_level bigint NOT NULL,
+    timestamp timestamp NOT NULL,
+    contract_name text NOT NULL,
+    asset_type text NOT NULL,
+    asset_location text NOT NULL,
+    raw_metadata text NOT NULL
 );
 
 CREATE TABLE tezos.token_balances (
@@ -455,6 +482,7 @@ CREATE TABLE tezos.operations (
     delegatable boolean,
     script character varying,
     storage character varying,
+    storage_micheline character varying,
     status character varying,
     consumed_gas numeric,
     storage_size numeric,
@@ -510,6 +538,7 @@ CREATE TABLE tezos.big_map_contents (
     key_hash character varying,
     operation_group_id character varying,
     value character varying,
+    value_micheline character varying,
     block_level bigint,
     "timestamp" timestamp without time zone,
     cycle integer,

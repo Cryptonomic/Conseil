@@ -13,7 +13,14 @@ import tech.cryptonomic.conseil.common.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.Tables.{GovernanceRow, OriginatedAccountMapsRow}
+import tech.cryptonomic.conseil.common.tezos.Tables.{
+  AccountsRow,
+  GovernanceRow,
+  NftsRow,
+  OperationsRow,
+  OriginatedAccountMapsRow,
+  RegisteredTokensRow
+}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.ConfigUtil
@@ -29,7 +36,11 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.math
 import scala.util.{Failure, Success}
 import java.{util => ju}
+
 import slick.dbio.DBIOAction
+import tech.cryptonomic.conseil.common
+import tech.cryptonomic.conseil.common.tezos
+import tech.cryptonomic.conseil.indexer.tezos.Tzip16MetadataJsonDecoders.Tzip16Metadata
 
 /**
   * Functions for writing Tezos data to a database.
@@ -518,6 +529,27 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     Tables.TezosNames.insertOrUpdateAll(names.map(_.convertTo[Tables.TezosNamesRow]))
   }
 
+  /** Fetches tzip16 compatible contracts */
+  def getTzip16Contracts(): DBIO[Seq[RegisteredTokensRow]] =
+    Tables.RegisteredTokens.filter(_.isTzip16).result
+
+  /** Fetches NFTs from big maps */
+  def getInternalBigMapNfts(bigMapId: Int) =
+    Tables.BigMapContents.filter(_.bigMapId === BigDecimal(bigMapId)).result
+
+  /** Fetches internal transaction with destination */
+  def getInternalTransactionsFromDestination(accountId: String) =
+    Tables.Operations
+      .filter(op => op.destination === accountId && op.internal === true)
+      .result
+
+  /** Fetches origination operation for given account */
+  def getOriginationByAccount(accountId: String): DBIO[Seq[OperationsRow]] =
+    Tables.Operations
+      .filter(x => x.kind === "origination")
+      .filter(x => x.originatedContracts === accountId)
+      .result
+
   /**
     * Writes accounts to the database and record the keys (hashes) to later save complete bakers information relative to each block
     * @param accounts the full accounts' data with account rows of inactive bakers
@@ -866,6 +898,13 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     */
   def deferConstraints(): DBIO[Int] =
     sqlu"SET CONSTRAINTS ALL DEFERRED;"
+
+  def getContractMetadataPath(contractId: String): DBIO[Option[String]] =
+    Tables.RegisteredTokens
+      .filter(rt => rt.accountId === contractId && rt.metadataPath =!= "null")
+      .map(_.metadataPath)
+      .result
+      .headOption
 
   /** Operations related to data invalidation due to forks on the chain */
   object ForkInvalidation {
