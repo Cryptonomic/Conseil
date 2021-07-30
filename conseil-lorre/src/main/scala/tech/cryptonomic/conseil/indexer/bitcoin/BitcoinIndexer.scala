@@ -30,7 +30,8 @@ import tech.cryptonomic.conseil.common.rpc.RpcClient
   */
 class BitcoinIndexer(
     lorreConf: LorreConfiguration,
-    bitcoinConf: BitcoinConfiguration
+    bitcoinConf: BitcoinConfiguration,
+    db: Database
 ) extends LorreIndexer
     with LorreProgressLogging
     with ConseilLogSupport {
@@ -124,7 +125,7 @@ class BitcoinIndexer(
       )
 
       tx <- Transactor
-        .fromDatabase[IO](IO.delay(DatabaseUtil.lorreDb))
+        .fromDatabase[IO](IO.delay(db))
         .map(_.configure(transactorConfig.transactionally)) // run operations in transaction
 
       bitcoinOperations <- BitcoinOperations.resource(rpcClient, tx, bitcoinConf.batching)
@@ -141,7 +142,8 @@ object BitcoinIndexer {
     */
   def fromConfig(
       lorreConf: LorreConfiguration,
-      bitcoinConf: BitcoinConfiguration
+      bitcoinConf: BitcoinConfiguration,
+      db: Database
   ): LorreIndexer =
-    new BitcoinIndexer(lorreConf, bitcoinConf)
+    new BitcoinIndexer(lorreConf, bitcoinConf, db)
 }

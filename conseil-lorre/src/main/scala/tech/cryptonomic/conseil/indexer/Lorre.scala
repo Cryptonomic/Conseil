@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.indexer
 
+import slick.jdbc.JdbcBackend.Database
 import tech.cryptonomic.conseil.common.config.Platforms.{BitcoinConfiguration, TezosConfiguration}
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig
@@ -47,16 +48,20 @@ object Lorre extends App with LorreAppConfig with LorreInfoLogging {
   val indexer = platformConf match {
     case conf: QuorumConfiguration =>
       logger.info("Initializing indexer for Quorum Blockchain.")
-      EthereumIndexer.fromConfig(lorreConf, conf.toEthereumConfiguration)
+      val db = Database.forConfig("", conf.db)
+      EthereumIndexer.fromConfig(lorreConf, conf.toEthereumConfiguration, db)
     case conf: EthereumConfiguration =>
       logger.info("Initializing indexer for Ethereum Blockchain.")
-      EthereumIndexer.fromConfig(lorreConf, conf)
+      val db = Database.forConfig("", conf.db)
+      EthereumIndexer.fromConfig(lorreConf, conf, db)
     case conf: TezosConfiguration =>
       logger.info("Initializing indexer for Tezos Blockchain.")
-      TezosIndexer.fromConfig(lorreConf, conf, callsConf, streamingClientConf, batchingConf)
+      val db = Database.forConfig("", conf.db)
+      TezosIndexer.fromConfig(lorreConf, conf, callsConf, streamingClientConf, batchingConf, db)
     case conf: BitcoinConfiguration =>
       logger.info("Initializing indexer for Bitcoin Blockchain.")
-      BitcoinIndexer.fromConfig(lorreConf, conf)
+      val db = Database.forConfig("", conf.db)
+      BitcoinIndexer.fromConfig(lorreConf, conf, db)
   }
 
   try {
