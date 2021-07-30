@@ -3,27 +3,27 @@ package tech.cryptonomic.conseil.indexer.tezos.processing
 import akka.stream.ActorMaterializer
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Micheline
-import tech.cryptonomic.conseil.indexer.config
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts.Tzip16
 import tech.cryptonomic.conseil.indexer.tezos.{
-  TezosGovernanceOperations,
-  TezosIndexedDataOperations,
-  TezosNamesOperations,
-  TezosNodeOperator,
-  Tzip16MetadataJsonDecoders,
   Tzip16MetadataOperator,
   TezosDatabaseOperations => TezosDb
 }
 import cats.instances.future._
 import cats.syntax.applicative._
 import cats.implicits._
-import tech.cryptonomic.conseil.common.tezos
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
-
+/**
+ * Class for processing metadata
+ * I used following algorithm to process:
+ * If the metadata-type is other, fetch the metadata from IPFS and save it in the metadata table.
+ * If the metadata-type is self, use the metadata_path to update the metadata table.
+ * If the metadata-type is contract, use the contract address and metadata_path to update the metadata table.
+ * If the metadata-type is web, fetch the metadata from the web and update the metadata table.
+ * If isNFT is true, use the metadata_big_map_id and metadata_big_map_type to update the metadata table.
+ * */
 class MetadataProcessor(
     metadataOperator: Tzip16MetadataOperator,
     db: Database
@@ -113,7 +113,6 @@ class MetadataProcessor(
             case ((ipfs, http), acc) if acc._3.startsWith("ipfs") => (acc :: ipfs, http)
             case ((ipfs, http), acc) if acc._3.startsWith("http") => (ipfs, acc :: http)
           }
-          println(metadata)
           val metadataAddresses = metadata.foldLeft(
             (
               List.empty[(Tables.OperationsRow, String)],

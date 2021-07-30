@@ -300,7 +300,7 @@ object TezosIndexer extends ConseilLogSupport {
     )
 
     val tezosMetadataInterface = new TezosMetadataInterface(conf, callsConf, streamingClientConf)
-    val tzip16MetadataOperator = new Tzip16MetadataOperator(tezosMetadataInterface, batchingConf)
+    val tzip16MetadataOperator = new Tzip16MetadataOperator(tezosMetadataInterface)
 
     /* handles standard accounts data */
     val accountsProcessor =

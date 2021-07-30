@@ -372,17 +372,15 @@ object TokenContracts extends ConseilLogSupport {
 
   object Tzip16 {
 
+    /** Helper function for decoding hex string to UTF8 string */
     private def proceduralDecode(hex: String): String = {
-
       val bytes = new Array[Byte](hex.length / 2)
-
       var i = 0
       while (i < bytes.length) {
         bytes(i) = parseInt(hex.substring(i * 2, i * 2 + 2), 16).toByte
         i += 1
       }
       new String(bytes, StandardCharsets.UTF_8)
-
     }
 
     def extractTzip16MetadataLocationFromParameters(

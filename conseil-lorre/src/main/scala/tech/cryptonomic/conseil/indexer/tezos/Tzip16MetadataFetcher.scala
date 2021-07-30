@@ -59,8 +59,7 @@ object Tzip16MetadataJsonDecoders {
 }
 
 class Tzip16MetadataOperator(
-    val node: TezosMetadataInterface,
-    batchConf: BatchFetchConfiguration
+    val node: TezosMetadataInterface
 )(implicit val fetchFutureContext: ExecutionContext)
     extends ConseilLogSupport {
 
@@ -77,78 +76,12 @@ class Tzip16MetadataOperator(
     fetch[(OperationsRow, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
       .run(addresses)
 
-  def getMetadataWithIntTransaction(
-      addresses: List[(InternalOperationResults.Transaction, String)]
-  ): Future[List[((InternalOperationResults.Transaction, String), Option[(String, Tzip16Metadata)])]] =
-    fetch[(InternalOperationResults.Transaction, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
-      .run(addresses)
-
   def getMetadataWithRegisteredTokensRow(
       addresses: List[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String)]
   ): Future[List[((Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), Option[(String, Tzip16Metadata)])]] =
     fetch[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
       .run(addresses)
 
-  def getHttpMetadataWithRegisteredTokensRow(
-      addresses: List[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String)]
-  ): Future[List[((Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), Option[(String, Tzip16Metadata)])]] =
-    fetch[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
-      .run(addresses)
-
-  def getMetadataWithAccountsRow(
-      addresses: List[(Tables.AccountsRow, String)]
-  ): Future[List[((Tables.AccountsRow, String), Option[(String, Tzip16Metadata)])]] =
-    fetch[(Tables.AccountsRow, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
-      .run(addresses)
-
-  implicit val metadataFetcherAccountsRow: FutureFetcher {
-    type In = (Tables.AccountsRow, String)
-
-    type Out = Option[(String, Tzip16Metadata)]
-
-    type Encoded = String
-  } = new FutureFetcher {
-
-    /** the input type, e.g. ids of data */
-    override type In = (Tables.AccountsRow, String)
-
-    /** the output type, e.g. the decoded block data */
-    override type Out = Option[(String, Tzip16Metadata)]
-
-    /** the encoded representation type used e.g. some Json representation */
-    override type Encoded = String
-
-    private val makeUrl = (key: In) => key._2
-
-    /** an effectful function from a collection of inputs `T[In]`
-      * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
-      */
-    override val fetchData =
-      Kleisli(
-        fetchKeys => {
-          val hashes = fetchKeys
-          logger.info("Fetching tzip metadata")
-          node.runBatchedGetQuery(fetchKeys, makeUrl, 2).onError {
-            case err =>
-              val showHashes = hashes.mkString(", ")
-              logger
-                .error(
-                  s"I encountered problems while fetching baking rights from TZIP-16 for blocks $showHashes. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
-        }
-      )
-
-    /** an effectful function that decodes the json value to an output `Out`*/
-    override val decodeData: Kleisli[Future, String, Option[(String, Tzip16Metadata)]] = Kleisli { json =>
-      import cats.syntax.functor._
-      import io.circe.parser.decode
-      decode[Tzip16Metadata](json).toOption
-        .pure[Future]
-        .map(_.map(json -> _))
-    }
-  }
 
   implicit val metadataFetcherRegisteredTokensRow: FutureFetcher {
     type In = (Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String)
@@ -179,59 +112,10 @@ class Tzip16MetadataOperator(
           logger.info("Fetching tzip metadata")
           node.runBatchedGetQuery(fetchKeys, makeUrl, 2).onError {
             case err =>
-              val showHashes = hashes.mkString(", ")
+              val showIds = hashes.map(_._2.bigMapId).mkString(", ")
               logger
                 .error(
-                  s"I encountered problems while fetching baking rights from TZIP-16 for blocks $showHashes. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
-        }
-      )
-
-    /** an effectful function that decodes the json value to an output `Out`*/
-    override val decodeData: Kleisli[Future, String, Option[(String, Tzip16Metadata)]] = Kleisli { json =>
-      import cats.syntax.functor._
-      import io.circe.parser.decode
-      decode[Tzip16Metadata](json).toOption
-        .pure[Future]
-        .map(_.map(json -> _))
-    }
-  }
-
-  implicit val metadataFetcher: FutureFetcher {
-    type In = (InternalOperationResults.Transaction, String)
-
-    type Out = Option[(String, Tzip16Metadata)]
-
-    type Encoded = String
-  } = new FutureFetcher {
-
-    /** the input type, e.g. ids of data */
-    override type In = (InternalOperationResults.Transaction, String)
-
-    /** the output type, e.g. the decoded block data */
-    override type Out = Option[(String, Tzip16Metadata)]
-
-    /** the encoded representation type used e.g. some Json representation */
-    override type Encoded = String
-
-    private val makeUrl = (key: In) => key._2
-
-    /** an effectful function from a collection of inputs `T[In]`
-      * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
-      */
-    override val fetchData =
-      Kleisli(
-        fetchKeys => {
-          val hashes = fetchKeys
-          logger.info("Fetching tzip metadata")
-          node.runBatchedGetQuery(fetchKeys, makeUrl, 2).onError {
-            case err =>
-              val showHashes = hashes.mkString(", ")
-              logger
-                .error(
-                  s"I encountered problems while fetching baking rights from TZIP-16 for blocks $showHashes. The error says ${err.getMessage}"
+                  s"I encountered problems while fetching metadata from TZIP-16 for big maps $showIds. The error says ${err.getMessage}"
                 )
                 .pure[Future]
           }
@@ -277,10 +161,10 @@ class Tzip16MetadataOperator(
           logger.info("Fetching tzip metadata")
           node.runBatchedGetQuery(fetchKeys, makeUrl, 2).onError {
             case err =>
-              val showHashes = hashes.mkString(", ")
+              val showHashes = hashes.map(_._1.operationId).mkString(", ")
               logger
                 .error(
-                  s"I encountered problems while fetching baking rights from TZIP-16 for blocks $showHashes. The error says ${err.getMessage}"
+                  s"I encountered problems while fetching metadata from TZIP-16 for operations $showHashes. The error says ${err.getMessage}"
                 )
                 .pure[Future]
           }
