@@ -34,10 +34,15 @@ import cats.implicits._
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.OperationsRow
 
+/** Helpers for metadata operator */
 object Tzip16MetadataJsonDecoders {
 
   import io.circe._
   import io.circe.generic.semiauto._
+
+  /** Representation of Metadata compient with TZIP-16 format
+   * MOre info on the fields can be found here: https://tzip.tezosagora.org/proposal/tzip-16/
+   * */
   case class Tzip16Metadata(
       name: String,
       description: String,
@@ -70,35 +75,37 @@ class Tzip16MetadataOperator(
 
   private type FutureFetcher = DataFetcher[Future, List, Throwable]
 
+  type MetadataUrl = String
+
   def getMetadataWithOperationsRow(
-      addresses: List[(OperationsRow, String)]
-  ): Future[List[((OperationsRow, String), Option[(String, Tzip16Metadata)])]] =
-    fetch[(OperationsRow, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
+      addresses: List[(OperationsRow, MetadataUrl)]
+  ): Future[List[((OperationsRow, MetadataUrl), Option[(MetadataUrl, Tzip16Metadata)])]] =
+    fetch[(OperationsRow, MetadataUrl), Option[(MetadataUrl, Tzip16Metadata)], Future, List, Throwable]
       .run(addresses)
 
   def getMetadataWithRegisteredTokensRow(
-      addresses: List[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String)]
-  ): Future[List[((Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), Option[(String, Tzip16Metadata)])]] =
-    fetch[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String), Option[(String, Tzip16Metadata)], Future, List, Throwable]
+      addresses: List[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, MetadataUrl)]
+  ): Future[List[((Tables.RegisteredTokensRow, Tables.BigMapContentsRow, MetadataUrl), Option[(MetadataUrl, Tzip16Metadata)])]] =
+    fetch[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, MetadataUrl), Option[(MetadataUrl, Tzip16Metadata)], Future, List, Throwable]
       .run(addresses)
 
 
   implicit val metadataFetcherRegisteredTokensRow: FutureFetcher {
-    type In = (Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String)
+    type In = (Tables.RegisteredTokensRow, Tables.BigMapContentsRow, MetadataUrl)
 
-    type Out = Option[(String, Tzip16Metadata)]
+    type Out = Option[(MetadataUrl, Tzip16Metadata)]
 
     type Encoded = String
   } = new FutureFetcher {
 
     /** the input type, e.g. ids of data */
-    override type In = (Tables.RegisteredTokensRow, Tables.BigMapContentsRow, String)
+    override type In = (Tables.RegisteredTokensRow, Tables.BigMapContentsRow, MetadataUrl)
 
     /** the output type, e.g. the decoded block data */
-    override type Out = Option[(String, Tzip16Metadata)]
+    override type Out = Option[(MetadataUrl, Tzip16Metadata)]
 
     /** the encoded representation type used e.g. some Json representation */
-    override type Encoded = String
+    override type Encoded = MetadataUrl
 
     private val makeUrl = (key: In) => key._3
 
@@ -133,21 +140,21 @@ class Tzip16MetadataOperator(
   }
 
   implicit val metadataFetcherOrigination: FutureFetcher {
-    type In = (OperationsRow, String)
+    type In = (OperationsRow, MetadataUrl)
 
-    type Out = Option[(String, Tzip16Metadata)]
+    type Out = Option[(MetadataUrl, Tzip16Metadata)]
 
     type Encoded = String
   } = new FutureFetcher {
 
     /** the input type, e.g. ids of data */
-    override type In = (OperationsRow, String)
+    override type In = (OperationsRow, MetadataUrl)
 
     /** the output type, e.g. the decoded block data */
-    override type Out = Option[(String, Tzip16Metadata)]
+    override type Out = Option[(MetadataUrl, Tzip16Metadata)]
 
     /** the encoded representation type used e.g. some Json representation */
-    override type Encoded = String
+    override type Encoded = MetadataUrl
 
     private val makeUrl = (key: In) => key._2
 
