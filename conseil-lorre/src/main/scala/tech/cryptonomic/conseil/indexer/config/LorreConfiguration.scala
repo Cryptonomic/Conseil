@@ -67,7 +67,6 @@ final case class TokenContracts(
     interval: FiniteDuration
 )
 
-
 /** sodium library references */
 final case class SodiumConfiguration(libraryPath: String) extends AnyVal with Product with Serializable
 

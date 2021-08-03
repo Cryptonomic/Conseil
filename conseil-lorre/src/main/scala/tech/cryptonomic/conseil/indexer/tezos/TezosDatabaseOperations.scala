@@ -414,7 +414,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     Tables.RegisteredTokens.result.flatMap { tokenRows =>
       val tokens = TokenContracts.fromConfig(
         tokenRows.map {
-          case Tables.RegisteredTokensRow(name, symbol, decimals, interfaces, address, _, _, _, _, _, _) =>
+          case Tables.RegisteredTokensRow(_, _, _, interfaces, address, _, _, _, _, _, _, _, _, _, _, _, _) =>
             ContractId(address) -> interfaces
         }.toList
       )
@@ -897,43 +897,55 @@ object TezosDatabaseOperations extends ConseilLogSupport {
   }
 
   /** Inits registered_tokens table from json file when empty */
-  def initRegisteredTokensTableFromJson(db: Database, network: String)(implicit ec: ExecutionContext): Future[Unit] = {
+  def initRegisteredTokensTableFromJson(db: Database, network: String)(implicit ec: ExecutionContext): Future[Unit] =
     db.run(Tables.RegisteredTokens.size.result).flatMap { size =>
-      if(size > 0) {
+      if (size > 0) {
         Future.successful(())
-      }
-      else {
+      } else {
         initRegisteredTokensTable(db, readJsonFile(network))
       }
     }
-  }
 
   /** Cleans and inserts registered tokens into db */
-  def initRegisteredTokensTable(db: Database, list: List[RegisteredToken])
-    (implicit ec: ExecutionContext): Future[Unit] = {
+  def initRegisteredTokensTable(db: Database, list: List[RegisteredToken])(
+      implicit ec: ExecutionContext
+  ): Future[Unit] = {
     import io.scalaland.chimney.dsl._
 
-    def makeCsvTable(l: List[String]): String = "["+l.mkString(",")+"]"
+    //    [error] tech.cryptonomic.conseil.common.tezos.Tables.RegisteredTokensRow
+    //      [error]   contractType: java.lang.String - no accessor named contractType in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
+    //      [error]   accountId: java.lang.String - no accessor named accountId in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
+    //      [error]   scale: scala.Int - no accessor named scale in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
+    //      [error]   isTzip16: scala.Boolean - no accessor named isTzip16 in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
+    //      [error]   isNft: scala.Boolean - no accessor named isNft in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
+    //      [error]   metadataType: java.lang.String - no accessor named metadataType in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
+    //      [error]   metadataBigMapId: scala.Int - no accessor named metadataBigMapId in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
+    //      [error]   metadataBigMapType: java.lang.String - no accessor named metadataBigMapType in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
+    //      [error]   metadataPath: java.lang.String - no accessor named metadataPath in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
+    //      [error]
+
+    def makeCsvTable(l: List[String]): String = "[" + l.mkString(",") + "]"
     logger.info(s"Trying to init reg tokens table $list")
     val inserts = list.map { rt =>
-      rt
-        .into[Tables.RegisteredTokensRow]
+      rt.into[Tables.RegisteredTokensRow]
         .withFieldComputed(_.interfaces, x => makeCsvTable(x.interfaces))
         .withFieldComputed(_.markets, x => makeCsvTable(x.markets))
         .withFieldComputed(_.farms, x => makeCsvTable(x.farms))
         .transform
     }
 
-    if(inserts.isEmpty) {
+    if (inserts.isEmpty) {
       Future.successful(())
     } else {
-    db.run(
-      DBIO.seq(
-        Tables.RegisteredTokens.delete.flatMap { _ =>
-          Tables.RegisteredTokens ++= inserts
-        }
-      ).transactionally
-    )
+      db.run(
+        DBIO
+          .seq(
+            Tables.RegisteredTokens.delete.flatMap { _ =>
+              Tables.RegisteredTokens ++= inserts
+            }
+          )
+          .transactionally
+      )
     }
   }
 
@@ -968,12 +980,13 @@ object TezosDatabaseOperations extends ConseilLogSupport {
   def deferConstraints(): DBIO[Int] =
     sqlu"SET CONSTRAINTS ALL DEFERRED;"
 
-  def getContractMetadataPath(contractId: String): DBIO[Option[String]] =
+  def getContractMetadataPath(contractId: String)(implicit ec: ExecutionContext): DBIO[Option[String]] =
     Tables.RegisteredTokens
-      .filter(rt => rt.accountId === contractId && rt.metadataPath =!= "null")
+      .filter(rt => rt.address === contractId && rt.metadataPath =!= "null")
       .map(_.metadataPath)
       .result
       .headOption
+      .map(_.flatten)
 
   /** Operations related to data invalidation due to forks on the chain */
   object ForkInvalidation {

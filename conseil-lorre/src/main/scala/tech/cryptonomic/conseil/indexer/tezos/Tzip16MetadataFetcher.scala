@@ -41,8 +41,8 @@ object Tzip16MetadataJsonDecoders {
   import io.circe.generic.semiauto._
 
   /** Representation of Metadata compient with TZIP-16 format
-   * MOre info on the fields can be found here: https://tzip.tezosagora.org/proposal/tzip-16/
-   * */
+    * MOre info on the fields can be found here: https://tzip.tezosagora.org/proposal/tzip-16/
+    * */
   case class Tzip16Metadata(
       name: String,
       description: String,
@@ -85,10 +85,11 @@ class Tzip16MetadataOperator(
 
   def getMetadataWithRegisteredTokensRow(
       addresses: List[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, MetadataUrl)]
-  ): Future[List[((Tables.RegisteredTokensRow, Tables.BigMapContentsRow, MetadataUrl), Option[(MetadataUrl, Tzip16Metadata)])]] =
+  ): Future[
+    List[((Tables.RegisteredTokensRow, Tables.BigMapContentsRow, MetadataUrl), Option[(MetadataUrl, Tzip16Metadata)])]
+  ] =
     fetch[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, MetadataUrl), Option[(MetadataUrl, Tzip16Metadata)], Future, List, Throwable]
       .run(addresses)
-
 
   implicit val metadataFetcherRegisteredTokensRow: FutureFetcher {
     type In = (Tables.RegisteredTokensRow, Tables.BigMapContentsRow, MetadataUrl)

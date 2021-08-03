@@ -21,22 +21,28 @@ object RegisteredTokensFetcher extends ErrorAccumulatingCirceSupport with Consei
   implicit val decoder = deriveDecoder[RegisteredToken]
 
   case class RegisteredToken(
-    name: String,
-    symbol: String,
-    decimals: Int,
-    interfaces: List[String],
-    address: String,
-    tokenIndex: Int,
-    balanceMap: Int,
-    balanceKeyType: String,
-    balancePath: String,
-    markets: List[String],
-    farms: List[String]
+      name: String,
+      symbol: String,
+      decimals: Int,
+      interfaces: List[String],
+      address: String,
+      tokenIndex: Option[Int],
+      balanceMap: Int,
+      balanceKeyType: String,
+      balancePath: String,
+      markets: List[String],
+      farms: List[String],
+      isTzip16: Boolean,
+      isNft: Boolean,
+      metadataType: Option[String],
+      metadataBigMapId: Option[Int],
+      metadataBigMapType: Option[String],
+      metadataPath: Option[String]
   )
 
   /** Updates Registered tokens table from URL */
   def updateRegisteredTokens(
-    tc: TokenContracts
+      tc: TokenContracts
   )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: Materializer): Unit = {
     val update = for {
       tokens <- Http()

@@ -134,17 +134,13 @@ CREATE TABLE tezos.registered_tokens (
     balance_key_type text NOT NULL,
     balance_path text NOT NULL,
     markets text NOT NULL,
-    farms text NOT NULL
-    contract_type text NOT NULL,
-    account_id text NOT NULL,
-    scale integer NOT NULL,
-    interfaces text NOT NULL,
+    farms text NOT NULL,
     is_tzip16 boolean NOT NULL,
     is_nft boolean NOT NULL,
-    metadata_type text NOT NULL,
-    metadata_big_map_id integer NOT NULL,
-    metadata_big_map_type text NOT NULL,
-    metadata_path text NOT NULL
+    metadata_type text,
+    metadata_big_map_id integer,
+    metadata_big_map_type text,
+    metadata_path text
 );
 
 CREATE TABLE tezos.metadata (

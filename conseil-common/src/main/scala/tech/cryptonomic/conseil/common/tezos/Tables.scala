@@ -3266,26 +3266,29 @@ trait Tables {
     /** Index over (blockLevel) (database name ix_operations_block_level) */
     val index4 = index("ix_operations_block_level", blockLevel :: HNil)
 
+    /** Index over (level,delegate) (database name ix_operations_block_level_delegate) */
+    val index5 = index("ix_operations_block_level_delegate", level :: delegate :: HNil)
+
     /** Index over (cycle) (database name ix_operations_cycle) */
-    val index5 = index("ix_operations_cycle", cycle :: HNil)
+    val index6 = index("ix_operations_cycle", cycle :: HNil)
 
     /** Index over (delegate) (database name ix_operations_delegate) */
-    val index6 = index("ix_operations_delegate", delegate :: HNil)
+    val index7 = index("ix_operations_delegate", delegate :: HNil)
 
     /** Index over (destination) (database name ix_operations_destination) */
-    val index7 = index("ix_operations_destination", destination :: HNil)
+    val index8 = index("ix_operations_destination", destination :: HNil)
 
     /** Index over (kind) (database name ix_operations_kind) */
-    val index8 = index("ix_operations_kind", kind :: HNil)
+    val index9 = index("ix_operations_kind", kind :: HNil)
 
     /** Index over (source) (database name ix_operations_source) */
-    val index9 = index("ix_operations_source", source :: HNil)
+    val index10 = index("ix_operations_source", source :: HNil)
 
     /** Index over (timestamp) (database name ix_operations_timestamp) */
-    val index10 = index("ix_operations_timestamp", timestamp :: HNil)
+    val index11 = index("ix_operations_timestamp", timestamp :: HNil)
 
     /** Index over (originatedContracts) (database name ix_originated_contracts) */
-    val index11 = index("ix_originated_contracts", originatedContracts :: HNil)
+    val index12 = index("ix_originated_contracts", originatedContracts :: HNil)
   }
 
   /** Collection-like TableQuery object for table Operations */
@@ -3370,27 +3373,147 @@ trait Tables {
 
   /** Entity class storing rows of table RegisteredTokens
     *  @param name Database column name SqlType(text)
-    *  @param contractType Database column contract_type SqlType(text)
-    *  @param accountId Database column account_id SqlType(text)
-    *  @param scale Database column scale SqlType(int4) */
-  case class RegisteredTokensRow(id: Int, name: String, contractType: String, accountId: String, scale: Int)
+    *  @param symbol Database column symbol SqlType(text)
+    *  @param decimals Database column decimals SqlType(int4)
+    *  @param interfaces Database column interfaces SqlType(text)
+    *  @param address Database column address SqlType(text)
+    *  @param tokenIndex Database column token_index SqlType(int4), Default(None)
+    *  @param balanceMap Database column balance_map SqlType(int4)
+    *  @param balanceKeyType Database column balance_key_type SqlType(text)
+    *  @param balancePath Database column balance_path SqlType(text)
+    *  @param markets Database column markets SqlType(text)
+    *  @param farms Database column farms SqlType(text)
+    *  @param isTzip16 Database column is_tzip16 SqlType(bool)
+    *  @param isNft Database column is_nft SqlType(bool)
+    *  @param metadataType Database column metadata_type SqlType(text), Default(None)
+    *  @param metadataBigMapId Database column metadata_big_map_id SqlType(int4), Default(None)
+    *  @param metadataBigMapType Database column metadata_big_map_type SqlType(text), Default(None)
+    *  @param metadataPath Database column metadata_path SqlType(text), Default(None) */
+  case class RegisteredTokensRow(
+      name: String,
+      symbol: String,
+      decimals: Int,
+      interfaces: String,
+      address: String,
+      tokenIndex: Option[Int] = None,
+      balanceMap: Int,
+      balanceKeyType: String,
+      balancePath: String,
+      markets: String,
+      farms: String,
+      isTzip16: Boolean,
+      isNft: Boolean,
+      metadataType: Option[String] = None,
+      metadataBigMapId: Option[Int] = None,
+      metadataBigMapType: Option[String] = None,
+      metadataPath: Option[String] = None
+  )
 
   /** GetResult implicit for fetching RegisteredTokensRow objects using plain SQL queries */
-  implicit def GetResultRegisteredTokensRow(implicit e0: GR[Int], e1: GR[String]): GR[RegisteredTokensRow] = GR { prs =>
+  implicit def GetResultRegisteredTokensRow(
+      implicit e0: GR[String],
+      e1: GR[Int],
+      e2: GR[Option[Int]],
+      e3: GR[Boolean],
+      e4: GR[Option[String]]
+  ): GR[RegisteredTokensRow] = GR { prs =>
     import prs._
-    RegisteredTokensRow.tupled((<<[Int], <<[String], <<[String], <<[String], <<[Int]))
+    RegisteredTokensRow.tupled(
+      (
+        <<[String],
+        <<[String],
+        <<[Int],
+        <<[String],
+        <<[String],
+        <<?[Int],
+        <<[Int],
+        <<[String],
+        <<[String],
+        <<[String],
+        <<[String],
+        <<[Boolean],
+        <<[Boolean],
+        <<?[String],
+        <<?[Int],
+        <<?[String],
+        <<?[String]
+      )
+    )
   }
 
   /** Table description of table registered_tokens. Objects of this class serve as prototypes for rows in queries. */
   class RegisteredTokens(_tableTag: Tag)
       extends profile.api.Table[RegisteredTokensRow](_tableTag, Some("tezos"), "registered_tokens") {
-    def * = (id, name, contractType, accountId, scale) <> (RegisteredTokensRow.tupled, RegisteredTokensRow.unapply)
+    def * =
+      (
+        name,
+        symbol,
+        decimals,
+        interfaces,
+        address,
+        tokenIndex,
+        balanceMap,
+        balanceKeyType,
+        balancePath,
+        markets,
+        farms,
+        isTzip16,
+        isNft,
+        metadataType,
+        metadataBigMapId,
+        metadataBigMapType,
+        metadataPath
+      ) <> (RegisteredTokensRow.tupled, RegisteredTokensRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(id), Rep.Some(name), Rep.Some(contractType), Rep.Some(accountId), Rep.Some(scale))).shaped.<>(
+      (
+        (
+          Rep.Some(name),
+          Rep.Some(symbol),
+          Rep.Some(decimals),
+          Rep.Some(interfaces),
+          Rep.Some(address),
+          tokenIndex,
+          Rep.Some(balanceMap),
+          Rep.Some(balanceKeyType),
+          Rep.Some(balancePath),
+          Rep.Some(markets),
+          Rep.Some(farms),
+          Rep.Some(isTzip16),
+          Rep.Some(isNft),
+          metadataType,
+          metadataBigMapId,
+          metadataBigMapType,
+          metadataPath
+        )
+      ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => RegisteredTokensRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))
+          import r._;
+          _1.map(
+            _ =>
+              RegisteredTokensRow.tupled(
+                (
+                  _1.get,
+                  _2.get,
+                  _3.get,
+                  _4.get,
+                  _5.get,
+                  _6,
+                  _7.get,
+                  _8.get,
+                  _9.get,
+                  _10.get,
+                  _11.get,
+                  _12.get,
+                  _13.get,
+                  _14,
+                  _15,
+                  _16,
+                  _17
+                )
+              )
+          )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -3413,8 +3536,38 @@ trait Tables {
     /** Database column token_index SqlType(int4), Default(None) */
     val tokenIndex: Rep[Option[Int]] = column[Option[Int]]("token_index", O.Default(None))
 
-    /** Database column scale SqlType(int4) */
-    val scale: Rep[Int] = column[Int]("scale")
+    /** Database column balance_map SqlType(int4) */
+    val balanceMap: Rep[Int] = column[Int]("balance_map")
+
+    /** Database column balance_key_type SqlType(text) */
+    val balanceKeyType: Rep[String] = column[String]("balance_key_type")
+
+    /** Database column balance_path SqlType(text) */
+    val balancePath: Rep[String] = column[String]("balance_path")
+
+    /** Database column markets SqlType(text) */
+    val markets: Rep[String] = column[String]("markets")
+
+    /** Database column farms SqlType(text) */
+    val farms: Rep[String] = column[String]("farms")
+
+    /** Database column is_tzip16 SqlType(bool) */
+    val isTzip16: Rep[Boolean] = column[Boolean]("is_tzip16")
+
+    /** Database column is_nft SqlType(bool) */
+    val isNft: Rep[Boolean] = column[Boolean]("is_nft")
+
+    /** Database column metadata_type SqlType(text), Default(None) */
+    val metadataType: Rep[Option[String]] = column[Option[String]]("metadata_type", O.Default(None))
+
+    /** Database column metadata_big_map_id SqlType(int4), Default(None) */
+    val metadataBigMapId: Rep[Option[Int]] = column[Option[Int]]("metadata_big_map_id", O.Default(None))
+
+    /** Database column metadata_big_map_type SqlType(text), Default(None) */
+    val metadataBigMapType: Rep[Option[String]] = column[Option[String]]("metadata_big_map_type", O.Default(None))
+
+    /** Database column metadata_path SqlType(text), Default(None) */
+    val metadataPath: Rep[Option[String]] = column[Option[String]]("metadata_path", O.Default(None))
   }
 
   /** Collection-like TableQuery object for table RegisteredTokens */

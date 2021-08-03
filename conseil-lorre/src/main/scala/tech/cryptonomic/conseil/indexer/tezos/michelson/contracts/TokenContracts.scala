@@ -108,7 +108,7 @@ object TokenContracts extends ConseilLogSupport {
   implicit private def toolboxOrdering: Ordering[TokenToolbox] = Ordering.by(_.id.id)
 
   /* Creates a new toolbox, only if the standard is a known one, or returns an empty Option */
-  private def newToolbox(id: ContractId, standard: String): Option[TokenToolbox] = {
+  private def newToolbox(id: ContractId, standard: String): Option[TokenToolbox] =
     PartialFunction.condOpt(standard.stripPrefix("[").stripSuffix("]").split(',')) {
       case xs if xs.contains("TZIP-7") =>
         new TokenToolbox(id) {
@@ -143,7 +143,6 @@ object TokenContracts extends ConseilLogSupport {
 
         }
     }
-  }
 
   /** Builds a registry of token contracts with the token data passed-in
     *

@@ -306,7 +306,7 @@ class GenericPlatformDiscoveryOperationsTest
               "operations"
             ),
             Attribute("kind", "Kind", DataType.String, None, KeyType.UniqueKey, "operations"),
-            Attribute("level", "Level", DataType.LargeInt, None, KeyType.NonKey, "operations"),
+            Attribute("level", "Level", DataType.LargeInt, None, KeyType.UniqueKey, "operations"),
             Attribute("delegate", "Delegate", DataType.String, None, KeyType.UniqueKey, "operations"),
             Attribute("slots", "Slots", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("nonce", "Nonce", DataType.String, None, KeyType.NonKey, "operations"),
