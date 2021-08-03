@@ -27,6 +27,7 @@ trait Tables {
     BakingRights.schema,
     BalanceUpdates.schema,
     BigMapContents.schema,
+    BigMapContentsHistory.schema,
     BigMaps.schema,
     Blocks.schema,
     EndorsingRights.schema,
@@ -34,6 +35,8 @@ trait Tables {
     Forks.schema,
     Governance.schema,
     KnownAddresses.schema,
+    Metadata.schema,
+    Nfts.schema,
     OperationGroups.schema,
     Operations.schema,
     OriginatedAccountMaps.schema,
@@ -1479,6 +1482,7 @@ trait Tables {
     *  @param keyHash Database column key_hash SqlType(varchar), Default(None)
     *  @param operationGroupId Database column operation_group_id SqlType(varchar), Default(None)
     *  @param value Database column value SqlType(varchar), Default(None)
+    *  @param valueMicheline Database column value_micheline SqlType(varchar), Default(None)
     *  @param blockLevel Database column block_level SqlType(int8), Default(None)
     *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
@@ -1489,6 +1493,7 @@ trait Tables {
       keyHash: Option[String] = None,
       operationGroupId: Option[String] = None,
       value: Option[String] = None,
+      valueMicheline: Option[String] = None,
       blockLevel: Option[Long] = None,
       timestamp: Option[java.sql.Timestamp] = None,
       cycle: Option[Int] = None,
@@ -1512,6 +1517,7 @@ trait Tables {
         <<?[String],
         <<?[String],
         <<?[String],
+        <<?[String],
         <<?[Long],
         <<?[java.sql.Timestamp],
         <<?[Int],
@@ -1524,14 +1530,135 @@ trait Tables {
   class BigMapContents(_tableTag: Tag)
       extends profile.api.Table[BigMapContentsRow](_tableTag, Some("tezos"), "big_map_contents") {
     def * =
-      (bigMapId, key, keyHash, operationGroupId, value, blockLevel, timestamp, cycle, period) <> (BigMapContentsRow.tupled, BigMapContentsRow.unapply)
+      (bigMapId, key, keyHash, operationGroupId, value, valueMicheline, blockLevel, timestamp, cycle, period) <> (BigMapContentsRow.tupled, BigMapContentsRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      (
+        (
+          Rep.Some(bigMapId),
+          Rep.Some(key),
+          keyHash,
+          operationGroupId,
+          value,
+          valueMicheline,
+          blockLevel,
+          timestamp,
+          cycle,
+          period
+        )
+      ).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => BigMapContentsRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8, _9, _10)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    /** Database column big_map_id SqlType(numeric) */
+    val bigMapId: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("big_map_id")
+
+    /** Database column key SqlType(varchar) */
+    val key: Rep[String] = column[String]("key")
+
+    /** Database column key_hash SqlType(varchar), Default(None) */
+    val keyHash: Rep[Option[String]] = column[Option[String]]("key_hash", O.Default(None))
+
+    /** Database column operation_group_id SqlType(varchar), Default(None) */
+    val operationGroupId: Rep[Option[String]] = column[Option[String]]("operation_group_id", O.Default(None))
+
+    /** Database column value SqlType(varchar), Default(None) */
+    val value: Rep[Option[String]] = column[Option[String]]("value", O.Default(None))
+
+    /** Database column value_micheline SqlType(varchar), Default(None) */
+    val valueMicheline: Rep[Option[String]] = column[Option[String]]("value_micheline", O.Default(None))
+
+    /** Database column block_level SqlType(int8), Default(None) */
+    val blockLevel: Rep[Option[Long]] = column[Option[Long]]("block_level", O.Default(None))
+
+    /** Database column timestamp SqlType(timestamp), Default(None) */
+    val timestamp: Rep[Option[java.sql.Timestamp]] = column[Option[java.sql.Timestamp]]("timestamp", O.Default(None))
+
+    /** Database column cycle SqlType(int4), Default(None) */
+    val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
+
+    /** Database column period SqlType(int4), Default(None) */
+    val period: Rep[Option[Int]] = column[Option[Int]]("period", O.Default(None))
+
+    /** Primary key of BigMapContents (database name big_map_contents_pkey) */
+    val pk = primaryKey("big_map_contents_pkey", (bigMapId, key))
+
+    /** Index over (bigMapId) (database name big_map_id_idx) */
+    val index1 = index("big_map_id_idx", bigMapId)
+
+    /** Index over (bigMapId,operationGroupId) (database name combined_big_map_operation_group_ids_idx) */
+    val index2 = index("combined_big_map_operation_group_ids_idx", (bigMapId, operationGroupId))
+
+    /** Index over (operationGroupId) (database name operation_group_id_idx) */
+    val index3 = index("operation_group_id_idx", operationGroupId)
+  }
+
+  /** Collection-like TableQuery object for table BigMapContents */
+  lazy val BigMapContents = new TableQuery(tag => new BigMapContents(tag))
+
+  /** Entity class storing rows of table BigMapContentsHistory
+    *  @param bigMapId Database column big_map_id SqlType(numeric)
+    *  @param key Database column key SqlType(varchar)
+    *  @param keyHash Database column key_hash SqlType(varchar), Default(None)
+    *  @param operationGroupId Database column operation_group_id SqlType(varchar), Default(None)
+    *  @param value Database column value SqlType(varchar), Default(None)
+    *  @param blockLevel Database column block_level SqlType(int8), Default(None)
+    *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
+    *  @param cycle Database column cycle SqlType(int4), Default(None)
+    *  @param period Database column period SqlType(int4), Default(None) */
+  case class BigMapContentsHistoryRow(
+      bigMapId: scala.math.BigDecimal,
+      key: String,
+      keyHash: Option[String] = None,
+      operationGroupId: Option[String] = None,
+      value: Option[String] = None,
+      blockLevel: Option[Long] = None,
+      timestamp: Option[java.sql.Timestamp] = None,
+      cycle: Option[Int] = None,
+      period: Option[Int] = None
+  )
+
+  /** GetResult implicit for fetching BigMapContentsHistoryRow objects using plain SQL queries */
+  implicit def GetResultBigMapContentsHistoryRow(
+      implicit e0: GR[scala.math.BigDecimal],
+      e1: GR[String],
+      e2: GR[Option[String]],
+      e3: GR[Option[Long]],
+      e4: GR[Option[java.sql.Timestamp]],
+      e5: GR[Option[Int]]
+  ): GR[BigMapContentsHistoryRow] = GR { prs =>
+    import prs._
+    BigMapContentsHistoryRow.tupled(
+      (
+        <<[scala.math.BigDecimal],
+        <<[String],
+        <<?[String],
+        <<?[String],
+        <<?[String],
+        <<?[Long],
+        <<?[java.sql.Timestamp],
+        <<?[Int],
+        <<?[Int]
+      )
+    )
+  }
+
+  /** Table description of table big_map_contents_history. Objects of this class serve as prototypes for rows in queries. */
+  class BigMapContentsHistory(_tableTag: Tag)
+      extends profile.api.Table[BigMapContentsHistoryRow](_tableTag, Some("tezos"), "big_map_contents_history") {
+    def * =
+      (bigMapId, key, keyHash, operationGroupId, value, blockLevel, timestamp, cycle, period) <> (BigMapContentsHistoryRow.tupled, BigMapContentsHistoryRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       ((Rep.Some(bigMapId), Rep.Some(key), keyHash, operationGroupId, value, blockLevel, timestamp, cycle, period)).shaped
         .<>(
           { r =>
-            import r._; _1.map(_ => BigMapContentsRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8, _9)))
+            import r._; _1.map(_ => BigMapContentsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8, _9)))
           },
           (_: Any) => throw new Exception("Inserting into ? projection not supported.")
         )
@@ -1562,22 +1689,10 @@ trait Tables {
 
     /** Database column period SqlType(int4), Default(None) */
     val period: Rep[Option[Int]] = column[Option[Int]]("period", O.Default(None))
-
-    /** Primary key of BigMapContents (database name big_map_contents_pkey) */
-    val pk = primaryKey("big_map_contents_pkey", (bigMapId, key))
-
-    /** Index over (bigMapId) (database name big_map_id_idx) */
-    val index1 = index("big_map_id_idx", bigMapId)
-
-    /** Index over (bigMapId,operationGroupId) (database name combined_big_map_operation_group_ids_idx) */
-    val index2 = index("combined_big_map_operation_group_ids_idx", (bigMapId, operationGroupId))
-
-    /** Index over (operationGroupId) (database name operation_group_id_idx) */
-    val index3 = index("operation_group_id_idx", operationGroupId)
   }
 
-  /** Collection-like TableQuery object for table BigMapContents */
-  lazy val BigMapContents = new TableQuery(tag => new BigMapContents(tag))
+  /** Collection-like TableQuery object for table BigMapContentsHistory */
+  lazy val BigMapContentsHistory = new TableQuery(tag => new BigMapContentsHistory(tag))
 
   /** Entity class storing rows of table BigMaps
     *  @param bigMapId Database column big_map_id SqlType(numeric), PrimaryKey
@@ -2463,6 +2578,145 @@ trait Tables {
   /** Collection-like TableQuery object for table KnownAddresses */
   lazy val KnownAddresses = new TableQuery(tag => new KnownAddresses(tag))
 
+  /** Entity class storing rows of table Metadata
+    *  @param address Database column address SqlType(text)
+    *  @param rawMetadata Database column raw_metadata SqlType(text)
+    *  @param name Database column name SqlType(text)
+    *  @param description Database column description SqlType(text), Default(None)
+    *  @param lastUpdated Database column last_updated SqlType(timestamp), Default(None) */
+  case class MetadataRow(
+      address: String,
+      rawMetadata: String,
+      name: String,
+      description: Option[String] = None,
+      lastUpdated: Option[java.sql.Timestamp] = None
+  )
+
+  /** GetResult implicit for fetching MetadataRow objects using plain SQL queries */
+  implicit def GetResultMetadataRow(
+      implicit e0: GR[String],
+      e1: GR[Option[String]],
+      e2: GR[Option[java.sql.Timestamp]]
+  ): GR[MetadataRow] = GR { prs =>
+    import prs._
+    MetadataRow.tupled((<<[String], <<[String], <<[String], <<?[String], <<?[java.sql.Timestamp]))
+  }
+
+  /** Table description of table metadata. Objects of this class serve as prototypes for rows in queries. */
+  class Metadata(_tableTag: Tag) extends profile.api.Table[MetadataRow](_tableTag, Some("tezos"), "metadata") {
+    def * = (address, rawMetadata, name, description, lastUpdated) <> (MetadataRow.tupled, MetadataRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      ((Rep.Some(address), Rep.Some(rawMetadata), Rep.Some(name), description, lastUpdated)).shaped.<>({ r =>
+        import r._; _1.map(_ => MetadataRow.tupled((_1.get, _2.get, _3.get, _4, _5)))
+      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column address SqlType(text) */
+    val address: Rep[String] = column[String]("address")
+
+    /** Database column raw_metadata SqlType(text) */
+    val rawMetadata: Rep[String] = column[String]("raw_metadata")
+
+    /** Database column name SqlType(text) */
+    val name: Rep[String] = column[String]("name")
+
+    /** Database column description SqlType(text), Default(None) */
+    val description: Rep[Option[String]] = column[Option[String]]("description", O.Default(None))
+
+    /** Database column last_updated SqlType(timestamp), Default(None) */
+    val lastUpdated: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("last_updated", O.Default(None))
+
+    /** Primary key of Metadata (database name metadata_pkey) */
+    val pk = primaryKey("metadata_pkey", (address, name))
+  }
+
+  /** Collection-like TableQuery object for table Metadata */
+  lazy val Metadata = new TableQuery(tag => new Metadata(tag))
+
+  /** Entity class storing rows of table Nfts
+    *  @param contractAddress Database column contract_address SqlType(text)
+    *  @param opGroupHash Database column op_group_hash SqlType(text)
+    *  @param blockLevel Database column block_level SqlType(int8)
+    *  @param timestamp Database column timestamp SqlType(timestamp)
+    *  @param contractName Database column contract_name SqlType(text)
+    *  @param assetType Database column asset_type SqlType(text)
+    *  @param assetLocation Database column asset_location SqlType(text)
+    *  @param rawMetadata Database column raw_metadata SqlType(text) */
+  case class NftsRow(
+      contractAddress: String,
+      opGroupHash: String,
+      blockLevel: Long,
+      timestamp: java.sql.Timestamp,
+      contractName: String,
+      assetType: String,
+      assetLocation: String,
+      rawMetadata: String
+  )
+
+  /** GetResult implicit for fetching NftsRow objects using plain SQL queries */
+  implicit def GetResultNftsRow(implicit e0: GR[String], e1: GR[Long], e2: GR[java.sql.Timestamp]): GR[NftsRow] = GR {
+    prs =>
+      import prs._
+      NftsRow.tupled(
+        (<<[String], <<[String], <<[Long], <<[java.sql.Timestamp], <<[String], <<[String], <<[String], <<[String])
+      )
+  }
+
+  /** Table description of table nfts. Objects of this class serve as prototypes for rows in queries. */
+  class Nfts(_tableTag: Tag) extends profile.api.Table[NftsRow](_tableTag, Some("tezos"), "nfts") {
+    def * =
+      (contractAddress, opGroupHash, blockLevel, timestamp, contractName, assetType, assetLocation, rawMetadata) <> (NftsRow.tupled, NftsRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      (
+        (
+          Rep.Some(contractAddress),
+          Rep.Some(opGroupHash),
+          Rep.Some(blockLevel),
+          Rep.Some(timestamp),
+          Rep.Some(contractName),
+          Rep.Some(assetType),
+          Rep.Some(assetLocation),
+          Rep.Some(rawMetadata)
+        )
+      ).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => NftsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    /** Database column contract_address SqlType(text) */
+    val contractAddress: Rep[String] = column[String]("contract_address")
+
+    /** Database column op_group_hash SqlType(text) */
+    val opGroupHash: Rep[String] = column[String]("op_group_hash")
+
+    /** Database column block_level SqlType(int8) */
+    val blockLevel: Rep[Long] = column[Long]("block_level")
+
+    /** Database column timestamp SqlType(timestamp) */
+    val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
+
+    /** Database column contract_name SqlType(text) */
+    val contractName: Rep[String] = column[String]("contract_name")
+
+    /** Database column asset_type SqlType(text) */
+    val assetType: Rep[String] = column[String]("asset_type")
+
+    /** Database column asset_location SqlType(text) */
+    val assetLocation: Rep[String] = column[String]("asset_location")
+
+    /** Database column raw_metadata SqlType(text) */
+    val rawMetadata: Rep[String] = column[String]("raw_metadata")
+  }
+
+  /** Collection-like TableQuery object for table Nfts */
+  lazy val Nfts = new TableQuery(tag => new Nfts(tag))
+
   /** Entity class storing rows of table OperationGroups
     *  @param protocol Database column protocol SqlType(varchar)
     *  @param chainId Database column chain_id SqlType(varchar), Default(None)
@@ -2615,6 +2869,7 @@ trait Tables {
     *  @param delegatable Database column delegatable SqlType(bool), Default(None)
     *  @param script Database column script SqlType(varchar), Default(None)
     *  @param storage Database column storage SqlType(varchar), Default(None)
+    *  @param storageMicheline Database column storage_micheline SqlType(varchar), Default(None)
     *  @param status Database column status SqlType(varchar), Default(None)
     *  @param consumedGas Database column consumed_gas SqlType(numeric), Default(None)
     *  @param storageSize Database column storage_size SqlType(numeric), Default(None)
@@ -2665,6 +2920,7 @@ trait Tables {
       delegatable: Option[Boolean] = None,
       script: Option[String] = None,
       storage: Option[String] = None,
+      storageMicheline: Option[String] = None,
       status: Option[String] = None,
       consumedGas: Option[scala.math.BigDecimal] = None,
       storageSize: Option[scala.math.BigDecimal] = None,
@@ -2733,6 +2989,7 @@ trait Tables {
       <<?[String],
       <<?[String],
       <<?[String],
+      <<?[String],
       <<?[scala.math.BigDecimal],
       <<?[scala.math.BigDecimal],
       <<?[scala.math.BigDecimal],
@@ -2757,12 +3014,12 @@ trait Tables {
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, Some("tezos"), "operations") {
     def * =
-      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: ballotPeriod :: timestamp :: errors :: utcYear :: utcMonth :: utcDay :: utcTime :: invalidatedAsof :: forkId :: HNil)
+      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: storageMicheline :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: ballotPeriod :: timestamp :: errors :: utcYear :: utcMonth :: utcDay :: utcTime :: invalidatedAsof :: forkId :: HNil)
         .mapTo[OperationsRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
+      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: storageMicheline :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
             .Some(blockHash) :: Rep.Some(blockLevel) :: ballot :: Rep.Some(internal) :: period :: ballotPeriod :: Rep
             .Some(timestamp) :: errors :: Rep.Some(utcYear) :: Rep.Some(utcMonth) :: Rep.Some(utcDay) :: Rep.Some(
             utcTime
@@ -2800,24 +3057,25 @@ trait Tables {
             r(28).asInstanceOf[Option[String]],
             r(29).asInstanceOf[Option[String]],
             r(30).asInstanceOf[Option[String]],
-            r(31).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(31).asInstanceOf[Option[String]],
             r(32).asInstanceOf[Option[scala.math.BigDecimal]],
             r(33).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(34).asInstanceOf[Option[String]],
-            r(35).asInstanceOf[Option[String]].get,
-            r(36).asInstanceOf[Option[Long]].get,
-            r(37).asInstanceOf[Option[String]],
-            r(38).asInstanceOf[Option[Boolean]].get,
-            r(39).asInstanceOf[Option[Int]],
+            r(34).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(35).asInstanceOf[Option[String]],
+            r(36).asInstanceOf[Option[String]].get,
+            r(37).asInstanceOf[Option[Long]].get,
+            r(38).asInstanceOf[Option[String]],
+            r(39).asInstanceOf[Option[Boolean]].get,
             r(40).asInstanceOf[Option[Int]],
-            r(41).asInstanceOf[Option[java.sql.Timestamp]].get,
-            r(42).asInstanceOf[Option[String]],
-            r(43).asInstanceOf[Option[Int]].get,
+            r(41).asInstanceOf[Option[Int]],
+            r(42).asInstanceOf[Option[java.sql.Timestamp]].get,
+            r(43).asInstanceOf[Option[String]],
             r(44).asInstanceOf[Option[Int]].get,
             r(45).asInstanceOf[Option[Int]].get,
-            r(46).asInstanceOf[Option[String]].get,
-            r(47).asInstanceOf[Option[java.sql.Timestamp]],
-            r(48).asInstanceOf[Option[String]].get
+            r(46).asInstanceOf[Option[Int]].get,
+            r(47).asInstanceOf[Option[String]].get,
+            r(48).asInstanceOf[Option[java.sql.Timestamp]],
+            r(49).asInstanceOf[Option[String]].get
           ),
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -2913,6 +3171,9 @@ trait Tables {
 
     /** Database column storage SqlType(varchar), Default(None) */
     val storage: Rep[Option[String]] = column[Option[String]]("storage", O.Default(None))
+
+    /** Database column storage_micheline SqlType(varchar), Default(None) */
+    val storageMicheline: Rep[Option[String]] = column[Option[String]]("storage_micheline", O.Default(None))
 
     /** Database column status SqlType(varchar), Default(None) */
     val status: Rep[Option[String]] = column[Option[String]]("status", O.Default(None))
@@ -3109,84 +3370,27 @@ trait Tables {
 
   /** Entity class storing rows of table RegisteredTokens
     *  @param name Database column name SqlType(text)
-    *  @param symbol Database column symbol SqlType(text)
-    *  @param decimals Database column decimals SqlType(int4)
-    *  @param interfaces Database column interfaces SqlType(text)
-    *  @param address Database column address SqlType(text)
-    *  @param tokenIndex Database column token_index SqlType(int4), Default(None)
-    *  @param balanceMap Database column balance_map SqlType(int4)
-    *  @param balanceKeyType Database column balance_key_type SqlType(text)
-    *  @param balancePath Database column balance_path SqlType(text)
-    *  @param markets Database column markets SqlType(text)
-    *  @param farms Database column farms SqlType(text) */
-  case class RegisteredTokensRow(
-      name: String,
-      symbol: String,
-      decimals: Int,
-      interfaces: String,
-      address: String,
-      tokenIndex: Option[Int] = None,
-      balanceMap: Int,
-      balanceKeyType: String,
-      balancePath: String,
-      markets: String,
-      farms: String
-  )
+    *  @param contractType Database column contract_type SqlType(text)
+    *  @param accountId Database column account_id SqlType(text)
+    *  @param scale Database column scale SqlType(int4) */
+  case class RegisteredTokensRow(id: Int, name: String, contractType: String, accountId: String, scale: Int)
 
   /** GetResult implicit for fetching RegisteredTokensRow objects using plain SQL queries */
-  implicit def GetResultRegisteredTokensRow(
-      implicit e0: GR[String],
-      e1: GR[Int],
-      e2: GR[Option[Int]]
-  ): GR[RegisteredTokensRow] = GR { prs =>
+  implicit def GetResultRegisteredTokensRow(implicit e0: GR[Int], e1: GR[String]): GR[RegisteredTokensRow] = GR { prs =>
     import prs._
-    RegisteredTokensRow.tupled(
-      (
-        <<[String],
-        <<[String],
-        <<[Int],
-        <<[String],
-        <<[String],
-        <<?[Int],
-        <<[Int],
-        <<[String],
-        <<[String],
-        <<[String],
-        <<[String]
-      )
-    )
+    RegisteredTokensRow.tupled((<<[Int], <<[String], <<[String], <<[String], <<[Int]))
   }
 
   /** Table description of table registered_tokens. Objects of this class serve as prototypes for rows in queries. */
   class RegisteredTokens(_tableTag: Tag)
       extends profile.api.Table[RegisteredTokensRow](_tableTag, Some("tezos"), "registered_tokens") {
-    def * =
-      (name, symbol, decimals, interfaces, address, tokenIndex, balanceMap, balanceKeyType, balancePath, markets, farms) <> (RegisteredTokensRow.tupled, RegisteredTokensRow.unapply)
+    def * = (id, name, contractType, accountId, scale) <> (RegisteredTokensRow.tupled, RegisteredTokensRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (
-        (
-          Rep.Some(name),
-          Rep.Some(symbol),
-          Rep.Some(decimals),
-          Rep.Some(interfaces),
-          Rep.Some(address),
-          tokenIndex,
-          Rep.Some(balanceMap),
-          Rep.Some(balanceKeyType),
-          Rep.Some(balancePath),
-          Rep.Some(markets),
-          Rep.Some(farms)
-        )
-      ).shaped.<>(
+      ((Rep.Some(id), Rep.Some(name), Rep.Some(contractType), Rep.Some(accountId), Rep.Some(scale))).shaped.<>(
         { r =>
-          import r._;
-          _1.map(
-            _ =>
-              RegisteredTokensRow
-                .tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8.get, _9.get, _10.get, _11.get))
-          )
+          import r._; _1.map(_ => RegisteredTokensRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -3209,20 +3413,8 @@ trait Tables {
     /** Database column token_index SqlType(int4), Default(None) */
     val tokenIndex: Rep[Option[Int]] = column[Option[Int]]("token_index", O.Default(None))
 
-    /** Database column balance_map SqlType(int4) */
-    val balanceMap: Rep[Int] = column[Int]("balance_map")
-
-    /** Database column balance_key_type SqlType(text) */
-    val balanceKeyType: Rep[String] = column[String]("balance_key_type")
-
-    /** Database column balance_path SqlType(text) */
-    val balancePath: Rep[String] = column[String]("balance_path")
-
-    /** Database column markets SqlType(text) */
-    val markets: Rep[String] = column[String]("markets")
-
-    /** Database column farms SqlType(text) */
-    val farms: Rep[String] = column[String]("farms")
+    /** Database column scale SqlType(int4) */
+    val scale: Rep[Int] = column[Int]("scale")
   }
 
   /** Collection-like TableQuery object for table RegisteredTokens */

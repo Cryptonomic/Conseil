@@ -11,6 +11,7 @@ import tech.cryptonomic.conseil.indexer.config.{BakingAndEndorsingRights, BatchF
 import tech.cryptonomic.conseil.indexer.tezos.{
   TezosIndexedDataOperations,
   TezosNodeOperator,
+  Tzip16MetadataOperator,
   TezosDatabaseOperations => TezosDb
 }
 import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator.LazyPages

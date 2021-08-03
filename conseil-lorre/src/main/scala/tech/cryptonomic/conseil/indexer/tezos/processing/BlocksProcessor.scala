@@ -4,18 +4,21 @@ import scala.util.{Failure, Success, Try}
 import scala.concurrent.{ExecutionContext, Future}
 import slick.jdbc.PostgresProfile.api._
 import cats.implicits._
-
 import tech.cryptonomic.conseil.indexer.tezos.{
+  TezosGovernanceOperations,
   TezosNamesOperations,
   TezosNodeOperator,
-  TezosGovernanceOperations,
+  Tzip16MetadataOperator,
   TezosDatabaseOperations => TezosDb
 }
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, Voting}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, InternalOperationResults, Voting}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
+import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts.Tzip16
+import tech.cryptonomic.conseil.indexer.tezos.michelson.renderer.MichelsonRenderer
 
 /** Collects operations related to handling blocks from
   * the tezos node.

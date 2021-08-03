@@ -1,23 +1,28 @@
 package tech.cryptonomic.conseil.indexer.tezos.michelson.contracts
 
+import java.lang.Integer.parseInt
+import java.nio.charset.StandardCharsets
+
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   makeAccountId,
   AccountId,
   Contract,
   ContractId,
   Decimal,
-  Micheline,
   Parameters,
   ParametersCompatibility
 }
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Micheline
 import cats.implicits._
+
 import scala.collection.immutable.TreeSet
 import scala.util.Try
 import scala.concurrent.SyncVar
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.util.CryptoUtil
 import scorex.util.encode.{Base16 => Hex}
+import tech.cryptonomic.conseil.indexer.tezos.michelson.dto.{MichelsonBytesConstant, MichelsonInstruction}
+import tech.cryptonomic.conseil.indexer.tezos.michelson.parser.JsonParser
 
 /** For each specific contract available we store a few
   * relevant bits of data useful to extract information
@@ -365,4 +370,63 @@ object TokenContracts extends ConseilLogSupport {
     }
 
   }
+
+  object Tzip16 {
+
+    /** Helper function for decoding hex string to UTF8 string */
+    private def proceduralDecode(hex: String): String = {
+      val bytes = new Array[Byte](hex.length / 2)
+      var i = 0
+      while (i < bytes.length) {
+        bytes(i) = parseInt(hex.substring(i * 2, i * 2 + 2), 16).toByte
+        i += 1
+      }
+      new String(bytes, StandardCharsets.UTF_8)
+    }
+
+    def extractTzip16MetadataLocationFromParameters(
+        paramCode: Micheline,
+        path: Option[String],
+        locationType: Option[String] = Some("ipfs")
+    ): Option[String] = {
+      val parsed = JsonParser.parse[MichelsonInstruction](paramCode.expression)
+
+      parsed.left.foreach(
+        err =>
+          logger.error(
+            s"""Failed to parse michelson expression for tzip-16 receiver in parameters.
+               | Code was: ${paramCode.expression}
+               | Error is ${err.getMessage}""".stripMargin,
+            err
+          )
+      )
+
+      parsed.foreach(
+        michelson => logger.debug(s"I parsed a tzip-16 parameters value as $michelson")
+      )
+
+      val extractedLocation = locationType match {
+        case Some("ipfs") =>
+          parsed.toOption
+            .flatMap(
+              _.findInstruction(MichelsonBytesConstant(""), startsWith = Some("69706673")).sortBy(_.length).headOption
+            )
+        case Some("http") =>
+          parsed.toOption
+            .flatMap(
+              _.findInstruction(MichelsonBytesConstant(""), startsWith = Some("68747470")).sortBy(_.length).headOption
+            )
+        case None => None
+      }
+
+      for {
+        pth <- path.orElse(extractedLocation)
+        metadataUrl <- parsed.toOption.flatMap(_.getAtPath(pth)).collect {
+          case MichelsonBytesConstant(mu) =>
+            mu
+        }
+      } yield proceduralDecode(metadataUrl)
+    }
+  }
+
 }

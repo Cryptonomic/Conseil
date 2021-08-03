@@ -135,6 +135,36 @@ CREATE TABLE tezos.registered_tokens (
     balance_path text NOT NULL,
     markets text NOT NULL,
     farms text NOT NULL
+    contract_type text NOT NULL,
+    account_id text NOT NULL,
+    scale integer NOT NULL,
+    interfaces text NOT NULL,
+    is_tzip16 boolean NOT NULL,
+    is_nft boolean NOT NULL,
+    metadata_type text NOT NULL,
+    metadata_big_map_id integer NOT NULL,
+    metadata_big_map_type text NOT NULL,
+    metadata_path text NOT NULL
+);
+
+CREATE TABLE tezos.metadata (
+    address text NOT NULL,
+    raw_metadata text NOT NULL,
+    name text NOT NULL,
+    description text,
+    last_updated timestamp,
+    PRIMARY KEY(address, name)
+);
+
+CREATE TABLE tezos.nfts (
+    contract_address text NOT NULL,
+    op_group_hash text NOT NULL,
+    block_level bigint NOT NULL,
+    timestamp timestamp NOT NULL,
+    contract_name text NOT NULL,
+    asset_type text NOT NULL,
+    asset_location text NOT NULL,
+    raw_metadata text NOT NULL
 );
 
 CREATE TABLE tezos.token_balances (
@@ -461,6 +491,7 @@ CREATE TABLE tezos.operations (
     delegatable boolean,
     script character varying,
     storage character varying,
+    storage_micheline character varying,
     status character varying,
     consumed_gas numeric,
     storage_size numeric,
@@ -516,11 +547,24 @@ CREATE TABLE tezos.big_map_contents (
     key_hash character varying,
     operation_group_id character varying,
     value character varying,
+    value_micheline character varying,
     block_level bigint,
     "timestamp" timestamp without time zone,
     cycle integer,
     period integer,
     PRIMARY KEY (big_map_id, key)
+);
+
+CREATE TABLE tezos.big_map_contents_history (
+    big_map_id numeric NOT NULL,
+    key character varying NOT NULL,
+    key_hash character varying,
+    operation_group_id character varying,
+    value character varying,
+    block_level bigint,
+    "timestamp" timestamp without time zone,
+    cycle integer,
+    period integer
 );
 
 CREATE INDEX big_map_id_idx ON tezos.big_map_contents USING btree (big_map_id);
@@ -711,6 +755,13 @@ CREATE INDEX ix_balance_updates_op_group_hash ON tezos.balance_updates USING btr
 CREATE INDEX ix_balance_updates_account_id ON tezos.balance_updates USING btree (account_id);
 
 CREATE INDEX ix_balance_updates_block_level ON tezos.balance_updates USING btree (block_level);
+
+-- Index: ix_operations_block_level_delegate
+
+CREATE INDEX ix_operations_block_level_delegate
+    ON tezos.operations USING btree
+    (level ASC NULLS LAST, delegate COLLATE pg_catalog."default" ASC NULLS LAST)
+    TABLESPACE pg_default;
 
 --
 -- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -

@@ -125,6 +125,7 @@ class BigMapsOperationsTest
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
             value = Some("Pair 20 {}"),
+            valueMicheline = Some("""{"prim":"Pair", "args": [{"int":"20"},[]]}"""),
             operationGroupId = Some(opGroupHash.value),
             blockLevel = Some(block.data.header.level),
             timestamp = Some(Timestamp.from(block.data.header.timestamp.toInstant)),
@@ -229,7 +230,7 @@ class BigMapsOperationsTest
 
         //prepare the token registry
 
-        val registeredToken = Tables.RegisteredTokensRow("token", "symbol", 0, "[TZIP-7]", tokenAddress.id, None, 0, "address", "path", "[]", "[]")
+        val registeredToken = Tables.RegisteredTokensRow(1, "token", "FA1.2", tokenAddress.id, 0, "null", false, false, "", 0, "", "")
 
         implicit val fa12Tokens = TokenContracts.fromConfig(List(tokenAddress -> "[TZIP-7]"))
         fa12Tokens.setMapId(tokenAddress, BigDecimal(tokenMap))
@@ -318,6 +319,7 @@ class BigMapsOperationsTest
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
             value = Some("Pair 50 {}"),
+            valueMicheline = Some("""{"prim":"Pair", "args": [{"int":"50"},[]]}"""),
             operationGroupId = Some(opGroupHash.value),
             blockLevel = Some(block.data.header.level),
             timestamp = Some(Timestamp.from(block.data.header.timestamp.toInstant)),
@@ -406,6 +408,7 @@ class BigMapsOperationsTest
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
             value = Some("Pair 50 {}"),
+            valueMicheline = Some("""{"prim":"Pair", "args": [{"int":"50"},[]]}"""),
             operationGroupId = Some(opGroupHashes(0).value),
             blockLevel = Some(reverted.head.data.header.level),
             timestamp = Some(Timestamp.from(reverted.head.data.header.timestamp.toInstant)),

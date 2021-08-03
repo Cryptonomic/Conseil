@@ -22,8 +22,9 @@ final case class LorreConfiguration(
     headHash: Option[String],
     chainEvents: List[ChainEvent],
     blockRightsFetching: BakingAndEndorsingRights,
-    enabledFeatures: Features,
-    tokenContracts: TokenContracts
+    tokenContracts: TokenContracts,
+    metadataFetching: TzipMetadata,
+    enabledFeatures: Features
 )
 
 /** configuration for fetching baking and endorsing rights */
@@ -34,6 +35,12 @@ final case class BakingAndEndorsingRights(
     cycleSize: Int,
     fetchSize: Int,
     updateSize: Int
+)
+
+/** configuration for fetching baking and endorsing rights */
+final case class TzipMetadata(
+    initDelay: FiniteDuration,
+    interval: FiniteDuration
 )
 
 /** details how to handle data pagination when fetching from the chain */
@@ -50,6 +57,7 @@ final case class BatchFetchConfiguration(
 final case class Features(
     blockRightsFetchingIsOn: Boolean,
     forkHandlingIsOn: Boolean,
+    metadataFetchingIsOn: Boolean,
     registeredTokensIsOn: Boolean
 )
 

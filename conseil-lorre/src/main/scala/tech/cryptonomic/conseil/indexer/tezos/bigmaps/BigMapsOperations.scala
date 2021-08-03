@@ -66,6 +66,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
                       it.keyHash,
                       it.operationGroupId,
                       it.value,
+                      it.valueMicheline,
                       it.blockLevel,
                       it.timestamp,
                       it.cycle,
@@ -91,12 +92,17 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       readAction =>
         readAction.flatMap { updateData =>
           val rowsToWrite = dedup(updateData.map(BigMapContentsRow.tupled))
-          Tables.BigMapContents.insertOrUpdateAll(rowsToWrite)
+          DBIO.sequence {
+            List(
+              Tables.BigMapContents.insertOrUpdateAll(rowsToWrite),
+              Tables.BigMapContentsHistory ++= updateData.map(Tables.BigMapContentsHistoryRow.tupled).distinct
+            )
+          }
         }
     )
 
     DBIO.sequence(writesByLevel).map { upserts =>
-      val sum = upserts.fold(Some(0))(_ |+| _)
+      val sum = upserts.flatten.fold(Some(0))(_ |+| _)
       val showSum = sum.fold("An unspecified number of")(String.valueOf)
       logger.info(s"$showSum big maps will be actually copied in the db.")
       sum
@@ -185,7 +191,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @param blocks the blocks containing the diffs
     * @return the count of records added, if available from the underlying db-engine
     */
-  def upsertContent(blocks: List[Block]): DBIO[Option[Int]] = {
+  def upsertContent(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
 
     import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockTagged._
     val diffsPerBlock = blocks.flatMap(
@@ -231,8 +237,19 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
 
     val showAdd = if (newContent.nonEmpty) s"A total of ${newContent.size}" else "No"
     logger.info(s"$showAdd big map content entries will be added.")
+    import io.scalaland.chimney.dsl._
 
-    Tables.BigMapContents.insertOrUpdateAll(newContent)
+    DBIO
+      .sequence(
+        Seq(
+          Tables.BigMapContents.insertOrUpdateAll(newContent),
+          Tables.BigMapContentsHistory ++= rowsPerBlock.values.flatten
+                .map(_.into[Tables.BigMapContentsHistoryRow].transform)
+                .toList
+                .distinct
+        )
+      )
+      .map(_.fold(Some(0))(_ |+| _))
   }
 
   /** Takes from blocks referring a big map allocation the reference to the

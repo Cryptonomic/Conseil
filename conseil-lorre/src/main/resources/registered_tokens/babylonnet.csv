@@ -1,2 +1,2 @@
-id, name  , contract_type, account_id,                         , scale
-1 , USDTez, FA1.2        , KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux, 6
+id, name  , contract_type, account_id,                         , scale , metadata_path
+1 , USDTez, FA1.2        , KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux, 6     , null

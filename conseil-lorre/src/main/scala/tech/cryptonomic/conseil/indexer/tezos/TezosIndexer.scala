@@ -53,6 +53,7 @@ class TezosIndexer private (
     accountsProcessor: AccountsProcessor,
     bakersProcessor: BakersProcessor,
     rightsProcessor: BakingAndEndorsingRightsProcessor,
+    metadataProcessor: MetadataProcessor,
     accountsResetHandler: AccountsResetHandler,
     forkHandler: ForkHandler[Future, TezosBlockHash],
     terminationSequence: () => Future[ShutdownComplete]
@@ -71,6 +72,14 @@ class TezosIndexer private (
     logger.info("I'm scheduling the concurrent tasks to update baking and endorsing rights")
     system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
       rightsProcessor.writeFutureRights()
+    )
+  }
+
+  /** Schedules method for fetching TZIP-16 metadata */
+  if (featureFlags.metadataFetchingIsOn) {
+    logger.info("I'm scheduling the concurrent tasks to fetch TZIP-16 metadata")
+    system.scheduler.schedule(lorreConf.metadataFetching.initDelay, lorreConf.metadataFetching.interval)(
+      metadataProcessor.processMetadata
     )
   }
 
@@ -186,7 +195,8 @@ class TezosIndexer private (
     val blockPagesToSynchronize = lorreConf.depth match {
       case Newest => nodeOperator.getBlocksNotInDatabase(maxIndexedLevel)
       case Everything => nodeOperator.getLatestBlocks()
-      case Custom(n) => nodeOperator.getLatestBlocks(Some(n), lorreConf.headHash.map(TezosBlockHash))
+      case Custom(n) =>
+        nodeOperator.getLatestBlocks(Some(n), lorreConf.headHash.map(TezosBlockHash), Some(maxIndexedLevel))
     }
 
     /* collects the hashes of the blocks in the results */
@@ -250,6 +260,7 @@ class TezosIndexer private (
         ),
       Duration.Inf
     )
+    ()
   }
 
   override def stop(): Future[ShutdownComplete] = terminationSequence()
@@ -295,9 +306,17 @@ object TezosIndexer extends ConseilLogSupport {
       lorreConf.blockRightsFetching
     )
 
+    val tezosMetadataInterface = new TezosMetadataInterface(conf, callsConf, streamingClientConf)
+    val tzip16MetadataOperator = new Tzip16MetadataOperator(tezosMetadataInterface)
+
     /* handles standard accounts data */
     val accountsProcessor =
-      new AccountsProcessor(nodeOperator, indexedData, batchingConf, lorreConf.blockRightsFetching)
+      new AccountsProcessor(
+        nodeOperator,
+        indexedData,
+        batchingConf,
+        lorreConf.blockRightsFetching
+      )
 
     /* handles wide-range accounts refresh due to occasional special events */
     val accountsResetHandler = new AccountsResetHandler(db, indexedData)
@@ -370,6 +389,11 @@ object TezosIndexer extends ConseilLogSupport {
       bakersProcessor
     )
 
+    val metadataProcessor = new MetadataProcessor(
+      tzip16MetadataOperator,
+      db
+    )
+
     /* A single component will provide all required search functions for the fork-handler */
     val forkSearchEngine = new TezosForkSearchEngine(
       nodeOps = nodeOperator,
@@ -408,6 +432,7 @@ object TezosIndexer extends ConseilLogSupport {
       accountsProcessor,
       bakersProcessor,
       rightsProcessor,
+      metadataProcessor,
       accountsResetHandler,
       forkHandler,
       gracefulTermination
