@@ -27,6 +27,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockTagged.fromBlockDat
   */
 case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) extends ConseilLogSupport {
   import profile.api._
+  import io.scalaland.chimney.dsl._
 
   /** Create an action to find and copy big maps based on the diff contained in the blocks
     *
@@ -95,7 +96,10 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
           DBIO.sequence {
             List(
               Tables.BigMapContents.insertOrUpdateAll(rowsToWrite),
-              Tables.BigMapContentsHistory ++= updateData.map(Tables.BigMapContentsHistoryRow.tupled).distinct
+              Tables.BigMapContentsHistory ++= updateData
+                    .map(BigMapContentsRow.tupled)
+                    .map(_.transformInto[Tables.BigMapContentsHistoryRow])
+                    .distinct
             )
           }
         }
