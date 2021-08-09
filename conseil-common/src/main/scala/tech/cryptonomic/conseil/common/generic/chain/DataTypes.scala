@@ -163,18 +163,20 @@ object DataTypes {
   case class ApiAggregation(
       field: String,
       function: AggregationType = AggregationType.sum,
+      distinct: Option[Boolean] = None,
       predicate: Option[ApiAggregationPredicate] = None
   ) {
 
     /** Transforms Aggregation received form API into Aggregation */
     def toAggregation: Aggregation =
-      Aggregation(field, function, predicate.map(_.toAggregationPredicate))
+      Aggregation(field, function, distinct, predicate.map(_.toAggregationPredicate))
   }
 
   /** Class representing aggregation */
   case class Aggregation(
       field: String,
       function: AggregationType = AggregationType.sum,
+      distinct: Option[Boolean] = None,
       predicate: Option[AggregationPredicate] = None
   ) {
 
