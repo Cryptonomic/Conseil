@@ -566,7 +566,8 @@ object TezosTypes {
 
   final case class CycleBalance(
       cycle: Int,
-      deposit: PositiveBigNumber,
+      deposit: Option[PositiveBigNumber],
+      deposits: Option[PositiveBigNumber],
       fees: PositiveBigNumber,
       rewards: PositiveBigNumber
   )
