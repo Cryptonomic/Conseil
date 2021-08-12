@@ -2276,7 +2276,7 @@ class TezosDataOperationsTest
 
       val aggregate = List(
         Aggregation("low", AggregationType.count),
-        Aggregation("medium", AggregationType.count, Some(true))
+        Aggregation("medium", AggregationType.countDistinct)
       )
 
       val populateAndTest = for {
@@ -2286,7 +2286,7 @@ class TezosDataOperationsTest
           table = Tables.Fees.baseTableRow.tableName,
           columns = List(SimpleField("low"), SimpleField("medium"), SimpleField("high")),
           predicates = List.empty,
-          ordering = List(QueryOrdering("count_medium", OrderDirection.desc)),
+          ordering = List(QueryOrdering("count_distinct_medium", OrderDirection.desc)),
           aggregation = aggregate,
           temporalPartition = None,
           snapshot = None,
@@ -2298,8 +2298,8 @@ class TezosDataOperationsTest
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
       result shouldBe List(
-        Map("count_low" -> Some(4), "count_medium" -> Some(2), "high" -> Some(1)),
-        Map("count_low" -> Some(2), "count_medium" -> Some(1), "high" -> Some(2))
+        Map("count_low" -> Some(4), "count_distinct_medium" -> Some(2), "high" -> Some(1)),
+        Map("count_low" -> Some(2), "count_distinct_medium" -> Some(1), "high" -> Some(2))
       )
     }
 

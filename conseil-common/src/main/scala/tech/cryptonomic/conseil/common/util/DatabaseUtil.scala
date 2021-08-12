@@ -184,7 +184,7 @@ object DatabaseUtil {
         limit: Int
     ): SQLActionBuilder = {
       val aggregationFields = aggregations.map { aggregation =>
-        mapAggregationToSQL(aggregation, aggregation.field) + " as " + mapAggregationToAlias(
+        mapAggregationToSQL(aggregation.function, aggregation.field) + " as " + mapAggregationToAlias(
           aggregation.function,
           aggregation.field
         )
@@ -259,7 +259,7 @@ object DatabaseUtil {
       */
     def makeQuery(table: String, columns: List[Field], aggregations: List[Aggregation]): SQLActionBuilder = {
       val aggregationFields = aggregations.map { aggregation =>
-        mapAggregationToSQL(aggregation, aggregation.field) + " as " + mapAggregationToAlias(
+        mapAggregationToSQL(aggregation.function, aggregation.field) + " as " + mapAggregationToAlias(
           aggregation.function,
           aggregation.field
         )
@@ -311,7 +311,7 @@ object DatabaseUtil {
         aggregation.flatMap { aggregation =>
           aggregation.getPredicate.toList.map { predicate =>
             concatenateSqlActions(
-              sql""" AND #${mapAggregationToSQL(aggregation, aggregation.field)} """,
+              sql""" AND #${mapAggregationToSQL(aggregation.function, aggregation.field)} """,
               mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString))
             )
           }
@@ -322,26 +322,22 @@ object DatabaseUtil {
       s"to_char($field, '$format')"
 
     /** maps aggregation operation to the SQL function*/
-    private def mapAggregationToSQL(aggregation: Aggregation, column: String): String = {
-      val col = if(aggregation.distinct.getOrElse(false)) {
-        s"DISTINCT $column"
-      } else {
-        column
+    private def mapAggregationToSQL(aggregationType: AggregationType, column: String): String =
+      aggregationType match {
+        case AggregationType.sum => s"SUM($column)"
+        case AggregationType.count => s"COUNT($column)"
+        case AggregationType.countDistinct => s"COUNT(DISTINCT $column)"
+        case AggregationType.max => s"MAX($column)"
+        case AggregationType.min => s"MIN($column)"
+        case AggregationType.avg => s"AVG($column)"
       }
-      aggregation.function match {
-        case AggregationType.sum => s"SUM($col)"
-        case AggregationType.count => s"COUNT($col)"
-        case AggregationType.max => s"MAX($col)"
-        case AggregationType.min => s"MIN($col)"
-        case AggregationType.avg => s"AVG($col)"
-      }
-    }
 
     /** maps aggregation operation to the SQL alias */
     private def mapAggregationToAlias(aggregationType: AggregationType, column: String): String =
       aggregationType match {
         case AggregationType.sum => s"sum_$column"
         case AggregationType.count => s"count_$column"
+        case AggregationType.countDistinct => s"count_distinct_$column"
         case AggregationType.max => s"max_$column"
         case AggregationType.min => s"min_$column"
         case AggregationType.avg => s"avg_$column"
