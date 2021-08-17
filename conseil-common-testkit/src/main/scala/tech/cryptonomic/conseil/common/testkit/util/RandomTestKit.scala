@@ -96,7 +96,7 @@ trait RandomGenerationKit {
   /** Can the string be safely stored as a database column?
     * This depends on the database type definitions.
     */
-  def canBeWrittenToDb(string: String): Boolean = !string.contains(nullUTF_8)
+  def canBeWrittenToDb(string: String): Boolean = (!string.contains(nullUTF_8)) && string.forall(Character.isDefined)
 
   /** Can the number be safely stored as a database column?
     * This depends on the database type definitions.
