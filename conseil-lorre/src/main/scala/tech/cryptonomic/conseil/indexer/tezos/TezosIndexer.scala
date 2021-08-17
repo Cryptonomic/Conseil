@@ -7,6 +7,7 @@ import akka.stream.scaladsl.Source
 import mouse.any._
 import cats.instances.future._
 import cats.syntax.applicative._
+import slick.jdbc.JdbcBackend.Database
 import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, TezosConfiguration}
 import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
@@ -56,6 +57,7 @@ class TezosIndexer private (
     metadataProcessor: MetadataProcessor,
     accountsResetHandler: AccountsResetHandler,
     forkHandler: ForkHandler[Future, TezosBlockHash],
+    feeOperations: TezosFeeOperations,
     terminationSequence: () => Future[ShutdownComplete]
 )(
     implicit
@@ -110,7 +112,7 @@ class TezosIndexer private (
         reloadedAccountEvents.getOrElse(accountResetEvents)
       )
       _ <- processTezosBlocks(maxLevel)
-      _ <- TezosFeeOperations
+      _ <- feeOperations
         .processTezosAverageFees(lorreConf.feesAverageTimeWindow)
         .whenA(iteration % lorreConf.feeUpdateInterval == 0)
       _ <- rightsProcessor.updateRightsTimestamps()
@@ -268,7 +270,8 @@ object TezosIndexer extends ConseilLogSupport {
       conf: TezosConfiguration,
       callsConf: NetworkCallsConfiguration,
       streamingClientConf: HttpStreamingConfiguration,
-      batchingConf: BatchFetchConfiguration
+      batchingConf: BatchFetchConfiguration,
+      db: Database
   ): LorreIndexer = {
     val selectedNetwork = conf.network
 
@@ -281,7 +284,6 @@ object TezosIndexer extends ConseilLogSupport {
       ignoreProcessFailuresOrigin.exists(ignore => ignore == "true" || ignore == "yes")
 
     /* Here we collect all internal service operations and resources, needed to run the indexer */
-    val db = DatabaseUtil.lorreDb
     val indexedData = new TezosIndexedDataOperations(db)
 
     /* collects data from the remote tezos node */
@@ -423,6 +425,8 @@ object TezosIndexer extends ConseilLogSupport {
         amender = TezosForkInvalidatingAmender(db)
       )
 
+    val feeOperations = new TezosFeeOperations(db)
+
     /* the shutdown sequence to free resources */
     val gracefulTermination = () =>
       for {
@@ -444,6 +448,7 @@ object TezosIndexer extends ConseilLogSupport {
       metadataProcessor,
       accountsResetHandler,
       forkHandler,
+      feeOperations,
       gracefulTermination
     )
   }
