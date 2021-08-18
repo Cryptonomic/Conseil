@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
+import slick.jdbc.JdbcBackend.Database
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperations => TezosDb}
 
@@ -10,10 +11,9 @@ import scala.concurrent.duration.FiniteDuration
 /**
   * Helper classes and functions used for average fee calculations.
   */
-private[tezos] object TezosFeeOperations extends ConseilLogSupport {
+private[tezos] class TezosFeeOperations(db: Database) extends ConseilLogSupport {
   // We are getting access to the same database instance, but it should not be a shared object in a long-run.
   // After the splitting we should refactor this part.
-  import tech.cryptonomic.conseil.common.util.DatabaseUtil.{lorreDb => db}
 
   private val operationKinds = List(
     "seed_nonce_revelation",

@@ -28,7 +28,8 @@ import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
   */
 class EthereumIndexer(
     lorreConf: LorreConfiguration,
-    ethereumConf: EthereumConfiguration
+    ethereumConf: EthereumConfiguration,
+    db: Database
 ) extends LorreIndexer
     with LorreProgressLogging {
 
@@ -120,7 +121,7 @@ class EthereumIndexer(
       )
 
       tx <- Transactor
-        .fromDatabase[IO](IO.delay(DatabaseUtil.lorreDb))
+        .fromDatabase[IO](IO.delay(db))
         .map(_.configure(transactorConfig.transactionally)) // run operations in transaction
 
       ethereumOperations <- EthereumOperations.resource(rpcClient, tx, ethereumConf.batching)
@@ -137,7 +138,8 @@ object EthereumIndexer {
     */
   def fromConfig(
       lorreConf: LorreConfiguration,
-      ethereumConf: EthereumConfiguration
+      ethereumConf: EthereumConfiguration,
+    db: Database
   ): LorreIndexer =
-    new EthereumIndexer(lorreConf, ethereumConf)
+    new EthereumIndexer(lorreConf, ethereumConf, db: Database)
 }
