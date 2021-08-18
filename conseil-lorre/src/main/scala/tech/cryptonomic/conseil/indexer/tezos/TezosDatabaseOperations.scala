@@ -912,18 +912,6 @@ object TezosDatabaseOperations extends ConseilLogSupport {
   ): Future[Unit] = {
     import io.scalaland.chimney.dsl._
 
-    //    [error] tech.cryptonomic.conseil.common.tezos.Tables.RegisteredTokensRow
-    //      [error]   contractType: java.lang.String - no accessor named contractType in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
-    //      [error]   accountId: java.lang.String - no accessor named accountId in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
-    //      [error]   scale: scala.Int - no accessor named scale in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
-    //      [error]   isTzip16: scala.Boolean - no accessor named isTzip16 in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
-    //      [error]   isNft: scala.Boolean - no accessor named isNft in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
-    //      [error]   metadataType: java.lang.String - no accessor named metadataType in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
-    //      [error]   metadataBigMapId: scala.Int - no accessor named metadataBigMapId in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
-    //      [error]   metadataBigMapType: java.lang.String - no accessor named metadataBigMapType in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
-    //      [error]   metadataPath: java.lang.String - no accessor named metadataPath in source type tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
-    //      [error]
-
     def makeCsvTable(l: List[String]): String = "[" + l.mkString(",") + "]"
     logger.info(s"Trying to init reg tokens table $list")
     val inserts = list.map { rt =>
