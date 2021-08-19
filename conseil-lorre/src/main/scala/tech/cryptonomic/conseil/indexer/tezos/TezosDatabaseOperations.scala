@@ -882,7 +882,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     }
 
   /** Reads json file for registered tokens */
-  def readJsonFile(network: String): List[RegisteredToken] = {
+  def readRegisteredTokensJsonFile(network: String): Option[List[RegisteredToken]] = {
     import io.circe.parser.decode
     import RegisteredTokensFetcher.decoder
 
@@ -891,8 +891,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     decode[List[RegisteredToken]](content) match {
       case Left(error) =>
         logger.error(s"Something wrong with registered tokens file $error")
-        List.empty
-      case Right(x) => x
+        None
+      case Right(x) => Some(x)
     }
   }
 
@@ -902,7 +902,11 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       if (size > 0) {
         Future.successful(())
       } else {
-        initRegisteredTokensTable(db, readJsonFile(network))
+        readRegisteredTokensJsonFile(network) match {
+          case Some(value) => initRegisteredTokensTable(db, value)
+          case None => throw new IllegalArgumentException("Error while reading registered tokens json file")
+        }
+
       }
     }
 

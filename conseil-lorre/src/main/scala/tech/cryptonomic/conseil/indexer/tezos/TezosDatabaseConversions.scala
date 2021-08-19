@@ -1003,7 +1003,7 @@ private[tezos] object TezosDatabaseConversions {
       ): Id[tezos.Tables.NftsRow] = {
         val ((ar, bm, str), (rawJson, metadata)) = from
         Tables.NftsRow(
-          contractAddress = ar.accountId,
+          contractAddress = ar.address,
           contractName = ar.name,
           assetType = metadata.description,
           assetLocation = metadata.source.flatMap(_.location).getOrElse(str),

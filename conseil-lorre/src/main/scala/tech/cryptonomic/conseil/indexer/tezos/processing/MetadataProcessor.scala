@@ -45,7 +45,7 @@ class MetadataProcessor(
       }.map(_.flatten)
       val contractMetadataAddresses = contracts.map {
         case Tables
-              .RegisteredTokensRow(_, _, _, accountId, _, _, _, _, _, _, _, _, _, _, _, _, Some("other"), _, _, _) =>
+              .RegisteredTokensRow(_, _, _, _, accountId, _, _, _, _, _, _, _, _, Some("other"), _, _, _) =>
           TezosDb.getOriginationByAccount(accountId).map { origList =>
             origList.toList.flatMap { orig =>
               orig.storageMicheline.toList.map(orig -> _)
@@ -58,7 +58,7 @@ class MetadataProcessor(
             }
           }
         case Tables
-              .RegisteredTokensRow(_, _, _, accountId, _, _, _, _, _, _, _, _, _, _, _, _, Some("self"), _, _, path) =>
+              .RegisteredTokensRow(_, _, _, _, accountId, _, _, _, _, _, _, _, _, Some("self"), _, _, path) =>
           TezosDb.getOriginationByAccount(accountId).map { origList =>
             origList.toList.flatMap { orig =>
               orig.storageMicheline.toList.map(orig -> _)
@@ -73,11 +73,8 @@ class MetadataProcessor(
             _,
             _,
             _,
+            _,
             accountId,
-            _,
-            _,
-            _,
-            _,
             _,
             _,
             _,
@@ -101,7 +98,7 @@ class MetadataProcessor(
                   .map(acc -> _)
             }
           }
-        case Tables.RegisteredTokensRow(_, _, _, accountId, _, _, _, _, _, _, _, _, _, _, _, _, Some("web"), _, _, _) =>
+        case Tables.RegisteredTokensRow(_, _, _, _, accountId, _, _, _, _, _, _, _, _, Some("web"), _, _, _) =>
           TezosDb.getOriginationByAccount(accountId).map { origList =>
             origList.toList.flatMap { orig =>
               orig.storageMicheline.toList.map(orig -> _)
