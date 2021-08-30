@@ -164,7 +164,7 @@ object TezosOptics {
       */
     def extractOperationsAlongWithInternalResults(
         block: Block
-    ): Map[OperationsGroup, (List[Operation], List[InternalOperationResults.InternalOperationResult])] =
+    ): Map[OperationsGroup, (List[(Operation, Int)], List[InternalOperationResults.InternalOperationResult])] =
       block.operationGroups.map { group =>
         val internal = group.contents.flatMap { op =>
           op match {
@@ -175,7 +175,7 @@ object TezosOptics {
             case _ => List.empty
           }
         }
-        group -> (group.contents, internal)
+        group -> (group.contents.zipWithIndex, internal)
       }.toMap
 
     /** Extracts all operations, primary and internal, and pre-order traverse

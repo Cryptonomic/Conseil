@@ -2849,6 +2849,7 @@ trait Tables {
     *  @param delegate Database column delegate SqlType(varchar), Default(None)
     *  @param slots Database column slots SqlType(varchar), Default(None)
     *  @param nonce Database column nonce SqlType(varchar), Default(None)
+    *  @param operationOrder Database column operation_order SqlType(int4), Default(None)
     *  @param pkh Database column pkh SqlType(varchar), Default(None)
     *  @param secret Database column secret SqlType(varchar), Default(None)
     *  @param source Database column source SqlType(varchar), Default(None)
@@ -2900,6 +2901,7 @@ trait Tables {
       delegate: Option[String] = None,
       slots: Option[String] = None,
       nonce: Option[String] = None,
+      operationOrder: Option[Int] = None,
       pkh: Option[String] = None,
       secret: Option[String] = None,
       source: Option[String] = None,
@@ -2968,6 +2970,7 @@ trait Tables {
       <<?[String],
       <<?[String],
       <<?[String],
+      <<?[Int],
       <<?[String],
       <<?[String],
       <<?[String],
@@ -3014,12 +3017,12 @@ trait Tables {
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, Some("tezos"), "operations") {
     def * =
-      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: storageMicheline :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: ballotPeriod :: timestamp :: errors :: utcYear :: utcMonth :: utcDay :: utcTime :: invalidatedAsof :: forkId :: HNil)
+      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: operationOrder :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: storageMicheline :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: ballotPeriod :: timestamp :: errors :: utcYear :: utcMonth :: utcDay :: utcTime :: invalidatedAsof :: forkId :: HNil)
         .mapTo[OperationsRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: storageMicheline :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
+      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: operationOrder :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: storageMicheline :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
             .Some(blockHash) :: Rep.Some(blockLevel) :: ballot :: Rep.Some(internal) :: period :: ballotPeriod :: Rep
             .Some(timestamp) :: errors :: Rep.Some(utcYear) :: Rep.Some(utcMonth) :: Rep.Some(utcDay) :: Rep.Some(
             utcTime
@@ -3036,46 +3039,47 @@ trait Tables {
             r(7).asInstanceOf[Option[String]],
             r(8).asInstanceOf[Option[String]],
             r(9).asInstanceOf[Option[String]],
-            r(10).asInstanceOf[Option[String]],
+            r(10).asInstanceOf[Option[Int]],
             r(11).asInstanceOf[Option[String]],
             r(12).asInstanceOf[Option[String]],
-            r(13).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(13).asInstanceOf[Option[String]],
             r(14).asInstanceOf[Option[scala.math.BigDecimal]],
             r(15).asInstanceOf[Option[scala.math.BigDecimal]],
             r(16).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(17).asInstanceOf[Option[String]],
-            r(18).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(19).asInstanceOf[Option[String]],
+            r(17).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(18).asInstanceOf[Option[String]],
+            r(19).asInstanceOf[Option[scala.math.BigDecimal]],
             r(20).asInstanceOf[Option[String]],
             r(21).asInstanceOf[Option[String]],
             r(22).asInstanceOf[Option[String]],
             r(23).asInstanceOf[Option[String]],
-            r(24).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(25).asInstanceOf[Option[String]],
-            r(26).asInstanceOf[Option[Boolean]],
+            r(24).asInstanceOf[Option[String]],
+            r(25).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(26).asInstanceOf[Option[String]],
             r(27).asInstanceOf[Option[Boolean]],
-            r(28).asInstanceOf[Option[String]],
+            r(28).asInstanceOf[Option[Boolean]],
             r(29).asInstanceOf[Option[String]],
             r(30).asInstanceOf[Option[String]],
             r(31).asInstanceOf[Option[String]],
-            r(32).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(32).asInstanceOf[Option[String]],
             r(33).asInstanceOf[Option[scala.math.BigDecimal]],
             r(34).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(35).asInstanceOf[Option[String]],
-            r(36).asInstanceOf[Option[String]].get,
-            r(37).asInstanceOf[Option[Long]].get,
-            r(38).asInstanceOf[Option[String]],
-            r(39).asInstanceOf[Option[Boolean]].get,
-            r(40).asInstanceOf[Option[Int]],
+            r(35).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(36).asInstanceOf[Option[String]],
+            r(37).asInstanceOf[Option[String]].get,
+            r(38).asInstanceOf[Option[Long]].get,
+            r(39).asInstanceOf[Option[String]],
+            r(40).asInstanceOf[Option[Boolean]].get,
             r(41).asInstanceOf[Option[Int]],
-            r(42).asInstanceOf[Option[java.sql.Timestamp]].get,
-            r(43).asInstanceOf[Option[String]],
-            r(44).asInstanceOf[Option[Int]].get,
+            r(42).asInstanceOf[Option[Int]],
+            r(43).asInstanceOf[Option[java.sql.Timestamp]].get,
+            r(44).asInstanceOf[Option[String]],
             r(45).asInstanceOf[Option[Int]].get,
             r(46).asInstanceOf[Option[Int]].get,
-            r(47).asInstanceOf[Option[String]].get,
-            r(48).asInstanceOf[Option[java.sql.Timestamp]],
-            r(49).asInstanceOf[Option[String]].get
+            r(47).asInstanceOf[Option[Int]].get,
+            r(48).asInstanceOf[Option[String]].get,
+            r(49).asInstanceOf[Option[java.sql.Timestamp]],
+            r(50).asInstanceOf[Option[String]].get
           ),
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -3109,6 +3113,9 @@ trait Tables {
 
     /** Database column nonce SqlType(varchar), Default(None) */
     val nonce: Rep[Option[String]] = column[Option[String]]("nonce", O.Default(None))
+
+    /** Database column operation_order SqlType(int4), Default(None) */
+    val operationOrder: Rep[Option[Int]] = column[Option[Int]]("operation_order", O.Default(None))
 
     /** Database column pkh SqlType(varchar), Default(None) */
     val pkh: Rep[Option[String]] = column[Option[String]]("pkh", O.Default(None))
@@ -3266,26 +3273,29 @@ trait Tables {
     /** Index over (blockLevel) (database name ix_operations_block_level) */
     val index4 = index("ix_operations_block_level", blockLevel :: HNil)
 
+    /** Index over (level,delegate) (database name ix_operations_block_level_delegate) */
+    val index5 = index("ix_operations_block_level_delegate", level :: delegate :: HNil)
+
     /** Index over (cycle) (database name ix_operations_cycle) */
-    val index5 = index("ix_operations_cycle", cycle :: HNil)
+    val index6 = index("ix_operations_cycle", cycle :: HNil)
 
     /** Index over (delegate) (database name ix_operations_delegate) */
-    val index6 = index("ix_operations_delegate", delegate :: HNil)
+    val index7 = index("ix_operations_delegate", delegate :: HNil)
 
     /** Index over (destination) (database name ix_operations_destination) */
-    val index7 = index("ix_operations_destination", destination :: HNil)
+    val index8 = index("ix_operations_destination", destination :: HNil)
 
     /** Index over (kind) (database name ix_operations_kind) */
-    val index8 = index("ix_operations_kind", kind :: HNil)
+    val index9 = index("ix_operations_kind", kind :: HNil)
 
     /** Index over (source) (database name ix_operations_source) */
-    val index9 = index("ix_operations_source", source :: HNil)
+    val index10 = index("ix_operations_source", source :: HNil)
 
     /** Index over (timestamp) (database name ix_operations_timestamp) */
-    val index10 = index("ix_operations_timestamp", timestamp :: HNil)
+    val index11 = index("ix_operations_timestamp", timestamp :: HNil)
 
     /** Index over (originatedContracts) (database name ix_originated_contracts) */
-    val index11 = index("ix_originated_contracts", originatedContracts :: HNil)
+    val index12 = index("ix_originated_contracts", originatedContracts :: HNil)
   }
 
   /** Collection-like TableQuery object for table Operations */

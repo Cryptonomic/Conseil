@@ -207,9 +207,9 @@ class TezosDatabaseOperationsTest
               import OperationBalances._
               import SymbolSourceLabels.Show._
 
-              val generatedConversion = (operationBlock, operationGroup.hash, operation).convertTo[Tables.OperationsRow]
+              val generatedConversion = (operationBlock, operationGroup.hash, (operation, 0)).convertTo[Tables.OperationsRow]
               //skip the id, to take into account that it's only generated on save
-              generatedConversion shouldEqual opRow.copy(operationId = 0)
+              generatedConversion shouldEqual opRow.copy(operationId = 0, operationOrder = Some(0))
 
               /* check stored balance updates */
               //convert and set the real stored operation id
