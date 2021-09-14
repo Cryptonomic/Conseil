@@ -54,11 +54,11 @@ services:
 
       # CONFIG_PATH:??? # (optional path to external configuration)
 
-      CONSEIL_API_DB_URL: "jdbc:postgresql://conseil-postgres:5432/conseil-local"
-      CONSEIL_API_DB_USER: "conseiluser"
-      CONSEIL_API_DB_PASSWORD: "p@ssw0rd"
-      CONSEIL_API_PORT: 80
-      CONSEIL_API_KEY: "conseil"
+      CONSEIL_XTZ_DB_URL: "jdbc:postgresql://conseil-postgres:5432/conseil-local"
+      CONSEIL_XTZ_DB_USER: "conseiluser"
+      CONSEIL_XTZ_DB_PASSWORD: "p@ssw0rd"
+      CONSEIL_XTZ_PORT: 80
+      CONSEIL_XTZ_KEY: "conseil"
 
       CONSEIL_XTZ_NETWORK: "mainnet"
       CONSEIL_XTZ_ENABLED: "true"
@@ -89,10 +89,10 @@ services:
       # CONSEIL_BTC_NETWORK:??? # (default mainnet)
       # CONSEIL_BTC_ENABLED:??? # (default false)
 
-      # CONSEIL_LORRE_DB_NAME:???     # (default conseil)
-      # CONSEIL_LORRE_DB_USER:???     # (default foo)
-      # CONSEIL_LORRE_DB_PASSWORD:??? # (default bar)
-      # CONSEIL_LORRE_DB_URL:???      # (default jdbc:postgresql://localhost:5432/postgres)
+      # CONSEIL_XTZ_DB_NAME:???     # (default conseil) - similarly for ETH, BTC, but replace XTZ with it
+      # CONSEIL_XTZ_DB_USER:???     # (default foo)
+      # CONSEIL_XTZ_DB_PASSWORD:??? # (default bar)
+      # CONSEIL_XTZ_DB_URL:???      # (default jdbc:postgresql://localhost:5432/postgres)
 
       # CONSEIL_LORRE_FORK_DETECTION_ENABLED:true/false # (default false)
 
@@ -103,9 +103,9 @@ services:
       # LORRE_RUNNER_PLATFORM:??? (required - name of platform to be executed by lorre)
       # LORRE_RUNNER_NETWORK:???  (required - name of network to be executed by lorre, note that network needs to be enabled)
 
-      CONSEIL_LORRE_DB_URL: "jdbc:postgresql://conseil-postgres:5432/conseil-local"
-      CONSEIL_LORRE_DB_USER: "conseiluser"
-      CONSEIL_LORRE_DB_PASSWORD: "p@ssw0rd"
+      CONSEIL_XTZ_DB_URL: "jdbc:postgresql://conseil-postgres:5432/conseil-local"
+      CONSEIL_XTZ_DB_USER: "conseiluser"
+      CONSEIL_XTZ_DB_PASSWORD: "p@ssw0rd"
 
       CONSEIL_XTZ_NETWORK: "carthagenet"
       CONSEIL_XTZ_ENABLED: "true"
