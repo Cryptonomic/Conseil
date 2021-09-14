@@ -25,6 +25,7 @@ WORKDIR /src
 RUN sbt clean assembly -J-Xss32m
 
 FROM openjdk:13-alpine
+RUN apk add --upgrade apk-tools busybox musl-utils
 RUN apk --no-cache add ca-certificates
 RUN apk add netcat-openbsd
 WORKDIR /root/
