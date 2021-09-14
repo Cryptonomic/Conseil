@@ -38,6 +38,9 @@ import scala.util.{Failure, Success}
 import java.{util => ju}
 
 import slick.dbio.DBIOAction
+import tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
+
+import scala.io.Source
 import tech.cryptonomic.conseil.common
 import tech.cryptonomic.conseil.common.tezos
 import tech.cryptonomic.conseil.indexer.tezos.Tzip16MetadataJsonDecoders.Tzip16Metadata
@@ -105,8 +108,9 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     * @return         Database action to execute.
     */
   def writeBlocks(
-      blocks: List[Block]
-  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContract): DBIO[Unit] = {
+      blocks: List[Block],
+      tokenContracts: TokenContracts
+  )(implicit ec: ExecutionContext, tnsContracts: TNSContract): DBIO[Unit] = {
     // Kleisli is a Function with effects, Kleisli[F, A, B] ~= A => F[B]
     import TezosDatabaseConversions.OperationTablesData
     import SymbolSourceLabels.Show._
@@ -152,7 +156,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       saveBlocksBalanceUpdatesAction,
       saveGroupsAction,
       saveOperationsAndBalances.traverse(blocks.flatMap(_.convertToA[List, OperationTablesData])),
-      saveBigMaps(blocks)
+      saveBigMaps(blocks)(ec, tokenContracts, tnsContracts)
     )
 
   }
@@ -404,10 +408,18 @@ object TezosDatabaseOperations extends ConseilLogSupport {
   def writeBlocksAndCheckpointAccounts(
       blocks: List[Block],
       accountUpdates: List[BlockTagged[List[AccountId]]]
-  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContract): DBIO[Option[Int]] = {
+  )(implicit ec: ExecutionContext, tnsContracts: TNSContract): DBIO[Option[Int]] = {
     logger.info("Writing blocks and account checkpoints to the DB...")
     //sequence both operations in a single transaction
-    (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
+    Tables.RegisteredTokens.result.flatMap { tokenRows =>
+      val tokens = TokenContracts.fromConfig(
+        tokenRows.map {
+          case Tables.RegisteredTokensRow(_, _, _, interfaces, address, _, _, _, _, _, _, _, _, _, _, _, _) =>
+            ContractId(address) -> interfaces
+        }.toList
+      )
+      (writeBlocks(blocks, tokens) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
+    }
   }
 
   /**
@@ -843,12 +855,15 @@ object TezosDatabaseOperations extends ConseilLogSupport {
   import shapeless._
   import shapeless.ops.hlist._
 
-  /** Reads and inserts CSV file to the database for the given table */
+  /** Reads and inserts CSV file to the database for the given table.
+   * Also Gives possibility to upsert when table is already filled with data
+   * */
   def initTableFromCsv[A <: AbstractTable[_], H <: HList](
       db: Database,
       table: TableQuery[A],
       network: String,
-      separator: Char = ','
+      separator: Char = ',',
+      upsert: Boolean = false
   )(
       implicit hd: HeaderDecoder[A#TableElementType],
       g: Generic.Aux[A#TableElementType, H],
@@ -857,7 +872,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
   ): Future[(List[A#TableElementType], Option[Int])] =
     ConfigUtil.Csv.readTableRowsFromCsv(table, network, separator) match {
       case Some(rows) =>
-        db.run(insertWhenEmpty(table, rows))
+        db.run(insertWhenEmpty(table, rows, upsert))
           .andThen {
             case Success(_) => logger.info(s"Written ${rows.size} ${table.baseTableRow.tableName} rows")
             case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
@@ -867,6 +882,66 @@ object TezosDatabaseOperations extends ConseilLogSupport {
         logger.warn(s"No csv configuration found to initialize table ${table.baseTableRow.tableName} for $network.")
         Future.successful(List.empty -> None)
     }
+
+  /** Reads json file for registered tokens */
+  def readRegisteredTokensJsonFile(network: String): Option[List[RegisteredToken]] = {
+    import io.circe.parser.decode
+    import RegisteredTokensFetcher.decoder
+
+    val file = getClass.getResource(s"/registered_tokens/$network.json")
+    val content = Source.fromFile(file.toURI).getLines.mkString
+    decode[List[RegisteredToken]](content) match {
+      case Left(error) =>
+        logger.error(s"Something wrong with registered tokens file $error")
+        None
+      case Right(x) => Some(x)
+    }
+  }
+
+  /** Inits registered_tokens table from json file when empty */
+  def initRegisteredTokensTableFromJson(db: Database, network: String)(implicit ec: ExecutionContext): Future[Unit] =
+    db.run(Tables.RegisteredTokens.size.result).flatMap { size =>
+      if (size > 0) {
+        Future.successful(())
+      } else {
+        readRegisteredTokensJsonFile(network) match {
+          case Some(value) => initRegisteredTokensTable(db, value)
+          case None => throw new IllegalArgumentException("Error while reading registered tokens json file")
+        }
+
+      }
+    }
+
+  /** Cleans and inserts registered tokens into db */
+  def initRegisteredTokensTable(db: Database, list: List[RegisteredToken])(
+      implicit ec: ExecutionContext
+  ): Future[Unit] = {
+    import io.scalaland.chimney.dsl._
+
+    def makeCsvTable(l: List[String]): String = "[" + l.mkString(",") + "]"
+    logger.info(s"Trying to init reg tokens table $list")
+    val inserts = list.map { rt =>
+      rt.into[Tables.RegisteredTokensRow]
+        .withFieldComputed(_.interfaces, x => makeCsvTable(x.interfaces))
+        .withFieldComputed(_.markets, x => makeCsvTable(x.markets))
+        .withFieldComputed(_.farms, x => makeCsvTable(x.farms))
+        .transform
+    }
+
+    if (inserts.isEmpty) {
+      Future.successful(())
+    } else {
+      db.run(
+        DBIO
+          .seq(
+            Tables.RegisteredTokens.delete.flatMap { _ =>
+              Tables.RegisteredTokens ++= inserts
+            }
+          )
+          .transactionally
+      )
+    }
+  }
 
   /** Write an audit log entry of a detected fork and some
     * reference data useful to analyse the event.
@@ -899,12 +974,13 @@ object TezosDatabaseOperations extends ConseilLogSupport {
   def deferConstraints(): DBIO[Int] =
     sqlu"SET CONSTRAINTS ALL DEFERRED;"
 
-  def getContractMetadataPath(contractId: String): DBIO[Option[String]] =
+  def getContractMetadataPath(contractId: String)(implicit ec: ExecutionContext): DBIO[Option[String]] =
     Tables.RegisteredTokens
-      .filter(rt => rt.accountId === contractId && rt.metadataPath =!= "null")
+      .filter(rt => rt.address === contractId && rt.metadataPath =!= "null")
       .map(_.metadataPath)
       .result
       .headOption
+      .map(_.flatten)
 
   /** Operations related to data invalidation due to forks on the chain */
   object ForkInvalidation {

@@ -36,7 +36,7 @@ class TokenContractsTest extends ConseilSpec {
         )
 
         //register the token info
-        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "[TZIP-7]"))
         //set the map id for the contract
         sut.setMapId(ledgerId, BigDecimal(mapId))
 
@@ -68,7 +68,7 @@ class TokenContractsTest extends ConseilSpec {
         )
 
         //register the token info
-        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "[TZIP-7]"))
         //set the map id for the contract
         sut.setMapId(ledgerId, BigDecimal(mapId))
 
@@ -108,7 +108,7 @@ class TokenContractsTest extends ConseilSpec {
         )
 
         //register the token info
-        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "[TZIP-7]"))
 
         //when
         val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
@@ -141,7 +141,7 @@ class TokenContractsTest extends ConseilSpec {
         )
 
         //register the token info
-        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "[TZIP-7]"))
         //set the map id for the contract
         sut.setMapId(ledgerId, BigDecimal(mapId))
 
@@ -219,11 +219,13 @@ class TokenContractsTest extends ConseilSpec {
       }
 
       "Parse and extract micheline from location " in {
-        val micheline = """{"prim":"Pair","args":[{"prim":"Pair","args":[{"string":"tz1UBZUkXpKGhYsP5KtzDNqLLchwF4uHrGjw"},{"prim":"Pair","args":[{"int":"0"},[]]}]},{"prim":"Pair","args":[{"prim":"Pair","args":[[{"prim":"Elt","args":[{"string":""},{"bytes":"697066733a2f2f516d534263385175796e55376241725547746a774352685a55624a795a51417272637a4b6e714d37685a50746656"}]}],[]]},{"prim":"Pair","args":[{"prim":"False"},[]]}]}]}"""
+        val micheline =
+          """{"prim":"Pair","args":[{"prim":"Pair","args":[{"string":"tz1UBZUkXpKGhYsP5KtzDNqLLchwF4uHrGjw"},{"prim":"Pair","args":[{"int":"0"},[]]}]},{"prim":"Pair","args":[{"prim":"Pair","args":[[{"prim":"Elt","args":[{"string":""},{"bytes":"697066733a2f2f516d534263385175796e55376241725547746a774352685a55624a795a51417272637a4b6e714d37685a50746656"}]}],[]]},{"prim":"Pair","args":[{"prim":"False"},[]]}]}]}"""
 
         val res = JsonParser.parse[MichelsonInstruction](micheline)
 
-        val path = "MichelsonSingleInstruction:Pair::1;MichelsonType:Pair::0;MichelsonType:Pair::0;MichelsonInstructionSequence:0;MichelsonSingleInstruction:Elt::1"
+        val path =
+          "MichelsonSingleInstruction:Pair::1;MichelsonType:Pair::0;MichelsonType:Pair::0;MichelsonInstructionSequence:0;MichelsonSingleInstruction:Elt::1"
 
         res.toOption.get.getAtPath(path)
         val metadataAddress = Tzip16.extractTzip16MetadataLocationFromParameters(Micheline(micheline), Some(path))
@@ -233,16 +235,19 @@ class TokenContractsTest extends ConseilSpec {
       }
 
       "Search for instruction and extract value from found path" in {
-        val micheline = """{"prim":"Pair","args":[{"prim":"Pair","args":[[],{"prim":"Pair","args":[[],{"string":"tz1Y1j7FK1X9Rrv2VdPz5bXoU7SszF8W1RnK"}]}]},{"prim":"Pair","args":[{"prim":"Pair","args":[[{"prim":"Elt","args":[{"string":""},{"bytes":"697066733a2f2f516d5946375a6438624b506b7062783378434d3975693848796839574e67653133747a6f5644526d4c44526b364e"}]}],[]]},{"prim":"Pair","args":[[],[]]}]}]}"""
+        val micheline =
+          """{"prim":"Pair","args":[{"prim":"Pair","args":[[],{"prim":"Pair","args":[[],{"string":"tz1Y1j7FK1X9Rrv2VdPz5bXoU7SszF8W1RnK"}]}]},{"prim":"Pair","args":[{"prim":"Pair","args":[[{"prim":"Elt","args":[{"string":""},{"bytes":"697066733a2f2f516d5946375a6438624b506b7062783378434d3975693848796839574e67653133747a6f5644526d4c44526b364e"}]}],[]]},{"prim":"Pair","args":[[],[]]}]}]}"""
 
         val res = JsonParser.parse[MichelsonInstruction](micheline)
         //MichelsonSingleInstruction:Pair::1;MichelsonType:Pair::1;MichelsonInstructionSequence:0;MichelsonSingleInstruction:Elt::1
         val searchResult = res.toOption.get.findInstruction(MichelsonBytesConstant(""), startsWith = Some("6970"))
 
-        val xd = "MichelsonSingleInstruction:Pair::1;MichelsonType:Pair::0;MichelsonType:Pair::0;MichelsonInstructionSequence:0;MichelsonSingleInstruction:Elt::1"
+        val xd =
+          "MichelsonSingleInstruction:Pair::1;MichelsonType:Pair::0;MichelsonType:Pair::0;MichelsonInstructionSequence:0;MichelsonSingleInstruction:Elt::1"
 
         res.toOption.get.getAtPath(xd)
-        val metadataAddress = Tzip16.extractTzip16MetadataLocationFromParameters(Micheline(micheline), Some(searchResult.head))
+        val metadataAddress =
+          Tzip16.extractTzip16MetadataLocationFromParameters(Micheline(micheline), Some(searchResult.head))
 
         metadataAddress shouldBe Some("ipfs://QmYF7Zd8bKPkpbx3xCM9ui8Hyh9WNge13tzoVDRmLDRk6N")
 

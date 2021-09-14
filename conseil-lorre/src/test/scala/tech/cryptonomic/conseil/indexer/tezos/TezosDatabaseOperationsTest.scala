@@ -85,7 +85,7 @@ class TezosDatabaseOperationsTest
                 block.copy(operationGroups = List(group))
             }
 
-        whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks))) { _ =>
+        whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks, noTokenContracts))) { _ =>
           //read and check what's on db
           val dbBlocks = dbHandler.run(Tables.Blocks.result).futureValue
 
@@ -246,7 +246,7 @@ class TezosDatabaseOperationsTest
             setBalances(randomUpdates)(block)
         }
 
-        whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks))) { _ =>
+        whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks, noTokenContracts))) { _ =>
           val dbUpdatesRows = dbHandler.run(Tables.BalanceUpdates.result).futureValue
 
           dbUpdatesRows should have size 4 //2 updates x 2 blocks, not considering genesis which has no balances

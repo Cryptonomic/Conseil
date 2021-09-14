@@ -230,9 +230,27 @@ class BigMapsOperationsTest
 
         //prepare the token registry
 
-        val registeredToken = Tables.RegisteredTokensRow(1, "token", "FA1.2", tokenAddress.id, 0, "null", false, false, "", 0, "", "")
+        val registeredToken = Tables.RegisteredTokensRow(
+          "name",
+          "symbol",
+          0,
+          "[TZIP-7]",
+          tokenAddress.id,
+          None,
+          1,
+          "",
+          "",
+          "",
+          "",
+          false,
+          false,
+          None,
+          None,
+          None,
+          None
+        )
 
-        implicit val fa12Tokens = TokenContracts.fromConfig(List(tokenAddress -> "FA1.2"))
+        implicit val fa12Tokens = TokenContracts.fromConfig(List(tokenAddress -> "[TZIP-7]"))
         fa12Tokens.setMapId(tokenAddress, BigDecimal(tokenMap))
 
         //when
@@ -250,7 +268,7 @@ class BigMapsOperationsTest
 
         tokenUpdates(0) should matchTo(
           TokenBalancesRow(
-            tokenId = registeredToken.id,
+            tokenAddress = "KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux",
             address = targetAccount,
             balance = BigDecimal(50),
             blockId = blockToSave.data.hash.value,

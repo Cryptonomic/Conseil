@@ -4,10 +4,7 @@ import akka.stream.ActorMaterializer
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Micheline
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts.Tzip16
-import tech.cryptonomic.conseil.indexer.tezos.{
-  Tzip16MetadataOperator,
-  TezosDatabaseOperations => TezosDb
-}
+import tech.cryptonomic.conseil.indexer.tezos.{Tzip16MetadataOperator, TezosDatabaseOperations => TezosDb}
 import cats.instances.future._
 import cats.syntax.applicative._
 import cats.implicits._
@@ -15,15 +12,16 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 
 import scala.concurrent.{ExecutionContext, Future}
+
 /**
- * Class for processing metadata
- * I used following algorithm to process:
- * If the metadata-type is other, fetch the metadata from IPFS and save it in the metadata table.
- * If the metadata-type is self, use the metadata_path to update the metadata table.
- * If the metadata-type is contract, use the contract address and metadata_path to update the metadata table.
- * If the metadata-type is web, fetch the metadata from the web and update the metadata table.
- * If isNFT is true, use the metadata_big_map_id and metadata_big_map_type to update the metadata table.
- * */
+  * Class for processing metadata
+  * I used following algorithm to process:
+  * If the metadata-type is other, fetch the metadata from IPFS and save it in the metadata table.
+  * If the metadata-type is self, use the metadata_path to update the metadata table.
+  * If the metadata-type is contract, use the contract address and metadata_path to update the metadata table.
+  * If the metadata-type is web, fetch the metadata from the web and update the metadata table.
+  * If isNFT is true, use the metadata_big_map_id and metadata_big_map_type to update the metadata table.
+  * */
 class MetadataProcessor(
     metadataOperator: Tzip16MetadataOperator,
     db: Database
@@ -35,7 +33,7 @@ class MetadataProcessor(
     db.run(TezosDb.getTzip16Contracts()).flatMap { contracts =>
       val nfts = contracts.filter(_.isNft).toList
       val nftMetadataAddresses = nfts.traverse { nft =>
-        db.run(TezosDb.getInternalBigMapNfts(nft.metadataBigMapId)).map { bigMap =>
+        db.run(TezosDb.getInternalBigMapNfts(nft.metadataBigMapId.get)).map { bigMap =>
           bigMap.filter(_.valueMicheline.isDefined).map { param =>
             Tzip16
               .extractTzip16MetadataLocationFromParameters(Micheline(param.valueMicheline.get), None)
@@ -46,7 +44,8 @@ class MetadataProcessor(
         }
       }.map(_.flatten)
       val contractMetadataAddresses = contracts.map {
-        case Tables.RegisteredTokensRow(_, _, _, accountId, _, _, _, _, "other", _, _, _) =>
+        case Tables
+              .RegisteredTokensRow(_, _, _, _, accountId, _, _, _, _, _, _, _, _, Some("other"), _, _, _) =>
           TezosDb.getOriginationByAccount(accountId).map { origList =>
             origList.toList.flatMap { orig =>
               orig.storageMicheline.toList.map(orig -> _)
@@ -58,29 +57,48 @@ class MetadataProcessor(
 
             }
           }
-        case Tables.RegisteredTokensRow(_, _, _, accountId, _, _, _, _, "self", _, _, path) =>
+        case Tables
+              .RegisteredTokensRow(_, _, _, _, accountId, _, _, _, _, _, _, _, _, Some("self"), _, _, path) =>
           TezosDb.getOriginationByAccount(accountId).map { origList =>
             origList.toList.flatMap { orig =>
               orig.storageMicheline.toList.map(orig -> _)
             }.map {
               case (acc, storage) =>
                 Tzip16
-                  .extractTzip16MetadataLocationFromParameters(Micheline(storage), Some(path))
+                  .extractTzip16MetadataLocationFromParameters(Micheline(storage), path)
                   .map(acc -> _)
             }
           }
-        case Tables.RegisteredTokensRow(_, _, _, accountId, _, _, _, _, "contract", _, _, path) =>
+        case Tables.RegisteredTokensRow(
+            _,
+            _,
+            _,
+            _,
+            accountId,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            Some("contract"),
+            _,
+            _,
+            path
+            ) =>
           TezosDb.getOriginationByAccount(accountId).map { origList =>
             origList.toList.flatMap { orig =>
               orig.storageMicheline.toList.map(orig -> _)
             }.map {
               case (acc, storage) =>
                 Tzip16
-                  .extractTzip16MetadataLocationFromParameters(Micheline(storage), Some(path))
+                  .extractTzip16MetadataLocationFromParameters(Micheline(storage), path)
                   .map(acc -> _)
             }
           }
-        case Tables.RegisteredTokensRow(_, _, _, accountId, _, _, _, _, "web", _, _, _) =>
+        case Tables.RegisteredTokensRow(_, _, _, _, accountId, _, _, _, _, _, _, _, _, Some("web"), _, _, _) =>
           TezosDb.getOriginationByAccount(accountId).map { origList =>
             origList.toList.flatMap { orig =>
               orig.storageMicheline.toList.map(orig -> _)

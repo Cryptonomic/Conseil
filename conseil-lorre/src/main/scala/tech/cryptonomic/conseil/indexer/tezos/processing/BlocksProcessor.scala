@@ -37,7 +37,7 @@ class BlocksProcessor(
     tnsOperations: TezosNamesOperations,
     accountsProcessor: AccountsProcessor,
     bakersProcessor: BakersProcessor
-)(implicit tokens: TokenContracts, tns: TNSContract)
+)(implicit tns: TNSContract)
     extends ConseilLogSupport {
 
   /* will store a single page of block results */

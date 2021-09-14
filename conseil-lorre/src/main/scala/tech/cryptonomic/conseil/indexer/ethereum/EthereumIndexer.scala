@@ -139,7 +139,7 @@ object EthereumIndexer {
   def fromConfig(
       lorreConf: LorreConfiguration,
       ethereumConf: EthereumConfiguration,
-    db: Database
+      db: Database
   ): LorreIndexer =
     new EthereumIndexer(lorreConf, ethereumConf, db: Database)
 }

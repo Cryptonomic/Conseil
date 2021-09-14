@@ -22,6 +22,7 @@ final case class LorreConfiguration(
     headHash: Option[String],
     chainEvents: List[ChainEvent],
     blockRightsFetching: BakingAndEndorsingRights,
+    tokenContracts: TokenContracts,
     metadataFetching: TzipMetadata,
     enabledFeatures: Features
 )
@@ -56,7 +57,14 @@ final case class BatchFetchConfiguration(
 final case class Features(
     blockRightsFetchingIsOn: Boolean,
     forkHandlingIsOn: Boolean,
-    metadataFetchingIsOn: Boolean
+    metadataFetchingIsOn: Boolean,
+    registeredTokensIsOn: Boolean
+)
+
+final case class TokenContracts(
+    url: String,
+    initialDelay: FiniteDuration,
+    interval: FiniteDuration
 )
 
 /** sodium library references */
