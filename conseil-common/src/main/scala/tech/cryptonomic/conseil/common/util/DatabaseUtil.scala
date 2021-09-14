@@ -324,6 +324,7 @@ object DatabaseUtil {
       aggregationType match {
         case AggregationType.sum => s"SUM($column)"
         case AggregationType.count => s"COUNT($column)"
+        case AggregationType.countDistinct => s"COUNT(DISTINCT $column)"
         case AggregationType.max => s"MAX($column)"
         case AggregationType.min => s"MIN($column)"
         case AggregationType.avg => s"AVG($column)"
@@ -334,6 +335,7 @@ object DatabaseUtil {
       aggregationType match {
         case AggregationType.sum => s"sum_$column"
         case AggregationType.count => s"count_$column"
+        case AggregationType.countDistinct => s"count_distinct_$column"
         case AggregationType.max => s"max_$column"
         case AggregationType.min => s"min_$column"
         case AggregationType.avg => s"avg_$column"

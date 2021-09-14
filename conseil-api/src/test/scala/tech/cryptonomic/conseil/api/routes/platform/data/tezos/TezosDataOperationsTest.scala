@@ -6,18 +6,11 @@ import com.softwaremill.diffx.scalatest.DiffMatcher
 import org.scalatest.concurrent.IntegrationPatience
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, _}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, SimpleField, _}
 import tech.cryptonomic.conseil.common.testkit.{ConseilSpec, InMemoryDatabase}
-import tech.cryptonomic.conseil.common.tezos.Tables.{
-  AccountsHistoryRow,
-  AccountsRow,
-  BlocksRow,
-  FeesRow,
-  OperationGroupsRow,
-  OperationsRow
-}
+import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsHistoryRow, AccountsRow, BlocksRow, FeesRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{makeAccountId, TezosBlockHash}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{TezosBlockHash, makeAccountId}
 
 import scala.concurrent.duration._
 
@@ -2111,7 +2104,7 @@ class TezosDataOperationsTest
           Aggregation(
             field = "medium",
             function = AggregationType.count,
-            Some(
+            predicate = Some(
               AggregationPredicate(
                 operation = OperationType.gt,
                 set = List(1),
@@ -2169,7 +2162,7 @@ class TezosDataOperationsTest
           Aggregation(
             field = "medium",
             function = AggregationType.count,
-            Some(
+            predicate = Some(
               AggregationPredicate(
                 operation = OperationType.gt,
                 set = List(0),
@@ -2180,7 +2173,7 @@ class TezosDataOperationsTest
           Aggregation(
             field = "low",
             function = AggregationType.sum,
-            Some(
+            predicate = Some(
               AggregationPredicate(
                 operation = OperationType.eq,
                 set = List(0),
@@ -2270,6 +2263,46 @@ class TezosDataOperationsTest
         )
 
       }
+
+    "aggregate with distinct count aggregation" in {
+      val feesTmp = List(
+        FeesRow(1, 1, 1, Timestamp.valueOf("2000-01-01 00:00:00"), "kind", forkId = Fork.mainForkId),
+        FeesRow(2, 1, 1, Timestamp.valueOf("2000-01-02 00:00:00"), "kind", forkId = Fork.mainForkId),
+        FeesRow(3, 2, 1, Timestamp.valueOf("2000-01-02 00:00:00"), "kind", forkId = Fork.mainForkId),
+        FeesRow(4, 2, 1, Timestamp.valueOf("2000-01-02 00:00:00"), "kind", forkId = Fork.mainForkId),
+        FeesRow(5, 3, 2, Timestamp.valueOf("2000-01-03 00:00:00"), "kind", forkId = Fork.mainForkId),
+        FeesRow(6, 3, 2, Timestamp.valueOf("2000-01-03 00:00:00"), "kind", forkId = Fork.mainForkId)
+      )
+
+      val aggregate = List(
+        Aggregation("low", AggregationType.count),
+        Aggregation("medium", AggregationType.countDistinct)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          "tezos",
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List(SimpleField("low"), SimpleField("medium"), SimpleField("high")),
+          predicates = List.empty,
+          ordering = List(QueryOrdering("count_distinct_medium", OrderDirection.desc)),
+          aggregation = aggregate,
+          temporalPartition = None,
+          snapshot = None,
+          outputType = OutputType.json,
+          limit = 10
+        )
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("count_low" -> Some(4), "count_distinct_medium" -> Some(2), "high" -> Some(1)),
+        Map("count_low" -> Some(2), "count_distinct_medium" -> Some(1), "high" -> Some(2))
+      )
+    }
+
 
       "map date with datePart aggregation when it is only type of aggregation" in {
         val feesTmp = List(
