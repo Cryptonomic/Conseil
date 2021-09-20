@@ -331,7 +331,7 @@ class TezosDatabaseConversionsTest
 
       "convert an Endorsement to a database row" in {
 
-        val converted = (block, groupHash, (sampleEndorsement: Operation, 0)).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, sampleEndorsement: Operation).convertTo[Tables.OperationsRow]
 
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
@@ -381,7 +381,7 @@ class TezosDatabaseConversionsTest
 
       "convert a SeedNonceRevelation to a database row" in {
 
-        val converted = (block, groupHash, (sampleNonceRevelation: Operation, 0)).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, sampleNonceRevelation: Operation).convertTo[Tables.OperationsRow]
 
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
@@ -430,7 +430,7 @@ class TezosDatabaseConversionsTest
 
       "convert an ActivateAccount to a database row" in {
 
-        val converted = (block, groupHash, (sampleAccountActivation: Operation, 0)).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, sampleAccountActivation: Operation).convertTo[Tables.OperationsRow]
 
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
@@ -479,7 +479,7 @@ class TezosDatabaseConversionsTest
 
       "convert a Reveal to a database row" in {
 
-        val converted = (block, groupHash, (sampleReveal: Operation, 0)).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, sampleReveal: Operation).convertTo[Tables.OperationsRow]
 
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
@@ -544,7 +544,7 @@ class TezosDatabaseConversionsTest
 
       "convert a Transaction to a database row" in {
 
-        val converted = (block, groupHash, (sampleTransaction: Operation, 0)).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, sampleTransaction: Operation).convertTo[Tables.OperationsRow]
 
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
@@ -618,7 +618,7 @@ class TezosDatabaseConversionsTest
 
       "convert an Origination to a database row" in {
 
-        val converted = (block, groupHash, (sampleOrigination: Operation, 0)).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, sampleOrigination: Operation).convertTo[Tables.OperationsRow]
 
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
@@ -693,7 +693,7 @@ class TezosDatabaseConversionsTest
 
       "convert an Delegation to a database row" in {
 
-        val converted = (block, groupHash, (sampleDelegation: Operation, 0)).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, sampleDelegation: Operation).convertTo[Tables.OperationsRow]
 
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
@@ -758,7 +758,7 @@ class TezosDatabaseConversionsTest
 
       "convert an DoubleEndorsementEvidence to a database row" in {
 
-        val converted = (block, groupHash, (DoubleEndorsementEvidence: Operation, 0)).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, DoubleEndorsementEvidence(): Operation).convertTo[Tables.OperationsRow]
 
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
@@ -807,7 +807,7 @@ class TezosDatabaseConversionsTest
 
       "convert an DoubleBakingEvidence to a database row" in {
 
-        val converted = (block, groupHash, (DoubleBakingEvidence: Operation, 0)).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, DoubleBakingEvidence(): Operation).convertTo[Tables.OperationsRow]
 
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
@@ -856,7 +856,7 @@ class TezosDatabaseConversionsTest
 
       "convert a Proposals operation to a database row" in {
 
-        val converted = (block, groupHash, (sampleProposals: Operation, 0)).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, sampleProposals: Operation).convertTo[Tables.OperationsRow]
 
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
@@ -907,7 +907,7 @@ class TezosDatabaseConversionsTest
 
       "convert a Ballot operation to a database row" in {
 
-        val converted = (block, groupHash, (sampleBallot: Operation, 0)).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, sampleBallot: Operation).convertTo[Tables.OperationsRow]
 
         converted.kind shouldBe "ballot"
         converted.operationId shouldBe 0
