@@ -151,7 +151,7 @@ class BakingAndEndorsingRightsProcessor(
   }
 
   /** Updates timestamps in the baking/endorsing rights tables */
-  private[tezos] def updateRightsTimestamps()(implicit ec: ExecutionContext): Future[Unit] = {
+  private[tezos] def updateRights()(implicit ec: ExecutionContext): Future[Unit] = {
     val logger = ConseilLogger("RightsUpdater")
     import cats.implicits._
     val blockHead = nodeOperator.getBareBlockHead()
@@ -162,16 +162,16 @@ class BakingAndEndorsingRightsProcessor(
       val br = nodeOperator.getBatchBakingRightsByLevels(blockLevelsToUpdate).flatMap { bakingRightsResult =>
         val brResults = bakingRightsResult.values.flatten
         logger.info(s"Got ${brResults.size} baking rights")
-        db.run(TezosDb.updateBakingRightsTimestamp(brResults.toList))
+        db.run(TezosDb.updateBakingRights(brResults.toList))
       }
       val er = nodeOperator.getBatchEndorsingRightsByLevel(blockLevelsToUpdate).flatMap { endorsingRightsResult =>
         val erResults = endorsingRightsResult.values.flatten
         logger.info(s"Got ${erResults.size} endorsing rights")
-        db.run(TezosDb.updateEndorsingRightsTimestamp(erResults.toList))
+        db.run(TezosDb.updateEndorsingRights(erResults.toList))
       }
       (br, er).mapN {
         case (bb, ee) =>
-          logger.info(s"Updated ${bb.sum} baking rights and ${ee.sum} endorsing rights rows")
+          logger.info(s"Updated $bb baking rights and $ee endorsing rights rows")
       }
     }
   }
