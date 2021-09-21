@@ -1073,6 +1073,11 @@ CREATE TABLE ethereum.accounts_history (
   PRIMARY KEY (address, block_level)
 );
 
+CREATE TABLE ethereum.registered_tokens (
+  name text NOT NULL,
+  address text NOT NULL
+);
+
 CREATE OR REPLACE VIEW ethereum.tokens AS
 SELECT
   address,
