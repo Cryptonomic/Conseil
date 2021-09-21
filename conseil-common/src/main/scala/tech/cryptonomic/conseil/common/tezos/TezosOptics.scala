@@ -167,7 +167,6 @@ object TezosOptics {
       * 4, op2
       * */
     private def addIndexesToOperationGroup(group: OperationsGroup): OperationsGroup = {
-      if (group.hash.value == "ooY266PYTNrhqjcSHSNWuzYwYAp2zhtbA9x9S9Bzb79AYLP6KNW") println(group)
       var index = -1
       val contents = group.contents.map {
         case x: Endorsement =>
