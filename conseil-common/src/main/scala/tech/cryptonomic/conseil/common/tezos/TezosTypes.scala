@@ -198,7 +198,9 @@ object TezosTypes {
   }
 
   /** root of the operation hiearchy */
-  sealed trait Operation extends Product with Serializable
+  sealed trait Operation extends Product with Serializable {
+    val blockOrder: Option[Int]
+  }
   //operations definition
   type ParametersCompatibility = Either[Parameters, Micheline]
 
@@ -229,24 +231,28 @@ object TezosTypes {
 
   final case class Endorsement(
       level: BlockLevel,
-      metadata: EndorsementMetadata
+      metadata: EndorsementMetadata,
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class EndorsementWithSlot(
       endorsement: EndorsementInternalObject,
-      metadata: EndorsementMetadata
+      metadata: EndorsementMetadata,
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class SeedNonceRevelation(
       level: BlockLevel,
       nonce: Nonce,
-      metadata: BalanceUpdatesMetadata
+      metadata: BalanceUpdatesMetadata,
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class ActivateAccount(
       pkh: PublicKeyHash,
       secret: Secret,
-      metadata: BalanceUpdatesMetadata
+      metadata: BalanceUpdatesMetadata,
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class Reveal(
@@ -256,7 +262,8 @@ object TezosTypes {
       storage_limit: PositiveBigNumber,
       public_key: PublicKey,
       source: PublicKeyHash,
-      metadata: ResultMetadata[OperationResult.Reveal]
+      metadata: ResultMetadata[OperationResult.Reveal],
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class Transaction(
@@ -269,7 +276,8 @@ object TezosTypes {
       destination: ContractId,
       parameters: Option[ParametersCompatibility],
       parameters_micheline: Option[ParametersCompatibility],
-      metadata: ResultMetadata[OperationResult.Transaction]
+      metadata: ResultMetadata[OperationResult.Transaction],
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class Parameters(
@@ -289,7 +297,8 @@ object TezosTypes {
       delegate: Option[PublicKeyHash],
       spendable: Option[Boolean],
       script: Option[Scripted.Contracts],
-      metadata: ResultMetadata[OperationResult.Origination]
+      metadata: ResultMetadata[OperationResult.Origination],
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class Delegation(
@@ -299,18 +308,24 @@ object TezosTypes {
       gas_limit: PositiveBigNumber,
       storage_limit: PositiveBigNumber,
       delegate: Option[PublicKeyHash],
-      metadata: ResultMetadata[OperationResult.Delegation]
+      metadata: ResultMetadata[OperationResult.Delegation],
+      blockOrder: Option[Int] = None
   ) extends Operation
 
-  final case object DoubleEndorsementEvidence extends Operation
-  final case object DoubleBakingEvidence extends Operation
-  final case class Proposals(source: Option[ContractId], period: Option[Int], proposals: Option[List[String]])
-      extends Operation
+  final case class DoubleEndorsementEvidence(blockOrder: Option[Int] = None) extends Operation
+  final case class DoubleBakingEvidence(blockOrder: Option[Int] = None) extends Operation
+  final case class Proposals(
+      source: Option[ContractId],
+      period: Option[Int],
+      proposals: Option[List[String]],
+      blockOrder: Option[Int] = None
+  ) extends Operation
   final case class Ballot(
       ballot: Voting.Vote,
       proposal: Option[String],
       source: Option[ContractId],
-      period: Option[Int]
+      period: Option[Int],
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   //metadata definitions, both shared or specific to operation kind
@@ -333,6 +348,7 @@ object TezosTypes {
 
     sealed trait InternalOperationResult extends Product with Serializable {
       def nonce: Int
+      val blockOrder: Option[Int]
     }
 
     case class Reveal(
@@ -340,7 +356,8 @@ object TezosTypes {
         source: PublicKeyHash,
         nonce: Int,
         public_key: PublicKey,
-        result: OperationResult.Reveal
+        result: OperationResult.Reveal,
+        blockOrder: Option[Int] = None
     ) extends InternalOperationResult
 
     case class Parameters(entrypoint: String, value: Micheline)
@@ -353,7 +370,8 @@ object TezosTypes {
         destination: ContractId,
         parameters: Option[ParametersCompatibility],
         parameters_micheline: Option[ParametersCompatibility],
-        result: OperationResult.Transaction
+        result: OperationResult.Transaction,
+        blockOrder: Option[Int] = None
     ) extends InternalOperationResult
 
     /* some fields are only kept for backward-compatibility, as noted*/
@@ -367,7 +385,8 @@ object TezosTypes {
         delegatable: Option[Boolean], // retro-compat from protocol 5+
         delegate: Option[PublicKeyHash],
         script: Option[Scripted.Contracts],
-        result: OperationResult.Origination
+        result: OperationResult.Origination,
+        blockOrder: Option[Int] = None
     ) extends InternalOperationResult
 
     case class Delegation(
@@ -375,7 +394,8 @@ object TezosTypes {
         source: PublicKeyHash,
         nonce: Int,
         delegate: Option[PublicKeyHash],
-        result: OperationResult.Delegation
+        result: OperationResult.Delegation,
+        blockOrder: Option[Int] = None
     ) extends InternalOperationResult
 
   }

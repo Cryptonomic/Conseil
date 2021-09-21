@@ -310,6 +310,7 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("delegate", "Delegate", DataType.String, None, KeyType.UniqueKey, "operations"),
             Attribute("slots", "Slots", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("nonce", "Nonce", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("operation_order", "Operation order", DataType.Int, None, KeyType.NonKey, "operations"),
             Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("secret", "Secret", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("source", "Source", DataType.String, None, KeyType.UniqueKey, "operations"),

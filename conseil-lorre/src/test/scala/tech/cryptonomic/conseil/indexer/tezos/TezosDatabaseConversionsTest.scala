@@ -758,7 +758,7 @@ class TezosDatabaseConversionsTest
 
       "convert an DoubleEndorsementEvidence to a database row" in {
 
-        val converted = (block, groupHash, DoubleEndorsementEvidence: Operation).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, DoubleEndorsementEvidence(): Operation).convertTo[Tables.OperationsRow]
 
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
@@ -807,7 +807,7 @@ class TezosDatabaseConversionsTest
 
       "convert an DoubleBakingEvidence to a database row" in {
 
-        val converted = (block, groupHash, DoubleBakingEvidence: Operation).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, DoubleBakingEvidence(): Operation).convertTo[Tables.OperationsRow]
 
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value

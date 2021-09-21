@@ -157,6 +157,128 @@ object TezosOptics {
           Contracts.onParametersValue composeLens
           Contracts.onExpression
 
+    /** Function adds indexes to the operations in given operation group
+      * It's complicated as we need to put order on operations and internal operations,
+      * Indexes of the operations will look like that after the operation:
+      * 0, op0
+      * 1, op1
+      * 2, - intOp0
+      * 3, - intOp1
+      * 4, op2
+      * */
+    private def addIndexesToOperationGroup(group: OperationsGroup): OperationsGroup = {
+      var index = -1
+      val contents = group.contents.map {
+        case x: Endorsement =>
+          index += 1
+          x.copy(blockOrder = Some(index))
+        case x: EndorsementWithSlot =>
+          index += 1
+          x.copy(blockOrder = Some(index))
+        case x: SeedNonceRevelation =>
+          index += 1
+          x.copy(blockOrder = Some(index))
+        case x: ActivateAccount =>
+          index += 1
+          x.copy(blockOrder = Some(index))
+        case x: DoubleEndorsementEvidence =>
+          index += 1
+          x.copy(blockOrder = Some(index))
+        case x: DoubleBakingEvidence =>
+          index += 1
+          x.copy(blockOrder = Some(index))
+        case x: Proposals =>
+          index += 1
+          x.copy(blockOrder = Some(index))
+        case x: Ballot =>
+          index += 1
+          x.copy(blockOrder = Some(index))
+
+        case x: Reveal =>
+          index += 1
+          val operation = x.copy(blockOrder = Some(index))
+          val internalOpResult = operation.metadata.internal_operation_results.map { operationResults =>
+            operationResults.map {
+              case i: InternalOperationResults.Reveal =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Transaction =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Origination =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Delegation =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+            }
+          }
+          operation.copy(metadata = operation.metadata.copy(internal_operation_results = internalOpResult))
+        case x: Transaction =>
+          index += 1
+          val operation = x.copy(blockOrder = Some(index))
+          val internalOpResult = operation.metadata.internal_operation_results.map { operationResults =>
+            operationResults.map {
+              case i: InternalOperationResults.Reveal =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Transaction =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Origination =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Delegation =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+            }
+          }
+          operation.copy(metadata = operation.metadata.copy(internal_operation_results = internalOpResult))
+        case x: Origination =>
+          index += 1
+          val operation = x.copy(blockOrder = Some(index))
+          val internalOpResult = operation.metadata.internal_operation_results.map { operationResults =>
+            operationResults.map {
+              case i: InternalOperationResults.Reveal =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Transaction =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Origination =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Delegation =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+            }
+          }
+          operation.copy(metadata = operation.metadata.copy(internal_operation_results = internalOpResult))
+        case x: Delegation =>
+          index += 1
+          val operation = x.copy(blockOrder = Some(index))
+          val internalOpResult = operation.metadata.internal_operation_results.map { operationResults =>
+            operationResults.map {
+              case i: InternalOperationResults.Reveal =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Transaction =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Origination =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Delegation =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+            }
+          }
+          operation.copy(metadata = operation.metadata.copy(internal_operation_results = internalOpResult))
+      }
+
+      group.copy(contents = contents)
+    }
+
     /**  Utility extractor that collects, for a block, both operations and internal operations results, grouped
       * in a form more amenable to processing
       * @param block the block to inspect
@@ -166,7 +288,9 @@ object TezosOptics {
         block: Block
     ): Map[OperationsGroup, (List[Operation], List[InternalOperationResults.InternalOperationResult])] =
       block.operationGroups.map { group =>
-        val internal = group.contents.flatMap { op =>
+        val updatedGroup = addIndexesToOperationGroup(group)
+
+        val internal = updatedGroup.contents.flatMap { op =>
           op match {
             case r: Reveal => r.metadata.internal_operation_results.toList.flatten
             case t: Transaction => t.metadata.internal_operation_results.toList.flatten
@@ -175,7 +299,7 @@ object TezosOptics {
             case _ => List.empty
           }
         }
-        group -> (group.contents, internal)
+        updatedGroup -> (updatedGroup.contents, internal)
       }.toMap
 
     /** Extracts all operations, primary and internal, and pre-order traverse

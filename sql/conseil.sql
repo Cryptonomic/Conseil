@@ -467,6 +467,7 @@ CREATE TABLE tezos.operations (
     delegate character varying,
     slots character varying,
     nonce character varying,
+    operation_order integer,
     pkh character varying,
     secret character varying,
     source character varying,
