@@ -289,7 +289,7 @@ object TezosIndexer extends ConseilLogSupport {
 
     val ignoreProcessFailuresOrigin: Option[String] = sys.env.get(LORRE_FAILURE_IGNORE_VAR)
     val ignoreProcessFailures: Boolean =
-      ignoreProcessFailuresOrigin.exists(ignore => ignore == "true" || ignore == "yes")
+      ignoreProcessFailuresOrigin.exists(Seq("true", "yes") contains _)
 
     /* Here we collect all internal service operations and resources, needed to run the indexer */
     val indexedData = new TezosIndexedDataOperations(db)
