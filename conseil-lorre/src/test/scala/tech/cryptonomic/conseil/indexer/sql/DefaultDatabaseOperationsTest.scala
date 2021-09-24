@@ -8,7 +8,7 @@ import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
 import tech.cryptonomic.conseil.common.tezos.Tables.{Fees, FeesRow}
 import tech.cryptonomic.conseil.indexer.tezos.TezosInMemoryDatabaseSetup
-import tech.cryptonomic.conseil.indexer.sql.DefaultDatabaseOperations._
+import tech.cryptonomic.conseil.common.sql.DefaultDatabaseOperations._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._

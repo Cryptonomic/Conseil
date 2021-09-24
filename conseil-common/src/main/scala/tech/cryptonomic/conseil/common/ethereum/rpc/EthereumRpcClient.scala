@@ -19,9 +19,10 @@ import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumRpcCommands._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction, TransactionReceipt}
 import tech.cryptonomic.conseil.common.ethereum.Utils
 import tech.cryptonomic.conseil.common.rpc.RpcClient.RpcException
-
 import java.sql.Timestamp
 import java.time.Instant
+
+import tech.cryptonomic.conseil.common.ethereum.Tables.RegisteredTokensRow
 
 /**
   * Ethereum JSON-RPC client according to the specification at https://eth.wiki/json-rpc/API
@@ -99,10 +100,10 @@ class EthereumClient[F[_]: Concurrent](
     *
     * @param batchSize The size of the batched request in single HTTP call.
     */
-  def getContract(batchSize: Int): Pipe[F, TransactionReceipt, Contract] =
+  def getContract(batchSize: Int, registeredTokens: List[RegisteredTokensRow]): Pipe[F, TransactionReceipt, Contract] =
     stream =>
       stream
-        .filter(_.contractAddress.isDefined)
+        .filter(_.contractAddress.exists(addr => registeredTokens.map(_.address).contains(addr)))
         .flatMap { receipt =>
           Stream
             .emit(EthGetCode.request(receipt.contractAddress.get, receipt.blockNumber))
@@ -121,9 +122,9 @@ class EthereumClient[F[_]: Concurrent](
   /**
     * Extract token transfers from log
     */
-  def getTokenTransfer(block: Block): Pipe[F, Log, TokenTransfer] =
+  def getTokenTransfer(block: Block, registeredTokens: List[RegisteredTokensRow]): Pipe[F, Log, TokenTransfer] =
     stream =>
-      stream.map { log =>
+      stream.filter(tt => registeredTokens.map(_.address).contains(tt.address)).map { log =>
         TokenTransfer(
           tokenAddress = log.address,
           blockHash = log.blockHash,
@@ -142,9 +143,9 @@ class EthereumClient[F[_]: Concurrent](
     *
     * @param block Block at which we extract the account token balance
     */
-  def getTokenBalance(block: Block): Pipe[F, TokenTransfer, TokenBalance] =
+  def getTokenBalance(block: Block, registeredTokens: List[RegisteredTokensRow]): Pipe[F, TokenTransfer, TokenBalance] =
     stream =>
-      stream.flatMap { tokenTransfer =>
+      stream.filter(tt => registeredTokens.map(_.address).contains(tt.tokenAddress)).flatMap { tokenTransfer =>
         Stream
           .emits(Seq(tokenTransfer.fromAddress, tokenTransfer.toAddress))
           .filter(address => address != nullAddress)

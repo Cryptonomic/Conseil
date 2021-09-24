@@ -2,20 +2,19 @@ package tech.cryptonomic.conseil.indexer.ethereum
 
 import java.util.concurrent.Executors
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.FiniteDuration
-
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import cats.effect.{IO, Resource}
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.middleware.Retry
 import slick.jdbc.PostgresProfile.api._
 import slickeffect.Transactor
 import slickeffect.transactor.{config => transactorConfig}
-
 import tech.cryptonomic.conseil.common.rpc.RpcClient
-import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.common.config.Platforms
 import tech.cryptonomic.conseil.common.config.Platforms.EthereumConfiguration
+import tech.cryptonomic.conseil.common.ethereum.Tables
+import tech.cryptonomic.conseil.common.sql.DefaultDatabaseOperations
 import tech.cryptonomic.conseil.indexer.LorreIndexer
 import tech.cryptonomic.conseil.indexer.config.LorreConfiguration
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
@@ -140,6 +139,15 @@ object EthereumIndexer {
       lorreConf: LorreConfiguration,
       ethereumConf: EthereumConfiguration,
       db: Database
-  ): LorreIndexer =
+  ): LorreIndexer = {
+
+    import kantan.csv.generic._
+    implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
+    Await.result(
+      DefaultDatabaseOperations.initTableFromCsv(db, Tables.RegisteredTokens, "ethereum", ethereumConf.network),
+      5.seconds
+    )
+
     new EthereumIndexer(lorreConf, ethereumConf, db: Database)
+  }
 }

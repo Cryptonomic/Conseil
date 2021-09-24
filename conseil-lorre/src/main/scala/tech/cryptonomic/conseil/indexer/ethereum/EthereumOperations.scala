@@ -81,8 +81,11 @@ class EthereumOperations[F[_]: Concurrent](
             )
           )
       )
-      .flatMap(
-        existingBlocks =>
+      .flatMap { xxx =>
+        Stream.eval(tx.transact(persistence.getRegisteredTokens)).map(xxx -> _)
+      }
+      .flatMap {
+        case (existingBlocks, registeredTokens) =>
           Stream
             .range(range.start, range.end + 1)
             .filter(height => !existingBlocks.contains(height))
@@ -110,8 +113,8 @@ class EthereumOperations[F[_]: Concurrent](
               case (block, txs, receipts, logs) if receipts.exists(_.contractAddress.isDefined) =>
                 Stream
                   .emits(receipts)
-                  .filter(_.contractAddress.isDefined)
-                  .through(ethereumClient.getContract(batchConf.contractsBatchSize))
+                  .filter(_.contractAddress.exists(addr => registeredTokens.map(_.address).contains(addr)))
+                  .through(ethereumClient.getContract(batchConf.contractsBatchSize, registeredTokens.toList))
                   .through(ethereumClient.getContractBalance(block))
                   .through(ethereumClient.addTokenInfo)
                   .chunkN(Integer.MAX_VALUE)
@@ -136,7 +139,7 @@ class EthereumOperations[F[_]: Concurrent](
                 Stream
                   .emits(logs)
                   .filter(log => log.topics.size == 3 && log.topics.contains(tokenTransferSignature))
-                  .through(ethereumClient.getTokenTransfer(block))
+                  .through(ethereumClient.getTokenTransfer(block, registeredTokens.toList))
                   .chunkN(Integer.MAX_VALUE)
                   .map(
                     tokenTransfers => (block, txs, receipts, logs, contractAccounts, accounts, tokenTransfers.toList)
@@ -149,7 +152,7 @@ class EthereumOperations[F[_]: Concurrent](
                   if tokenTransfers.size > 0 =>
                 Stream
                   .emits(tokenTransfers)
-                  .through(ethereumClient.getTokenBalance(block))
+                  .through(ethereumClient.getTokenBalance(block, registeredTokens.toList))
                   .chunkN(Integer.MAX_VALUE)
                   .map(
                     tokenBalances =>
@@ -179,7 +182,7 @@ class EthereumOperations[F[_]: Concurrent](
                       persistence.createTokenBalances(tokenBalances)
                 )
             }
-      )
+      }
       .drain
 }
 
