@@ -171,13 +171,13 @@ private[tezos] object TezosJsonDecoders {
       /* try decoding a number */
       implicit private val bignumDecoder: Decoder[Decimal] =
         Decoder.decodeString
-          .emapTry(jsonString => scala.util.Try(BigDecimal(jsonString)))
+          .emapTry(jsonString => Try(BigDecimal(jsonString)))
           .map(Decimal)
 
       /* try decoding a positive number */
       implicit private val positiveBignumDecoder: Decoder[PositiveDecimal] =
         Decoder.decodeString
-          .emapTry(jsonString => scala.util.Try(BigDecimal(jsonString)))
+          .emapTry(jsonString => Try(BigDecimal(jsonString)))
           .ensure(_ >= 0, "The passed-in json string is not a non-negative number")
           .map(PositiveDecimal)
 
