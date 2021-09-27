@@ -9,7 +9,7 @@ import pureconfig.generic.FieldCoproductHint
 import scopt.{OptionParser, Read}
 import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.config.{PlatformConfiguration => _, _}
-import tech.cryptonomic.conseil.indexer.config.ConfigDepthUtil._
+import tech.cryptonomic.conseil.indexer.config.ConfigUtil.Depth._
 
 import scala.util.{Success, Try}
 

@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.indexer.config
 
 import tech.cryptonomic.conseil.common.config.ChainEvent
-import tech.cryptonomic.conseil.indexer.config.ConfigDepthUtil._
+import tech.cryptonomic.conseil.indexer.config.ConfigUtil.Depth._
 
 import scala.concurrent.duration.FiniteDuration
 
