@@ -22,6 +22,7 @@ object Dependencies {
     val endpoints4s = "1.3.0"
     val endpoints4sBackCompatible = "1.1.0"
     val endpoints4sAkkaServer = "4.0.0"
+    val endpoints4sAkkaClient = "3.0.0"
     val cats = "2.1.1"
     val catsEffect = "2.1.3"
     val mouse = "0.25"
@@ -101,7 +102,8 @@ object Dependencies {
     "org.endpoints4s" %% "openapi"             % Versions.endpoints4sBackCompatible,
     "org.endpoints4s" %% "json-schema-generic" % Versions.endpoints4sBackCompatible,
     "org.endpoints4s" %% "json-schema-circe"   % Versions.endpoints4sBackCompatible,
-    "org.endpoints4s" %% "akka-http-server"    % Versions.endpoints4sAkkaServer
+    "org.endpoints4s" %% "akka-http-server"    % Versions.endpoints4sAkkaServer,
+    "org.endpoints4s" %% "akka-http-client"    % Versions.endpoints4sAkkaClient
   )
 
   private val cats = Seq(
