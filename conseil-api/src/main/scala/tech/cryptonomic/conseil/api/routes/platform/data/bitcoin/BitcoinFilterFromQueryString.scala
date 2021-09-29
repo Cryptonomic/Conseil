@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
-import endpoints.algebra.JsonEntities
+import endpoints4s.algebra.JsonEntities
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiFilter.Sorting
 
 /** Trait containing helper functions which are necessary for parsing query parameter strings as Filter */

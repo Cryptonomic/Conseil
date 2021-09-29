@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.api.routes.info
 
 import akka.http.scaladsl.server.Route
-import endpoints.akkahttp
+import endpoints4s.akkahttp
 import tech.cryptonomic.conseil.BuildInfo
 
 /** defines endpoints to expose the currently deployed application information (e.g version, ...) */

@@ -5,7 +5,7 @@ import java.time.Instant
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OutputType, QueryResponseWithOutput}
 import ujson.{Value => Json}
-import endpoints.akkahttp.server.Endpoints
+import endpoints4s.akkahttp.server.Endpoints
 
 class ApiDataHelpersTest extends ConseilSpec {
 

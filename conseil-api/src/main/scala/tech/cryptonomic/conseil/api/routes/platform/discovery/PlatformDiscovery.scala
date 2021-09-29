@@ -3,8 +3,8 @@ package tech.cryptonomic.conseil.api.routes.platform.discovery
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import endpoints.akkahttp
-import endpoints.algebra.Documentation
+import endpoints4s.akkahttp
+import endpoints4s.algebra.Documentation
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.api.metadata.MetadataService
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.AttributesValidationError

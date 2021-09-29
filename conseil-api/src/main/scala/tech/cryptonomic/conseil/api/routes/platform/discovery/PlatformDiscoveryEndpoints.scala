@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.discovery
 
-import endpoints.algebra
+import endpoints4s.algebra
 import tech.cryptonomic.conseil.api.routes.validation.AttributesQueryValidation
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.AttributesValidationError
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes

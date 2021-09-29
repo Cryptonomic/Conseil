@@ -1,8 +1,8 @@
 package tech.cryptonomic.conseil.api.routes
 
 import tech.cryptonomic.conseil.api.routes.openapi.OpenApiDoc
-import endpoints.akkahttp.server
-import endpoints.openapi.model.OpenApi
+import endpoints4s.akkahttp.server
+import endpoints4s.openapi.model.OpenApi
 
 /** implements a server endpoint to provide
   * the openapi definition as a json file

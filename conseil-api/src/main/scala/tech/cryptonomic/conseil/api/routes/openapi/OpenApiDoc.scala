@@ -1,8 +1,8 @@
 package tech.cryptonomic.conseil.api.routes.openapi
 
-import endpoints.algebra.Documentation
-import endpoints.openapi
-import endpoints.openapi.model.{Info, MediaType, OpenApi, Schema}
+import endpoints4s.algebra.Documentation
+import endpoints4s.openapi
+import endpoints4s.openapi.model.{Info, MediaType, OpenApi, Schema}
 import tech.cryptonomic.conseil.api.routes.info.AppInfoEndpoint
 import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.BitcoinDataEndpoints
 import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{EthereumDataEndpoints, QuorumDataEndpoints}
@@ -94,7 +94,7 @@ object OpenApiDoc
     */
   override def validated[A](
       response: List[DocumentedResponse],
-      invalidDocs: endpoints.algebra.Documentation
+      invalidDocs: Documentation
   ): List[DocumentedResponse] =
     response ++ List(
           DocumentedResponse(
@@ -102,7 +102,7 @@ object OpenApiDoc
             documentation = invalidDocs.getOrElse(""),
             headers = DocumentedHeaders(List.empty),
             content = Map(
-              "application/json" -> MediaType(schema = Some(Schema.Array(Left(Schema.simpleString), None, None)))
+              "application/json" -> MediaType(schema = Some(Schema.Array(Left(Schema.simpleString), None, None, None)))
             )
           ),
           DocumentedResponse(
@@ -126,7 +126,7 @@ object OpenApiDoc
           documentation = invalidDocs.getOrElse(""),
           headers = DocumentedHeaders(List.empty),
           content = Map(
-            "application/json" -> MediaType(schema = Some(Schema.Array(Left(Schema.simpleString), None, None)))
+            "application/json" -> MediaType(schema = Some(Schema.Array(Left(Schema.simpleString), None, None, None)))
           )
         )
 

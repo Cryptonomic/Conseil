@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.info
 
-import endpoints.algebra
+import endpoints4s.algebra
 import AppInfo.Info
 
 /** Trait containing AppInfo endpoint definition */
