@@ -19,10 +19,10 @@ object Dependencies {
     val slickEffect = "0.3.0"
     val postgres = "42.1.4"
 
-    val endpoints4s = "1.3.0"
-    val endpoints4sBackCompatible = "1.1.0"
-    val endpoints4sAkkaServer = "4.0.0"
-    val endpoints4sAkkaClient = "3.0.0"
+    val endpoints4s = "1.5.0"
+    val endpoints4sAkkaServer = "5.1.0"
+    val endpoints4sClient = "3.1.0"
+
     val cats = "2.1.1"
     val catsEffect = "2.1.3"
     val mouse = "0.25"
@@ -96,15 +96,6 @@ object Dependencies {
   )
 
   private val postgres = Seq("org.postgresql" % "postgresql" % Versions.postgres)
-
-  private val endpoints = Seq(
-    "org.endpoints4s" %% "algebra"             % Versions.endpoints4s,
-    "org.endpoints4s" %% "openapi"             % Versions.endpoints4sBackCompatible,
-    "org.endpoints4s" %% "json-schema-generic" % Versions.endpoints4sBackCompatible,
-    "org.endpoints4s" %% "json-schema-circe"   % Versions.endpoints4sBackCompatible,
-    "org.endpoints4s" %% "akka-http-server"    % Versions.endpoints4sAkkaServer,
-    "org.endpoints4s" %% "akka-http-client"    % Versions.endpoints4sAkkaClient
-  )
 
   private val cats = Seq(
     "org.typelevel" %% "cats-core"   % Versions.cats,
@@ -218,8 +209,7 @@ object Dependencies {
       silencer,
       scalaMock,
       scalaTestJson,
-      diffX,
-      endpoints
+      diffX
     )
 
   val conseilLorreInclude: Seq[ModuleID] =

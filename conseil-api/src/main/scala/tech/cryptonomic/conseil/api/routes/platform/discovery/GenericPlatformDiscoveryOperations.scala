@@ -134,7 +134,19 @@ class GenericPlatformDiscoveryOperations(
       dataType = mapDataType(col.typeName),
       cardinality = if (canQueryType(mapDataType(col.typeName))) Some(0) else None,
       keyType = if (isIndex(col, indexes) || isKey(col, primaryKeys)) KeyType.UniqueKey else KeyType.NonKey,
-      entity = col.table.name
+      entity = col.table.name,
+      description = None,
+      placeholder = None,
+      displayPriority = None,
+      dataFormat = None,
+      cacheConfig = None,
+      displayOrder = None,
+      sufficientForQuery = None,
+      currencySymbol = None,
+      currencySymbolCode = None,
+      valueMap = None,
+      reference = None,
+      scale = None
     )
 
   /** Checks if given MColumn has primary key */
@@ -236,7 +248,7 @@ class GenericPlatformDiscoveryOperations(
     } yield
       now -> (tables.map(_.name.name) zip counts).map {
             case (name, count) =>
-              Entity(name, makeDisplayName(name), count)
+              Entity(name, makeDisplayName(name), count, None, None, None)
           }.toList
     result.map(value => Map(EntitiesCacheKey(platform, network) -> CacheEntry(value._1, value._2)))
   }

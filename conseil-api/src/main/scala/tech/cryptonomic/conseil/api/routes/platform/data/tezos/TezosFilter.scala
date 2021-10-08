@@ -49,71 +49,113 @@ final case class TezosFilter(
         Predicate(
           field = "block_id",
           operation = OperationType.in,
-          set = blockIDs.toList
+          set = blockIDs.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate(
           field = "level",
           operation = OperationType.in,
-          set = levels.toList
+          set = levels.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate(
           field = "chain_id",
           operation = OperationType.in,
-          set = chainIDs.toList
+          set = chainIDs.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate(
           field = "protocol",
           operation = OperationType.in,
-          set = protocols.toList
+          set = protocols.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate(
           field = "level",
           operation = OperationType.in,
-          set = levels.toList
+          set = levels.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate(
           field = "group_id",
           operation = OperationType.in,
-          set = operationGroupIDs.toList
+          set = operationGroupIDs.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate(
           field = "source",
           operation = OperationType.in,
-          set = operationSources.toList
+          set = operationSources.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate(
           field = "destination",
           operation = OperationType.in,
-          set = operationDestinations.toList
+          set = operationDestinations.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate(
           field = "participant",
           operation = OperationType.in,
-          set = operationParticipants.toList
+          set = operationParticipants.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate(
           field = "kind",
           operation = OperationType.in,
-          set = operationKinds.toList
+          set = operationKinds.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate(
           field = "account_id",
           operation = OperationType.in,
-          set = accountIDs.toList
+          set = accountIDs.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate(
           field = "manager",
           operation = OperationType.in,
-          set = accountManagers.toList
+          set = accountManagers.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate(
           field = "delegate",
           operation = OperationType.in,
-          set = accountDelegates.toList
+          set = accountDelegates.toList,
+          inverse = false,
+          precision = None,
+          group = None
         )
       ).filter(_.set.nonEmpty),
       limit = limit.getOrElse(DataTypes.defaultLimitValue),
       orderBy = toQueryOrdering(sortBy, order).toList,
-      snapshot = None
+      snapshot = None,
+      aggregation = List.empty[Aggregation],
+      temporalPartition = None,
+      output = OutputType.json
     )
 }

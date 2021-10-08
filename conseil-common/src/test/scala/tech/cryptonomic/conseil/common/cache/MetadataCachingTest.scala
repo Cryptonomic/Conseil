@@ -80,8 +80,8 @@ class MetadataCachingTest extends ConseilSpec with OneInstancePerTest {
       "insert/update values in entities cache" in {
         val emptyEntitiesCache: EntitiesCache =
           Map(EntitiesCacheKey("testPlatform", "testNetwork") -> CacheEntry(0L, List()))
-        val entitiesList = List(Entity("a", "b", 0))
-        val updatedEntityList = List(Entity("x", "y", 0))
+        val entitiesList = List(Entity("a", "b", 0, None, None, None))
+        val updatedEntityList = List(Entity("x", "y", 0, None, None, None))
         sut.fillEntitiesCache(emptyEntitiesCache).unsafeRunSync()
 
         // insert
@@ -97,15 +97,57 @@ class MetadataCachingTest extends ConseilSpec with OneInstancePerTest {
         updateResult shouldBe updatedEntityList
         sut.getAllEntities.unsafeRunSync().mapValues(_.value) shouldBe Map(
           EntitiesCacheKey("testPlatform", "testNetwork") -> List(),
-          EntitiesCacheKey("testPlatform", "differentTestNetwork") -> List(Entity("x", "y", 0, None))
+          EntitiesCacheKey("testPlatform", "differentTestNetwork") -> List(Entity("x", "y", 0, None, None, None))
         )
       }
 
       "insert/update values in attributes cache" in {
         val emptyAttributesCache: AttributesCache =
           Map(AttributesCacheKey("testPlatform", "testNetwork", "testEntity") -> CacheEntry(0L, List()))
-        val attributesList = List(Attribute("a", "b", DataType.String, None, KeyType.NonKey, "c"))
-        val updatedAttributesList = List(Attribute("x", "y", DataType.String, None, KeyType.NonKey, "z"))
+        val attributesList = List(
+          Attribute(
+            "a",
+            "b",
+            DataType.String,
+            None,
+            KeyType.NonKey,
+            "c",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None
+          )
+        )
+        val updatedAttributesList = List(
+          Attribute(
+            "x",
+            "y",
+            DataType.String,
+            None,
+            KeyType.NonKey,
+            "z",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None
+          )
+        )
         sut.fillAttributesCache(emptyAttributesCache).unsafeRunSync()
 
         // insert
@@ -138,7 +180,26 @@ class MetadataCachingTest extends ConseilSpec with OneInstancePerTest {
           Map(
             AttributesCacheKey("testPlatform", "testNetwork", "testEntity") -> List(),
             AttributesCacheKey("testPlatform", "testNetwork", "differentTestEntity") -> List(
-                  Attribute("x", "y", DataType.String, None, KeyType.NonKey, "z")
+                  Attribute(
+                    "x",
+                    "y",
+                    DataType.String,
+                    None,
+                    KeyType.NonKey,
+                    "z",
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None
+                  )
                 )
           )
       }
@@ -185,12 +246,12 @@ class MetadataCachingTest extends ConseilSpec with OneInstancePerTest {
 
       "handle entities for multiple platforms" in {
         val entitiesKey1 = EntitiesCacheKey("platform", "network")
-        val entities1 = List(Entity("a", "a", 0))
+        val entities1 = List(Entity("a", "a", 0, None, None, None))
 
         val entitiesKey2 = EntitiesCacheKey("platform-new", "network-new")
-        val entities2 = List(Entity("b", "b", 0))
+        val entities2 = List(Entity("b", "b", 0, None, None, None))
 
-        val entities3 = List(Entity("c", "c", 0))
+        val entities3 = List(Entity("c", "c", 0, None, None, None))
 
         val entitiesCache: EntitiesCache = Map(
           entitiesKey1 -> CacheEntry(0L, entities1),
@@ -210,10 +271,52 @@ class MetadataCachingTest extends ConseilSpec with OneInstancePerTest {
 
       "handle attributes for multiple platforms" in {
         val attributesKey1 = AttributesCacheKey("platform", "network", "table")
-        val attributes1 = List(Attribute("a", "b", DataType.String, None, KeyType.NonKey, "c"))
+        val attributes1 = List(
+          Attribute(
+            "a",
+            "b",
+            DataType.String,
+            None,
+            KeyType.NonKey,
+            "c",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None
+          )
+        )
 
         val attributesKey2 = AttributesCacheKey("platform-new", "network-new", "table-new")
-        val attributes2 = List(Attribute("d", "e", DataType.String, None, KeyType.NonKey, "f"))
+        val attributes2 = List(
+          Attribute(
+            "d",
+            "e",
+            DataType.String,
+            None,
+            KeyType.NonKey,
+            "f",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None
+          )
+        )
 
         val attributesCache: AttributesCache = Map(
           attributesKey1 -> CacheEntry(0L, attributes1),

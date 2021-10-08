@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.api.routes.platform.data.ethereum
 
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiFilter._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OperationType, Predicate, Query}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 
 /**
   * Represents a query filter submitted to the Conseil API.
@@ -31,26 +31,41 @@ case class EthereumFilter(
         Predicate( // to find specific block with hash
           field = "hash",
           operation = OperationType.in,
-          set = blockIds.toList
+          set = blockIds.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate( // to find specific transaction with id
           field = "hash",
           operation = OperationType.in,
-          set = transactionHashes.toList
+          set = transactionHashes.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate( // to find transactions by specific block_hash
           field = "blockhash",
           operation = OperationType.in,
-          set = blockHashes.toList
+          set = blockHashes.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate( // to find accounts by specific address
           field = "address",
           operation = OperationType.in,
-          set = accountAddresses.toList
+          set = accountAddresses.toList,
+          inverse = false,
+          precision = None,
+          group = None
         )
       ).filter(_.set.nonEmpty),
       limit = limit.getOrElse(DataTypes.defaultLimitValue),
       orderBy = toQueryOrdering(sortBy, order).toList,
-      snapshot = None
+      snapshot = None,
+      output = OutputType.json,
+      aggregation = List.empty[Aggregation],
+      temporalPartition = None
     )
 }

@@ -282,7 +282,8 @@ trait BitcoinFixtures {
       scriptSigHex = None,
       sequence = 4294967295L,
       coinbase = Some("04cb04041b0166"),
-      txInWitness = None
+      txInWitness = None,
+      outputTxid = None
     )
 
     val outputRow = Tables.OutputsRow(

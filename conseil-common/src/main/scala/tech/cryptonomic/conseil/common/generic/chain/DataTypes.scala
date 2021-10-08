@@ -61,25 +61,25 @@ object DataTypes {
   case class Predicate(
       field: String,
       operation: OperationType,
-      set: List[Any] = List.empty,
-      inverse: Boolean = false,
-      precision: Option[Int] = None,
-      group: Option[String] = None
+      set: List[Any],
+      inverse: Boolean,
+      precision: Option[Int],
+      group: Option[String]
   )
 
   /** Predicate which is received by the API */
   case class ApiPredicate(
       field: String,
       operation: OperationType,
-      set: Option[List[Any]] = Some(List.empty),
-      inverse: Option[Boolean] = Some(false),
-      precision: Option[Int] = None,
-      group: Option[String] = None
+      set: Option[List[Any]],
+      inverse: Option[Boolean],
+      precision: Option[Int],
+      group: Option[String]
   ) {
 
     /** Method creating Predicate out of ApiPredicate which is received by the API */
     def toPredicate: Predicate =
-      Predicate("tmp", OperationType.in).patchWith(this)
+      Predicate("tmp", OperationType.in, List.empty, false, None, None).patchWith(this)
   }
 
   /** Class representing query ordering */
@@ -121,19 +121,28 @@ object DataTypes {
   case class FormattedField(field: String, function: FormatType, format: String) extends Field
 
   object Query {
-    val empty: Query = Query()
+    val empty: Query = Query(
+      List.empty[Field],
+      List.empty[Predicate],
+      List.empty[QueryOrdering],
+      defaultLimitValue,
+      OutputType.json,
+      List.empty[Aggregation],
+      None,
+      None
+    )
   }
 
   /** Class representing query */
   case class Query(
-      fields: List[Field] = List.empty,
-      predicates: List[Predicate] = List.empty,
-      orderBy: List[QueryOrdering] = List.empty,
-      limit: Int = defaultLimitValue,
-      output: OutputType = OutputType.json,
-      aggregation: List[Aggregation] = List.empty,
-      temporalPartition: Option[String] = None,
-      snapshot: Option[Snapshot] = None
+      fields: List[Field],
+      predicates: List[Predicate],
+      orderBy: List[QueryOrdering],
+      limit: Int,
+      output: OutputType,
+      aggregation: List[Aggregation],
+      temporalPartition: Option[String],
+      snapshot: Option[Snapshot]
   ) {
     def withLimitCap(value: Int): Query = copy(limit = Math.min(limit, value))
   }
@@ -141,29 +150,30 @@ object DataTypes {
   /** Class representing predicate used in aggregation */
   case class AggregationPredicate(
       operation: OperationType,
-      set: List[Any] = List.empty,
-      inverse: Boolean = false,
-      precision: Option[Int] = None
+      set: List[Any],
+      inverse: Boolean,
+      precision: Option[Int]
   )
 
   /** AggregationPredicate that is received by the API */
   case class ApiAggregationPredicate(
       operation: OperationType,
-      set: Option[List[Any]] = Some(List.empty),
-      inverse: Option[Boolean] = Some(false),
-      precision: Option[Int] = None
+      set: Option[List[Any]],
+      inverse: Option[Boolean],
+      precision: Option[Int]
   ) {
 
     /** Transforms Aggregation predicate received form API into AggregationPredicate */
     def toAggregationPredicate: AggregationPredicate =
-      AggregationPredicate(operation = OperationType.in).patchWith(this)
+      AggregationPredicate(operation = OperationType.in, set = List.empty, inverse = false, precision = None)
+        .patchWith(this)
   }
 
   /** Aggregation that is received by the API */
   case class ApiAggregation(
       field: String,
-      function: AggregationType = AggregationType.sum,
-      predicate: Option[ApiAggregationPredicate] = None
+      function: AggregationType,
+      predicate: Option[ApiAggregationPredicate]
   ) {
 
     /** Transforms Aggregation received form API into Aggregation */
@@ -174,13 +184,19 @@ object DataTypes {
   /** Class representing aggregation */
   case class Aggregation(
       field: String,
-      function: AggregationType = AggregationType.sum,
-      predicate: Option[AggregationPredicate] = None
+      function: AggregationType,
+      predicate: Option[AggregationPredicate]
   ) {
 
     /** Method extracting predicate from aggregation */
     def getPredicate: Option[Predicate] =
-      predicate.map(_.into[Predicate].withFieldConst(_.field, field).transform)
+      predicate.map(
+        _.into[Predicate]
+          .withFieldConst(_.field, field)
+          .withFieldConst(_.group, None)
+          .transform
+      )
+    // predicate.map(_.into[Predicate].withFieldConst(_.field, field).transform)
   }
 
   /** Class representing snapshot */
@@ -192,7 +208,9 @@ object DataTypes {
         field = field,
         operation = OperationType.after,
         set = List(value),
-        inverse = true
+        inverse = true,
+        precision = None,
+        group = None
       )
 
     /** Transforms snapshot to ordering */

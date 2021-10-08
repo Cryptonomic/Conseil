@@ -86,6 +86,7 @@ private[tezos] object TezosDatabaseConversions {
         kind = from.kind,
         cycle = from.cycle,
         level = Some(from.level),
+        invalidatedAsof = None,
         forkId = Fork.mainForkId
       )
   }
@@ -122,7 +123,8 @@ private[tezos] object TezosDatabaseConversions {
               isBaker = isBaker.getOrElse(false),
               isActivated = isActivated.getOrElse(false),
               forkId = Fork.mainForkId,
-              scriptHash = script.map(it => SmartContracts.hashMichelsonScript(it.code.expression))
+              scriptHash = script.map(it => SmartContracts.hashMichelsonScript(it.code.expression)),
+              invalidatedAsof = None
             )
         }.toList
       }
@@ -213,7 +215,8 @@ private[tezos] object TezosDatabaseConversions {
         utcMonth = month,
         utcDay = day,
         utcTime = time,
-        forkId = Fork.mainForkId
+        forkId = Fork.mainForkId,
+        invalidatedAsof = None
       )
     }
   }
@@ -229,7 +232,8 @@ private[tezos] object TezosDatabaseConversions {
           signature = og.signature.map(_.value),
           blockId = from.data.hash.value,
           blockLevel = from.data.header.level,
-          forkId = Fork.mainForkId
+          forkId = Fork.mainForkId,
+          invalidatedAsof = None
         )
       }
   }
@@ -277,7 +281,38 @@ private[tezos] object TezosDatabaseConversions {
         utcMonth = month,
         utcDay = day,
         utcTime = time,
-        forkId = Fork.mainForkId
+        forkId = Fork.mainForkId,
+        invalidatedAsof = None,
+        nonce = None,
+        pkh = None,
+        fee = None,
+        counter = None,
+        gasLimit = None,
+        storageLimit = None,
+        publicKey = None,
+        amount = None,
+        destination = None,
+        parameters = None,
+        parametersEntrypoints = None,
+        parametersMicheline = None,
+        managerPubkey = None,
+        balance = None,
+        proposal = None,
+        spendable = None,
+        delegatable = None,
+        script = None,
+        storage = None,
+        storageMicheline = None,
+        status = None,
+        consumedGas = None,
+        storageSize = None,
+        paidStorageSizeDiff = None,
+        originatedContracts = None,
+        ballot = None,
+        ballotPeriod = None,
+        errors = None,
+        secret = None,
+        source = None
       )
   }
 
@@ -304,7 +339,38 @@ private[tezos] object TezosDatabaseConversions {
         utcMonth = month,
         utcDay = day,
         utcTime = time,
-        forkId = Fork.mainForkId
+        forkId = Fork.mainForkId,
+        invalidatedAsof = None,
+        nonce = None,
+        pkh = None,
+        fee = None,
+        counter = None,
+        gasLimit = None,
+        storageLimit = None,
+        publicKey = None,
+        amount = None,
+        destination = None,
+        parameters = None,
+        parametersEntrypoints = None,
+        parametersMicheline = None,
+        managerPubkey = None,
+        balance = None,
+        proposal = None,
+        spendable = None,
+        delegatable = None,
+        script = None,
+        storage = None,
+        storageMicheline = None,
+        status = None,
+        consumedGas = None,
+        storageSize = None,
+        paidStorageSizeDiff = None,
+        originatedContracts = None,
+        ballot = None,
+        ballotPeriod = None,
+        errors = None,
+        secret = None,
+        source = None
       )
   }
 
@@ -312,6 +378,8 @@ private[tezos] object TezosDatabaseConversions {
     case (block, groupHash, SeedNonceRevelation(level, nonce, metadata, blockOrder)) =>
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
+        branch = None,
+        numberOfSlots = None,
         operationId = 0,
         operationGroupHash = groupHash.value,
         kind = "seed_nonce_revelation",
@@ -328,7 +396,39 @@ private[tezos] object TezosDatabaseConversions {
         utcMonth = month,
         utcDay = day,
         utcTime = time,
-        forkId = Fork.mainForkId
+        forkId = Fork.mainForkId,
+        invalidatedAsof = None,
+        pkh = None,
+        fee = None,
+        counter = None,
+        gasLimit = None,
+        storageLimit = None,
+        publicKey = None,
+        amount = None,
+        destination = None,
+        parameters = None,
+        parametersEntrypoints = None,
+        parametersMicheline = None,
+        managerPubkey = None,
+        balance = None,
+        proposal = None,
+        spendable = None,
+        delegatable = None,
+        script = None,
+        storage = None,
+        storageMicheline = None,
+        status = None,
+        consumedGas = None,
+        storageSize = None,
+        paidStorageSizeDiff = None,
+        originatedContracts = None,
+        ballot = None,
+        ballotPeriod = None,
+        errors = None,
+        secret = None,
+        source = None,
+        delegate = None,
+        slots = None
       )
   }
 
@@ -352,7 +452,41 @@ private[tezos] object TezosDatabaseConversions {
         utcMonth = month,
         utcDay = day,
         utcTime = time,
-        forkId = Fork.mainForkId
+        forkId = Fork.mainForkId,
+        invalidatedAsof = None,
+        nonce = None,
+        fee = None,
+        counter = None,
+        gasLimit = None,
+        storageLimit = None,
+        publicKey = None,
+        amount = None,
+        destination = None,
+        parameters = None,
+        parametersEntrypoints = None,
+        parametersMicheline = None,
+        managerPubkey = None,
+        balance = None,
+        proposal = None,
+        spendable = None,
+        delegatable = None,
+        script = None,
+        storage = None,
+        storageMicheline = None,
+        status = None,
+        consumedGas = None,
+        storageSize = None,
+        paidStorageSizeDiff = None,
+        originatedContracts = None,
+        ballot = None,
+        ballotPeriod = None,
+        errors = None,
+        source = None,
+        branch = None,
+        delegate = None,
+        slots = None,
+        level = None,
+        numberOfSlots = None
       )
   }
 
@@ -383,7 +517,34 @@ private[tezos] object TezosDatabaseConversions {
         utcMonth = month,
         utcDay = day,
         utcTime = time,
-        forkId = Fork.mainForkId
+        forkId = Fork.mainForkId,
+        invalidatedAsof = None,
+        nonce = None,
+        pkh = None,
+        amount = None,
+        destination = None,
+        parameters = None,
+        parametersEntrypoints = None,
+        parametersMicheline = None,
+        managerPubkey = None,
+        balance = None,
+        proposal = None,
+        spendable = None,
+        delegatable = None,
+        script = None,
+        storage = None,
+        storageMicheline = None,
+        storageSize = None,
+        paidStorageSizeDiff = None,
+        originatedContracts = None,
+        ballot = None,
+        ballotPeriod = None,
+        branch = None,
+        numberOfSlots = None,
+        secret = None,
+        delegate = None,
+        slots = None,
+        level = None
       )
   }
 
@@ -454,7 +615,28 @@ private[tezos] object TezosDatabaseConversions {
         utcMonth = month,
         utcDay = day,
         utcTime = time,
-        forkId = Fork.mainForkId
+        forkId = Fork.mainForkId,
+        invalidatedAsof = None,
+        nonce = None,
+        pkh = None,
+        publicKey = None,
+        managerPubkey = None,
+        balance = None,
+        proposal = None,
+        spendable = None,
+        delegatable = None,
+        script = None,
+        storage = None,
+        storageMicheline = None,
+        originatedContracts = None,
+        ballot = None,
+        ballotPeriod = None,
+        secret = None,
+        branch = None,
+        numberOfSlots = None,
+        delegate = None,
+        slots = None,
+        level = None
       )
   }
 
@@ -513,7 +695,24 @@ private[tezos] object TezosDatabaseConversions {
         utcMonth = month,
         utcDay = day,
         utcTime = time,
-        forkId = Fork.mainForkId
+        forkId = Fork.mainForkId,
+        invalidatedAsof = None,
+        nonce = None,
+        pkh = None,
+        publicKey = None,
+        amount = None,
+        destination = None,
+        parameters = None,
+        parametersEntrypoints = None,
+        parametersMicheline = None,
+        proposal = None,
+        ballot = None,
+        ballotPeriod = None,
+        secret = None,
+        branch = None,
+        numberOfSlots = None,
+        slots = None,
+        level = None
       )
   }
 
@@ -548,7 +747,34 @@ private[tezos] object TezosDatabaseConversions {
         utcMonth = month,
         utcDay = day,
         utcTime = time,
-        forkId = Fork.mainForkId
+        forkId = Fork.mainForkId,
+        invalidatedAsof = None,
+        nonce = None,
+        pkh = None,
+        publicKey = None,
+        amount = None,
+        destination = None,
+        parameters = None,
+        parametersEntrypoints = None,
+        parametersMicheline = None,
+        managerPubkey = None,
+        balance = None,
+        proposal = None,
+        spendable = None,
+        delegatable = None,
+        script = None,
+        storage = None,
+        storageMicheline = None,
+        storageSize = None,
+        paidStorageSizeDiff = None,
+        originatedContracts = None,
+        ballot = None,
+        ballotPeriod = None,
+        secret = None,
+        branch = None,
+        numberOfSlots = None,
+        slots = None,
+        level = None
       )
   }
 
@@ -574,7 +800,39 @@ private[tezos] object TezosDatabaseConversions {
         utcMonth = month,
         utcDay = day,
         utcTime = time,
-        forkId = Fork.mainForkId
+        forkId = Fork.mainForkId,
+        invalidatedAsof = None,
+        nonce = None,
+        pkh = None,
+        fee = None,
+        counter = None,
+        gasLimit = None,
+        storageLimit = None,
+        publicKey = None,
+        amount = None,
+        destination = None,
+        parameters = None,
+        parametersEntrypoints = None,
+        parametersMicheline = None,
+        managerPubkey = None,
+        balance = None,
+        spendable = None,
+        delegatable = None,
+        script = None,
+        storage = None,
+        storageMicheline = None,
+        status = None,
+        consumedGas = None,
+        storageSize = None,
+        paidStorageSizeDiff = None,
+        originatedContracts = None,
+        errors = None,
+        secret = None,
+        delegate = None,
+        branch = None,
+        numberOfSlots = None,
+        slots = None,
+        level = None
       )
   }
 
@@ -599,7 +857,40 @@ private[tezos] object TezosDatabaseConversions {
         utcMonth = month,
         utcDay = day,
         utcTime = time,
-        forkId = Fork.mainForkId
+        forkId = Fork.mainForkId,
+        invalidatedAsof = None,
+        nonce = None,
+        pkh = None,
+        fee = None,
+        counter = None,
+        gasLimit = None,
+        storageLimit = None,
+        publicKey = None,
+        amount = None,
+        destination = None,
+        parameters = None,
+        parametersEntrypoints = None,
+        parametersMicheline = None,
+        managerPubkey = None,
+        balance = None,
+        spendable = None,
+        delegatable = None,
+        script = None,
+        storage = None,
+        storageMicheline = None,
+        status = None,
+        consumedGas = None,
+        storageSize = None,
+        paidStorageSizeDiff = None,
+        originatedContracts = None,
+        ballot = None,
+        errors = None,
+        secret = None,
+        delegate = None,
+        branch = None,
+        numberOfSlots = None,
+        slots = None,
+        level = None
       )
 
   }
@@ -630,7 +921,43 @@ private[tezos] object TezosDatabaseConversions {
         utcMonth = month,
         utcDay = day,
         utcTime = time,
-        forkId = Fork.mainForkId
+        forkId = Fork.mainForkId,
+        invalidatedAsof = None,
+        nonce = None,
+        pkh = None,
+        fee = None,
+        counter = None,
+        gasLimit = None,
+        storageLimit = None,
+        publicKey = None,
+        amount = None,
+        destination = None,
+        parameters = None,
+        parametersEntrypoints = None,
+        parametersMicheline = None,
+        managerPubkey = None,
+        balance = None,
+        proposal = None,
+        spendable = None,
+        delegatable = None,
+        script = None,
+        storage = None,
+        storageMicheline = None,
+        status = None,
+        consumedGas = None,
+        storageSize = None,
+        paidStorageSizeDiff = None,
+        originatedContracts = None,
+        ballot = None,
+        ballotPeriod = None,
+        errors = None,
+        secret = None,
+        source = None,
+        delegate = None,
+        branch = None,
+        numberOfSlots = None,
+        slots = None,
+        level = None
       )
   }
 
@@ -900,7 +1227,9 @@ private[tezos] object TezosDatabaseConversions {
             estimatedTime = endorsingRights.estimated_time.map(toSql),
             governancePeriod = fetchKey.governancePeriod,
             endorsedBlock = endorsingRights.endorsedBlock,
-            forkId = Fork.mainForkId
+            forkId = Fork.mainForkId,
+            invalidatedAsof = None,
+            cycle = None
           )
         }
       }
@@ -916,7 +1245,8 @@ private[tezos] object TezosDatabaseConversions {
         estimatedTime = from.estimated_time.map(toSql),
         cycle = from.cycle,
         governancePeriod = from.governancePeriod,
-        forkId = Fork.mainForkId
+        forkId = Fork.mainForkId,
+        invalidatedAsof = None
       )
   }
 
@@ -933,7 +1263,8 @@ private[tezos] object TezosDatabaseConversions {
             cycle = from.cycle,
             governancePeriod = from.governancePeriod,
             endorsedBlock = from.endorsedBlock,
-            forkId = Fork.mainForkId
+            forkId = Fork.mainForkId,
+            invalidatedAsof = None
           )
         }
     }
@@ -975,7 +1306,8 @@ private[tezos] object TezosDatabaseConversions {
           blockYayRolls = Some(yayRollsPerLevel),
           blockNayRolls = Some(nayRollsPerLevel),
           blockPassRolls = Some(passRollsPerLevel),
-          forkId = Fork.mainForkId
+          forkId = Fork.mainForkId,
+          invalidatedAsof = None
         )
 
       }

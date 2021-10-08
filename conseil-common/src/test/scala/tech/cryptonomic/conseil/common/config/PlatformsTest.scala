@@ -35,11 +35,11 @@ class PlatformsTest extends ConseilSpec {
     BitcoinConfiguration("testnet", enabled = false, configBitcoinNode, dbCfg, configBitcoinBatching)
   private val config = PlatformsConfiguration(List(configTezos, configBitcoin))
 
-  private val platformTezos = PlatformDiscoveryTypes.Platform("tezos", "Tezos")
-  private val platformBitcoin = PlatformDiscoveryTypes.Platform("bitcoin", "Bitcoin")
+  private val platformTezos = PlatformDiscoveryTypes.Platform("tezos", "Tezos", None)
+  private val platformBitcoin = PlatformDiscoveryTypes.Platform("bitcoin", "Bitcoin", None)
 
-  private val networkTezos = PlatformDiscoveryTypes.Network("mainnet", "Mainnet", "tezos", "mainnet")
-  private val networkBitcoin = PlatformDiscoveryTypes.Network("testnet", "Testnet", "bitcoin", "testnet")
+  private val networkTezos = PlatformDiscoveryTypes.Network("mainnet", "Mainnet", "tezos", "mainnet", None)
+  private val networkBitcoin = PlatformDiscoveryTypes.Network("testnet", "Testnet", "bitcoin", "testnet", None)
 
   "Platforms.PlatformsConfiguration" should {
       "return enabled platforms, by default" in {

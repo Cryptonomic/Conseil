@@ -144,7 +144,7 @@ object ApiDataTypes {
       limit: Option[Int],
       output: Option[OutputType],
       aggregation: Option[List[ApiAggregation]],
-      snapshot: Option[Snapshot] = None
+      snapshot: Option[Snapshot]
   ) {
 
     /** Method which validates query fields */

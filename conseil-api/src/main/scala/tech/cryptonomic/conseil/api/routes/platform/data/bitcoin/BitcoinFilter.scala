@@ -33,26 +33,41 @@ final case class BitcoinFilter(
         Predicate( // to find specific block with hash
           field = "hash",
           operation = OperationType.in,
-          set = blockIds.toList
+          set = blockIds.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate( // to find specific transaction with id
           field = "txid",
           operation = OperationType.in,
-          set = transactionIDs.toList
+          set = transactionIDs.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate( // to find transactions by specific block_hash
           field = "blockhash",
           operation = OperationType.in,
-          set = blockHashes.toList
+          set = blockHashes.toList,
+          inverse = false,
+          precision = None,
+          group = None
         ),
         Predicate( // to find accounts by specific address
           field = "address",
           operation = OperationType.in,
-          set = accountAddresses.toList
+          set = accountAddresses.toList,
+          inverse = false,
+          precision = None,
+          group = None
         )
       ).filter(_.set.nonEmpty),
       limit = limit.getOrElse(DataTypes.defaultLimitValue),
       orderBy = toQueryOrdering(sortBy, order).toList,
-      snapshot = None
+      snapshot = None,
+      aggregation = List.empty[Aggregation],
+      temporalPartition = None,
+      output = OutputType.json
     )
 }

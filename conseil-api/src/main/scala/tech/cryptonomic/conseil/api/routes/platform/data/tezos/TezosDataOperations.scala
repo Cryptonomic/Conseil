@@ -20,7 +20,8 @@ object TezosDataOperations {
   final val InvalidationAwareAttribute = "invalidated_asof"
 
   /* this is the basic predicate that will remove any row which was fork-invalidated from results */
-  private val nonInvalidatedPredicate = Predicate(InvalidationAwareAttribute, OperationType.isnull)
+  private val nonInvalidatedPredicate =
+    Predicate(InvalidationAwareAttribute, OperationType.isnull, List.empty, false, None, None)
 }
 
 class TezosDataOperations(dbConfig: Config) extends ApiDataOperations {
@@ -84,7 +85,7 @@ class TezosDataOperations(dbConfig: Config) extends ApiDataOperations {
   def fetchOperationGroup(
       operationGroupHash: String
   )(implicit ec: ExecutionContext): Future[Option[OperationGroupResult]] = {
-    @silent("parameter value latest in value")
+    // @silent("parameter value latest in value")
     val groupsMapIO = for {
       latest <- latestBlockIO if latest.nonEmpty
       operations <- operationsForGroup(operationGroupHash)

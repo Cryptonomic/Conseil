@@ -5,7 +5,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.JsonUtil.adaptManagerPubkeyField
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-@silent("local val derivationConf")
+// @silent("local val derivationConf")
 class TezosJsonDecodersTest extends ConseilSpec {
 
   import TezosJsonDecoders.Circe.Accounts._

@@ -11,6 +11,7 @@ import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.config.{PlatformConfiguration => _, _}
 
 import scala.util.{Success, Try}
+// import com.typesafe.config.ConfigOrigin
 
 /** wraps all configuration needed to run Lorre */
 trait LorreAppConfig {
@@ -80,9 +81,9 @@ trait LorreAppConfig {
     def readArgs(args: Array[String]): ConfigReader.Result[ArgumentsConfig] =
       argsParser.parse(args, ArgumentsConfig()).toRight[ConfigReaderFailures](sys.exit(1))
 
-    @silent("local val depthHint in method loadApplicationConfiguration is never used")
+    // @silent("local val depthHint in method loadApplicationConfiguration is never used")
     implicit val depthHint: EnumCoproductHint[Depth] = new EnumCoproductHint[Depth]
-    @silent("local val chainEventHint in method loadApplicationConfiguration is never used")
+    // @silent("local val chainEventHint in method loadApplicationConfiguration is never used")
     implicit val chainEventHint: FieldCoproductHint[ChainEvent] = new FieldCoproductHint[ChainEvent]("type") {
       override def fieldValue(name: String): String = name.head.toLower +: name.tail
     }
@@ -154,11 +155,13 @@ object LorreAppConfig {
                 override def description: String =
                   s"Could not run Lorre for platform: $platform, network: $network because this network is disabled"
                 override def location: Option[ConfigValueLocation] = None
+                // override def location: Option[ConfigOrigin] = None
               }))
             case None =>
               Left(ConfigReaderFailures(new ConfigReaderFailure {
                 override def description: String = s"Could not find platform: $platform, network: $network"
                 override def location: Option[ConfigValueLocation] = None
+                // override def location: Option[ConfigOrigin] = None
               }))
           }
         }

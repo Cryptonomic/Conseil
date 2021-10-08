@@ -67,14 +67,14 @@ object Platforms {
       platforms
         .filter(_.enabled == enabled)
         .map(_.platform)
-        .map(platform => Platform(platform.name, platform.name.capitalize))
+        .map(platform => Platform(platform.name, platform.name.capitalize, None))
 
     /*** Extracts networks from configuration */
     def getNetworks(platformName: String, enabled: Boolean = true): List[Network] =
       platforms
         .filter(v => v.platform.name == platformName && v.enabled == enabled)
         .map { config =>
-          Network(config.network, config.network.capitalize, config.platform.name, config.network)
+          Network(config.network, config.network.capitalize, config.platform.name, config.network, None)
         }
 
     def getDbConfig(platformName: String, network: String, enabled: Boolean = true): Config =

@@ -51,8 +51,8 @@ trait Tables {
       difficulty: scala.math.BigDecimal,
       chainWork: String,
       nTx: Int,
-      previousBlockHash: Option[String] = None,
-      nextBlockHash: Option[String] = None,
+      previousBlockHash: Option[String],
+      nextBlockHash: Option[String],
       medianTime: java.sql.Timestamp,
       time: java.sql.Timestamp
   )
@@ -244,13 +244,13 @@ trait Tables {
       blockHash: String,
       blockLevel: Int,
       blockTime: java.sql.Timestamp,
-      outputTxid: Option[String] = None,
-      vOut: Option[Int] = None,
-      scriptSigAsm: Option[String] = None,
-      scriptSigHex: Option[String] = None,
+      outputTxid: Option[String],
+      vOut: Option[Int],
+      scriptSigAsm: Option[String],
+      scriptSigHex: Option[String],
       sequence: Long,
-      coinbase: Option[String] = None,
-      txInWitness: Option[String] = None
+      coinbase: Option[String],
+      txInWitness: Option[String]
   )
 
   /** GetResult implicit for fetching InputsRow objects using plain SQL queries */
@@ -387,13 +387,13 @@ trait Tables {
       blockHash: String,
       blockLevel: Int,
       blockTime: java.sql.Timestamp,
-      value: Option[scala.math.BigDecimal] = None,
+      value: Option[scala.math.BigDecimal],
       n: Int,
       scriptPubKeyAsm: String,
       scriptPubKeyHex: String,
-      scriptPubKeyReqSigs: Option[Int] = None,
+      scriptPubKeyReqSigs: Option[Int],
       scriptPubKeyType: String,
-      scriptPubKeyAddresses: Option[String] = None
+      scriptPubKeyAddresses: Option[String]
   )
 
   /** GetResult implicit for fetching OutputsRow objects using plain SQL queries */

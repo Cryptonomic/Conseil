@@ -77,15 +77,15 @@ class JsonUtilTest extends ConseilSpec with JsonMatchers {
         result should matchJson("""{"key1": "value1", "key2": "value2"}""")
       }
 
-      "convert a nested generic shapeless Record to json" in {
-        import shapeless.record.Record
-        /* this does the trick of encoding any Record whose fields have encoders themeselves */
-        import io.circe.generic.encoding.ReprObjectEncoder._
+      // "convert a nested generic shapeless Record to json" in {
+      //   import shapeless.record.Record
+      //   /* this does the trick of encoding any Record whose fields have encoders themeselves */
+      //   import io.circe.generic.encoding.ReprObjectEncoder._
 
-        val record = Record(a = "b", c = Record(d = "e", f = "g"))
-        val result = JsonUtil.toJson(record).json
-        result should matchJson("""{"a": "b", "c": {"d": "e", "f": "g"}}""")
-      }
+      //   val record = Record(a = "b", c = Record(d = "e", f = "g"))
+      //   val result = JsonUtil.toJson(record).json
+      //   result should matchJson("""{"a": "b", "c": {"d": "e", "f": "g"}}""")
+      // }
 
       "allow lenient parsing of json with duplicate object keys, actually deserialized or not" in {
         case class TestObject(field: String = "")

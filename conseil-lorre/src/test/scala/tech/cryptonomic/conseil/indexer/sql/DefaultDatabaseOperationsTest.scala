@@ -27,6 +27,7 @@ class DefaultDatabaseOperationsTest extends ConseilSpec with InMemoryDatabase wi
           s"$i-example",
           None,
           None,
+          None,
           forkId = Fork.mainForkId
         )
       }

@@ -11,51 +11,51 @@ import tech.cryptonomic.conseil.common.metadata.{NetworkPath, PlatformPath}
 object PlatformDiscoveryTypes {
 
   /** Case class representing network */
-  final case class Platform(name: String, displayName: String, description: Option[String] = None) {
+  case class Platform(name: String, displayName: String, description: Option[String]) {
     val path = PlatformPath(name)
   }
 
   /** Case class representing network */
-  final case class Network(
+  case class Network(
       name: String,
       displayName: String,
       platform: String,
       network: String,
-      description: Option[String] = None
+      description: Option[String]
   ) {
     lazy val path = NetworkPath(network, PlatformPath(platform))
   }
 
   /** Case class representing single entity of a given network */
-  final case class Entity(
+  case class Entity(
       name: String,
       displayName: String,
       count: Int,
-      displayNamePlural: Option[String] = None,
-      description: Option[String] = None,
-      limitedQuery: Option[Boolean] = None
+      displayNamePlural: Option[String],
+      description: Option[String],
+      limitedQuery: Option[Boolean]
   )
 
   /** Case class representing single attribute of given entity from DB */
-  final case class Attribute(
+  case class Attribute(
       name: String,
       displayName: String,
       dataType: DataType,
       cardinality: Option[Int],
       keyType: KeyType,
       entity: String,
-      description: Option[String] = None,
-      placeholder: Option[String] = None,
-      dataFormat: Option[String] = None,
-      valueMap: Option[Map[String, String]] = None,
-      scale: Option[Int] = None,
-      reference: Option[Map[String, String]] = None,
-      cacheConfig: Option[AttributeCacheConfiguration] = None,
-      displayPriority: Option[Int] = None,
-      displayOrder: Option[Int] = None,
-      sufficientForQuery: Option[Boolean] = None,
-      currencySymbol: Option[String] = None,
-      currencySymbolCode: Option[Int] = None
+      description: Option[String],
+      placeholder: Option[String],
+      dataFormat: Option[String],
+      valueMap: Option[Map[String, String]],
+      scale: Option[Int],
+      reference: Option[Map[String, String]],
+      cacheConfig: Option[AttributeCacheConfiguration],
+      displayPriority: Option[Int],
+      displayOrder: Option[Int],
+      sufficientForQuery: Option[Boolean],
+      currencySymbol: Option[String],
+      currencySymbolCode: Option[Int]
   ) {
 
     /** Checks if attribute is valid for predicate */

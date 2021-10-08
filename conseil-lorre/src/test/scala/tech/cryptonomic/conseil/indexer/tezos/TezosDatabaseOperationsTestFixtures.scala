@@ -260,7 +260,14 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
         utcMonth = 1,
         utcDay = 1,
         utcTime = "00:00:00",
-        forkId = Fork.mainForkId
+        forkId = Fork.mainForkId,
+        metaLevel = None,
+        metaLevelPosition = None,
+        metaCycle = None,
+        metaCyclePosition = None,
+        metaVotingPeriod = None,
+        metaVotingPeriodPosition = None,
+        priority = None
       )
 
     //we need somewhere to start with
@@ -315,7 +322,8 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
             signature = Some(s"sig${generateHash(10)}"),
             blockId = block.hash,
             blockLevel = block.level,
-            forkId = Fork.mainForkId
+            forkId = Fork.mainForkId,
+            invalidatedAsof = None
           )
       )
       .toList

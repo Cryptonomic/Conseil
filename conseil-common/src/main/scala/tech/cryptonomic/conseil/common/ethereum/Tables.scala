@@ -45,15 +45,15 @@ trait Tables {
       address: String,
       blockHash: String,
       blockLevel: Int,
-      timestamp: Option[java.sql.Timestamp] = None,
+      timestamp: Option[java.sql.Timestamp],
       balance: scala.math.BigDecimal,
-      bytecode: Option[String] = None,
-      bytecodeHash: Option[String] = None,
-      tokenStandard: Option[String] = None,
-      name: Option[String] = None,
-      symbol: Option[String] = None,
-      decimals: Option[Int] = None,
-      totalSupply: Option[scala.math.BigDecimal] = None
+      bytecode: Option[String],
+      bytecodeHash: Option[String],
+      tokenStandard: Option[String],
+      name: Option[String],
+      symbol: Option[String],
+      decimals: Option[Int],
+      totalSupply: Option[scala.math.BigDecimal]
   )
 
   /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */

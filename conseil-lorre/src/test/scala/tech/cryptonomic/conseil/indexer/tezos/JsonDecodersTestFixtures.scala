@@ -128,25 +128,29 @@ trait DelegatesJsonData {
       frozen_balance_by_cycle = List(
         CycleBalance(
           cycle = 174,
-          deposit = PositiveDecimal(1321664000000L),
+          deposit = Some(PositiveDecimal(1321664000000L)),
+          deposits = None,
           fees = PositiveDecimal(572501),
           rewards = PositiveDecimal(37062032929L)
         ),
         CycleBalance(
           cycle = 175,
-          deposit = PositiveDecimal(1510400000000L),
+          deposit = Some(PositiveDecimal(1510400000000L)),
+          deposits = None,
           fees = PositiveDecimal(5341649990L),
           rewards = PositiveDecimal(45404449892L)
         ),
         CycleBalance(
           cycle = 176,
-          deposit = PositiveDecimal(1550400000000L),
+          deposit = Some(PositiveDecimal(1550400000000L)),
+          deposits = None,
           fees = PositiveDecimal(301772470L),
           rewards = PositiveDecimal(44143066264L)
         ),
         CycleBalance(
           cycle = 177,
-          deposit = PositiveDecimal(62848000000L),
+          deposit = Some(PositiveDecimal(62848000000L)),
+          deposits = None,
           fees = PositiveDecimal(550000L),
           rewards = PositiveDecimal(1817833324L)
         )
