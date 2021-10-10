@@ -29,15 +29,15 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
   .in(file("conseil-common"))
   .settings(
     name := "conseil-common",
-    libraryDependencies ++= Dependencies.conseilCommonInclude
-    // coverageExcludedPackages := Seq(
-    //       "<empty>",
-    //       "tech.cryptonomic.conseil.common.io.*",
-    //       "tech.cryptonomic.conseil.common.bitcoin.Tables",
-    //       "tech.cryptonomic.conseil.common.ethereum.Tables",
-    //       "tech.cryptonomic.conseil.common.tezos.Tables",
-    //       "tech.cryptonomic.conseil.common.tezos.TezosDataGeneration"
-    //     ).mkString(";")
+    libraryDependencies ++= Dependencies.conseilCommonInclude,
+    coverageExcludedPackages := Seq(
+          "<empty>",
+          "tech.cryptonomic.conseil.common.io.*",
+          "tech.cryptonomic.conseil.common.bitcoin.Tables",
+          "tech.cryptonomic.conseil.common.ethereum.Tables",
+          "tech.cryptonomic.conseil.common.tezos.Tables",
+          "tech.cryptonomic.conseil.common.tezos.TezosDataGeneration"
+        ).mkString(";")
   )
   .settings(
     scalacOptions += "-P:silencer:pathFilters=common/src/main/scala/tech/cryptonomic/conseil/common/tezos/Tables.scala",
@@ -76,16 +76,16 @@ lazy val api: CrossProject = crossProject(JSPlatform, JVMPlatform)
               "org.endpoints4s" %%% "json-schema-generic" % "1.5.0",
               "org.endpoints4s" %%% "json-schema-circe"   % "1.5.0",
               "org.endpoints4s" %% "akka-http-server"     % "5.1.0"
-            ))
-    // coverageExcludedPackages := Seq(
-    //       "<empty>",
-    //       "tech.cryptonomic.conseil.api.Conseil",
-    //       "tech.cryptonomic.conseil.api.ConseilApi",
-    //       "tech.cryptonomic.conseil.api.ConseilMainOutput",
-    //       "tech.cryptonomic.conseil.api.config.ConseilAppConfig",
-    //       "tech.cryptonomic.conseil.api.security.Security",
-    //       "tech.cryptonomic.conseil.api.routes.platform.TezosApi"
-    //     ).mkString(";")
+            )),
+    coverageExcludedPackages := Seq(
+          "<empty>",
+          "tech.cryptonomic.conseil.api.Conseil",
+          "tech.cryptonomic.conseil.api.ConseilApi",
+          "tech.cryptonomic.conseil.api.ConseilMainOutput",
+          "tech.cryptonomic.conseil.api.config.ConseilAppConfig",
+          "tech.cryptonomic.conseil.api.security.Security",
+          "tech.cryptonomic.conseil.api.routes.platform.TezosApi"
+        ).mkString(";")
   )
   // .addRunCommand(
   //   description = "Task to run the main Conseil API Server",
@@ -114,20 +114,20 @@ lazy val lorre = (project in file("conseil-lorre"))
   .settings(
     name := "conseil-lorre",
     mainClass := Some("tech.cryptonomic.conseil.indexer.Lorre"),
-    libraryDependencies ++= Dependencies.conseilLorreInclude
-    // coverageExcludedPackages := Seq(
-    //       "<empty>",
-    //       "tech.cryptonomic.conseil.indexer.Lorre",
-    //       "tech.cryptonomic.conseil.indexer.config.LorreAppConfig",
-    //       "tech.cryptonomic.conseil.indexer.logging.LorreInfoLogging",
-    //       "tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging",
-    //       "tech.cryptonomic.conseil.indexer.tezos.TezosIndexer"
-    //     ).mkString(";")
+    libraryDependencies ++= Dependencies.conseilLorreInclude,
+    coverageExcludedPackages := Seq(
+          "<empty>",
+          "tech.cryptonomic.conseil.indexer.Lorre",
+          "tech.cryptonomic.conseil.indexer.config.LorreAppConfig",
+          "tech.cryptonomic.conseil.indexer.logging.LorreInfoLogging",
+          "tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging",
+          "tech.cryptonomic.conseil.indexer.tezos.TezosIndexer"
+        ).mkString(";")
   )
-  // .addRunCommand(
-  //   description = "Task to run the main Lorre indexing process for Tezos",
-  //   javaExtras = Seq("-Xmx512M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
-  // )
+  .addRunCommand(
+    description = "Task to run the main Lorre indexing process for Tezos",
+    javaExtras = Seq("-Xmx512M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
+  )
   .enableAssembly()
   .dependsOn(common.jvm, commonTestKit.jvm % Test)
 
