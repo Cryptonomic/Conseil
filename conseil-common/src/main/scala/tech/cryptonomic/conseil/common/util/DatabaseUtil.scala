@@ -351,12 +351,12 @@ object DatabaseUtil {
       val op = operation match {
         case OperationType.between => sql"BETWEEN '#${vals.head}' AND '#${vals(1)}'"
         case OperationType.in => concatenateSqlActions(sql"IN ", insertValuesIntoSqlAction(vals))
-        case OperationType.like => sql"LIKE '%#${vals.head}%'"
+        //case OperationType.like => sql"LIKE '%#${vals.head}%'"
         case OperationType.lt | OperationType.before => sql"< '#${vals.head}'"
         case OperationType.gt | OperationType.after => sql"> '#${vals.head}'"
         case OperationType.eq => sql"= '#${vals.head}'"
-        case OperationType.startsWith => sql"LIKE '#${vals.head}%'"
-        case OperationType.endsWith => sql"LIKE '%#${vals.head}'"
+        //case OperationType.startsWith => sql"LIKE '#${vals.head}%'"
+        //case OperationType.endsWith => sql"LIKE '%#${vals.head}'"
         case OperationType.isnull => sql"ISNULL"
       }
       if (inverse) {

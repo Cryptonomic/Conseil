@@ -970,104 +970,104 @@ class TezosDataOperationsTest
         )
       }
 
-      "get map from a block table with like predicate when starts with pattern" in {
-        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
-        val predicates = List(
-          Predicate(
-            field = "hash",
-            operation = OperationType.like,
-            set = List("aQeGr"),
-            inverse = false
-          )
-        )
+//      "get map from a block table with like predicate when starts with pattern" in {
+//        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
+//        val predicates = List(
+//          Predicate(
+//            field = "hash",
+//            operation = OperationType.like,
+//            set = List("aQeGr"),
+//            inverse = false
+//          )
+//        )
+//
+//        val populateAndTest = for {
+//          _ <- Tables.Blocks ++= blocksTmp
+//          found <- sut.selectWithPredicates(
+//            "tezos",
+//            Tables.Blocks.baseTableRow.tableName,
+//            columns,
+//            predicates,
+//            List.empty,
+//            List.empty,
+//            None,
+//            None,
+//            OutputType.json,
+//            3
+//          )
+//        } yield found
+//
+//        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+//        result shouldBe List(
+//          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+//        )
+//      }
 
-        val populateAndTest = for {
-          _ <- Tables.Blocks ++= blocksTmp
-          found <- sut.selectWithPredicates(
-            "tezos",
-            Tables.Blocks.baseTableRow.tableName,
-            columns,
-            predicates,
-            List.empty,
-            List.empty,
-            None,
-            None,
-            OutputType.json,
-            3
-          )
-        } yield found
+//      "get map from a block table with like predicate when ends with pattern" in {
+//        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
+//        val predicates = List(
+//          Predicate(
+//            field = "hash",
+//            operation = OperationType.like,
+//            set = List("rbXCmG"),
+//            inverse = false
+//          )
+//        )
+//
+//        val populateAndTest = for {
+//          _ <- Tables.Blocks ++= blocksTmp
+//          found <- sut.selectWithPredicates(
+//            "tezos",
+//            Tables.Blocks.baseTableRow.tableName,
+//            columns,
+//            predicates,
+//            List.empty,
+//            List.empty,
+//            None,
+//            None,
+//            OutputType.json,
+//            3
+//          )
+//        } yield found
+//
+//        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+//        result shouldBe List(
+//          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+//        )
+//      }
 
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
-        result shouldBe List(
-          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
-        )
-      }
-
-      "get map from a block table with like predicate when ends with pattern" in {
-        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
-        val predicates = List(
-          Predicate(
-            field = "hash",
-            operation = OperationType.like,
-            set = List("rbXCmG"),
-            inverse = false
-          )
-        )
-
-        val populateAndTest = for {
-          _ <- Tables.Blocks ++= blocksTmp
-          found <- sut.selectWithPredicates(
-            "tezos",
-            Tables.Blocks.baseTableRow.tableName,
-            columns,
-            predicates,
-            List.empty,
-            List.empty,
-            None,
-            None,
-            OutputType.json,
-            3
-          )
-        } yield found
-
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
-        result shouldBe List(
-          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
-        )
-      }
-
-      "get map from a block table with like predicate when pattern is in the middle" in {
-        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
-        val predicates = List(
-          Predicate(
-            field = "hash",
-            operation = OperationType.like,
-            set = List("rbX"),
-            inverse = false
-          )
-        )
-
-        val populateAndTest = for {
-          _ <- Tables.Blocks ++= blocksTmp
-          found <- sut.selectWithPredicates(
-            "tezos",
-            Tables.Blocks.baseTableRow.tableName,
-            columns,
-            predicates,
-            List.empty,
-            List.empty,
-            None,
-            None,
-            OutputType.json,
-            3
-          )
-        } yield found
-
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
-        result shouldBe List(
-          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
-        )
-      }
+//      "get map from a block table with like predicate when pattern is in the middle" in {
+//        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
+//        val predicates = List(
+//          Predicate(
+//            field = "hash",
+//            operation = OperationType.like,
+//            set = List("rbX"),
+//            inverse = false
+//          )
+//        )
+//
+//        val populateAndTest = for {
+//          _ <- Tables.Blocks ++= blocksTmp
+//          found <- sut.selectWithPredicates(
+//            "tezos",
+//            Tables.Blocks.baseTableRow.tableName,
+//            columns,
+//            predicates,
+//            List.empty,
+//            List.empty,
+//            None,
+//            None,
+//            OutputType.json,
+//            3
+//          )
+//        } yield found
+//
+//        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+//        result shouldBe List(
+//          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+//        )
+//      }
 
       "get map from a block table with less than predicate when one element fulfils it" in {
         val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
@@ -1285,130 +1285,130 @@ class TezosDataOperationsTest
           )
         )
       }
-      "get map from a block table with startsWith predicate" in {
-        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
-        val predicates = List(
-          Predicate(
-            field = "hash",
-            operation = OperationType.startsWith,
-            set = List("R0Np"),
-            inverse = false
-          )
-        )
-
-        val populateAndTest = for {
-          _ <- Tables.Blocks ++= blocksTmp
-          found <- sut.selectWithPredicates(
-            "tezos",
-            Tables.Blocks.baseTableRow.tableName,
-            columns,
-            predicates,
-            List.empty,
-            List.empty,
-            None,
-            None,
-            OutputType.json,
-            3
-          )
-        } yield found
-
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
-        result shouldBe List(
-          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
-        )
-      }
-      "get empty map from a block table with startsWith predicate" in {
-        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
-        val predicates = List(
-          Predicate(
-            field = "hash",
-            operation = OperationType.startsWith,
-            set = List("YZuUeF"),
-            inverse = false
-          )
-        )
-
-        val populateAndTest = for {
-          _ <- Tables.Blocks ++= blocksTmp
-          found <- sut.selectWithPredicates(
-            "tezos",
-            Tables.Blocks.baseTableRow.tableName,
-            columns,
-            predicates,
-            List.empty,
-            List.empty,
-            None,
-            None,
-            OutputType.json,
-            3
-          )
-        } yield found
-
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
-        result shouldBe 'empty
-      }
-      "get map from a block table with endsWith predicate" in {
-        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
-        val predicates = List(
-          Predicate(
-            field = "hash",
-            operation = OperationType.endsWith,
-            set = List("ZuUeF"),
-            inverse = false
-          )
-        )
-
-        val populateAndTest = for {
-          _ <- Tables.Blocks ++= blocksTmp
-          found <- sut.selectWithPredicates(
-            "tezos",
-            Tables.Blocks.baseTableRow.tableName,
-            columns,
-            predicates,
-            List.empty,
-            List.empty,
-            None,
-            None,
-            OutputType.json,
-            3
-          )
-        } yield found
-
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
-        result shouldBe List(
-          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
-        )
-      }
-      "get empty map from a block table with endsWith predicate" in {
-        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
-        val predicates = List(
-          Predicate(
-            field = "hash",
-            operation = OperationType.endsWith,
-            set = List("R0NpYZ"),
-            inverse = false
-          )
-        )
-
-        val populateAndTest = for {
-          _ <- Tables.Blocks ++= blocksTmp
-          found <- sut.selectWithPredicates(
-            "tezos",
-            Tables.Blocks.baseTableRow.tableName,
-            columns,
-            predicates,
-            List.empty,
-            List.empty,
-            None,
-            None,
-            OutputType.json,
-            3
-          )
-        } yield found
-
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
-        result shouldBe 'empty
-      }
+//      "get map from a block table with startsWith predicate" in {
+//        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
+//        val predicates = List(
+//          Predicate(
+//            field = "hash",
+//            operation = OperationType.startsWith,
+//            set = List("R0Np"),
+//            inverse = false
+//          )
+//        )
+//
+//        val populateAndTest = for {
+//          _ <- Tables.Blocks ++= blocksTmp
+//          found <- sut.selectWithPredicates(
+//            "tezos",
+//            Tables.Blocks.baseTableRow.tableName,
+//            columns,
+//            predicates,
+//            List.empty,
+//            List.empty,
+//            None,
+//            None,
+//            OutputType.json,
+//            3
+//          )
+//        } yield found
+//
+//        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+//        result shouldBe List(
+//          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
+//        )
+//      }
+//      "get empty map from a block table with startsWith predicate" in {
+//        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
+//        val predicates = List(
+//          Predicate(
+//            field = "hash",
+//            operation = OperationType.startsWith,
+//            set = List("YZuUeF"),
+//            inverse = false
+//          )
+//        )
+//
+//        val populateAndTest = for {
+//          _ <- Tables.Blocks ++= blocksTmp
+//          found <- sut.selectWithPredicates(
+//            "tezos",
+//            Tables.Blocks.baseTableRow.tableName,
+//            columns,
+//            predicates,
+//            List.empty,
+//            List.empty,
+//            None,
+//            None,
+//            OutputType.json,
+//            3
+//          )
+//        } yield found
+//
+//        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+//        result shouldBe 'empty
+//      }
+//      "get map from a block table with endsWith predicate" in {
+//        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
+//        val predicates = List(
+//          Predicate(
+//            field = "hash",
+//            operation = OperationType.endsWith,
+//            set = List("ZuUeF"),
+//            inverse = false
+//          )
+//        )
+//
+//        val populateAndTest = for {
+//          _ <- Tables.Blocks ++= blocksTmp
+//          found <- sut.selectWithPredicates(
+//            "tezos",
+//            Tables.Blocks.baseTableRow.tableName,
+//            columns,
+//            predicates,
+//            List.empty,
+//            List.empty,
+//            None,
+//            None,
+//            OutputType.json,
+//            3
+//          )
+//        } yield found
+//
+//        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+//        result shouldBe List(
+//          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
+//        )
+//      }
+//      "get empty map from a block table with endsWith predicate" in {
+//        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
+//        val predicates = List(
+//          Predicate(
+//            field = "hash",
+//            operation = OperationType.endsWith,
+//            set = List("R0NpYZ"),
+//            inverse = false
+//          )
+//        )
+//
+//        val populateAndTest = for {
+//          _ <- Tables.Blocks ++= blocksTmp
+//          found <- sut.selectWithPredicates(
+//            "tezos",
+//            Tables.Blocks.baseTableRow.tableName,
+//            columns,
+//            predicates,
+//            List.empty,
+//            List.empty,
+//            None,
+//            None,
+//            OutputType.json,
+//            3
+//          )
+//        } yield found
+//
+//        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+//        result shouldBe 'empty
+//      }
 
       val accRow = AccountsRow(
         accountId = 1.toString,
