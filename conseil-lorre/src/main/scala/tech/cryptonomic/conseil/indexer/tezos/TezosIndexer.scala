@@ -113,6 +113,15 @@ class TezosIndexer private (
       iteration: Int,
       accountResetEvents: AccountResetEvents
   ): Unit = {
+    /*
+take x blocks
+check for
+ */
+    val backtrackLevels = lorreConf.forkHandling.backtrackLevels
+    val backtrackInterval = lorreConf.forkHandling.backtrackInterval
+
+//    def processForks
+
     val processing = for {
       maxLevel <- indexedData.fetchMaxLevel
       reloadedAccountEvents <- processFork(maxLevel)
@@ -156,6 +165,8 @@ class TezosIndexer private (
         logger.info("Synchronization is done")
     }
   }
+
+
 
   /** Search for any possible forks happened between the last sync cycle and now.
     * If a fork is detected, corrections will be applied.

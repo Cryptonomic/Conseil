@@ -37,4 +37,16 @@ abstract class ForkHandler[Eff[_]: Monad, BlockId: Eq](
           amendment <- amender.amendFork(forkLevel, forkBlockId, currentHeadLevel, Instant.now())
         } yield amendment.some
     }
+
+  def handleForkFrom(currentHeadLevel: Long, depth: Long) = {
+    detector.checkDepthLevel(currentHeadLevel, depth).flatMap {
+      case Nil => Option.empty.pure[Eff]
+      case xs =>
+        val forkLevel = xs.min
+        for {
+          forkBlockId <- indexerSearch.searchForLevel(forkLevel)
+          amendment <- amender.amendFork(forkLevel, forkBlockId, currentHeadLevel, Instant.now())
+        } yield amendment.some
+    }
+  }
 }

@@ -24,6 +24,7 @@ final case class LorreConfiguration(
     blockRightsFetching: BakingAndEndorsingRights,
     tokenContracts: TokenContracts,
     metadataFetching: TzipMetadata,
+    forkHandling: ForkHandling,
     enabledFeatures: Features
 )
 
@@ -65,6 +66,11 @@ final case class TokenContracts(
     url: String,
     initialDelay: FiniteDuration,
     interval: FiniteDuration
+)
+
+final case class ForkHandling(
+    backtrackLevels: Int,
+    backtrackInterval: Int
 )
 
 /** sodium library references */

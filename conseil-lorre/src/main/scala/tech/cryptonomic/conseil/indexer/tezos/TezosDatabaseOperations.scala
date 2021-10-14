@@ -422,6 +422,11 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     }
   }
 
+
+  def getLastBlocks(amount: Int): DBIO[Seq[Tables.BlocksRow]] = {
+    Tables.Blocks.sortBy(b => b.level.desc).take(amount).result
+  }
+
   /**
     * Upserts baking rights to the database
     * @param bakingRightsMap mapping of hash to bakingRights list

@@ -68,6 +68,14 @@ class ForkDetector[Eff[_]: Monad, BlockId: Eq](
         else ForkedId
     )
 
+  def checkDepthLevel(level: Long, depth: Long): Eff[List[Long]] = {
+    val sth = for {
+      x <- level to (level - depth) by -1
+    } yield checkOnLevel(x).map(x -> _)
+    sth.toList.sequence.map(_.filter(x => x._2 == ForkedId).map(_._1))
+  }
+
+
   /** Assuming a fork was detected for a specific level (i.e. high),
     * the algorithm backtracks to find the exact lowest level where the
     * locally indexed blocks start diverging from the forked blockchain.
