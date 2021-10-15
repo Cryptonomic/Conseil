@@ -194,6 +194,25 @@ check for
       } else emptyOutcome
   }
 
+  private def processLastForks(maxIndexedLevel: BlockLevel, depth: Long): Future[Option[AccountResetEvents]] = {
+    lazy val emptyOutcome = Future.successful(Option.empty)
+    if (featureFlags.forkHandlingIsOn && maxIndexedLevel != indexedData.defaultBlockLevel)
+      forkHandler.handleForkFrom(maxIndexedLevel, depth).flatMap {
+        case None =>
+          logger.debug(s"No fork detected up to $maxIndexedLevel")
+          emptyOutcome
+        case Some((forkId, invalidations)) =>
+          logger.warn(
+            s"A fork was detected somewhere before the currently indexed level $maxIndexedLevel. $invalidations entries were invalidated and connected to fork $forkId"
+          )
+          /* locally processed events were invalidated on db, we need to reload them afresh */
+          accountsResetHandler
+            .unprocessedResetRequestLevels(lorreConf.chainEvents)
+            .map(Some(_))
+
+      } else emptyOutcome
+  }
+
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
     * Additionally stores account references that needs updating, too
