@@ -113,18 +113,13 @@ class TezosIndexer private (
       iteration: Int,
       accountResetEvents: AccountResetEvents
   ): Unit = {
-    /*
-take x blocks
-check for
- */
     val backtrackLevels = lorreConf.forkHandling.backtrackLevels
     val backtrackInterval = lorreConf.forkHandling.backtrackInterval
-
-//    def processForks
 
     val processing = for {
       maxLevel <- indexedData.fetchMaxLevel
       reloadedAccountEvents <- processFork(maxLevel)
+
       unhandled <- accountsResetHandler.applyUnhandledAccountsResets(
         reloadedAccountEvents.getOrElse(accountResetEvents)
       )
