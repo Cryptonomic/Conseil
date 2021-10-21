@@ -68,11 +68,17 @@ class ForkDetector[Eff[_]: Monad, BlockId: Eq](
         else ForkedId
     )
 
+  /**
+   * Checks if there is a fork from given level down to (level - depth)
+   * @param level - from which level we start check for fork
+   * @param depth - how deep we check for forks
+   * @return a list of failed fork checks of levels
+   */
   def checkDepthLevel(level: Long, depth: Long): Eff[List[Long]] = {
-    val sth = for {
+    val result = for {
       x <- level to (level - depth) by -1
     } yield checkOnLevel(x).map(x -> _)
-    sth.toList.sequence.map(_.filter(x => x._2 == ForkedId).map(_._1))
+    result.toList.sequence.map(_.filter(x => x._2 == ForkedId).map(_._1))
   }
 
 

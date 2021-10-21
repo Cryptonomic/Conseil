@@ -119,9 +119,10 @@ class TezosIndexer private (
     val processing = for {
       maxLevel <- indexedData.fetchMaxLevel
       reloadedAccountEvents <- processFork(maxLevel)
+      lastReloadedAccountEvents <- processLastForks(maxLevel, backtrackLevels, backtrackInterval, iteration)
 
       unhandled <- accountsResetHandler.applyUnhandledAccountsResets(
-        reloadedAccountEvents.getOrElse(accountResetEvents)
+        reloadedAccountEvents.orElse(lastReloadedAccountEvents).getOrElse(accountResetEvents)
       )
       _ <- processTezosBlocks(maxLevel)
       _ <- feeOperations
@@ -189,16 +190,18 @@ class TezosIndexer private (
       } else emptyOutcome
   }
 
-  private def processLastForks(maxIndexedLevel: BlockLevel, depth: Long): Future[Option[AccountResetEvents]] = {
+  private def processLastForks(maxIndexedLevel: BlockLevel, depth: Long, interval: Long, iteration: Long): Future[Option[AccountResetEvents]] = {
     lazy val emptyOutcome = Future.successful(Option.empty)
-    if (featureFlags.forkHandlingIsOn && maxIndexedLevel != indexedData.defaultBlockLevel)
+    println(s"checking iteration $iteration")
+    println(s"$featureFlags")
+    if (featureFlags.forkHandlingIsOn && maxIndexedLevel != indexedData.defaultBlockLevel && iteration % interval == 0)
       forkHandler.handleForkFrom(maxIndexedLevel, depth).flatMap {
         case None =>
-          logger.debug(s"No fork detected up to $maxIndexedLevel")
+          println(s"AFH: No fork detected up to $maxIndexedLevel")
           emptyOutcome
         case Some((forkId, invalidations)) =>
-          logger.warn(
-            s"A fork was detected somewhere before the currently indexed level $maxIndexedLevel. $invalidations entries were invalidated and connected to fork $forkId"
+          println(
+            s"AFH: A fork was detected somewhere before the currently indexed level $maxIndexedLevel. $invalidations entries were invalidated and connected to fork $forkId"
           )
           /* locally processed events were invalidated on db, we need to reload them afresh */
           accountsResetHandler
