@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.indexer.config
 
 import tech.cryptonomic.conseil.common.config.ChainEvent
+import tech.cryptonomic.conseil.indexer.config.ConfigUtil.Depth._
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -12,7 +13,7 @@ final case class NetworkCallsConfiguration(
 )
 
 /** generic configuration for the lorre */
-final case class LorreConfiguration(
+case class LorreConfiguration(
     sleepInterval: FiniteDuration,
     bootupRetryInterval: FiniteDuration,
     bootupConnectionCheckTimeout: FiniteDuration,
@@ -27,6 +28,37 @@ final case class LorreConfiguration(
     forkHandling: ForkHandling,
     enabledFeatures: Features
 )
+
+final case class LorreConfigurationHelper(
+    sleepInterval: FiniteDuration,
+    bootupRetryInterval: FiniteDuration,
+    bootupConnectionCheckTimeout: FiniteDuration,
+    feeUpdateInterval: Int,
+    feesAverageTimeWindow: FiniteDuration,
+    depth: String,
+    headHash: Option[String],
+    chainEvents: List[ChainEvent],
+    blockRightsFetching: BakingAndEndorsingRights,
+    tokenContracts: TokenContracts,
+    metadataFetching: TzipMetadata,
+    enabledFeatures: Features
+) {
+  def toConf: LorreConfiguration =
+    new LorreConfiguration(
+      sleepInterval,
+      bootupRetryInterval,
+      bootupConnectionCheckTimeout,
+      feeUpdateInterval,
+      feesAverageTimeWindow,
+      depth.toDepth.getOrElse(Newest),
+      headHash,
+      chainEvents,
+      blockRightsFetching,
+      tokenContracts,
+      metadataFetching,
+      enabledFeatures
+    )
+}
 
 /** configuration for fetching baking and endorsing rights */
 final case class BakingAndEndorsingRights(
