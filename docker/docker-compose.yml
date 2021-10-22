@@ -60,9 +60,11 @@ services:
       CONSEIL_XTZ_PORT: 80
       CONSEIL_XTZ_KEY: "conseil"
 
-      CONSEIL_XTZ_NETWORK: "mainnet"
+      CONSEIL_API_ALLOW_BLANK_KEYS: "true"
+
+      CONSEIL_XTZ_NETWORK: "granadanet"
       CONSEIL_XTZ_ENABLED: "true"
-      CONSEIL_XTZ_NODE_HOSTNAME: "tezos-staging.cryptonomic-infra.tech"
+      CONSEIL_XTZ_NODE_HOSTNAME: "tezos-granada.cryptonomic-infra.tech"
       CONSEIL_XTZ_NODE_PORT: 443
 
       JVM_XMX: "4G"
@@ -107,13 +109,16 @@ services:
       CONSEIL_XTZ_DB_USER: "conseiluser"
       CONSEIL_XTZ_DB_PASSWORD: "p@ssw0rd"
 
-      CONSEIL_XTZ_NETWORK: "carthagenet"
+      CONSEIL_LORRE_DEPTH: "newest"
+      CONSEIL_LORRE_HEAD_HASH: "head"
+
+      CONSEIL_XTZ_NETWORK: "granadanet"
       CONSEIL_XTZ_ENABLED: "true"
-      CONSEIL_XTZ_NODE_HOSTNAME: "tezos-staging.cryptonomic-infra.tech"
+      CONSEIL_XTZ_NODE_HOSTNAME: "tezos-granada.cryptonomic-infra.tech"
       CONSEIL_XTZ_NODE_PORT: 443
 
       LORRE_RUNNER_PLATFORM: "tezos"
-      LORRE_RUNNER_NETWORK: "carthagenet"
+      LORRE_RUNNER_NETWORK: "granadanet"
 
       # Feature-Flag: set to false to disable the concurrent computation of future endorsement/baking rights
       CONSEIL_LORRE_BLOCK_RIGHTS_FETCHING_ENABLED: "true"
