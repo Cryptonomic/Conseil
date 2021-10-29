@@ -1486,7 +1486,9 @@ trait Tables {
     *  @param blockLevel Database column block_level SqlType(int8), Default(None)
     *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
-    *  @param period Database column period SqlType(int4), Default(None) */
+    *  @param period Database column period SqlType(int4), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None) */
   case class BigMapContentsRow(
       bigMapId: scala.math.BigDecimal,
       key: String,
@@ -1497,7 +1499,9 @@ trait Tables {
       blockLevel: Option[Long] = None,
       timestamp: Option[java.sql.Timestamp] = None,
       cycle: Option[Int] = None,
-      period: Option[Int] = None
+      period: Option[Int] = None,
+      forkId: String,
+      invalidatedAsof: Option[java.sql.Timestamp] = None
   )
 
   /** GetResult implicit for fetching BigMapContentsRow objects using plain SQL queries */
@@ -1521,7 +1525,9 @@ trait Tables {
         <<?[Long],
         <<?[java.sql.Timestamp],
         <<?[Int],
-        <<?[Int]
+        <<?[Int],
+        <<[String],
+        <<?[java.sql.Timestamp]
       )
     )
   }
@@ -1530,7 +1536,20 @@ trait Tables {
   class BigMapContents(_tableTag: Tag)
       extends profile.api.Table[BigMapContentsRow](_tableTag, Some("tezos"), "big_map_contents") {
     def * =
-      (bigMapId, key, keyHash, operationGroupId, value, valueMicheline, blockLevel, timestamp, cycle, period) <> (BigMapContentsRow.tupled, BigMapContentsRow.unapply)
+      (
+        bigMapId,
+        key,
+        keyHash,
+        operationGroupId,
+        value,
+        valueMicheline,
+        blockLevel,
+        timestamp,
+        cycle,
+        period,
+        forkId,
+        invalidatedAsof
+      ) <> (BigMapContentsRow.tupled, BigMapContentsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -1545,11 +1564,14 @@ trait Tables {
           blockLevel,
           timestamp,
           cycle,
-          period
+          period,
+          Rep.Some(forkId),
+          invalidatedAsof
         )
       ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => BigMapContentsRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8, _9, _10)))
+          import r._;
+          _1.map(_ => BigMapContentsRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8, _9, _10, _11.get, _12)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1584,8 +1606,15 @@ trait Tables {
     /** Database column period SqlType(int4), Default(None) */
     val period: Rep[Option[Int]] = column[Option[Int]]("period", O.Default(None))
 
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
+
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
     /** Primary key of BigMapContents (database name big_map_contents_pkey) */
-    val pk = primaryKey("big_map_contents_pkey", (bigMapId, key))
+    val pk = primaryKey("big_map_contents_pkey", (bigMapId, key, forkId))
 
     /** Index over (bigMapId) (database name big_map_id_idx) */
     val index1 = index("big_map_id_idx", bigMapId)
@@ -1609,7 +1638,9 @@ trait Tables {
     *  @param blockLevel Database column block_level SqlType(int8), Default(None)
     *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
-    *  @param period Database column period SqlType(int4), Default(None) */
+    *  @param period Database column period SqlType(int4), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None) */
   case class BigMapContentsHistoryRow(
       bigMapId: scala.math.BigDecimal,
       key: String,
@@ -1619,7 +1650,9 @@ trait Tables {
       blockLevel: Option[Long] = None,
       timestamp: Option[java.sql.Timestamp] = None,
       cycle: Option[Int] = None,
-      period: Option[Int] = None
+      period: Option[Int] = None,
+      forkId: String,
+      invalidatedAsof: Option[java.sql.Timestamp] = None
   )
 
   /** GetResult implicit for fetching BigMapContentsHistoryRow objects using plain SQL queries */
@@ -1642,7 +1675,9 @@ trait Tables {
         <<?[Long],
         <<?[java.sql.Timestamp],
         <<?[Int],
-        <<?[Int]
+        <<?[Int],
+        <<[String],
+        <<?[java.sql.Timestamp]
       )
     )
   }
@@ -1651,17 +1686,31 @@ trait Tables {
   class BigMapContentsHistory(_tableTag: Tag)
       extends profile.api.Table[BigMapContentsHistoryRow](_tableTag, Some("tezos"), "big_map_contents_history") {
     def * =
-      (bigMapId, key, keyHash, operationGroupId, value, blockLevel, timestamp, cycle, period) <> (BigMapContentsHistoryRow.tupled, BigMapContentsHistoryRow.unapply)
+      (bigMapId, key, keyHash, operationGroupId, value, blockLevel, timestamp, cycle, period, forkId, invalidatedAsof) <> (BigMapContentsHistoryRow.tupled, BigMapContentsHistoryRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(bigMapId), Rep.Some(key), keyHash, operationGroupId, value, blockLevel, timestamp, cycle, period)).shaped
-        .<>(
-          { r =>
-            import r._; _1.map(_ => BigMapContentsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8, _9)))
-          },
-          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      (
+        (
+          Rep.Some(bigMapId),
+          Rep.Some(key),
+          keyHash,
+          operationGroupId,
+          value,
+          blockLevel,
+          timestamp,
+          cycle,
+          period,
+          Rep.Some(forkId),
+          invalidatedAsof
         )
+      ).shaped.<>(
+        { r =>
+          import r._;
+          _1.map(_ => BigMapContentsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8, _9, _10.get, _11)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
 
     /** Database column big_map_id SqlType(numeric) */
     val bigMapId: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("big_map_id")
@@ -1689,46 +1738,80 @@ trait Tables {
 
     /** Database column period SqlType(int4), Default(None) */
     val period: Rep[Option[Int]] = column[Option[Int]]("period", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
+
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
   }
 
   /** Collection-like TableQuery object for table BigMapContentsHistory */
   lazy val BigMapContentsHistory = new TableQuery(tag => new BigMapContentsHistory(tag))
 
   /** Entity class storing rows of table BigMaps
-    *  @param bigMapId Database column big_map_id SqlType(numeric), PrimaryKey
+    *  @param bigMapId Database column big_map_id SqlType(numeric)
     *  @param keyType Database column key_type SqlType(varchar), Default(None)
-    *  @param valueType Database column value_type SqlType(varchar), Default(None) */
+    *  @param valueType Database column value_type SqlType(varchar), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar)
+    *  @param blockLevel Database column block_level SqlType(int8), Default(None)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None) */
   case class BigMapsRow(
       bigMapId: scala.math.BigDecimal,
       keyType: Option[String] = None,
-      valueType: Option[String] = None
+      valueType: Option[String] = None,
+      forkId: String,
+      blockLevel: Option[Long] = None,
+      invalidatedAsof: Option[java.sql.Timestamp] = None
   )
 
   /** GetResult implicit for fetching BigMapsRow objects using plain SQL queries */
-  implicit def GetResultBigMapsRow(implicit e0: GR[scala.math.BigDecimal], e1: GR[Option[String]]): GR[BigMapsRow] =
-    GR { prs =>
-      import prs._
-      BigMapsRow.tupled((<<[scala.math.BigDecimal], <<?[String], <<?[String]))
-    }
+  implicit def GetResultBigMapsRow(
+      implicit e0: GR[scala.math.BigDecimal],
+      e1: GR[Option[String]],
+      e2: GR[String],
+      e3: GR[Option[Long]],
+      e4: GR[Option[java.sql.Timestamp]]
+  ): GR[BigMapsRow] = GR { prs =>
+    import prs._
+    BigMapsRow.tupled(
+      (<<[scala.math.BigDecimal], <<?[String], <<?[String], <<[String], <<?[Long], <<?[java.sql.Timestamp])
+    )
+  }
 
   /** Table description of table big_maps. Objects of this class serve as prototypes for rows in queries. */
   class BigMaps(_tableTag: Tag) extends profile.api.Table[BigMapsRow](_tableTag, Some("tezos"), "big_maps") {
-    def * = (bigMapId, keyType, valueType) <> (BigMapsRow.tupled, BigMapsRow.unapply)
+    def * =
+      (bigMapId, keyType, valueType, forkId, blockLevel, invalidatedAsof) <> (BigMapsRow.tupled, BigMapsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(bigMapId), keyType, valueType)).shaped.<>({ r =>
-        import r._; _1.map(_ => BigMapsRow.tupled((_1.get, _2, _3)))
+      ((Rep.Some(bigMapId), keyType, valueType, Rep.Some(forkId), blockLevel, invalidatedAsof)).shaped.<>({ r =>
+        import r._; _1.map(_ => BigMapsRow.tupled((_1.get, _2, _3, _4.get, _5, _6)))
       }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
 
-    /** Database column big_map_id SqlType(numeric), PrimaryKey */
-    val bigMapId: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("big_map_id", O.PrimaryKey)
+    /** Database column big_map_id SqlType(numeric) */
+    val bigMapId: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("big_map_id")
 
     /** Database column key_type SqlType(varchar), Default(None) */
     val keyType: Rep[Option[String]] = column[Option[String]]("key_type", O.Default(None))
 
     /** Database column value_type SqlType(varchar), Default(None) */
     val valueType: Rep[Option[String]] = column[Option[String]]("value_type", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
+
+    /** Database column block_level SqlType(int8), Default(None) */
+    val blockLevel: Rep[Option[Long]] = column[Option[Long]]("block_level", O.Default(None))
+
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
+    /** Primary key of BigMaps (database name big_maps_pkey) */
+    val pk = primaryKey("big_maps_pkey", (bigMapId, forkId))
   }
 
   /** Collection-like TableQuery object for table BigMaps */

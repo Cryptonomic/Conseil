@@ -71,7 +71,9 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
                       it.blockLevel,
                       it.timestamp,
                       it.cycle,
-                      it.period
+                      it.period,
+                      it.forkId,
+                      it.invalidatedAsof
                     )
                 )
                 .result

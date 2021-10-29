@@ -447,7 +447,10 @@ class GenericPlatformDiscoveryOperationsTest
           Set(
             Attribute("big_map_id", "Big map id", DataType.Decimal, None, KeyType.UniqueKey, "big_maps"),
             Attribute("key_type", "Key type", DataType.String, None, KeyType.NonKey, "big_maps"),
-            Attribute("value_type", "Value type", DataType.String, None, KeyType.NonKey, "big_maps")
+            Attribute("value_type", "Value type", DataType.String, None, KeyType.NonKey, "big_maps"),
+            Attribute("fork_id", "Fork id", DataType.String, None, KeyType.UniqueKey, "big_maps"),
+            Attribute("block_level", "Block level", DataType.LargeInt, None, KeyType.NonKey, "big_maps"),
+            Attribute("invalidated_asof", "Invalidated asof", DataType.DateTime, None, KeyType.NonKey, "big_maps")
           )
         )
       }
@@ -472,7 +475,9 @@ class GenericPlatformDiscoveryOperationsTest
             Attribute("block_level", "Block level", DataType.LargeInt, None, KeyType.NonKey, "big_map_contents"),
             Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "big_map_contents"),
             Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "big_map_contents"),
-            Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "big_map_contents")
+            Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "big_map_contents"),
+            Attribute("fork_id", "Fork id", DataType.String, None, KeyType.UniqueKey, "big_map_contents"),
+            Attribute("invalidated_asof", "Invalidated asof", DataType.DateTime, None, KeyType.NonKey, "big_map_contents")
           )
         )
       }

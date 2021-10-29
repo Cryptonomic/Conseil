@@ -37,22 +37,4 @@ abstract class ForkHandler[Eff[_]: Monad, BlockId: Eq](
           amendment <- amender.amendFork(forkLevel, forkBlockId, currentHeadLevel, Instant.now())
         } yield amendment.some
     }
-
-  /**
-   * Looks for forks in from head down to (head - depth), finds mn level when fork happened and amends forks
-   * @param currentHeadLevel current level of the latest block
-   * @param depth how deep we want to search for the forks
-   * @return None if no fork happened, or the result of data amendment
-   */
-  def handleForkFrom(currentHeadLevel: Long, depth: Long): Eff[Option[ForkAmender.Results]] = {
-    detector.checkDepthLevel(currentHeadLevel, depth).flatMap {
-      case Nil => Option.empty.pure[Eff]
-      case xs =>
-        val forkLevel = xs.min
-        for {
-          forkBlockId <- indexerSearch.searchForLevel(forkLevel)
-          amendment <- amender.amendFork(forkLevel, forkBlockId, currentHeadLevel, Instant.now())
-        } yield amendment.some
-    }
-  }
 }

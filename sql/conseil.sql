@@ -533,9 +533,13 @@ CREATE SEQUENCE tezos.operations_operation_id_seq
 ALTER SEQUENCE tezos.operations_operation_id_seq OWNED BY tezos.operations.operation_id;
 
 CREATE TABLE tezos.big_maps (
-    big_map_id numeric PRIMARY KEY,
+    big_map_id numeric,
     key_type character varying,
-    value_type character varying
+    value_type character varying,
+    fork_id character varying NOT NULL,
+    block_level bigint,
+    invalidated_asof timestamp,
+    PRIMARY KEY (big_map_id, fork_id)
 );
 
 CREATE TABLE tezos.big_map_contents (
@@ -549,7 +553,9 @@ CREATE TABLE tezos.big_map_contents (
     "timestamp" timestamp without time zone,
     cycle integer,
     period integer,
-    PRIMARY KEY (big_map_id, key)
+    fork_id character varying NOT NULL,
+    invalidated_asof timestamp,
+    PRIMARY KEY (big_map_id, key, fork_id)
 );
 
 CREATE TABLE tezos.big_map_contents_history (
@@ -561,7 +567,9 @@ CREATE TABLE tezos.big_map_contents_history (
     block_level bigint,
     "timestamp" timestamp without time zone,
     cycle integer,
-    period integer
+    period integer,
+    fork_id character varying NOT NULL,
+    invalidated_asof timestamp
 );
 
 CREATE INDEX big_map_id_idx ON tezos.big_map_contents USING btree (big_map_id);

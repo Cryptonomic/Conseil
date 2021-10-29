@@ -23,7 +23,11 @@ import tech.cryptonomic.conseil.indexer.config._
 import tech.cryptonomic.conseil.indexer.forks.ForkHandler
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors._
-import tech.cryptonomic.conseil.indexer.tezos.forks.{TezosForkInvalidatingAmender, TezosForkSearchEngine}
+import tech.cryptonomic.conseil.indexer.tezos.forks.{
+  BacktracingForkProcessor,
+  TezosForkInvalidatingAmender,
+  TezosForkSearchEngine
+}
 import tech.cryptonomic.conseil.indexer.tezos.processing._
 import tech.cryptonomic.conseil.indexer.tezos.processing.AccountsResetHandler.{AccountResetEvents, UnhandledResetEvents}
 
@@ -58,6 +62,7 @@ class TezosIndexer private (
     accountsResetHandler: AccountsResetHandler,
     registeredTokensFetcher: RegisteredTokensFetcher,
     forkHandler: ForkHandler[Future, TezosBlockHash],
+    backtrackingForkProcessor: BacktracingForkProcessor,
     feeOperations: TezosFeeOperations,
     terminationSequence: () => Future[ShutdownComplete]
 )(
@@ -162,8 +167,6 @@ class TezosIndexer private (
     }
   }
 
-
-
   /** Search for any possible forks happened between the last sync cycle and now.
     * If a fork is detected, corrections will be applied.
     *
@@ -190,12 +193,15 @@ class TezosIndexer private (
       } else emptyOutcome
   }
 
-  private def processLastForks(maxIndexedLevel: BlockLevel, depth: Long, interval: Long, iteration: Long): Future[Option[AccountResetEvents]] = {
+  private def processLastForks(
+      maxIndexedLevel: BlockLevel,
+      depth: Long,
+      interval: Long,
+      iteration: Long
+  ): Future[Option[AccountResetEvents]] = {
     lazy val emptyOutcome = Future.successful(Option.empty)
-    println(s"checking iteration $iteration")
-    println(s"$featureFlags")
     if (featureFlags.forkHandlingIsOn && maxIndexedLevel != indexedData.defaultBlockLevel && iteration % interval == 0)
-      forkHandler.handleForkFrom(maxIndexedLevel, depth).flatMap {
+      backtrackingForkProcessor.handleForkFrom(maxIndexedLevel, depth).flatMap {
         case None =>
           println(s"AFH: No fork detected up to $maxIndexedLevel")
           emptyOutcome
@@ -404,6 +410,14 @@ object TezosIndexer extends ConseilLogSupport {
         amender = TezosForkInvalidatingAmender(db)
       )
 
+    val backtracingForkProcessor = new BacktracingForkProcessor(
+      network = selectedNetwork,
+      node = new TezosNodeInterface(conf, callsConf, streamingClientConf),
+      tezosIndexedDataOperations = indexedData,
+      indexerSearch = forkSearchEngine.idsIndexerSearch,
+      amender = TezosForkInvalidatingAmender(db)
+    )(dispatcher)
+
     val feeOperations = new TezosFeeOperations(db)
 
     /* the shutdown sequence to free resources */
@@ -479,6 +493,7 @@ object TezosIndexer extends ConseilLogSupport {
       accountsResetHandler,
       registeredTokensFetcher,
       forkHandler,
+      backtracingForkProcessor,
       feeOperations,
       gracefulTermination
     )

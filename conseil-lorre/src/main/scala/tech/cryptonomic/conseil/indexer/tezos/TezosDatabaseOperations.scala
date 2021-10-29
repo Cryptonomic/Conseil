@@ -422,11 +422,6 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     }
   }
 
-
-  def getLastBlocks(amount: Int): DBIO[Seq[Tables.BlocksRow]] = {
-    Tables.Blocks.sortBy(b => b.level.desc).take(amount).result
-  }
-
   /**
     * Upserts baking rights to the database
     * @param bakingRightsMap mapping of hash to bakingRights list
@@ -1030,6 +1025,9 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     lazy val tokenBalances = EntityTableInvalidator(TokenBalances)(_.blockLevel, _.invalidatedAsof, _.forkId)
     lazy val governance = EntityTableInvalidator(Governance)(_.level.ifNull(-1L), _.invalidatedAsof, _.forkId)
     lazy val fees = EntityTableInvalidator(Fees)(_.level.ifNull(-1L), _.invalidatedAsof, _.forkId)
+    lazy val bigMaps = EntityTableInvalidator(BigMaps)(_.blockLevel.ifNull(-1L), _.invalidatedAsof, _.forkId)
+    lazy val bigMapContents = EntityTableInvalidator(BigMapContents)(_.blockLevel.ifNull(-1L), _.invalidatedAsof, _.forkId)
+    lazy val bigMapContentsHistory = EntityTableInvalidator(BigMapContentsHistory)(_.blockLevel.ifNull(-1L), _.invalidatedAsof, _.forkId)
 
     /** Deletes entries for the registry of processed chain events.
       * Due to a fork, those events will need be processed again over the new fork
