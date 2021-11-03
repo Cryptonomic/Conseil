@@ -12,6 +12,16 @@ import tech.cryptonomic.conseil.indexer.forks.ForkDetector.SearchBlockId
 
 import scala.concurrent.{ExecutionContext, Future}
 
+/**
+ * Class which handles processing forks with backtracing
+ *
+ * @param network tezos network
+ * @param node tezos RPC interface
+ * @param tezosIndexedDataOperations indexed data ops
+ * @param indexerSearch provides search through indexed data
+ * @param amender fork amender
+ * @param ec execution context
+ */
 class BacktracingForkProcessor(
     val network: String,
     val node: TezosRPCInterface,
@@ -55,6 +65,12 @@ class BacktracingForkProcessor(
     }.map(_.filter(_ > 0))
   }
 
+  /**
+   * Searches for the first level from head to (head - depth) if there is difference and amends fork
+   * @param currentHeadLevel level of the currently stored head
+   * @param depth depth for the search
+   * @return
+   */
   def handleForkFrom(currentHeadLevel: Long, depth: Long): Future[Option[ForkAmender.Results]] = {
     checkDepthLevel(currentHeadLevel, depth).flatMap {
       case Nil => Option.empty.pure[Future]

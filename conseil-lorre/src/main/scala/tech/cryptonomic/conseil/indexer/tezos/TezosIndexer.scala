@@ -193,6 +193,14 @@ class TezosIndexer private (
       } else emptyOutcome
   }
 
+  /**
+   * Searches for fork between indexed head down to (head - depth) every [[interval]] of [[iteration]]
+   * @param maxIndexedLevel level of the currently indexed head
+   * @param depth how deep we look for forks from the current head
+   * @param interval every which iteration are we checking for forks
+   * @param iteration which iteration of main loop are we running
+   * @return
+   */
   private def processLastForks(
       maxIndexedLevel: BlockLevel,
       depth: Long,
@@ -203,11 +211,11 @@ class TezosIndexer private (
     if (featureFlags.forkHandlingIsOn && maxIndexedLevel != indexedData.defaultBlockLevel && iteration % interval == 0)
       backtrackingForkProcessor.handleForkFrom(maxIndexedLevel, depth).flatMap {
         case None =>
-          println(s"AFH: No fork detected up to $maxIndexedLevel")
+          logger.info(s"No local fork detected up to $maxIndexedLevel")
           emptyOutcome
         case Some((forkId, invalidations)) =>
-          println(
-            s"AFH: A fork was detected somewhere before the currently indexed level $maxIndexedLevel. $invalidations entries were invalidated and connected to fork $forkId"
+          logger.info(
+            s" A local fork was detected somewhere before the currently indexed level $maxIndexedLevel. $invalidations entries were invalidated and connected to fork $forkId"
           )
           /* locally processed events were invalidated on db, we need to reload them afresh */
           accountsResetHandler
