@@ -2,7 +2,7 @@ version: "3.1"
 
 services:
   conseil-api:
-    image: cryptonomictech/conseil:latest
+    image: cons:latest
     ports:
       - 80:80
     environment:
@@ -77,7 +77,7 @@ services:
       - conseil-net
 
   conseil-lorre:
-    image: cryptonomictech/conseil:latest
+    image: cons:latest
     environment:
       # List of supported environment variables:
 
@@ -119,6 +119,9 @@ services:
 
       LORRE_RUNNER_PLATFORM: "tezos"
       LORRE_RUNNER_NETWORK: "granadanet"
+
+      CONSEIL_LORRE_DEPTH: 1320
+      CONSEIL_LORRE_HEAD_HASH: "BMGvXZT9xqJeNNvEupHNLppwbmqnQR4sgd9XHyDWn818MBQDC27"
 
       # Feature-Flag: set to false to disable the concurrent computation of future endorsement/baking rights
       CONSEIL_LORRE_BLOCK_RIGHTS_FETCHING_ENABLED: "true"
