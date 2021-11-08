@@ -4,7 +4,7 @@ import java.sql.Timestamp
 
 import cats.implicits._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
-import tech.cryptonomic.conseil.common.tezos.Tables
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
@@ -45,7 +45,9 @@ object BigMapsConversions extends ConseilLogSupport {
             Tables.BigMapsRow(
               bigMapId = id,
               keyType = Some(toMichelsonScript[MichelsonExpression](key_type.expression)),
-              valueType = Some(toMichelsonScript[MichelsonExpression](value_type.expression))
+              valueType = Some(toMichelsonScript[MichelsonExpression](value_type.expression)),
+              forkId = Fork.mainForkId,
+              blockLevel = Some(ref.level)
             )
           )
         case BlockTagged(ref, (hash, _, BigMapAlloc(_, InvalidDecimal(json), _, _))) =>
@@ -86,7 +88,8 @@ object BigMapsConversions extends ConseilLogSupport {
               blockLevel = Some(ref.level),
               timestamp = ref.timestamp.map(Timestamp.from),
               cycle = ref.cycle,
-              period = ref.period
+              period = ref.period,
+              forkId = Fork.mainForkId
             )
           )
         case BlockTagged(ref, (hash, _, BigMapUpdate(_, _, _, InvalidDecimal(json), _))) =>

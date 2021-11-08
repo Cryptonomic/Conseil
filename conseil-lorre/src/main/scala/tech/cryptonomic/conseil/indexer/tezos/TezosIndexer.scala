@@ -23,7 +23,11 @@ import tech.cryptonomic.conseil.indexer.config._
 import tech.cryptonomic.conseil.indexer.forks.ForkHandler
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors._
-import tech.cryptonomic.conseil.indexer.tezos.forks.{TezosForkInvalidatingAmender, TezosForkSearchEngine}
+import tech.cryptonomic.conseil.indexer.tezos.forks.{
+  BacktracingForkProcessor,
+  TezosForkInvalidatingAmender,
+  TezosForkSearchEngine
+}
 import tech.cryptonomic.conseil.indexer.tezos.processing._
 import tech.cryptonomic.conseil.indexer.tezos.processing.AccountsResetHandler.{AccountResetEvents, UnhandledResetEvents}
 
@@ -58,6 +62,7 @@ class TezosIndexer private (
     accountsResetHandler: AccountsResetHandler,
     registeredTokensFetcher: RegisteredTokensFetcher,
     forkHandler: ForkHandler[Future, TezosBlockHash],
+    backtrackingForkProcessor: BacktracingForkProcessor,
     feeOperations: TezosFeeOperations,
     terminationSequence: () => Future[ShutdownComplete]
 )(
@@ -113,11 +118,16 @@ class TezosIndexer private (
       iteration: Int,
       accountResetEvents: AccountResetEvents
   ): Unit = {
+    val backtrackLevels = lorreConf.forkHandling.backtrackLevels
+    val backtrackInterval = lorreConf.forkHandling.backtrackInterval
+
     val processing = for {
       maxLevel <- indexedData.fetchMaxLevel
       reloadedAccountEvents <- processFork(maxLevel)
+      lastReloadedAccountEvents <- processLastForks(maxLevel, backtrackLevels, backtrackInterval, iteration)
+
       unhandled <- accountsResetHandler.applyUnhandledAccountsResets(
-        reloadedAccountEvents.getOrElse(accountResetEvents)
+        reloadedAccountEvents.orElse(lastReloadedAccountEvents).getOrElse(accountResetEvents)
       )
       _ <- processTezosBlocks(maxLevel)
       _ <- feeOperations
@@ -174,6 +184,38 @@ class TezosIndexer private (
         case Some((forkId, invalidations)) =>
           logger.warn(
             s"A fork was detected somewhere before the currently indexed level $maxIndexedLevel. $invalidations entries were invalidated and connected to fork $forkId"
+          )
+          /* locally processed events were invalidated on db, we need to reload them afresh */
+          accountsResetHandler
+            .unprocessedResetRequestLevels(lorreConf.chainEvents)
+            .map(Some(_))
+
+      } else emptyOutcome
+  }
+
+  /**
+   * Searches for fork between indexed head down to (head - depth) every [[interval]] of [[iteration]]
+   * @param maxIndexedLevel level of the currently indexed head
+   * @param depth how deep we look for forks from the current head
+   * @param interval every which iteration are we checking for forks
+   * @param iteration which iteration of main loop are we running
+   * @return
+   */
+  private def processLastForks(
+      maxIndexedLevel: BlockLevel,
+      depth: Long,
+      interval: Long,
+      iteration: Long
+  ): Future[Option[AccountResetEvents]] = {
+    lazy val emptyOutcome = Future.successful(Option.empty)
+    if (featureFlags.forkHandlingIsOn && maxIndexedLevel != indexedData.defaultBlockLevel && iteration % interval == 0)
+      backtrackingForkProcessor.handleForkFrom(maxIndexedLevel, depth).flatMap {
+        case None =>
+          logger.info(s"No local fork detected up to $maxIndexedLevel")
+          emptyOutcome
+        case Some((forkId, invalidations)) =>
+          logger.info(
+            s" A local fork was detected somewhere before the currently indexed level $maxIndexedLevel. $invalidations entries were invalidated and connected to fork $forkId"
           )
           /* locally processed events were invalidated on db, we need to reload them afresh */
           accountsResetHandler
@@ -376,6 +418,14 @@ object TezosIndexer extends ConseilLogSupport {
         amender = TezosForkInvalidatingAmender(db)
       )
 
+    val backtracingForkProcessor = new BacktracingForkProcessor(
+      network = selectedNetwork,
+      node = new TezosNodeInterface(conf, callsConf, streamingClientConf),
+      tezosIndexedDataOperations = indexedData,
+      indexerSearch = forkSearchEngine.idsIndexerSearch,
+      amender = TezosForkInvalidatingAmender(db)
+    )(dispatcher)
+
     val feeOperations = new TezosFeeOperations(db)
 
     /* the shutdown sequence to free resources */
@@ -451,6 +501,7 @@ object TezosIndexer extends ConseilLogSupport {
       accountsResetHandler,
       registeredTokensFetcher,
       forkHandler,
+      backtracingForkProcessor,
       feeOperations,
       gracefulTermination
     )

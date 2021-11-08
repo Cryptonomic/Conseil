@@ -70,7 +70,9 @@ class BigMapsOperationsTest
           BigMapsRow(
             bigMapId = BigDecimal(1),
             keyType = Some("address"),
-            valueType = Some("nat")
+            valueType = Some("nat"),
+            forkId = Fork.mainForkId,
+            blockLevel = Some(1)
           )
         )
       }
@@ -95,7 +97,8 @@ class BigMapsOperationsTest
         val initialBigMap = BigMapsRow(
           bigMapId = BigDecimal(1),
           keyType = Some("address"),
-          valueType = Some("nat")
+          valueType = Some("nat"),
+          forkId = Fork.mainForkId
         )
 
         val block = generateSingleBlock(1, testReferenceDateTime)
@@ -130,7 +133,8 @@ class BigMapsOperationsTest
             blockLevel = Some(block.data.header.level),
             timestamp = Some(Timestamp.from(block.data.header.timestamp.toInstant)),
             cycle = TezosOptics.Blocks.extractCycle(block),
-            period = TezosOptics.Blocks.extractPeriod(block.data.metadata)
+            period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
+            forkId = Fork.mainForkId
           )
         )
 
@@ -217,7 +221,8 @@ class BigMapsOperationsTest
         val initialBigMap = BigMapsRow(
           bigMapId = BigDecimal(tokenMap),
           keyType = Some("address"),
-          valueType = Some("pair (nat :balance) (map :approvals (address :spender) (nat :value))")
+          valueType = Some("pair (nat :balance) (map :approvals (address :spender) (nat :value))"),
+          forkId = Fork.mainForkId
         )
 
         val block = generateSingleBlock(1, testReferenceDateTime)
@@ -287,13 +292,15 @@ class BigMapsOperationsTest
         val initialBigMap = BigMapsRow(
           bigMapId = BigDecimal(1),
           keyType = Some("address"),
-          valueType = Some("nat")
+          valueType = Some("nat"),
+          forkId = Fork.mainForkId
         )
         val initialBigMapContent = BigMapContentsRow(
           bigMapId = BigDecimal(1),
           key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
           keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
-          value = Some("Pair 20 {}")
+          value = Some("Pair 20 {}"),
+          forkId = Fork.mainForkId
         )
 
         val populate = for {
@@ -342,7 +349,8 @@ class BigMapsOperationsTest
             blockLevel = Some(block.data.header.level),
             timestamp = Some(Timestamp.from(block.data.header.timestamp.toInstant)),
             cycle = TezosOptics.Blocks.extractCycle(block),
-            period = TezosOptics.Blocks.extractPeriod(block.data.metadata)
+            period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
+            forkId = Fork.mainForkId
           )
         )
       }
@@ -354,13 +362,15 @@ class BigMapsOperationsTest
         val initialBigMap = BigMapsRow(
           bigMapId = BigDecimal(1),
           keyType = Some("address"),
-          valueType = Some("nat")
+          valueType = Some("nat"),
+          forkId = Fork.mainForkId
         )
         val initialBigMapContent = BigMapContentsRow(
           bigMapId = BigDecimal(1),
           key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
           keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
-          value = Some("Pair 20 {}")
+          value = Some("Pair 20 {}"),
+          forkId = Fork.mainForkId
         )
 
         val populate = for {
@@ -431,7 +441,8 @@ class BigMapsOperationsTest
             blockLevel = Some(reverted.head.data.header.level),
             timestamp = Some(Timestamp.from(reverted.head.data.header.timestamp.toInstant)),
             cycle = TezosOptics.Blocks.extractCycle(reverted.head),
-            period = TezosOptics.Blocks.extractPeriod(reverted.head.data.metadata)
+            period = TezosOptics.Blocks.extractPeriod(reverted.head.data.metadata),
+            forkId = Fork.mainForkId
           )
         )
 
@@ -448,7 +459,8 @@ class BigMapsOperationsTest
                     BigMapsRow(
                       bigMapId = BigDecimal(i),
                       keyType = None,
-                      valueType = None
+                      valueType = None,
+                      forkId = Fork.mainForkId
                     )
                 )
 
@@ -458,7 +470,8 @@ class BigMapsOperationsTest
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
-            value = Some("Pair 20 {}")
+            value = Some("Pair 20 {}"),
+            forkId = Fork.mainForkId
           )
 
         //store the data
@@ -506,7 +519,8 @@ class BigMapsOperationsTest
             bigMapId = BigDecimal(2),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
-            value = Some("Pair 20 {}")
+            value = Some("Pair 20 {}"),
+            forkId = Fork.mainForkId
           )
         )
 
@@ -523,7 +537,8 @@ class BigMapsOperationsTest
                     BigMapsRow(
                       bigMapId = BigDecimal(i),
                       keyType = None,
-                      valueType = None
+                      valueType = None,
+                      forkId = Fork.mainForkId
                     )
                 )
 
@@ -533,13 +548,15 @@ class BigMapsOperationsTest
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
-            value = Some("Pair 10 {}")
+            value = Some("Pair 10 {}"),
+            forkId = Fork.mainForkId
           ),
           BigMapContentsRow(
             bigMapId = BigDecimal(2),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
-            value = Some("Pair 20 {}")
+            value = Some("Pair 20 {}"),
+            forkId = Fork.mainForkId
           )
         )
 
@@ -609,7 +626,8 @@ class BigMapsOperationsTest
             bigMapId = BigDecimal(3),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
-            value = Some("Pair 20 {}")
+            value = Some("Pair 20 {}"),
+            forkId = Fork.mainForkId
           )
         )
       }
@@ -625,7 +643,8 @@ class BigMapsOperationsTest
                     BigMapsRow(
                       bigMapId = BigDecimal(i),
                       keyType = None,
-                      valueType = None
+                      valueType = None,
+                      forkId = Fork.mainForkId
                     )
                 )
 
@@ -635,7 +654,8 @@ class BigMapsOperationsTest
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
-            value = Some("Pair 20 {}")
+            value = Some("Pair 20 {}"),
+            forkId = Fork.mainForkId
           )
 
         //the origination used for the generated sample is used to create the test big map

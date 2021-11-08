@@ -100,6 +100,44 @@ private[tezos] trait TezosBlocksDataFetchers {
 
   }
 
+  /** a fetcher of blocks range */
+  implicit def blocksRangeFetcher(headLevel: Long) = new FutureFetcher {
+    import TezosJsonDecoders.Circe.Blocks._
+
+    type Encoded = String
+    type In = Long
+    type Out = BlockData
+
+    private def makeUrl = (offset: Long) => s"blocks/${headLevel - offset}"
+
+    //fetch a future stream of values
+    override val fetchData = {
+      Kleisli(
+        offsets => {
+          logger.info(s"""Fetching blocks for range ${offsets.min} to ${offsets.max}""")
+          node.runBatchedGetQuery(network, offsets, makeUrl, fetchConcurrency).onError {
+            case err =>
+              val showBounds = offsets.onBounds((first, last) => s"$first to $last").getOrElse("unspecified")
+              logger
+                .error(
+                  s"I encountered problems while fetching blocks data from $network, for offsets $showBounds from the $headLevel. The error says ${err.getMessage}"
+                )
+                .pure[Future]
+          }
+        }
+      )
+    }
+
+    // decode with `JsonDecoders`
+    override val decodeData = Kleisli { json =>
+      decodeLiftingTo[Future, Out](json)
+        .onError(
+          logErrorOnJsonDecoding(s"I fetched a block definition from tezos node that I'm unable to decode: $json")
+        )
+    }
+
+  }
+
   /** decode account ids from operation json results with the `cats.Id` effect, i.e. a total function with no effect */
   val accountIdsJsonDecode: Kleisli[Id, String, List[AccountId]] =
     Kleisli[Id, String, List[AccountId]] {
