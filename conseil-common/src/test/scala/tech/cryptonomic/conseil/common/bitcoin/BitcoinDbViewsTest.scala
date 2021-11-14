@@ -1,10 +1,10 @@
 package tech.cryptonomic.conseil.common.bitcoin
 
-import scala.concurrent.ExecutionContext
-import cats.effect._
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
+
+import cats.effect.unsafe.implicits.global
 
 class BitcoinDbViewsTest
     extends ConseilSpec
@@ -12,8 +12,6 @@ class BitcoinDbViewsTest
     with BitcoinInMemoryDatabaseSetup
     with BitcoinFixtures
     with BitcoinStubs {
-
-  implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
   "Bitcoin db views" should {
 

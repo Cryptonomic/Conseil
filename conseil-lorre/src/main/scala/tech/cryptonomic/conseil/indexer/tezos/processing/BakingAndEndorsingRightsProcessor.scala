@@ -20,7 +20,7 @@ import tech.cryptonomic.conseil.indexer.tezos.{
 import scala.concurrent.ExecutionContext
 import akka.stream.scaladsl.Source
 import akka.stream.scaladsl.Sink
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.Future
@@ -39,7 +39,7 @@ class BakingAndEndorsingRightsProcessor(
     indexedData: TezosIndexedDataOperations,
     db: Database,
     configuration: config.BakingAndEndorsingRights
-)(implicit mat: ActorMaterializer) {
+)(implicit mat: Materializer) {
 
   private[tezos] def processBakingAndEndorsingRights(
       fetchingResults: nodeOperator.BlockFetchingResults

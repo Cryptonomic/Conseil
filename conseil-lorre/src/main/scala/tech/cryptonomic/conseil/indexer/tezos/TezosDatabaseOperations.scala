@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.indexer.tezos
 import java.sql.Timestamp
 import java.time.{Instant, ZoneOffset}
 
-import cats.effect.Async
+import cats.effect.Sync
 import cats.implicits._
 import scribe._
 import slick.jdbc.PostgresProfile.api._
@@ -16,7 +16,6 @@ import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.{
   AccountsRow,
   GovernanceRow,
-  NftsRow,
   OperationsRow,
   OriginatedAccountMapsRow,
   RegisteredTokensRow
@@ -35,15 +34,10 @@ import scala.collection.immutable.Queue
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math
 import scala.util.{Failure, Success}
-import java.{util => ju}
+import java.util.UUID
 
 import slick.dbio.DBIOAction
 import tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
-
-import scala.io.Source
-import tech.cryptonomic.conseil.common
-import tech.cryptonomic.conseil.common.tezos
-import tech.cryptonomic.conseil.indexer.tezos.Tzip16MetadataJsonDecoders.Tzip16Metadata
 
 /**
   * Functions for writing Tezos data to a database.
@@ -567,7 +561,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     logger.info("Writing accounts and delegate checkpoints to the DB...")
 
     //we tuple because we want transactionality guarantees and we need all insert-counts to get returned
-    Async[DBIO]
+    Sync[DBIO]
       .tuple3(
         writeAccounts(accounts.map(_._1)),
         writeAccountsHistory(accounts),
@@ -952,7 +946,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       indexedHeadLevel: BlockLevel,
       detectionTime: Instant
   ): DBIO[String] = {
-    val forkId = ju.UUID.randomUUID().toString
+    val forkId = UUID.randomUUID().toString
     val ts = new Timestamp(detectionTime.getEpochSecond())
     Tables.Forks.returning(
       Tables.Forks.map(_.forkId)

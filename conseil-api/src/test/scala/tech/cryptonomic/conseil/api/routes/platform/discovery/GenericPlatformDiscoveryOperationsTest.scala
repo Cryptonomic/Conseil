@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.api.routes.platform.discovery
 
 import java.sql.Timestamp
 import java.time.LocalDateTime
-import cats.effect.{ContextShift, IO}
+import cats.effect.IO
 import com.softwaremill.diffx.scalatest.DiffMatcher
 import com.typesafe.config.ConfigFactory
 import org.scalamock.scalatest.MockFactory
@@ -27,6 +27,8 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
+import cats.effect.unsafe.implicits.global
+
 class GenericPlatformDiscoveryOperationsTest
     extends ConseilSpec
     with InMemoryDatabase
@@ -39,7 +41,7 @@ class GenericPlatformDiscoveryOperationsTest
   import slick.jdbc.PostgresProfile.api._
   import tech.cryptonomic.conseil.common.config.Platforms._
 
-  import scala.concurrent.ExecutionContext.Implicits.global
+  implicit val ec = ExecutionContext.global
 
   val dbioRunner = new DBIORunner {
     override def runQuery[A](action: dbio.DBIO[A]): Future[A] = dbHandler.run(action)
@@ -61,8 +63,6 @@ class GenericPlatformDiscoveryOperationsTest
     |      maxConnections: 10
     |    }
         """.stripMargin)
-
-  implicit val contextShift: ContextShift[IO] = IO.contextShift(implicitly[ExecutionContext])
 
   val metadataCaching: MetadataCaching[IO] = MetadataCaching.empty[IO].unsafeRunSync()
   val metadadataConfiguration: MetadataConfiguration = MetadataConfiguration(Map.empty)

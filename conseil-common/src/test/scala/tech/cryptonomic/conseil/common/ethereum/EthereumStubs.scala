@@ -16,8 +16,6 @@ import tech.cryptonomic.conseil.common.rpc.RpcClient
   */
 trait EthereumStubs {
 
-  implicit val contextShift: ContextShift[IO]
-
   /**
     * Stubs that can help to provide tests for the [[EthereumClient]].
     *
@@ -34,7 +32,7 @@ trait EthereumStubs {
     def ethereumClientStub(jsonResponse: String): EthereumClient[IO] = {
       val response = Response[IO](
         Status.Ok,
-        body = Stream(jsonResponse).through(fs2.text.utf8Encode)
+        body = Stream(jsonResponse).through(fs2.text.utf8.encode)
       )
       val rpcClient =
         new RpcClient[IO]("https://api-endpoint.com", 1, Client.fromHttpApp(HttpApp.liftF(IO.pure(response))))
@@ -68,7 +66,7 @@ trait EthereumStubs {
       * More info about [[cats.arrow.FunctionK]]: https://github.com/typelevel/cats/blob/master/docs/src/main/tut/datatypes/functionk.md
       */
     val tx = Transactor.liftK(new FunctionK[DBIO, IO] {
-      def apply[A](dbio: DBIO[A]): IO[A] = Async.fromFuture(IO.delay(dbHandler.run(dbio)))
+      def apply[A](dbio: DBIO[A]): IO[A] = IO.fromFuture(IO(dbHandler.run(dbio)))
     })
 
     val ethereumPersistenceStub = new EthereumPersistence[IO]

@@ -3,16 +3,18 @@ package tech.cryptonomic.conseil.smoke.tests.suites
 import cats.effect.IO
 import io.circe.{parser, Json}
 import org.http4s.circe._
-import org.http4s.client.blaze._
+import org.http4s.blaze.client._
 import org.http4s.client.dsl.io._
 import org.http4s.dsl.io._
 import org.http4s.headers._
-import org.http4s.{Header, MediaType, Uri}
+import org.http4s.implicits._
+import org.http4s.{Header, MediaType}
 import tech.cryptonomic.conseil.smoke.tests.RegressionFixtures
 
 import java.util.concurrent.Executors
 import scala.Console.{GREEN, RED, RESET}
 import scala.concurrent.ExecutionContext
+import org.typelevel.ci.CIString
 
 class BitcoinRegressionSuite(val configfile: String, val syncNetwork: Option[String])
     extends RegressionSuite
@@ -24,7 +26,6 @@ class BitcoinRegressionSuite(val configfile: String, val syncNetwork: Option[Str
 
   private val pool = Executors.newCachedThreadPool()
   private val clientExecution: ExecutionContext = ExecutionContext.fromExecutor(pool)
-  implicit private val shift = IO.contextShift(clientExecution)
 
   private val clientBuild = BlazeClientBuilder[IO](clientExecution)
 
@@ -46,14 +47,14 @@ class BitcoinRegressionSuite(val configfile: String, val syncNetwork: Option[Str
         "version" -> Json.fromString("A non empty version string")
       )
 
-    val endpoint = Uri.uri("http://localhost:1337/info")
+    val endpoint = uri"http://localhost:1337/info"
 
     clientBuild.resource.use { client =>
       val req = GET(
         endpoint,
         `Content-Type`(MediaType.application.json),
         Accept(MediaType.application.json),
-        Header("apiKey", apiKey)
+        Header.Raw(CIString("apiKey"), apiKey)
       )
 
       IO(println("Running test on /info")) *>
@@ -99,14 +100,14 @@ class BitcoinRegressionSuite(val configfile: String, val syncNetwork: Option[Str
       .right
       .get
 
-    val endpoint = Uri.uri("http://localhost:1337/v2/data/bitcoin/mainnet/blocks/head")
+    val endpoint = uri"http://localhost:1337/v2/data/bitcoin/mainnet/blocks/head"
 
     clientBuild.resource.use { client =>
       val req = GET(
         endpoint,
         `Content-Type`(MediaType.application.json),
         Accept(MediaType.application.json),
-        Header("apiKey", apiKey)
+        Header.Raw(CIString("apiKey"), apiKey)
       )
 
       IO(println("Running test on /v2/data/bitcoin/mainnet/blocks/head")) *>

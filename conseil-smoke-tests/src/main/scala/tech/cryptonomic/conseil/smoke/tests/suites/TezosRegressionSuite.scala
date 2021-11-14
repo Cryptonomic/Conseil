@@ -5,17 +5,19 @@ import java.util.concurrent.Executors
 import cats.effect.IO
 import io.circe.{parser, Json}
 import org.http4s.circe._
-import org.http4s.client.blaze._
 import org.http4s.client.dsl.io._
 import org.http4s.dsl.io._
 import org.http4s.headers._
-import org.http4s.{Header, MediaType, Uri}
+import org.http4s.{Header, MediaType}
 import tech.cryptonomic.conseil.smoke.tests.RegressionFixtures
 
 import scala.Console.{GREEN, RED, RESET}
 import scala.concurrent.ExecutionContext
 import scala.annotation.tailrec
 import io.circe.ACursor
+import org.http4s.blaze.client.BlazeClientBuilder
+import org.http4s.implicits._
+import org.typelevel.ci.CIString
 
 /** Currently can be used to test any conseil instance that loaded blocks levels 1 to 5000
   * against predefined expectations on the responses
@@ -33,7 +35,6 @@ class TezosRegressionSuite(val configfile: String, val syncNetwork: Option[Strin
 
   private val pool = Executors.newCachedThreadPool()
   private val clientExecution: ExecutionContext = ExecutionContext.fromExecutor(pool)
-  implicit private val shift = IO.contextShift(clientExecution)
 
   private val clientBuild = BlazeClientBuilder[IO](clientExecution)
 
@@ -55,14 +56,14 @@ class TezosRegressionSuite(val configfile: String, val syncNetwork: Option[Strin
         "version" -> Json.fromString("A non empty version string")
       )
 
-    val endpoint = Uri.uri("http://localhost:1337/info")
+    val endpoint = uri"http://localhost:1337/info"
 
     clientBuild.resource.use { client =>
       val req = GET(
         endpoint,
         `Content-Type`(MediaType.application.json),
         Accept(MediaType.application.json),
-        Header("apiKey", apiKey)
+        Header.Raw(CIString("apiKey"), apiKey)
       )
 
       IO(println("Running test on /info")) *>
@@ -120,14 +121,14 @@ class TezosRegressionSuite(val configfile: String, val syncNetwork: Option[Strin
       .right
       .get
 
-    val endpoint = Uri.uri("http://localhost:1337/v2/data/tezos/mainnet/blocks/head")
+    val endpoint = uri"http://localhost:1337/v2/data/tezos/mainnet/blocks/head"
 
     clientBuild.resource.use { client =>
       val req = GET(
         endpoint,
         `Content-Type`(MediaType.application.json),
         Accept(MediaType.application.json),
-        Header("apiKey", apiKey)
+        Header.Raw(CIString("apiKey"), apiKey)
       )
 
       IO(println("Running test on /v2/data/tezos/mainnet/blocks/head")) *>
@@ -158,7 +159,7 @@ class TezosRegressionSuite(val configfile: String, val syncNetwork: Option[Strin
       .right
       .get
 
-    val endpoint = Uri.uri("http://localhost:1337/v2/data/tezos/mainnet/operations")
+    val endpoint = uri"http://localhost:1337/v2/data/tezos/mainnet/operations"
 
     /* Assuming a json array is passed-in, recursively remove the field from
      * all objects in it.
@@ -187,7 +188,7 @@ class TezosRegressionSuite(val configfile: String, val syncNetwork: Option[Strin
         uri = endpoint,
         `Content-Type`(MediaType.application.json),
         Accept(MediaType.application.json),
-        Header("apiKey", apiKey)
+        Header.Raw(CIString("apiKey"), apiKey)
       )
 
       IO(println("Running test on /v2/data/tezos/mainnet/operations for grouped predicates query")) *>

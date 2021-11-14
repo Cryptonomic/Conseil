@@ -2,15 +2,16 @@ package tech.cryptonomic.conseil.common.rpc
 
 import scala.concurrent.duration.Duration
 import scala.util.control.NoStackTrace
-import cats.effect.{Concurrent, Resource}
+import cats.effect.{Async, Concurrent, Resource}
 import fs2.Stream
 import org.http4s.{EntityDecoder, EntityEncoder, Header, Method, Uri}
-import org.http4s.client.{Client, WaitQueueTimeoutException}
+import org.http4s.client.Client
 import org.http4s.client.middleware.RetryPolicy
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.Status._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.rpc.RpcClient._
+import org.http4s.WaitQueueTimeoutException
 
 /**
   * JSON-RPC client according to the specification at https://www.jsonrpc.org/specification
@@ -33,7 +34,7 @@ import tech.cryptonomic.conseil.common.rpc.RpcClient._
   *   val request = Stream(
   *     RpcRequest(
   *       jsonrpc = "2.0",
-  *       mathod = "apiMethod",
+  *       method = "apiMethod",
   *       params = ApiMethodParams(id = 1)
   *       id = "id_of_the_request"
   *     )
@@ -52,11 +53,11 @@ import tech.cryptonomic.conseil.common.rpc.RpcClient._
   * @param httpClient Http4s http client
   * @param headers Additional http headers, e.g. authorization
   */
-class RpcClient[F[_]: Concurrent](
+class RpcClient[F[_]: Async](
     endpoint: String,
     maxConcurrent: Int,
-    httpClient: Client[F],
-    headers: Header*
+    httpClient: Client[F]
+    // headers: Header[String, String]*
 ) extends Http4sClientDsl[F]
     with ConseilLogSupport {
 
@@ -83,7 +84,7 @@ class RpcClient[F[_]: Concurrent](
       .mapAsync(maxConcurrent) { chunks =>
         httpClient
           .expect[Seq[RpcResponse[R]]](
-            Method.POST(chunks.toList, Uri.unsafeFromString(endpoint), headers: _*)
+            Method.POST(chunks.toList, Uri.unsafeFromString(endpoint)) // TODO: headers ?
           )
       }
       .flatMap(Stream.emits)
@@ -120,18 +121,18 @@ object RpcClient {
     * @param httpClient Http4s http client
     * @param headers Additional http headers, e.g. authorization
     */
-  def resource[F[_]: Concurrent](
+  def resource[F[_]: Async](
       endpoint: String,
       maxConcurrent: Int,
-      httpClient: Client[F],
-      headers: Header*
+      httpClient: Client[F]
+      // headers: Header[String, String]*
   ): Resource[F, RpcClient[F]] =
     Resource.pure(
       new RpcClient[F](
         endpoint,
         maxConcurrent,
-        httpClient,
-        headers: _*
+        httpClient
+        // headers: _*
       )
     )
 

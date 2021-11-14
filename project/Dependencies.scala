@@ -16,18 +16,22 @@ object Dependencies {
 
     val slick = "3.3.3"
     val slickPG = "0.19.6"
-    val slickEffect = "0.3.0"
+    val slickEffect = "0.4.0"
     val postgres = "42.1.4"
 
     val endpoints4s = "1.3.0"
     val endpoints4sBackCompatible = "1.1.0"
     val endpoints4sAkkaServer = "4.0.0"
-    val cats = "2.1.1"
-    val catsEffect = "2.1.3"
+
+    val monix = "3.4.0"
+
+    val cats = "2.6.1"
+    val catsEffect = "3.2.9"
+
     val mouse = "0.25"
     val monocle = "2.0.0"
     val circe = "0.13.0"
-    val http4s = "0.21.8"
+    val http4s = "0.23.4"
 
     val silencer = "1.4.4"
     val kantanCsv = "0.6.0"
@@ -103,6 +107,22 @@ object Dependencies {
     "org.endpoints4s" %% "json-schema-circe"   % Versions.endpoints4sBackCompatible,
     "org.endpoints4s" %% "akka-http-server"    % Versions.endpoints4sAkkaServer
   )
+
+  private val tapirShared = Seq(
+    "com.softwaremill.sttp.tapir" %% "tapir-core"       % Versions.tapir,
+    "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % Versions.tapir
+  )
+  private val tapirServer = Seq(
+    "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % Versions.tapir,
+    "org.http4s"                  %% "http4s-dsl"          % Versions.http4s,
+    "org.http4s"                  %% "http4s-ember-server" % Versions.http4s
+  )
+  private val tapirClient = Seq(
+    "com.softwaremill.sttp.tapir" %% "tapir-http4s-client" % Versions.tapir,
+    "org.http4s"                  %% "http4s-ember-client" % Versions.http4s
+  )
+
+  private val monix = Seq("io.monix" %% "monix-catnap" % Versions.monix)
 
   private val cats = Seq(
     "org.typelevel" %% "cats-core"   % Versions.cats,
@@ -199,7 +219,8 @@ object Dependencies {
       diffX,
       apacheCommonsText,
       bitcoin,
-      scorex
+      scorex,
+      monix
     )
 
   val conseilCommonTestKitInclude: Seq[ModuleID] =
@@ -217,7 +238,8 @@ object Dependencies {
       scalaMock,
       scalaTestJson,
       diffX,
-      endpoints
+      endpoints,
+      monix
     )
 
   val conseilLorreInclude: Seq[ModuleID] =

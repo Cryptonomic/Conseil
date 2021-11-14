@@ -1,17 +1,14 @@
 package tech.cryptonomic.conseil.common.cache
 
-import cats.effect._
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import com.rklaehn.radixtree.RadixTree
 import org.scalatest.OneInstancePerTest
 import tech.cryptonomic.conseil.common.cache.MetadataCaching._
-import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
-
-import scala.concurrent.ExecutionContext
+import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class MetadataCachingTest extends ConseilSpec with OneInstancePerTest {
-
-  implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
   val sut: MetadataCaching[IO] = MetadataCaching.empty[IO].unsafeRunSync()
 

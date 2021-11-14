@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.indexer.bitcoin
 
-import cats.effect.{Concurrent, Resource}
+import cats.effect.{Async, Concurrent, Resource}
 import fs2.Stream
 import slickeffect.Transactor
 
@@ -18,7 +18,7 @@ import tech.cryptonomic.conseil.indexer.config.{Custom, Depth, Everything, Newes
   * @param persistence Bitcoin persistence instance
   * @param tx [[slickeffect.Transactor]] to perform a Slick operations on the database
   */
-class BitcoinOperations[F[_]: Concurrent](
+class BitcoinOperations[F[_]: Async](
     bitcoinClient: BitcoinClient[F],
     persistence: BitcoinPersistence[F],
     tx: Transactor[F],
@@ -74,7 +74,7 @@ class BitcoinOperations[F[_]: Concurrent](
               case _ => Concurrent[F].unit
             }
             .map((persistence.createBlock _).tupled)
-            .evalMap(tx.transact)
+            .evalTap(tx.transact)
             .drain
       )
 
@@ -88,7 +88,7 @@ object BitcoinOperations {
     * @param bitcoinClient JSON-RPC client instance
     * @param tx [[slickeffect.Transactor]] to perform a Slick operations on the database
     */
-  def resource[F[_]: Concurrent](
+  def resource[F[_]: Async](
       rpcClient: RpcClient[F],
       tx: Transactor[F],
       batchConf: BitcoinBatchFetchConfiguration

@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.common.rpc
 
-import scala.concurrent.ExecutionContext
 import cats.effect._
 import org.http4s._
 import org.http4s.client.Client
@@ -11,9 +10,9 @@ import org.http4s.circe.CirceEntityEncoder._
 import tech.cryptonomic.conseil.common.rpc.RpcClient._
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class RpcClientTest extends ConseilSpec {
+import cats.effect.unsafe.implicits.global
 
-  implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
+class RpcClientTest extends ConseilSpec {
 
   "Rpc Client" should {
       "return a case class for valid json" in new HttpClientFixtures {
@@ -90,7 +89,7 @@ class RpcClientTest extends ConseilSpec {
     ): IO[List[Block]] = {
       val response = Response[IO](
         Status.Ok,
-        body = Stream(responseJson).through(fs2.text.utf8Encode)
+        body = Stream(responseJson).through(fs2.text.utf8.encode)
       )
       val client = new RpcClient[IO]("https://api-endpoint.com", 1, httpClient(response))
 

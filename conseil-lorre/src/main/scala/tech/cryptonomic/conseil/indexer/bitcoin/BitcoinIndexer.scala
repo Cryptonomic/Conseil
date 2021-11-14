@@ -3,24 +3,24 @@ package tech.cryptonomic.conseil.indexer.bitcoin
 import java.util.concurrent.Executors
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.FiniteDuration
 
 import cats.effect.{IO, Resource}
-import org.http4s.headers.Authorization
-import org.http4s.BasicCredentials
-import org.http4s.client.blaze.BlazeClientBuilder
+// import org.http4s.headers.Authorization
+// import org.http4s.BasicCredentials
+import org.http4s.blaze.client.BlazeClientBuilder
 import slick.jdbc.PostgresProfile.api._
 import slickeffect.Transactor
 import slickeffect.transactor.{config => transactorConfig}
 
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
-import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.indexer.config.LorreConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms
 import tech.cryptonomic.conseil.common.config.Platforms.BitcoinConfiguration
 import tech.cryptonomic.conseil.indexer.LorreIndexer
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.common.rpc.RpcClient
+
+import cats.effect.unsafe.implicits.global
 
 /**
   * Class responsible for indexing data for Bitcoin Blockchain.
@@ -47,22 +47,6 @@ class BitcoinIndexer(
   private val httpExecutor = Executors.newFixedThreadPool(bitcoinConf.batching.httpFetchThreadsCount)
 
   /**
-    * [[cats.ContextShift]] is the equivalent to [[ExecutionContext]],
-    * it's used by the Cats Effect related methods.
-    */
-  implicit private val contextShift = IO.contextShift(ExecutionContext.fromExecutor(indexerExecutor))
-
-  /**
-    * [[ExecutionContext]] for the Lorre indexer.
-    */
-  private val indexerEC = ExecutionContext.fromExecutor(indexerExecutor)
-
-  /**
-    * The timer to schedule continuous indexer runs.
-    */
-  implicit private val timer = IO.timer(indexerEC)
-
-  /**
     * Dedicated [[ExecutionContext]] for the http4s.
     */
   private val httpEC = ExecutionContext.fromExecutor(httpExecutor)
@@ -71,37 +55,26 @@ class BitcoinIndexer(
 
   // TODO: Handle the cancelation in the right way, now it's imposible to use `ctrl-C`
   //       to stop the mainLoop.
-  override def start(): Unit = {
-
+  override def start(): Unit =
     /**
       * Repeat [[cats.IO]] after the specified interval.
       *
       * @param interval finite duration interval
       * @param f [[cats.IO]] to repeat
       */
-    def repeatEvery[A](interval: FiniteDuration)(f: IO[A]): IO[Unit] =
-      for {
-        _ <- f
-        _ <- IO.sleep(interval)
-        _ <- repeatEvery(interval)(f)
-      } yield ()
-
     indexer
       .use(
         bitcoinOperations =>
-          repeatEvery(lorreConf.sleepInterval) {
-
-            /**
-              * Place with all the computations for the Bitcoin.
-              * Currently, it only contains the blocks. But it can be extended to
-              * handle multiple computations.
-              */
-            IO.delay(logger.info("Start Lorre for Bitcoin")) *>
-              bitcoinOperations.loadBlocks(lorreConf.depth, lorreConf.headHash).compile.drain
-          }
+          /**
+            * Place with all the computations for the Bitcoin.
+            * Currently, it only contains the blocks. But it can be extended to
+            * handle multiple computations.
+            */
+          (IO(logger.info("Start Lorre for Bitcoin")) *>
+              bitcoinOperations.loadBlocks(lorreConf.depth, lorreConf.headHash).compile.drain *>
+              IO.sleep(lorreConf.sleepInterval)).foreverM
       )
       .unsafeRunSync()
-  }
 
   override def stop(): Future[LorreIndexer.ShutdownComplete] =
     Future {
@@ -120,8 +93,8 @@ class BitcoinIndexer(
       rpcClient <- RpcClient.resource(
         bitcoinConf.node.url,
         maxConcurrent = bitcoinConf.batching.indexerThreadsCount,
-        httpClient, // TODO: wrap it into retry and logger middleware
-        Authorization(BasicCredentials(bitcoinConf.node.username, bitcoinConf.node.password))
+        httpClient // TODO: wrap it into retry and logger middleware
+        // Authorization(BasicCredentials(bitcoinConf.node.username, bitcoinConf.node.password))
       )
 
       tx <- Transactor

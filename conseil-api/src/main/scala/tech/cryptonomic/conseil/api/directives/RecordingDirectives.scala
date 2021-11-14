@@ -7,37 +7,34 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.BasicDirectives
 import akka.http.scaladsl.server.{Directive, ExceptionHandler, Route}
-import akka.stream.Materializer
-import cats.effect.concurrent.MVar
-import cats.effect.{Concurrent, ContextShift, IO}
+import cats.effect.{Async, IO, Ref}
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import org.slf4j.MDC
 
+import cats.effect.unsafe.implicits.global
+
 /** Utility class for recording responses */
-class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends ConseilLogSupport {
+class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupport {
 
   type RequestMap = Map[UUID, RequestValues]
-  private val requestInfoMap: MVar[IO, Map[UUID, RequestValues]] =
-    MVar.of[IO, RequestMap](Map.empty[UUID, RequestValues]).unsafeRunSync()
+  private val requestInfoMap: Ref[IO, Map[UUID, RequestValues]] =
+    Ref[IO].of(Map.empty[UUID, RequestValues]).unsafeRunSync()
 
   private def requestMapModify[A](
       modify: RequestMap => RequestMap
   )(useValues: RequestValues => A)(implicit correlationId: UUID) =
-    for {
-      map <- requestInfoMap.take
-      _ <- requestInfoMap.put(modify(map))
-    } yield useValues(map(correlationId))
+    (for {
+      map <- requestInfoMap.get
+      _ <- requestInfoMap.update(_ => modify(map))
+    } yield useValues(map(correlationId)))
 
   /** Directive adding recorded values to the MDC */
-  def recordResponseValues(
-      ip: RemoteAddress,
-      stringEntity: String
-  )(implicit materializer: Materializer, correlationId: UUID): Directive[Unit] =
+  def recordResponseValues(ip: RemoteAddress, stringEntity: String)(implicit correlationId: UUID): Directive[Unit] =
     BasicDirectives.extractRequest.flatMap { request =>
       (for {
-        requestMap <- requestInfoMap.take
+        requestMap <- requestInfoMap.get
         value = RequestValues.fromHttpRequestAndIp(request, ip, stringEntity)
-        _ <- requestInfoMap.put(requestMap.updated(correlationId, value))
+        _ <- requestInfoMap.update(_ => requestMap.updated(correlationId, value))
       } yield ()).unsafeRunSync()
 
       requestMapModify(
@@ -50,7 +47,7 @@ class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends ConseilLo
           modify = _.filterNot(_._1 == correlationId)
         ) { values =>
           values.logResponse(resp)
-        }.unsafeRunAsyncAndForget()
+        }.unsafeRunAndForget()
         resp
       }
       response
@@ -66,7 +63,7 @@ class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends ConseilLo
           modify = _.filterNot(_._1 == correlationId)
         ) { values =>
           values.logResponse(response, Some(e))
-        }.unsafeRunAsyncAndForget()
+        }.unsafeRunAndForget()
         complete(response)
     }
 
@@ -78,7 +75,7 @@ class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends ConseilLo
         modify = _.filterNot(_._1 == correlationId)
       ) { values =>
         values.logResponse(response)
-      }.unsafeRunAsyncAndForget()
+      }.unsafeRunAndForget()
       response
     }(route)
 
@@ -118,9 +115,7 @@ class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends ConseilLo
   object RequestValues {
 
     /** Extracts Request values from request context and ip address */
-    def fromHttpRequestAndIp(request: HttpRequest, ip: RemoteAddress, stringEntity: String)(
-        implicit materializer: Materializer
-    ): RequestValues =
+    def fromHttpRequestAndIp(request: HttpRequest, ip: RemoteAddress, stringEntity: String): RequestValues =
       RequestValues(
         httpMethod = request.method.value,
         requestBody = stringEntity,

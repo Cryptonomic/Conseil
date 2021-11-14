@@ -21,7 +21,7 @@ import tech.cryptonomic.conseil.indexer.tezos.{TezosNodeOperator, TezosDatabaseO
 import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator.LazyPages
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors.BakersProcessingFailed
 import slick.jdbc.PostgresProfile.api._
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 
 /** Takes care of fetching and processing any bakers' related data.
   *
@@ -36,7 +36,7 @@ class BakersProcessor(
     db: Database,
     batchingConf: BatchFetchConfiguration,
     rightsConf: BakingAndEndorsingRights
-)(implicit mat: ActorMaterializer)
+)(implicit mat: Materializer)
     extends ConseilLogSupport {
 
   /* Fetches the data from the chain node and stores bakers into the data store.
