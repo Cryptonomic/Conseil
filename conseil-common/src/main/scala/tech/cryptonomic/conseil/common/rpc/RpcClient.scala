@@ -124,15 +124,15 @@ object RpcClient {
   def resource[F[_]: Async](
       endpoint: String,
       maxConcurrent: Int,
-      httpClient: Client[F],
-      headers: Headers = Headers.empty
+      httpClient: Client[F]
+      // headers: Header[String, String]*
   ): Resource[F, RpcClient[F]] =
     Resource.pure(
       new RpcClient[F](
         endpoint,
         maxConcurrent,
-        httpClient,
-        headers
+        httpClient
+        // headers: _*
       )
     )
 
