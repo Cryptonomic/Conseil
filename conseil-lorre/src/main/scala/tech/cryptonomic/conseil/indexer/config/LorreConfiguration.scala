@@ -41,6 +41,7 @@ final case class LorreConfigurationHelper(
     blockRightsFetching: BakingAndEndorsingRights,
     tokenContracts: TokenContracts,
     metadataFetching: TzipMetadata,
+    forkHandling: ForkHandling,
     enabledFeatures: Features
 ) {
   def toConf: LorreConfiguration =
@@ -56,6 +57,7 @@ final case class LorreConfigurationHelper(
       blockRightsFetching,
       tokenContracts,
       metadataFetching,
+      forkHandling,
       enabledFeatures
     )
 }
