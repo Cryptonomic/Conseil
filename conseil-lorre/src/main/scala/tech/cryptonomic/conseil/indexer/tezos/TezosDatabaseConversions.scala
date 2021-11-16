@@ -248,6 +248,7 @@ private[tezos] object TezosDatabaseConversions {
             convertDelegation orElse
             convertBallot orElse
             convertProposals orElse
+            convertRegisterGlobalConstant orElse
             convertUnhandledOperations)(from)
     }
 
@@ -544,6 +545,39 @@ private[tezos] object TezosDatabaseConversions {
         cycle = TezosOptics.Blocks.extractCycle(block),
         period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         errors = extractResultErrorIds(metadata.operation_result.errors),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time,
+        forkId = Fork.mainForkId
+      )
+  }
+
+  private val convertRegisterGlobalConstant: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
+    case (
+        block,
+        groupHash,
+        RegisterGlobalConstant(source, fee, counter, gas_limit, storage_limit, value, blockOrder, metadata)
+        ) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
+      Tables.OperationsRow(
+        operationId = 0,
+        operationGroupHash = groupHash.value,
+        kind = "register_global_constant",
+        operationOrder = blockOrder,
+        source = source.map(_.id),
+        fee = extractBigDecimal(fee),
+        counter = extractBigDecimal(counter),
+        gasLimit = extractBigDecimal(gas_limit),
+        storageLimit = extractBigDecimal(storage_limit),
+        status = Some(metadata.operation_result.status),
+        consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false,
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
         utcDay = day,

@@ -328,6 +328,17 @@ object TezosTypes {
       blockOrder: Option[Int] = None
   ) extends Operation
 
+  final case class RegisterGlobalConstant(
+      source: Option[ContractId],
+      fee: PositiveBigNumber,
+      counter: PositiveBigNumber,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      value: Option[Micheline],
+      blockOrder: Option[Int] = None,
+      metadata: ResultMetadata[OperationResult.RegisterGlobalConstant]
+  ) extends Operation
+
   //metadata definitions, both shared or specific to operation kind
   final case class EndorsementMetadata(
       slot: Option[Int],
@@ -459,6 +470,14 @@ object TezosTypes {
         status: String,
         consumed_gas: Option[BigNumber],
         errors: Option[List[Error]]
+    )
+
+    final case class RegisterGlobalConstant(
+        status: String,
+        balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
+        consumed_gas: Option[BigNumber],
+        storage_size: Option[BigNumber],
+        global_address: Option[String]
     )
 
   }

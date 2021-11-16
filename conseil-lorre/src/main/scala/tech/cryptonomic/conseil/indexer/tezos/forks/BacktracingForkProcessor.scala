@@ -13,15 +13,15 @@ import tech.cryptonomic.conseil.indexer.forks.ForkDetector.SearchBlockId
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
- * Class which handles processing forks with backtracing
- *
- * @param network tezos network
- * @param node tezos RPC interface
- * @param tezosIndexedDataOperations indexed data ops
- * @param indexerSearch provides search through indexed data
- * @param amender fork amender
- * @param ec execution context
- */
+  * Class which handles processing forks with backtracing
+  *
+  * @param network tezos network
+  * @param node tezos RPC interface
+  * @param tezosIndexedDataOperations indexed data ops
+  * @param indexerSearch provides search through indexed data
+  * @param amender fork amender
+  * @param ec execution context
+  */
 class BacktracingForkProcessor(
     val network: String,
     val node: TezosRPCInterface,
@@ -57,7 +57,9 @@ class BacktracingForkProcessor(
             if (indexedBlock.forall(_.hash == chainBlock.hash.value)) {
               -1
             } else {
-              logger.debug(s"Hashes don't match: ${chainBlock.header.level} ${indexedBlock.map(_.hash)} && ${chainBlock.hash.value}")
+              logger.debug(
+                s"Hashes don't match: ${chainBlock.header.level} ${indexedBlock.map(_.hash)} && ${chainBlock.hash.value}"
+              )
               l
             }
           }
@@ -66,12 +68,12 @@ class BacktracingForkProcessor(
   }
 
   /**
-   * Searches for the first level from head to (head - depth) if there is difference and amends fork
-   * @param currentHeadLevel level of the currently stored head
-   * @param depth depth for the search
-   * @return
-   */
-  def handleForkFrom(currentHeadLevel: Long, depth: Long): Future[Option[ForkAmender.Results]] = {
+    * Searches for the first level from head to (head - depth) if there is difference and amends fork
+    * @param currentHeadLevel level of the currently stored head
+    * @param depth depth for the search
+    * @return
+    */
+  def handleForkFrom(currentHeadLevel: Long, depth: Long): Future[Option[ForkAmender.Results]] =
     checkDepthLevel(currentHeadLevel, depth).flatMap {
       case Nil => Option.empty.pure[Future]
       case xs =>
@@ -82,6 +84,5 @@ class BacktracingForkProcessor(
           amendment <- amender.amendFork(forkLevel, forkBlockId, currentHeadLevel, Instant.now())
         } yield amendment.some
     }
-  }
 
 }
