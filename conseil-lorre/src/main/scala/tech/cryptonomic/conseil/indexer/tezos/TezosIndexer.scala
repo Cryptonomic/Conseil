@@ -194,13 +194,13 @@ class TezosIndexer private (
   }
 
   /**
-   * Searches for fork between indexed head down to (head - depth) every [[interval]] of [[iteration]]
-   * @param maxIndexedLevel level of the currently indexed head
-   * @param depth how deep we look for forks from the current head
-   * @param interval every which iteration are we checking for forks
-   * @param iteration which iteration of main loop are we running
-   * @return
-   */
+    * Searches for fork between indexed head down to (head - depth) every [[interval]] of [[iteration]]
+    * @param maxIndexedLevel level of the currently indexed head
+    * @param depth how deep we look for forks from the current head
+    * @param interval every which iteration are we checking for forks
+    * @param iteration which iteration of main loop are we running
+    * @return
+    */
   private def processLastForks(
       maxIndexedLevel: BlockLevel,
       depth: Long,
