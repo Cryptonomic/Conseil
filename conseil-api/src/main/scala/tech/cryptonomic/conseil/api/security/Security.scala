@@ -5,11 +5,10 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.{ActorMaterializer, Materializer}
+import akka.stream.Materializer
 import cats.effect.{IO, Ref}
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import pureconfig.error.{ConfigReaderFailures, ThrowableFailure}
-// import pureconfig.ConfigSource
 import pureconfig.generic.auto._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.api.config.NautilusCloudConfiguration
@@ -27,7 +26,7 @@ object Security extends ErrorAccumulatingCirceSupport with ConseilLogSupport {
   /** Updates API keys from Nautilus-Cloud endpoint */
   def updateKeys(
       ncc: NautilusCloudConfiguration
-  )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: ActorMaterializer): Unit = {
+  )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: Materializer): Unit = {
     val update = for {
       apiKeys <- Http()
         .singleRequest(
@@ -51,9 +50,6 @@ object Security extends ErrorAccumulatingCirceSupport with ConseilLogSupport {
 
   /** creates security data from configuration */
   def apply(): Either[pureconfig.error.ConfigReaderFailures, SecurityApi] =
-    // ConfigSource.default
-    //   .at(namespace = "conseil.security.api-keys")
-    //   .load[SecurityApi]
     pureconfig
       .loadConfig[SecurityApi](namespace = "conseil.security.api-keys")
       .filterOrElse(
