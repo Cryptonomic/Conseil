@@ -28,7 +28,6 @@ package object config extends ConseilLogSupport {
       def tabs(n: Int): String = " " * ((identLevel + n) * identSize)
       def descriptionWithLocation(failure: ConfigReaderFailure, ident: Int): String = {
         val failureLines = failure.description.split("\n")
-        // (failure.origin.fold(s"${tabs(ident)}- ${failureLines.head}")(
         (failure.location.fold(s"${tabs(ident)}- ${failureLines.head}")(
           f => s"${tabs(ident)}- ${f.description} ${failureLines.head}"
         ) ::

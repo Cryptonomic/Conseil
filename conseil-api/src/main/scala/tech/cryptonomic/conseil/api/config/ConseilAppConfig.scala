@@ -50,11 +50,6 @@ trait ConseilAppConfig {
       metadataOverrides <- loadConfig[MetadataConfiguration]
       securityApi <- Security()
       nautilusCloud <- loadConfig[NautilusCloudConfiguration]("nautilus-cloud")
-      // conseil <- ConfigSource.default.at("conseil").load[ConseilConfiguration]
-      // platforms <- ConfigSource.default.load[PlatformsConfiguration]
-      // metadataOverrides <- ConfigSource.default.load[MetadataConfiguration]
-      // securityApi <- Security()
-      // nautilusCloud <- ConfigSource.default.at("nautilus-cloud").load[NautilusCloudConfiguration]
     } yield
       CombinedConfiguration(
         conseil,

@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.indexer.tezos.processing
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import akka.Done
-import akka.stream.{ActorMaterializer, Materializer}
+import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import cats._
 import cats.implicits._
@@ -42,7 +42,7 @@ class AccountsProcessor(
     indexedData: TezosIndexedDataOperations,
     batchingConf: BatchFetchConfiguration,
     rightsConf: BakingAndEndorsingRights
-)(implicit mat: ActorMaterializer)
+)(implicit mat: Materializer)
     extends ConseilLogSupport {
 
   /** accounts, indexed by id */

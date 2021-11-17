@@ -5,7 +5,6 @@ object Dependencies {
   private object Versions {
     val typesafeConfig = "1.4.1"
     val pureConfig = "0.10.2"
-    // val pureConfig = "0.17.0"
     val scopt = "4.0.1"
 
     val akka = "2.6.17"
@@ -14,7 +13,6 @@ object Dependencies {
     val akkaHttpCors = "1.1.2"
 
     val scribe = "3.1.3"
-    // val scribe = "3.6.3"
 
     val slick = "3.3.3"
     val slickPG = "0.19.7"

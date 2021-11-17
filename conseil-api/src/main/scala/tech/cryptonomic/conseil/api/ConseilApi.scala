@@ -53,7 +53,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
   private val transformation = new UnitTransformation(config.metadata)
   private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
 
-  implicit private val mat: ActorMaterializer = ActorMaterializer()
+  implicit private val mat: Materializer = ActorMaterializer()
   implicit private val dispatcher: ExecutionContext = system.dispatcher
 
   config.nautilusCloud match {

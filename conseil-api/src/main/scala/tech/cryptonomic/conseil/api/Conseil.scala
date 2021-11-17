@@ -2,8 +2,7 @@ package tech.cryptonomic.conseil.api
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.stream.ActorMaterializer
-// import akka.stream.{ActorMaterializer, Materializer}
+import akka.stream.{ActorMaterializer, Materializer}
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import tech.cryptonomic.conseil.api.config.{ConseilAppConfig, ConseilConfiguration}
 import tech.cryptonomic.conseil.api.util.Retry.retry
@@ -13,7 +12,7 @@ import tech.cryptonomic.conseil.common.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.common.config._
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor}
+import scala.concurrent.{Await, ExecutionContextExecutor}
 import scala.language.postfixOps
 import scala.util.Failure
 
@@ -28,7 +27,7 @@ object Conseil extends App with ConseilAppConfig with FailFastCirceSupport with 
       logger.error("There is an error in the provided configuration")
     case Right(config) =>
       implicit val system: ActorSystem = ActorSystem("conseil-system")
-      implicit val materializer: ActorMaterializer = ActorMaterializer()
+      implicit val materializer: Materializer = ActorMaterializer()
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
       val retries = if (config.failFast.on) Some(0) else None
@@ -70,10 +69,8 @@ object Conseil extends App with ConseilAppConfig with FailFastCirceSupport with 
       server: ConseilConfiguration,
       platforms: PlatformsConfiguration,
       verbose: VerboseOutput
-  )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: ActorMaterializer) = {
-    val bindingFuture = Http().bindAndHandle(api.route, server.hostname, server.port)
-    // )(implicit system: ActorSystem) = {
-    //   val bindingFuture = Http().newServerAt(server.hostname, server.port).bindFlow(api.route)
+  )(implicit system: ActorSystem) = {
+    val bindingFuture = Http().newServerAt(server.hostname, server.port).bindFlow(api.route)
     displayInfo(server)
     if (verbose.on) displayConfiguration(platforms)
     bindingFuture

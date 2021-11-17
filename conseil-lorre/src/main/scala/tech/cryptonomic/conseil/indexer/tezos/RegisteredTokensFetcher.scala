@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.{ActorMaterializer, Materializer}
+import akka.stream.Materializer
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import io.circe.generic.semiauto.deriveDecoder
 import slick.jdbc.JdbcBackend.Database
@@ -29,7 +29,7 @@ class RegisteredTokensFetcher(db: Database, tc: TokenContracts, terminationSeque
   def updateRegisteredTokens(
       implicit executionContext: ExecutionContext,
       system: ActorSystem,
-      mat: ActorMaterializer
+      mat: Materializer
   ): Unit = {
     val update = for {
       tokens <- Http()
