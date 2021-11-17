@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.api
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
+// import akka.stream.{ActorMaterializer, Materializer}
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import tech.cryptonomic.conseil.api.config.{ConseilAppConfig, ConseilConfiguration}
 import tech.cryptonomic.conseil.api.util.Retry.retry
@@ -71,6 +72,8 @@ object Conseil extends App with ConseilAppConfig with FailFastCirceSupport with 
       verbose: VerboseOutput
   )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: ActorMaterializer) = {
     val bindingFuture = Http().bindAndHandle(api.route, server.hostname, server.port)
+    // )(implicit system: ActorSystem) = {
+    //   val bindingFuture = Http().newServerAt(server.hostname, server.port).bindFlow(api.route)
     displayInfo(server)
     if (verbose.on) displayConfiguration(platforms)
     bindingFuture

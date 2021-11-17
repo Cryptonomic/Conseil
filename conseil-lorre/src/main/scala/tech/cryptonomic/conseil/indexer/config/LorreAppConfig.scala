@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.indexer.config
 import com.github.ghik.silencer.silent
 import com.typesafe.config.Config
 import pureconfig._
-import pureconfig.error.{ConfigReaderFailure, ConfigReaderFailures, ConfigValueLocation, ThrowableFailure}
+import pureconfig.error._
 import pureconfig.generic.auto._
 import pureconfig.generic.FieldCoproductHint
 import scopt.{OptionParser, Read}
@@ -12,6 +12,7 @@ import tech.cryptonomic.conseil.common.config.{PlatformConfiguration => _, _}
 import tech.cryptonomic.conseil.indexer.config.ConfigUtil.Depth._
 
 import scala.util.{Success, Try}
+import com.typesafe.config.ConfigOrigin
 
 /** wraps all configuration needed to run Lorre */
 trait LorreAppConfig {
@@ -97,9 +98,15 @@ trait LorreAppConfig {
         } else conf
       }
       nodeRequests <- loadConfig[NetworkCallsConfiguration]("lorre")
+      // lorre <- ConfigSource.default
+      //   .at(namespace = "lorre")
+      //   .load[LorreConfiguration]
+      //   .map(_.copy(depth = depth, headHash = headHash))
+      // nodeRequests <- ConfigSource.default.at("lorre").load[NetworkCallsConfiguration]
       platform <- loadPlatformConfiguration(platform.name, network)
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.streaming-client")
       fetching <- loadConfig[BatchFetchConfiguration](namespace = "lorre.batched-fetches")
+      // fetching <- ConfigSource.default.at(namespace = "lorre.batched-fetches").load[BatchFetchConfiguration]
     } yield
       CombinedConfiguration(
         lorre,
@@ -151,20 +158,27 @@ object LorreAppConfig {
             case Some(platformsConfig) if platformsConfig.enabled => Right(platformsConfig)
             case Some(platformsConfig) if !platformsConfig.enabled =>
               Left(ConfigReaderFailures(new ConfigReaderFailure {
+
                 override def description: String =
                   s"Could not run Lorre for platform: $platform, network: $network because this network is disabled"
                 override def location: Option[ConfigValueLocation] = None
+                // override def origin: Option[ConfigOrigin] = None
               }))
             case None =>
               Left(ConfigReaderFailures(new ConfigReaderFailure {
                 override def description: String = s"Could not find platform: $platform, network: $network"
                 override def location: Option[ConfigValueLocation] = None
+                // override def origin: Option[ConfigOrigin] = None
               }))
           }
         }
         .flatMap {
           case c: TezosConfiguration =>
             loadConfig[Option[TNSContractConfiguration]](namespace = s"tns.$network").map(tns => c.copy(tns = tns))
+          // ConfigSource.default
+          //   .at(namespace = s"tns.$network")
+          //   .load[Option[TNSContractConfiguration]]
+          //   .map(tns => c.copy(tns = tns))
           case c => Right(c)
         }
 
@@ -204,6 +218,7 @@ object LorreAppConfig {
       //compose the configuration reading outcomes
       for {
         akkaConf <- loadConfig[Config]
+        // akkaConf <- ConfigSource.default.load[Config]
         validatedConfig <- loadValidatedConfig(akkaConf)
       } yield validatedConfig
     }

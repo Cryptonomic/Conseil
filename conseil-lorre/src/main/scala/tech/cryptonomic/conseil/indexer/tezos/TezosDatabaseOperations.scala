@@ -872,6 +872,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     import io.circe.parser.decode
     import RegisteredTokensFetcher.decoder
     import java.io.{BufferedReader, InputStreamReader}
+    import scala.io.Source
 
     val reader =
       new BufferedReader(new InputStreamReader(getClass.getResourceAsStream(s"/registered_tokens/$network.json")))

@@ -17,7 +17,7 @@ import tech.cryptonomic.conseil.common.tezos.{Fork, Tables, TezosOptics, TezosTy
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperationsTestFixtures, TezosInMemoryDatabaseSetup}
-import com.softwaremill.diffx.scalatest.DiffMatcher._
+import com.softwaremill.diffx.scalatest.DiffShouldMatcher._
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class BigMapsOperationsTest
@@ -26,6 +26,8 @@ class BigMapsOperationsTest
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
     with IntegrationPatience {
+
+  import com.softwaremill.diffx.generic.auto._
 
   "The big-maps operations" should {
       //simplify signatures
@@ -66,7 +68,7 @@ class BigMapsOperationsTest
         //then
         maps.size shouldBe 1
 
-        maps(0) should matchTo(
+        maps(0) shouldMatchTo (
           BigMapsRow(
             bigMapId = BigDecimal(1),
             keyType = Some("address"),
@@ -122,7 +124,7 @@ class BigMapsOperationsTest
         //then
         contents.size shouldBe 1
 
-        contents(0) should matchTo(
+        contents(0) shouldMatchTo (
           BigMapContentsRow(
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
@@ -271,7 +273,7 @@ class BigMapsOperationsTest
         //then
         tokenUpdates should have size 1
 
-        tokenUpdates(0) should matchTo(
+        tokenUpdates(0) shouldMatchTo (
           TokenBalancesRow(
             tokenAddress = "KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux",
             address = targetAccount,
@@ -338,7 +340,7 @@ class BigMapsOperationsTest
         //then
         contents.size shouldBe 1
 
-        contents(0) should matchTo(
+        contents(0) shouldMatchTo (
           BigMapContentsRow(
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
@@ -430,7 +432,7 @@ class BigMapsOperationsTest
         contents.size shouldBe 1
 
         // we expect only the latest update to take effect
-        contents(0) should matchTo(
+        contents(0) shouldMatchTo (
           BigMapContentsRow(
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
@@ -514,7 +516,7 @@ class BigMapsOperationsTest
 
         contents.size shouldBe 2
 
-        contents(1) should matchTo(
+        contents(1) shouldMatchTo (
           BigMapContentsRow(
             bigMapId = BigDecimal(2),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
@@ -621,7 +623,7 @@ class BigMapsOperationsTest
         contents.size shouldBe 3
 
         // we expect the destination map to only consider the very last copy applied
-        contents(2) should matchTo(
+        contents(2) shouldMatchTo (
           BigMapContentsRow(
             bigMapId = BigDecimal(3),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",

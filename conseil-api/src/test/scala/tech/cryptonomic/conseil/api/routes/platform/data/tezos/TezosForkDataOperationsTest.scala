@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
 import java.sql.Timestamp
 
-import com.softwaremill.diffx.scalatest.DiffMatcher
+import com.softwaremill.diffx.scalatest.DiffShouldMatcher._
 import org.scalatest.concurrent.IntegrationPatience
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
@@ -21,7 +21,6 @@ class TezosForkDataOperationsTest
     extends ConseilSpec
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
-    with DiffMatcher
     with IntegrationPatience {
 
   import scala.concurrent.ExecutionContext.Implicits.global

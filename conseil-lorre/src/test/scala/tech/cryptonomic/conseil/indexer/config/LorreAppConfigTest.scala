@@ -68,7 +68,7 @@ class LorreAppConfigTest extends ConseilSpec {
         """.stripMargin)
 
         val typedConfig = loadPlatformConfiguration("tezos", "alphanet", config = Some(cfg))
-        typedConfig.right.value shouldBe TezosConfiguration(
+        typedConfig.value shouldBe TezosConfiguration(
           "alphanet",
           enabled = true,
           TezosNodeConfiguration("localhost", 8732, "http", "tezos/alphanet/"),

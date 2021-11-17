@@ -156,7 +156,7 @@ class ConseilAppConfigTest extends ConseilSpec {
         val typedConfig =
           pureconfig.loadConfig[Option[NautilusCloudConfiguration]](conf = config, namespace = "nautilus-cloud")
 
-        typedConfig.right.value shouldBe empty
+        typedConfig.value shouldBe empty
       }
 
       "extract Some, when configuration for Nautilus Cloud exists" in {

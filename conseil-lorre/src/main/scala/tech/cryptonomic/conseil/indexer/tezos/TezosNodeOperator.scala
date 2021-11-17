@@ -796,7 +796,7 @@ class TezosNodeSenderOperator(
    */
   import shapeless.HList
   import shapeless.record.Record
-  import io.circe.generic.encoding.ReprObjectEncoder._
+  import io.circe.generic.encoding.ReprAsObjectEncoder._
 
   //used in subsequent operations using Sodium
   SodiumLibrary.setLibraryPath(sodiumConf.libraryPath)

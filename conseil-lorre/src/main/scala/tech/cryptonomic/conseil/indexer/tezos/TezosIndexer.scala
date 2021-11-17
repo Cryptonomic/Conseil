@@ -67,7 +67,7 @@ class TezosIndexer private (
 )(
     implicit
     system: ActorSystem,
-    materializer: Materializer,
+    materializer: ActorMaterializer,
     dispatcher: ExecutionContext
 ) extends LorreIndexer
     with LorreProgressLogging {
@@ -326,7 +326,7 @@ object TezosIndexer extends ConseilLogSupport {
     val selectedNetwork = conf.network
 
     implicit val system: ActorSystem = ActorSystem("lorre-tezos-indexer")
-    implicit val materializer: Materializer = ActorMaterializer()
+    implicit val materializer: ActorMaterializer = ActorMaterializer()
     implicit val dispatcher: ExecutionContext = system.dispatcher
 
     val ignoreProcessFailuresOrigin: Option[String] = sys.env.get(LORRE_FAILURE_IGNORE_VAR)

@@ -1,12 +1,14 @@
 package tech.cryptonomic.conseil.indexer.tezos.michelson.contracts
 
-import com.softwaremill.diffx.scalatest.DiffMatcher._
+import com.softwaremill.diffx.scalatest.DiffShouldMatcher._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Contract.CompatBigMapDiff
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract.LookupMapReference
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class TNSContractsTest extends ConseilSpec {
+
+  import com.softwaremill.diffx.generic.auto._
 
   "The TNS Contract operations for a known configured contract" should {
 
@@ -21,7 +23,7 @@ class TNSContractsTest extends ConseilSpec {
         //when
         val lookupReferenceResults = sut.readLookupMapReference(Left(ValidTransactionData.transaction)).value
 
-        lookupReferenceResults should matchTo(
+        lookupReferenceResults shouldMatchTo (
           LookupMapReference(
             contractId = tnsContractId,
             lookupName = TNSContract.Name("me want tacos"),
@@ -113,7 +115,7 @@ class TNSContractsTest extends ConseilSpec {
         val lookupContentResult =
           sut.readLookupMapContent(tnsContractId, ValidTransactionData.reverseLookupMapContent).value
 
-        lookupContentResult should matchTo(
+        lookupContentResult shouldMatchTo(
           TNSContract.NameRecord(
             name = "me want tacos",
             updated = "False",

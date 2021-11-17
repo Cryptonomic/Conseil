@@ -3,21 +3,23 @@ import sbt._
 object Dependencies {
 
   private object Versions {
-    val typesafeConfig = "1.4.0"
+    val typesafeConfig = "1.4.1"
     val pureConfig = "0.10.2"
-    val scopt = "4.0.0-RC2"
+    // val pureConfig = "0.17.0"
+    val scopt = "4.0.1"
 
-    val akka = "2.6.11"
-    val akkaHttp = "10.2.3"
-    val akkaHttpJson = "1.35.2"
-    val akkaHttpCors = "1.1.0"
+    val akka = "2.6.17"
+    val akkaHttp = "10.2.7"
+    val akkaHttpJson = "1.38.2"
+    val akkaHttpCors = "1.1.2"
 
     val scribe = "3.1.3"
+    // val scribe = "3.6.3"
 
     val slick = "3.3.3"
-    val slickPG = "0.19.6"
+    val slickPG = "0.19.7"
     val slickEffect = "0.4.0"
-    val postgres = "42.1.4"
+    val postgres = "42.3.1"
 
     val endpoints4s = "1.3.0"
     val endpoints4sBackCompatible = "1.1.0"
@@ -30,29 +32,30 @@ object Dependencies {
 
     val mouse = "0.25"
     val monocle = "2.0.0"
-    val circe = "0.13.0"
-    val http4s = "0.23.4"
+    val circe = "0.14.1"
+    val http4s = "0.23.6"
 
-    val silencer = "1.4.4"
+    val silencer = "1.6.0"
     val kantanCsv = "0.6.0"
     val apacheCommonText = "1.7"
     val radixTree = "0.5.1"
 
-    val scalaTest = "3.1.2"
-    val scalaTestScalaCheck = "3.1.2.0"
-    val scalaTestJson = "0.0.3"
-    val scalaMock = "4.1.0"
-    val testContainerPostgres = "1.15.2"
-    val diffX = "0.3.3"
-    val scalaCheckShapeless = "1.2.5"
+    val scalaTest = "3.2.9"
+    val scalaTestScalaCheck = "3.2.9.0"
+
+    val scalaTestJson = "0.2.5"
+    val scalaMock = "5.1.0"
+    val testContainerPostgres = "1.16.2"
+    val diffX = "0.6.0"
+    val scalaCheckShapeless = "1.3.0"
 
     val libsodiumJna = "1.0.4"
-    val jna = "5.5.0"
+    val jna = "5.10.0"
 
-    val chimney = "0.3.1"
+    val chimney = "0.6.1"
     val bitcoin = "0.9.18-SNAPSHOT"
-    val scrypto = "2.1.7"
-    val scorex = "0.1.6"
+    val scrypto = "2.1.8"
+    val scorex = "0.1.7"
   }
 
   private val config = Seq("com.typesafe" % "config" % Versions.typesafeConfig)
@@ -122,8 +125,6 @@ object Dependencies {
     "org.http4s"                  %% "http4s-ember-client" % Versions.http4s
   )
 
-  private val monix = Seq("io.monix" %% "monix-catnap" % Versions.monix)
-
   private val cats = Seq(
     "org.typelevel" %% "cats-core"   % Versions.cats,
     "org.typelevel" %% "cats-effect" % Versions.catsEffect
@@ -161,8 +162,8 @@ object Dependencies {
   private val scalaTestCompile = Seq(
     "org.scalactic"              %% "scalactic"                 % Versions.scalaTest,
     "org.scalatest"              %% "scalatest"                 % Versions.scalaTest,
-    "org.scalatestplus"          %% "scalacheck-1-14"           % Versions.scalaTestScalaCheck,
-    "com.github.alexarchambault" %% "scalacheck-shapeless_1.14" % Versions.scalaCheckShapeless
+    "org.scalatestplus"          %% "scalacheck-1-15"           % Versions.scalaTestScalaCheck,
+    "com.github.alexarchambault" %% "scalacheck-shapeless_1.15" % Versions.scalaCheckShapeless
   ) // Dedicated for common-testkit
   private val scalaTest = scalaTestCompile.map(_ % Test)
   private val scalaTestJson = Seq("com.stephenn" %% "scalatest-json-jsonassert" % Versions.scalaTestJson % Test)
@@ -172,7 +173,7 @@ object Dependencies {
   private val postgresTestContainerCompile = Seq("org.testcontainers"    % "postgresql" % Versions.testContainerPostgres)
   private val postgresTestContainer = postgresTestContainerCompile.map(_ % Test)
 
-  private val diffX = Seq("com.softwaremill.diffx" %% "diffx-scalatest" % Versions.diffX % Test)
+  private val diffX = Seq("com.softwaremill.diffx" %% "diffx-scalatest-should" % Versions.diffX % Test)
 
   private val apacheCommonsText = Seq("org.apache.commons" % "commons-text" % Versions.apacheCommonText)
 
@@ -219,8 +220,7 @@ object Dependencies {
       diffX,
       apacheCommonsText,
       bitcoin,
-      scorex,
-      monix
+      scorex
     )
 
   val conseilCommonTestKitInclude: Seq[ModuleID] =
@@ -238,8 +238,7 @@ object Dependencies {
       scalaMock,
       scalaTestJson,
       diffX,
-      endpoints,
-      monix
+      endpoints
     )
 
   val conseilLorreInclude: Seq[ModuleID] =

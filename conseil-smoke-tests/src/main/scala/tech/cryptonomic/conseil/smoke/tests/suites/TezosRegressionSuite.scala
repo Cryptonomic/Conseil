@@ -36,7 +36,7 @@ class TezosRegressionSuite(val configfile: String, val syncNetwork: Option[Strin
   private val pool = Executors.newCachedThreadPool()
   private val clientExecution: ExecutionContext = ExecutionContext.fromExecutor(pool)
 
-  private val clientBuild = BlazeClientBuilder[IO](clientExecution)
+  private val clientBuild = BlazeClientBuilder[IO].withExecutionContext(clientExecution)
 
   /** will run the regression suite against the given endpoints */
   override def runRegressionSuite: IO[Unit] =

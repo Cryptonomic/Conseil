@@ -27,7 +27,7 @@ class BitcoinRegressionSuite(val configfile: String, val syncNetwork: Option[Str
   private val pool = Executors.newCachedThreadPool()
   private val clientExecution: ExecutionContext = ExecutionContext.fromExecutor(pool)
 
-  private val clientBuild = BlazeClientBuilder[IO](clientExecution)
+  private val clientBuild = BlazeClientBuilder[IO].withExecutionContext(clientExecution)
 
   /** will run the regression suite against the given endpoints */
   def runRegressionSuite: IO[Unit] =
