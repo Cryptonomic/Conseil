@@ -13,6 +13,7 @@ object Dependencies {
     val akkaHttpCors = "1.1.2"
 
     val scribe = "3.1.3"
+    // val scribe = "3.6.3"
 
     val slick = "3.3.3"
     val slickPG = "0.19.7"
@@ -24,6 +25,7 @@ object Dependencies {
     val endpoints4sAkkaServer = "4.0.0"
 
     val monix = "3.4.0"
+    val tapir = "0.19.0-M16"
 
     val cats = "2.6.1"
     val catsEffect = "3.2.9"
@@ -123,8 +125,6 @@ object Dependencies {
     "org.http4s"                  %% "http4s-ember-client" % Versions.http4s
   )
 
-  private val monix = Seq("io.monix" %% "monix-catnap" % Versions.monix)
-
   private val cats = Seq(
     "org.typelevel" %% "cats-core"   % Versions.cats,
     "org.typelevel" %% "cats-effect" % Versions.catsEffect
@@ -220,8 +220,7 @@ object Dependencies {
       diffX,
       apacheCommonsText,
       bitcoin,
-      scorex,
-      monix
+      scorex
     )
 
   val conseilCommonTestKitInclude: Seq[ModuleID] =
@@ -239,8 +238,7 @@ object Dependencies {
       scalaMock,
       scalaTestJson,
       diffX,
-      endpoints,
-      monix
+      endpoints
     )
 
   val conseilLorreInclude: Seq[ModuleID] =

@@ -7,6 +7,7 @@ import scribe._
 import scribe.format._
 import scribe.modify.LevelFilter
 import scribe.output.{Color, ColoredOutput}
+// import pureconfig.ConfigSource
 import pureconfig.generic.auto._
 import java.net.URL
 
@@ -36,9 +37,13 @@ object Logging {
       case Some(value) =>
         pureconfig
           .loadConfig[Config](value, "logging")
+          // ConfigSource.default
+          //   .at("logging")
+          //   .load[Config]
           .fold(
             failures => {
               error("I can't load the logging configuration from path")
+              // failures.toList.foreach(fail => error(s"${fail.description} ${fail.origin.getOrElse("")}"))
               failures.toList.foreach(fail => error(s"${fail.description} ${fail.location.getOrElse("")}"))
             },
             configure
@@ -46,9 +51,13 @@ object Logging {
       case None =>
         pureconfig
           .loadConfig[Config]("logging")
+          // ConfigSource.default
+          //   .at("logging")
+          //   .load[Config]
           .fold(
             failures => {
               error("I can't load the logging configuration")
+              // failures.toList.foreach(fail => error(s"${fail.description} ${fail.origin.getOrElse("")}"))
               failures.toList.foreach(fail => error(s"${fail.description} ${fail.location.getOrElse("")}"))
             },
             configure
