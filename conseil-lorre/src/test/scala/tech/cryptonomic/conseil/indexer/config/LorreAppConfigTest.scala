@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.indexer.config
 import com.typesafe.config.{Config, ConfigFactory}
 import tech.cryptonomic.conseil.common.config.Platforms.{TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.Loaders._
-import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.Natural
+import tech.cryptonomic.conseil.indexer.config.ConfigUtil.Natural
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
 class LorreAppConfigTest extends ConseilSpec {
