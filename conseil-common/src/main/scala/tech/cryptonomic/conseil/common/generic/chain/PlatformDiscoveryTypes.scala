@@ -1,8 +1,6 @@
 package tech.cryptonomic.conseil.common.generic.chain
 
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.InvalidPredicateFiltering
-import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.DataType.DataType
-import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.KeyType.KeyType
 import tech.cryptonomic.conseil.common.metadata.{NetworkPath, PlatformPath}
 
 /**
@@ -68,10 +66,18 @@ object PlatformDiscoveryTypes {
   }
 
   /** Enumeration of data types */
-  object DataType extends Enumeration {
-    type DataType = Value
-    val Enum, Hex, Binary, Date, DateTime, String, Hash, AccountAddress, Int, LargeInt, Decimal, Currency, Boolean =
-      Value
+  sealed trait DataType extends Product with Serializable
+  object DataType {
+    case object Date extends DataType
+    case object DateTime extends DataType
+    case object String extends DataType
+    case object Int extends DataType
+    case object LargeInt extends DataType
+    case object Decimal extends DataType
+    case object Boolean extends DataType
+    case object Hash extends DataType
+    case object AccountAddress extends DataType
+    case object Currency extends DataType
   }
 
   /** Maps type from DB to type used in query */
@@ -89,10 +95,25 @@ object PlatformDiscoveryTypes {
       case _ => DataType.String
     }
 
+  def imapDataType(tpe: DataType): String =
+    tpe match {
+      case DataType.DateTime => "timestamp"
+      case DataType.String => "varchar"
+      case DataType.Int => "int"
+      case DataType.LargeInt => "bigint"
+      case DataType.Decimal => "numeric"
+      case DataType.Boolean => "bool"
+      case DataType.Hash => "hash"
+      case DataType.AccountAddress => "accountAddress"
+      case DataType.Currency => "currency"
+      case _ => ""
+    }
+
   /** Enumeration of key types */
-  object KeyType extends Enumeration {
-    type KeyType = Value
-    val NonKey, UniqueKey = Value
+  sealed trait KeyType extends Product with Serializable
+  object KeyType {
+    case object NonKey extends KeyType
+    case object UniqueKey extends KeyType
   }
 
   /** Attribute cache configuration */

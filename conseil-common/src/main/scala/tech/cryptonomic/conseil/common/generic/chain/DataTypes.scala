@@ -5,9 +5,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.AggregationType.A
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.FormatType.FormatType
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.OrderDirection.OrderDirection
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.OutputType.OutputType
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.DataType
-import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.common.metadata.EntityPath
 
 /**
@@ -225,9 +223,15 @@ object DataTypes {
   }
 
   /** Enumeration for output types */
-  object OutputType extends Enumeration {
-    type OutputType = Value
-    val json, csv, sql = Value
+  // object OutputType extends Enumeration {
+  //   type OutputType = Value
+  //   val json, csv, sql = Value
+  // }
+  sealed trait OutputType extends Product with Serializable
+  object OutputType {
+    case object json extends OutputType
+    case object csv extends OutputType
+    case object sql extends OutputType
   }
 
   /** Enumeration for order direction */
