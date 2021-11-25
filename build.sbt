@@ -18,7 +18,7 @@ ThisBuild / resolvers ++= Seq(
 )
 
 lazy val conseil = (project in file("."))
-  .aggregate(common, commonTestKit, api, lorre, schema, smokeTests)
+  .aggregate(common, commonTestKit, api, lorre, schema, smokeTests, apiShared, apiServer, apiClient)
 
 lazy val common = (project in file("conseil-common"))
   .settings(
@@ -46,6 +46,16 @@ lazy val commonTestKit = (project in file("conseil-common-testkit"))
     libraryDependencies ++= Dependencies.conseilCommonTestKitInclude
   )
   .disableAssembly()
+
+lazy val apiShared = (project in file("conseil-api-shared"))
+  .settings(name := "api-shared", libraryDependencies ++= Dependencies.tapirShared)
+  .dependsOn(common, commonTestKit % Test)
+lazy val apiServer = (project in file("conseil-api-server"))
+  .settings(name := "api-server", libraryDependencies ++= Dependencies.tapirServer)
+  .dependsOn(apiShared)
+lazy val apiClient = (project in file("conseil-api-client"))
+  .settings(name := "api-client", libraryDependencies ++= Dependencies.tapirClient)
+  .dependsOn(apiShared)
 
 lazy val api = (project in file("conseil-api"))
   .settings(
