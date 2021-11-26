@@ -1,11 +1,13 @@
 package tech.cryptonomic.conseil.platform.data.tezos
 
+import sttp.tapir._
+
 import tech.cryptonomic.conseil.common.tezos.Tables._
 import tech.cryptonomic.conseil.platform.data.ApiDataEndpoints
 import tech.cryptonomic.conseil.TezosFilterFromQueryString
 // import tech.cryptonomic.conseil.TezosFilterFromQueryString.tezosQsFilter
-
-import sttp.tapir._
+import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosDataOperations.{AccountResult, OperationGroupResult}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 
 object TezosDataEndpoints extends ApiDataEndpoints with TezosFilterFromQueryString {
 
