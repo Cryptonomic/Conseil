@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.platform.data.ethereum
 
 import tech.cryptonomic.conseil.platform.data.ApiDataEndpoints
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 
 import sttp.tapir._
 
@@ -9,8 +10,7 @@ trait EthereumDataEndpointsCreator extends ApiDataEndpoints {
   private def createPath(platform: String) = "v2" / "data" / platform / query[String]("network")
   private def compQueryResponseList = (x: String) => compatibilityQuery[List[QueryResponse]](x)
   private def compQueryResponse = (x: String) => compatibilityQuery[QueryResponse](x)
-  private val common =
-    (x: String) => infallibleEndpoint.get.in(createPath(x)).in(header[Option[String]]("apiKey"))
+  private val common = (x: String) => infallibleEndpoint.get.in(createPath(x)).in(header[Option[String]]("apiKey"))
 
   /** V2 Blocks endpoint definition */
   private[ethereum] def blocksEndpoint(platform: String) =
