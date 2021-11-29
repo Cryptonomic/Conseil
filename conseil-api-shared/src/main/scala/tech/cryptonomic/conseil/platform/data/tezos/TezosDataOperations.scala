@@ -1,12 +1,11 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.tezos
+package tech.cryptonomic.conseil.platform.data.tezos
 
 import com.typesafe.config.Config
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.platform.data.ApiDataOperations
+import tech.cryptonomic.conseil.ApiDataOperations
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OperationType, Predicate}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockLevel, TezosBlockHash}
 import tech.cryptonomic.conseil.common.tezos.Tables
-// import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.common.util.CollectionOps._
 
 import scala.concurrent.{ExecutionContext, Future}

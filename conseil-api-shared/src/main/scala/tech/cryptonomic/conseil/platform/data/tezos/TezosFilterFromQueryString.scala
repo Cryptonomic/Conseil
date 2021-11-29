@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil
+package tech.cryptonomic.conseil.platform.data.tezos
 
 import sttp.tapir._
 import tech.cryptonomic.conseil.ApiFilter.Sorting
@@ -29,6 +29,25 @@ protected trait TezosFilterFromQueryString extends ApiFilterQueryString { //self
   //TODO Before updating endpoints higher than 0.10 we need to decrease number of parameters in single structure first
   /** Function for extracting query string with query params */
   // private
+  // def filterQs: EndpointInput.Query[
+  //   (
+  //       Option[Int],
+  //       Set[String],
+  //       Set[Int],
+  //       Set[String],
+  //       Set[String],
+  //       Set[String],
+  //       Set[String],
+  //       Set[String],
+  //       Set[String],
+  //       Set[String],
+  //       Set[String],
+  //       Set[String],
+  //       Set[String],
+  //       Option[String],
+  //       Option[Sorting]
+  //   )
+  // ] =
   def filterQs =
     limit and
         query[Set[String]]("block_id") and
@@ -48,7 +67,7 @@ protected trait TezosFilterFromQueryString extends ApiFilterQueryString { //self
 
   /** Function for mapping query string to Filter */
   val tezosQsFilter =
-    filterQs.xmap(TezosFilter.tupled)(
+    filterQs.map(TezosFilter.tupled)(
       filter =>
         (
           filter.limit,

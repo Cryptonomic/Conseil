@@ -8,20 +8,20 @@ import tech.cryptonomic.conseil.ApiFilter.Sorting._
 trait ApiFilterQueryString {
 
   /** Query string used for limiting number of returned results from API */
-  val limit = query[Option[String]]("limit")
+  val limit: EndpointInput.Query[Option[Int]] = query[Option[Int]]("limit")
 
   /** Query string used for choosing optional sorting field. It will be combined with 'sorting' */
-  val sortBy = query[Option[Int]]("sort_by")
+  val sortBy: EndpointInput.Query[Option[String]] = query[Option[String]]("sort_by")
 
   /** Query string used for choosing optional sorting order. It will be combined with 'sort_by' */
-  import io.circe.generic.semiauto._
+  // import io.circe.generic.semiauto._
+  // implicit val sortingCodec: io.circe.Codec.AsObject[Sorting] = deriveCodec[Sorting]
 
-  implicit val xd: io.circe.Codec.AsObject[Sorting] = deriveCodec[Sorting]
-  val order = query[Option[Sorting]]("sorting")
+  val order: EndpointInput.Query[Option[Sorting]] = ??? // query[Option[Sorting]]("sorting")
 
   implicit lazy val sortingQueryString =
     query[String](_: String)
-      .map(fromValidString(_))(_.map(asString(_)).getOrElse("ascending"))
+      .map(fromValidString(_))(_.map(asString).getOrElse("ascending")) // FIXME: correct default?
 
   implicit lazy val optionalSortingQueryString = query[Option[String]](_)
 

@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
+package tech.cryptonomic.conseil.platform.data.bitcoin
 
 import sttp.tapir._
 import tech.cryptonomic.conseil.platform.data._
@@ -37,7 +37,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints { // with BitcoinFilterFromQ
   /** V2 Transactions endpoint definition */
   def bitcoinTransactionsEndpoint =
     infallibleEndpoint.get
-      .in(root / "transactions" / query[Option[String]](bitcoinQsFilter))
+      .in(root / "transactions" / query[Option[String]]("bitcoinQsFilter"))
       .in(header[Option[String]]("apiKey"))
       .out(compatibilityQuery[List[QueryResponse]]("transactions"))
 
@@ -51,21 +51,21 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints { // with BitcoinFilterFromQ
   /** V2 Inputs for transactions endpoint definition */
   def bitcoinInputsEndpoint =
     infallibleEndpoint.get
-      .in(root / "inputs" / query[Option[String]](bitcoinQsFilter))
+      .in(root / "inputs" / query[Option[String]]("bitcoinQsFilter"))
       .in(header[Option[String]]("apiKey"))
       .out(compatibilityQuery[List[QueryResponse]]("inputs for transactions"))
 
   /** V2 Outputs for transactions endpoint definition */
   def bitcoinOutputsEndpoint =
     infallibleEndpoint.get
-      .in(root / "outputs" / query[Option[String]](bitcoinQsFilter))
+      .in(root / "outputs" / query[Option[String]]("bitcoinQsFilter"))
       .in(header[Option[String]]("apiKey"))
       .out(compatibilityQuery[List[QueryResponse]]("outputs for transactions"))
 
   /** V2 Accounts endpoint definition */
   def bitcoinAccountsEndpoint =
     infallibleEndpoint.get
-      .in(root / "accounts" / query[Option[String]](bitcoinQsFilter))
+      .in(root / "accounts" / query[Option[String]]("bitcoinQsFilter"))
       .in(header[Option[String]]("apiKey"))
       .out(compatibilityQuery[List[QueryResponse]]("accounts"))
 

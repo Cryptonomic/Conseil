@@ -9,7 +9,8 @@ import io.circe.{Decoder, Encoder}
 
 trait ApiDataEndpoints {
 
-  protected val commonPath = (platform: String) =>
+  // protected
+  def commonPath(platform: String) =
     infallibleEndpoint.in("v2" / "data" / platform / "network" / "entity")
 
   implicit val outputTypeCodec = deriveCodec[OutputType]
@@ -24,7 +25,7 @@ trait ApiDataEndpoints {
   implicit val queryResponseWithOutputCodec = ??? // deriveCodec[QueryResponseWithOutput]
 
   /** V2 Query endpoint definition */
-  def queryEndpoint(platform: String) =
+  def queryEndpoint(platform: String): Endpoint[Unit, Unit, Nothing, QueryResponseWithOutput, Any] =
     commonPath(platform).post
       .out(jsonBody[QueryResponseWithOutput])
 

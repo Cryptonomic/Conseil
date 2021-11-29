@@ -1,13 +1,14 @@
-package tech.cryptonomic.conseil.platform.data
+package tech.cryptonomic.conseil
 
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.generic.chain.DataOperations
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.OutputType
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Field, Predicate, Query, QueryResponse, _}
-import tech.cryptonomic.conseil.platform.Sanitizer._
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.Query
+// TODO: weird import
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.sql.DatabaseRunner
 import tech.cryptonomic.conseil.common.util.DatabaseUtil.QueryBuilder._
+import tech.cryptonomic.conseil.platform.Sanitizer._
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -47,8 +48,7 @@ trait ApiDataOperations extends DatabaseRunner with DataOperations with ConseilL
       query.aggregation,
       query.orderBy
     )
-    val validFields =
-      if (hideForkInvalid) fields.filterNot(hiddenForkFields) else fields
+    val validFields = if (hideForkInvalid) fields.filterNot(hiddenForkFields) else fields
     val validPredicates = predicates ++ (if (hideForkInvalid) hideForkResults(predicates) else Nil)
     val validAggregation = if (hideForkInvalid) aggregation.filterNot(hiddenForkFields) else aggregation
     val validOrdering = if (hideForkInvalid) ordering.filterNot(hiddenForkFields) else ordering
@@ -138,7 +138,7 @@ trait ApiDataOperations extends DatabaseRunner with DataOperations with ConseilL
     *
     * Defaults to an empty list.
     */
-  protected def hideForkResults(userQueryPredicates: List[Predicate]): List[Predicate] = List.empty
+  protected val hideForkResults = (_: List[Predicate]) => List.empty[Predicate]
 
   /* select fields that would make the fork logic apparent as output to the queries */
   private def hiddenForkFields(f: Field): Boolean =

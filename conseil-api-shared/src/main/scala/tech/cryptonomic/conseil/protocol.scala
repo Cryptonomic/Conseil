@@ -11,7 +11,7 @@ object protocol {
 
   private val base = infallibleEndpoint.in("api")
 
-  val appInfo = base.get
+  val appInfo: Endpoint[Unit, (Option[String], String), GenericServerError, Info, Any] = base.get
     .in("info")
     .in(jsonBody[Option[String]])
     .in(header[String]("apiKey"))
