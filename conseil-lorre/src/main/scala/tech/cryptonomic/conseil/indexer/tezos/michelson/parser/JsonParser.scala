@@ -27,9 +27,9 @@ object JsonParser {
    * */
   sealed trait JsonSection
 
-  case class JsonExpressionSection(prim: String, args: List[Either[JsonInstruction, List[JsonExpression]]]) extends JsonSection {
+  case class JsonExpressionSection(prim: String, args: List[Either[JsonExpression, List[JsonExpression]]]) extends JsonSection {
     def toMichelsonExpression: List[MichelsonExpression] = args.flatMap {
-      case Left(value) => List(value.toMichelsonInstruction)
+      case Left(value) => List(value.toMichelsonExpression)
       case Right(value) => value.map(_.toMichelsonExpression)
     }
   }
