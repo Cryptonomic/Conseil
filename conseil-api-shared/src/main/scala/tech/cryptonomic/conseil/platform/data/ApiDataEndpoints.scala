@@ -9,8 +9,7 @@ import io.circe.{Decoder, Encoder}
 
 trait ApiDataEndpoints {
 
-  // protected
-  def commonPath(platform: String) =
+  protected def commonPath(platform: String) =
     infallibleEndpoint.in("v2" / "data" / platform / "network" / "entity")
 
   implicit val outputTypeCodec = deriveCodec[OutputType]

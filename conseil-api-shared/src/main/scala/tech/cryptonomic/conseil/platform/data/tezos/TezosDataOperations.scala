@@ -26,7 +26,8 @@ class TezosDataOperations(dbConfig: Config) extends ApiDataOperations {
 
   override protected val forkRelatedFields = Set("invalidated_asof", "fork_id")
 
-  override protected def hideForkResults(userQueryPredicates: List[Predicate]): List[Predicate] = {
+  // override
+  protected def hideForkResults(userQueryPredicates: List[Predicate]): List[Predicate] = {
     /* each predicate group will need an additional predicate, because the grouping logic will
      * combine them with an OR, thus nullifying the effect of adding only one predicate overall
      */

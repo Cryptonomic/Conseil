@@ -5,7 +5,7 @@ import tech.cryptonomic.conseil.ApiFilter.Sorting
 import tech.cryptonomic.conseil.ApiFilterQueryString
 
 /** Trait containing helper functions which are necessary for parsing query parameter strings as Filter  */
-protected trait TezosFilterFromQueryString extends ApiFilterQueryString { //self: algebra.JsonEntities =>
+protected trait TezosFilterFromQueryString extends ApiFilterQueryString {
 
   /** Query params type alias */
   type TezosQueryParams = (
@@ -28,26 +28,6 @@ protected trait TezosFilterFromQueryString extends ApiFilterQueryString { //self
 
   //TODO Before updating endpoints higher than 0.10 we need to decrease number of parameters in single structure first
   /** Function for extracting query string with query params */
-  // private
-  // def filterQs: EndpointInput.Query[
-  //   (
-  //       Option[Int],
-  //       Set[String],
-  //       Set[Int],
-  //       Set[String],
-  //       Set[String],
-  //       Set[String],
-  //       Set[String],
-  //       Set[String],
-  //       Set[String],
-  //       Set[String],
-  //       Set[String],
-  //       Set[String],
-  //       Set[String],
-  //       Option[String],
-  //       Option[Sorting]
-  //   )
-  // ] =
   def filterQs =
     limit and
         query[Set[String]]("block_id") and

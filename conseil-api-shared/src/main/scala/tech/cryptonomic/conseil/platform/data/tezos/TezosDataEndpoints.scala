@@ -4,24 +4,18 @@ import sttp.tapir._
 
 import tech.cryptonomic.conseil.common.tezos.Tables._
 import tech.cryptonomic.conseil.platform.data.ApiDataEndpoints
-// import tech.cryptonomic.conseil.TezosFilterFromQueryString.tezosQsFilter
 import tech.cryptonomic.conseil.platform.data.tezos.TezosDataOperations.{AccountResult, OperationGroupResult}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 
-object TezosDataEndpoints extends ApiDataEndpoints with TezosFilterFromQueryString {
+object TezosDataEndpoints extends ApiDataEndpoints { // with TezosFilterFromQueryString {
 
   implicit private val platform = "tezos"
+  private val root = commonPath(platform)
 
-  // private
-  val root: Endpoint[Unit, Unit, Nothing, Unit, Any] =
-    commonPath(platform)
-
-  def tezosQueryEndpoint: Endpoint[Unit, Unit, Nothing, QueryResponseWithOutput, Any] =
-    queryEndpoint(platform)
+  def tezosQueryEndpoint = queryEndpoint(platform)
 
   /** V2 Blocks endpoint definition */
   def tezosBlocksEndpoint =
-    // : Endpoint[Unit, Option[String], Nothing, List[QueryResponse], Any] =
     root.get
     // .in("blocks" / query[Option[String]](tezosQsFilter))
       .in("blocks" / query[Option[String]]("tezosQsFilter"))
