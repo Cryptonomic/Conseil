@@ -3,6 +3,8 @@ package tech.cryptonomic.conseil
 import cats.effect.{Async, IO}
 import org.http4s.HttpApp
 import sttp.model.StatusCode
+import sttp.tapir.generic.auto._
+import sttp.tapir.json.circe._
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 import sttp.tapir.server.interceptor.ValuedEndpointOutput
 import sttp.tapir.statusCode
@@ -10,13 +12,7 @@ import sttp.tapir.statusCode
 object Routing {
 
   import tech.cryptonomic.conseil.info.model._
-
-  import sttp.tapir.generic.auto._
-  import io.circe.generic.semiauto._
-  import sttp.tapir.json.circe._
-
-  implicit val errorEncoder = deriveEncoder[GenericServerError]
-  implicit val errorDecoder = deriveDecoder[GenericServerError]
+  import tech.cryptonomic.conseil.info.converters._
 
   def instance[F[_]: Async]: HttpApp[IO] = {
 
@@ -36,7 +32,6 @@ object Routing {
         }
         .options
     ).toRoutes(endpoints).orNotFound
-
   }
 
 }
