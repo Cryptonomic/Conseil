@@ -27,11 +27,9 @@ object JsonParser {
    * */
   sealed trait JsonSection
 
-  case class JsonExpressionSection(prim: String, args: List[Either[JsonExpression, List[JsonExpression]]]) extends JsonSection {
-    def toMichelsonExpression: List[MichelsonExpression] = args.flatMap {
-      case Left(value) => List(value.toMichelsonExpression)
-      case Right(value) => value.map(_.toMichelsonExpression)
-    }
+  case class JsonViewSection(prim: String, args: JsonInstruction) extends JsonSection
+  case class JsonExpressionSection(prim: String, args: List[JsonExpression]) extends JsonSection {
+    def toMichelsonExpression: Option[MichelsonExpression] = args.headOption.map(_.toMichelsonExpression)
   }
 
   case class JsonCodeSection(prim: String, args: Either[List[List[JsonInstruction]], List[JsonInstruction]])
@@ -51,9 +49,7 @@ object JsonParser {
       case Left(Right(jsonInstruction)) => jsonInstruction.toMichelsonInstruction.normalized
       case Right(Nil) => MichelsonEmptyInstruction
       case Right(jsonInstructions) => MichelsonInstructionSequence(jsonInstructions.map(_.toMichelsonInstruction))
-      case _ =>
-        println("WTFFFFFFFFFFFFFF")
-        MichelsonEmptyInstruction
+      case _ => MichelsonEmptyInstruction
     }
   }
 
@@ -181,7 +177,7 @@ object JsonParser {
         parameter <- extractExpression("parameter")
         storage <- extractExpression("storage")
         code <- extractCode
-        views = extractMultipleExpressions("view")
+        views = extractMultipleInstructions("view")
       } yield MichelsonSchema(parameter, storage, code, views)
 
     private def extractExpression(sectionName: String): Result[MichelsonExpression] =
@@ -193,10 +189,10 @@ object JsonParser {
       }
 
 
-    private def extractMultipleExpressions(sectionName: String): List[MichelsonExpression] =
+    private def extractMultipleInstructions(sectionName: String): List[MichelsonInstruction] =
       code.collect {
-        case it @ JsonExpressionSection(`sectionName`, _) => it
-      }.flatMap(_.toMichelsonExpression.toList)
+        case it @ JsonViewSection(`sectionName`, _) => it
+      }.map(_.args.toMichelsonInstruction)
 
 
     private def extractCode: Result[MichelsonCode] =
@@ -209,7 +205,8 @@ object JsonParser {
     implicit val decodeSection: Decoder[JsonSection] =
       List[Decoder[JsonSection]](
         Decoder[JsonCodeSection].ensure(_.prim == "code", "No code section found").widen,
-        Decoder[JsonExpressionSection].widen
+        Decoder[JsonExpressionSection].widen,
+        Decoder[JsonViewSection].widen
       ).reduceLeft(_ or _)
 
     implicit val decodeExpression: Decoder[JsonExpression] = Decoder[JsonType].widen
@@ -241,10 +238,7 @@ object JsonParser {
 
   implicit val michelsonExpressionParser: Parser[MichelsonExpression] = {
     import GenericDerivation._
-    decode[Either[JsonExpression, List[JsonExpression]]](_).map {
-      case Left(value) => value.toMichelsonExpression
-      case Right(value) => MichelsonList(value.map(_.toMichelsonExpression))
-    }
+    decode[JsonExpression](_).map(_.toMichelsonExpression)
   }
 
   implicit val michelsonSchemaParser: Parser[MichelsonSchema] = {

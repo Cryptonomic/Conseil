@@ -92,14 +92,12 @@ object BigMapsConversions extends ConseilLogSupport {
               forkId = Fork.mainForkId
             )
           )
-        case x@BlockTagged(ref, (hash, _, BigMapUpdate(_, _, _, InvalidDecimal(json), _))) =>
-          println(x)
+        case BlockTagged(ref, (hash, _, BigMapUpdate(_, _, _, InvalidDecimal(json), _))) =>
           logger.warn(
             s"Big Map Updates: A big_map_diff update hasn't been converted to a BigMapContent on db, because the map id '$json' is not a valid number. The block containing the Transation operation is ${hash.value}"
           )
           None
-        case x@BlockTagged(ref, (_, opHash, diffAction)) =>
-          println(x)
+        case BlockTagged(ref, (_, opHash, diffAction)) =>
           logger.warn(
             s"Big Map Updates: A big_map_diff result will be ignored by the update conversion to BigMapContent on db, because the diff action is not supported: $diffAction for operation $opHash"
           )
