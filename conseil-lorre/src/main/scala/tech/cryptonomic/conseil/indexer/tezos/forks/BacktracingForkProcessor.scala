@@ -57,10 +57,10 @@ class BacktracingForkProcessor(
             if (indexedBlock.forall(_.hash == chainBlock.hash.value)) {
               -1
             } else {
-              logger.debug(
+              logger.info(
                 s"Hashes don't match: ${chainBlock.header.level} ${indexedBlock.map(_.hash)} && ${chainBlock.hash.value}"
               )
-              l
+              level - l
             }
           }
       }.sequence
