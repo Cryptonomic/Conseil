@@ -17,7 +17,27 @@ object DataTypes {
   import io.scalaland.chimney.dsl._
 
   /** Type representing `Map[String, Option[Any]]` for query response */
+  // type jString = java.lang.String
+  // type jInt = java.lang.Integer
+  // type jTimestamp = java.sql.Timestamp
+  // type jBool = java.lang.Boolean
+  // // type AnyVector = scala.collection.immutable.Vector[Any]
+  // type jBigDec = java.math.BigDecimal
+  // type jObject = java.lang.Object
+  // // type Anything
+  // sealed trait AnyType
+  // object AnyType {
+  //   case class JString(value: jString) extends AnyType
+  //   case class JInt(value: JInt) extends AnyType
+  //   case class JTimestamp(value: jTimestamp) extends AnyType
+  //   case class JBool(value: jBool) extends AnyType
+  //   case class JBigDec(value: jBigDec) extends AnyType
+  //   case class JObject(value: jObject) extends AnyType
+  //   case class Anything(value: Any) extends AnyType
+  // }
+  // type QueryResponse = Map[String, Option[AnyType]]
   type QueryResponse = Map[String, Option[Any]]
+  case class QR(value: QueryResponse)
 
   /** Method checks if type can be aggregated */
   lazy val canBeAggregated: DataType => AggregationType => Boolean = { dataType =>
@@ -53,7 +73,24 @@ object DataTypes {
   case class InvalidAttributeFilterLength(message: String, minMatchLength: Int) extends AttributesValidationError
 
   /** Class which contains output type with the response */
-  case class QueryResponseWithOutput(queryResponse: List[QueryResponse], output: OutputType)
+  case class QueryResponseWithOutput(queryResponse: List[QR], output: OutputType)
+
+  // import io.circe.{Codec, Decoder, Encoder, Json}
+  // import io.circe.generic.semiauto._
+
+  // implicit val anyEncoder: Encoder[Any] = // deriveEncoder[Typ]
+  //   Encoder[Any].contramap {
+  //     case x: java.lang.String => Json.fromString(x)
+  //     case x: java.lang.Integer => Json.fromInt(x)
+  //     case x: java.sql.Timestamp => Json.fromLong(x.getTime)
+  //     case x: java.lang.Boolean => Json.fromBoolean(x)
+  //   }
+
+  // implicit val anyDecoder: Decoder[Any] = ???
+
+  // implicit val otCodec = deriveCodec[OutputType]
+  // implicit val qrCodec = deriveCodec[QR]
+  // implicit val typCodec: Codec.AsObject[QueryResponseWithOutput] = deriveCodec[QueryResponseWithOutput]
 
   /** Class representing predicate */
   case class Predicate(

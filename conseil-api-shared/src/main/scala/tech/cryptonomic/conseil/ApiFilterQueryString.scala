@@ -19,7 +19,7 @@ trait ApiFilterQueryString {
 
   val order: EndpointInput.Query[Option[Sorting]] = ??? // query[Option[Sorting]]("sorting")
 
-  implicit lazy val sortingQueryString =
+  implicit val sortingQueryString =
     query[String](_: String)
       .map(fromValidString(_))(_.map(asString).getOrElse("ascending")) // FIXME: correct default?
 

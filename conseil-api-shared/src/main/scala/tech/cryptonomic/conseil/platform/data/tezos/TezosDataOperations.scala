@@ -15,6 +15,12 @@ object TezosDataOperations {
   case class OperationGroupResult(operation_group: Tables.OperationGroupsRow, operations: Seq[Tables.OperationsRow])
   case class AccountResult(account: Tables.AccountsRow)
 
+  import io.circe.generic.semiauto._
+  import Tables.blocksRowCodec
+  import Tables.operationGroupsRowCodec
+  implicit val blockResultCodec = deriveCodec[BlockResult]
+  implicit val accountResultCodec = deriveCodec[AccountResult]
+
   final val InvalidationAwareAttribute = "invalidated_asof"
 
   /* this is the basic predicate that will remove any row which was fork-invalidated from results */

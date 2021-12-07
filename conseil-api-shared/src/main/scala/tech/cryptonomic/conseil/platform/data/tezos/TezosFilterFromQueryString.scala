@@ -5,7 +5,8 @@ import tech.cryptonomic.conseil.ApiFilter.Sorting
 import tech.cryptonomic.conseil.ApiFilterQueryString
 
 /** Trait containing helper functions which are necessary for parsing query parameter strings as Filter  */
-protected trait TezosFilterFromQueryString extends ApiFilterQueryString {
+// protected
+object TezosFilterFromQueryString extends ApiFilterQueryString {
 
   /** Query params type alias */
   type TezosQueryParams = (
