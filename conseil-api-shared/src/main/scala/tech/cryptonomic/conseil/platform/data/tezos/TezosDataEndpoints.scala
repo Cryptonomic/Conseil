@@ -9,21 +9,8 @@ import tech.cryptonomic.conseil.common.tezos.Tables._
 
 trait TezosDataEndpoints extends ApiDataEndpoints { // with TezosFilterFromQueryString {
 
-  import sttp.tapir.Schema
-  implicit val timestampSchema: Schema[java.sql.Timestamp] = Schema(SchemaType.SString())
-  implicit val blocksSchema: Schema[BlocksRow] = Schema.derived
-
-  implicit val accountsRowSchema: Schema[AccountsRow] = Schema.derived
-  implicit val accountResultSchema: Schema[AccountResult] = Schema.derived
-
-  implicit val queryResponseSchema: Schema[QueryResponse] = ??? // Schema(SchemaType.SString) // FIXME: probably needs to be more specific
-  implicit val qrSchema: Schema[QR] = Schema.derived
-  implicit val outputTypeSchema: Schema[OutputType] = Schema.derived
-  implicit val queryResultWithoutOutputSchema: Schema[QueryResponseWithOutput] = Schema.derived
-
-  implicit val operationGroupsRowSchema: Schema[OperationGroupsRow] = Schema.derived
-  implicit val operationsRowSchema: Schema[OperationsRow] = Schema.derived
-  implicit val operationGroupResultSchema: Schema[OperationGroupResult] = Schema.derived
+  import tech.cryptonomic.conseil.platform.data.converters._
+  import tech.cryptonomic.conseil.platform.data.schemas._
 
   implicit private val platform = "tezos"
   private val root = commonPath(platform)

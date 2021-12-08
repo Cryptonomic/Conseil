@@ -8,11 +8,7 @@ import tech.cryptonomic.conseil.platform.data.ApiDataEndpoints
 /** Trait containing endpoints definition */
 trait BitcoinDataEndpoints extends ApiDataEndpoints { // with BitcoinFilterFromQueryString {
 
-  import sttp.tapir.Schema
-  implicit val queryResponseSchema: Schema[QueryResponse] = ???
-  implicit val qrSchema: Schema[QR] = Schema.derived
-  implicit val outputTypeSchema: Schema[OutputType] = Schema.derived
-  implicit val queryResultWithoutOutputSchema: Schema[QueryResponseWithOutput] = Schema.derived
+  import tech.cryptonomic.conseil.platform.data.schemas._
 
   private val platform = "bitcoin"
 

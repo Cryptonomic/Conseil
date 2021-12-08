@@ -15,16 +15,6 @@ object TezosDataOperations {
   case class OperationGroupResult(operation_group: Tables.OperationGroupsRow, operations: Seq[Tables.OperationsRow])
   case class AccountResult(account: Tables.AccountsRow)
 
-  import io.circe.generic.semiauto._
-
-  import Tables.blocksRowCodec
-  import Tables.operationGroupsRowCodec
-  import Tables.operationsRowCodec
-
-  implicit val blockResultCodec = deriveCodec[BlockResult]
-  implicit val operationGroupResultCodec = deriveCodec[OperationGroupResult]
-  implicit val accountResultCodec = deriveCodec[AccountResult]
-
   final val InvalidationAwareAttribute = "invalidated_asof"
 
   /* this is the basic predicate that will remove any row which was fork-invalidated from results */
@@ -93,7 +83,6 @@ class TezosDataOperations(dbConfig: Config) extends ApiDataOperations {
   def fetchOperationGroup(
       operationGroupHash: String
   )(implicit ec: ExecutionContext): Future[Option[OperationGroupResult]] = {
-    // @silent("parameter value latest in value")
     val groupsMapIO = for {
       latest <- latestBlockIO if latest.nonEmpty
       operations <- operationsForGroup(operationGroupHash)
