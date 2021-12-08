@@ -16,9 +16,13 @@ object TezosDataOperations {
   case class AccountResult(account: Tables.AccountsRow)
 
   import io.circe.generic.semiauto._
+
   import Tables.blocksRowCodec
   import Tables.operationGroupsRowCodec
+  import Tables.operationsRowCodec
+
   implicit val blockResultCodec = deriveCodec[BlockResult]
+  implicit val operationGroupResultCodec = deriveCodec[OperationGroupResult]
   implicit val accountResultCodec = deriveCodec[AccountResult]
 
   final val InvalidationAwareAttribute = "invalidated_asof"
