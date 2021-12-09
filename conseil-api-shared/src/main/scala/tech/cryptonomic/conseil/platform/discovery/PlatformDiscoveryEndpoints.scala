@@ -1,30 +1,27 @@
 package tech.cryptonomic.conseil.platform.discovery
 
-import io.circe.generic.semiauto._
 import sttp.tapir._
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.circe._
 import sttp.model.StatusCode
 
+import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
+
 /** Trait containing platform discovery endpoints definition */
 trait PlatformDiscoveryEndpoints {
 
-  import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
+  import tech.cryptonomic.conseil.platform.discovery.converters._
 
   /** Common path for metadata endpoints */
   private val commonPath = infallibleEndpoint
     .in("v2" / "metadata")
     .in(header[Option[String]]("apiKey"))
 
-  implicit val platformsCodec = deriveCodec[Platform]
-
   /** Metadata platforms endpoint */
   def platformsEndpoint =
     commonPath.get
       .in("platforms")
       .out(jsonBody[List[Platform]])
-
-  implicit val networksCodec = deriveCodec[Network]
 
   /** Metadata networks endpoint */
   def networksEndpoint =
@@ -33,20 +30,12 @@ trait PlatformDiscoveryEndpoints {
       .out(jsonBody[List[Network]])
       .errorOut(statusCode(StatusCode.NotFound))
 
-  implicit val entitiesCodec = deriveCodec[Entity]
-
   /** Metadata entities endpoint */
   def entitiesEndpoint =
     commonPath.get
       .in(query[String]("platform") / query[String]("network") / "entities")
       .out(jsonBody[List[Entity]])
       .errorOut(statusCode(StatusCode.NotFound))
-
-  implicit val keyTypeCodec = deriveCodec[KeyType]
-  implicit val dataTypeCodec = deriveCodec[DataType]
-  implicit val attributeCacheEncoder = deriveEncoder[AttributeCacheConfiguration]
-  implicit val attributeCacheDecoder = deriveDecoder[AttributeCacheConfiguration]
-  implicit val attributesCodec = deriveCodec[Attribute]
 
   /** Metadata attributes endpoint */
   def attributesEndpoint =
