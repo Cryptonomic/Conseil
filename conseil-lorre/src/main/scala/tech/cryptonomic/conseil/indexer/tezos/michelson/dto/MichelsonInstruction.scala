@@ -89,7 +89,7 @@ sealed trait MichelsonInstruction extends MichelsonElement {
               }
             case _ => List.empty
           }
-        case MichelsonSchema(_, _, _) => List.empty
+        case MichelsonSchema(_, _, _, _) => List.empty
         case _ => List.empty
       }
     }
