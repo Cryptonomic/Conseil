@@ -120,9 +120,10 @@ object Dependencies {
     logback
   )
   val tapirServer = Seq(
-    "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % Versions.tapir,
-    "org.http4s"                  %% "http4s-dsl"          % Versions.http4s,
-    "org.http4s"                  %% "http4s-ember-server" % Versions.http4s
+    "com.softwaremill.sttp.tapir" %% "tapir-http4s-server"     % Versions.tapir,
+    "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % Versions.tapir,
+    "org.http4s"                  %% "http4s-dsl"              % Versions.http4s,
+    "org.http4s"                  %% "http4s-ember-server"     % Versions.http4s
   )
   val tapirClient = Seq(
     "com.softwaremill.sttp.tapir" %% "tapir-http4s-client" % Versions.tapir,
