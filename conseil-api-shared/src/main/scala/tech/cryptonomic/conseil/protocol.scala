@@ -11,12 +11,10 @@ object protocol {
 
   private val base = infallibleEndpoint.in("api")
 
-  val appInfo: Endpoint[Unit, (Option[String], String), GenericServerError, Info, Any] = base.get
+  val appInfo: Endpoint[Unit, String, GenericServerError, Info, Any] = base.get
     .in("info")
-    .in(jsonBody[Option[String]])
     .in(header[String]("apiKey"))
     .out(jsonBody[Info])
     .errorOut(jsonBody[GenericServerError])
-  // .errorOut(statusCode(StatusCode.UnprocessableEntity).and(jsonBody[Build.Error]))
 
 }

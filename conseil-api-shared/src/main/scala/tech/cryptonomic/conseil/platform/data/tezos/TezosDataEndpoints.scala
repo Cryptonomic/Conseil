@@ -7,7 +7,7 @@ import tech.cryptonomic.conseil.platform.data.ApiDataEndpoints
 import tech.cryptonomic.conseil.platform.data.tezos.TezosDataOperations._
 import tech.cryptonomic.conseil.common.tezos.Tables._
 
-trait TezosDataEndpoints extends ApiDataEndpoints { // with TezosFilterFromQueryString {
+object TezosDataEndpoints extends ApiDataEndpoints { // with TezosFilterFromQueryString {
 
   import tech.cryptonomic.conseil.platform.data.converters._
   import tech.cryptonomic.conseil.platform.data.schemas._
