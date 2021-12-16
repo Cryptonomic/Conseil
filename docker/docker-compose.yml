@@ -14,6 +14,7 @@ services:
       # CONSEIL_XTZ_NODE_HOSTNAME:???     # (default nautilus.cryptonomic.tech)
       # CONSEIL_XTZ_NODE_PORT:???         # (default 8732)
       # CONSEIL_XTZ_NODE_PATH_PREFIX:???  # (default tezos/zeronet/)
+      # CONSEIL_XTZ_BACKER_ROLLS_SIZE:??? # (default 8000)
 
       # CONSEIL_BTC_NETWORK:???                           # (default mainnet)
       # CONSEIL_BTC_ENABLED:???                           # (default false)
@@ -87,6 +88,7 @@ services:
       # CONSEIL_XTZ_NODE_HOSTNAME:???     # (default nautilus.cryptonomic.tech)
       # CONSEIL_XTZ_NODE_PORT:???         # (default 8732)
       # CONSEIL_XTZ_NODE_PATH_PREFIX:???  # (default tezos/zeronet/)
+      # CONSEIL_XTZ_BACKER_ROLLS_SIZE:??? # (default 8000)
 
       # CONSEIL_BTC_NETWORK:??? # (default mainnet)
       # CONSEIL_BTC_ENABLED:??? # (default false)

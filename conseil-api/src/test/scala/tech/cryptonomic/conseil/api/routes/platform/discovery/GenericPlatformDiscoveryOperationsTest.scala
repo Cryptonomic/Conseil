@@ -89,6 +89,7 @@ class GenericPlatformDiscoveryOperationsTest
               "alphanet",
               enabled = true,
               TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
+              BigDecimal.decimal(8000),
               dbCfg,
               None
             )
@@ -105,6 +106,7 @@ class GenericPlatformDiscoveryOperationsTest
               "alphanet",
               enabled = true,
               TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
+              BigDecimal.decimal(8000),
               dbCfg,
               None
             ),
@@ -117,6 +119,7 @@ class GenericPlatformDiscoveryOperationsTest
                 port = 8732,
                 pathPrefix = "tezos/alphanet/"
               ),
+              BigDecimal.decimal(8000),
               dbCfg,
               None
             )
@@ -132,6 +135,7 @@ class GenericPlatformDiscoveryOperationsTest
               "alphanet",
               enabled = true,
               TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
+              BigDecimal.decimal(8000),
               dbCfg,
               None
             ),

@@ -39,7 +39,7 @@ object MainOutputs {
 
   /* custom display of each configuration type */
   val showPlatformConfiguration: PartialFunction[PlatformConfiguration, String] = {
-    case TezosConfiguration(_, _, TezosNodeConfiguration(host, port, protocol, prefix, chainEnv, trace), _, _) =>
+    case TezosConfiguration(_, _, TezosNodeConfiguration(host, port, protocol, prefix, chainEnv, trace), _, _, _) =>
       s"node $protocol://$host:$port/$prefix/$chainEnv" + (if (trace) " [call tracing enabled]" else "")
     case EthereumConfiguration(network, _, node, _, _, _) =>
       s"network: ${network} node: ${node}"

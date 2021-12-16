@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.indexer.config
 
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.ConfigFactory
 import tech.cryptonomic.conseil.common.config.Platforms.{TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.Loaders._
 import tech.cryptonomic.conseil.indexer.config.ConfigUtil.Natural
@@ -44,6 +44,7 @@ class LorreAppConfigTest extends ConseilSpec {
                                               |platforms: [
                                               |  {
                                               |    name: "tezos"
+                                              |    baker-rolls-size: 8000
                                               |    network: "alphanet"
                                               |    enabled: true,
                                               |    node: {
@@ -71,6 +72,7 @@ class LorreAppConfigTest extends ConseilSpec {
           "alphanet",
           enabled = true,
           TezosNodeConfiguration("localhost", 8732, "http", "tezos/alphanet/"),
+          BigDecimal.decimal(8000),
           cfg.getConfigList("platforms").get(0).getConfig("db"),
           None
         )
@@ -81,6 +83,7 @@ class LorreAppConfigTest extends ConseilSpec {
                                             |platforms: [
                                             |  {
                                             |    name: "tezos"
+                                            |    baker-rolls-size: 8000
                                             |    network: "alphanet"
                                             |    enabled: true,
                                             |    node: {
@@ -108,6 +111,7 @@ class LorreAppConfigTest extends ConseilSpec {
           "alphanet",
           enabled = true,
           TezosNodeConfiguration("localhost", 8732, "http"),
+          BigDecimal.decimal(8000),
           cfg.getConfigList("platforms").get(0).getConfig("db"),
           None
         )

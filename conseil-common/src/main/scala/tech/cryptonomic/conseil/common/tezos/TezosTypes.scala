@@ -1,8 +1,14 @@
 package tech.cryptonomic.conseil.common.tezos
 
-import java.time.{Instant, ZonedDateTime}
-import scala.util.Try
+import tech.cryptonomic.conseil.common.config.Platforms._
+
 import cats.Functor
+import pureconfig._
+import pureconfig.generic.auto._
+
+import java.time.Instant
+import java.time.ZonedDateTime
+import scala.util.Try
 
 /**
   * Classes used for deserializing Tezos node RPC results.
@@ -14,7 +20,7 @@ object TezosTypes {
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding
   lazy val isBase58Check: String => Boolean = (s: String) => {
-    val pattern = "^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]*$".r.pattern
+    val pattern = "^[^\\W0OlI_]*$".r.pattern
     pattern.matcher(s).matches
   }
 
@@ -687,9 +693,9 @@ object TezosTypes {
   /** Utilities related to the baking process */
   object Baking {
 
-    //we'll move this to a proper chain configuration value later on
     /** how big is a baker roll in tez */
-    final val BakerRollsSize = BigDecimal.decimal(8000)
+    final val BakerRollsSize =
+      loadConfig[TezosConfiguration](namespace = "platforms").fold(_ => BigDecimal.decimal(8000), _.bakerRollsSize)
 
     /** Starting from the staking balance, infers number of rolls for a given baker. */
     def computeRollsFromStakes(stakingBalance: PositiveBigNumber): Option[Int] =
