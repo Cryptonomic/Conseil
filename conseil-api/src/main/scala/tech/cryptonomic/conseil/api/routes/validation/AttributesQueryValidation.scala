@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.api.routes.validation
 
-import endpoints.algebra
-import endpoints.algebra.Documentation
+import endpoints4s.algebra
+import endpoints4s.algebra.Documentation
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.AttributesValidationError
 
 /** Trait adding validation for querying attributes  */

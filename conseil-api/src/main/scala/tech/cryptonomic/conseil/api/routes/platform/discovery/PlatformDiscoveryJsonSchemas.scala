@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.discovery
 
-import endpoints.generic
+import endpoints4s.generic
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
 
 /** Trait containing metadata endpoints JSON schemas */

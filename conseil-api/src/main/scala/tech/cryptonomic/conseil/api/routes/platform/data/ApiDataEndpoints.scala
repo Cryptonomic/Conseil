@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data
 
-import endpoints.algebra
+import endpoints4s.algebra
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataTypes.ApiQuery
 import tech.cryptonomic.conseil.api.routes.validation.Validation
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
