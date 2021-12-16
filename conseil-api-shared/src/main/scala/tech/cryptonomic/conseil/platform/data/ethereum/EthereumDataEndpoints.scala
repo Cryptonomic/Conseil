@@ -3,6 +3,24 @@ package tech.cryptonomic.conseil.platform.data.ethereum
 /** Represents list of endpoints exposed for Ethereum Blockchain */
 trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
 
+  val ethEndpoints = List(
+    ethereumQueryEndpoint,
+    ethereumBlocksEndpoint,
+    ethereumBlocksHeadEndpoint,
+    ethereumBlockByHashEndpoint,
+    ethereumTransactionsEndpoint,
+    ethereumTransactionByHashEndpoint,
+    ethereumLogsEndpoint,
+    ethereumReceiptsEndpoint,
+    ethereumContractsEndpoint,
+    ethereumTokensEndpoint,
+    ethereumTokenTransfersEndpoint,
+    ethereumTokensHistoryEndpoint,
+    ethereumAccountsEndpoint,
+    ethereumAccountByAddressEndpoint,
+    ethereumAccountsHistoryEndpoint
+  )
+
   private val platform: String = "ethereum"
 
   def ethereumQueryEndpoint = queryEndpoint(platform)
@@ -38,6 +56,22 @@ trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
 
 /** Represents list of endpoints exposed for Quorum Blockchain (based on Ethereum) */
 trait QuorumDataEndpoints extends EthereumDataEndpointsCreator {
+
+  val quorumEndpoints = List(
+    quorumQueryEndpoint,
+    quorumBlocksEndpoint,
+    quorumBlocksHeadEndpoint,
+    quorumBlockByHashEndpoint,
+    quorumTransactionsEndpoint,
+    quorumTransactionByHashEndpoint,
+    quorumLogsEndpoint,
+    quorumReceiptsEndpoint,
+    quorumContractsEndpoint,
+    quorumTokensEndpoint,
+    quorumTokenTransfersEndpoint,
+    quorumAccountsEndpoint,
+    quorumAccountByAddressEndpoint
+  )
 
   private val platform: String = "quorum"
 

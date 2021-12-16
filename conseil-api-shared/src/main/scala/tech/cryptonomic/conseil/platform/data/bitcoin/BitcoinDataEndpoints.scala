@@ -10,6 +10,18 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints { // with BitcoinFilterFromQ
 
   import tech.cryptonomic.conseil.platform.data.schemas._
 
+  val btcEndpoints = List(
+    bitcoinBlocksEndpoint,
+    bitcoinBlocksHeadEndpoint,
+    bitcoinBlockByHashEndpoint,
+    bitcoinTransactionsEndpoint,
+    bitcoinTransactionByIdEndpoint,
+    bitcoinInputsEndpoint,
+    bitcoinOutputsEndpoint,
+    bitcoinAccountsEndpoint,
+    bitcoinAccountByAddressEndpoint
+  )
+
   private val platform = "bitcoin"
 
   private val root = "v2" / "data" / platform / query[String]("network")

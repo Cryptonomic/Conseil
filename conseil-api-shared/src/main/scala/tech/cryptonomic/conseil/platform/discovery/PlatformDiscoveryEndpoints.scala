@@ -12,6 +12,15 @@ trait PlatformDiscoveryEndpoints {
 
   import tech.cryptonomic.conseil.platform.discovery.converters._
 
+  val discoveryEndpoints = List(
+    platformsEndpoint,
+    networksEndpoint,
+    entitiesEndpoint,
+    attributesEndpoint,
+    attributesValuesEndpoint,
+    attributesValuesWithFilterEndpoint
+  )
+
   /** Common path for metadata endpoints */
   private val commonPath = infallibleEndpoint
     .in("v2" / "metadata")

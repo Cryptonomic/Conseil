@@ -7,10 +7,23 @@ import tech.cryptonomic.conseil.platform.data.ApiDataEndpoints
 import tech.cryptonomic.conseil.platform.data.tezos.TezosDataOperations._
 import tech.cryptonomic.conseil.common.tezos.Tables._
 
-object TezosDataEndpoints extends ApiDataEndpoints { // with TezosFilterFromQueryString {
+trait TezosDataEndpoints extends ApiDataEndpoints { // with TezosFilterFromQueryString {
 
   import tech.cryptonomic.conseil.platform.data.converters._
   import tech.cryptonomic.conseil.platform.data.schemas._
+
+  val xtzEndpoints = List(
+    tezosQueryEndpoint,
+    tezosBlocksEndpoint,
+    tezosBlocksHeadEndpoint,
+    tezosBlockByHashEndpoint,
+    tezosAccountsEndpoint,
+    tezosAccountByIdEndpoint,
+    tezosOperationGroupsEndpoint,
+    tezosOperationGroupByIdEndpoint,
+    tezosAvgFeesEndpoint,
+    tezosOperationsEndpoint
+  )
 
   implicit private val platform = "tezos"
   private val root = commonPath(platform)

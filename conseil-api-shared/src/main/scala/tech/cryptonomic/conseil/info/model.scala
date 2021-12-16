@@ -8,7 +8,7 @@ object model {
 
   final case class Info(application: String, version: String, git: GitInfo)
 
-  val emptyInfo =
+  val currentInfo =
     IO(Info(BuildInfo.name, BuildInfo.version, GitInfo(BuildInfo.gitHeadCommit, BuildInfo.gitCurrentTags.toList)))
 
   final case class GitInfo(commitHash: Option[String], tags: List[String])
