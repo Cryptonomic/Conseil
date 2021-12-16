@@ -12,7 +12,7 @@ import tech.cryptonomic.conseil.info.converters.genericServerErrorDecoder
 
 object Main extends IOApp.Simple {
   val localhost = Some(uri"http://localhost:8080")
-  val clientInterpretter = Http4sClientInterpreter[IO]()
+  val clientInterpreter = Http4sClientInterpreter[IO]()
 
   def run: IO[Unit] =
     EmberClientBuilder
@@ -20,7 +20,7 @@ object Main extends IOApp.Simple {
       .build
       .use { client =>
         val (req, handler) =
-          clientInterpretter.toRequestUnsafe(protocol.appInfo, localhost).apply("api key")
+          clientInterpreter.toRequestUnsafe(protocol.appInfo, localhost).apply("api key")
 
         client
           .run(req)
@@ -33,17 +33,4 @@ object Main extends IOApp.Simple {
           }
           .void
       }
-
-  // import tech.cryptonomic.conseil.platform.data.tezos.TezosDataEndpoints._
-  // val (r, h) =
-  //   clientInterpretter.toRequestUnsafe(tezosQueryEndpoint, localhost).apply(()) //"api key")
-  // // val (rr, hh) =
-  // // clientInterpretter.toRequestUnsafe(tezosBlocksEndpoint, localhost).apply()
-  // val (rrr, hhh) =
-  //   clientInterpretter.toRequestUnsafe(tezosBlocksHeadEndpoint, localhost).apply(()) // None, "api key")
-  // val (rrrr, hhhh) =
-  //   clientInterpretter.toRequestUnsafe(tezosBlockByHashEndpoint, localhost).apply("") // , "api key")
-  // // val (rrrrr, hhhhh) =
-  // //   clientInterpretter.toRequestUnsafe(tezosAccountsEndpoint, localhost).apply(None, "api key")
-
 }
