@@ -16,8 +16,6 @@ import tech.cryptonomic.conseil.common.rpc.RpcClient
   */
 trait BitcoinStubs {
 
-  // implicit val contextShift: ContextShift[IO]
-
   /**
     * Stubs that can help to provide tests for the [[BitcoinClient]].
     *

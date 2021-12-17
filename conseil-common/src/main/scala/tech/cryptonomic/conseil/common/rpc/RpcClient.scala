@@ -4,7 +4,7 @@ import scala.concurrent.duration.Duration
 import scala.util.control.NoStackTrace
 import cats.effect.{Async, Concurrent, Resource}
 import fs2.Stream
-import org.http4s.{EntityDecoder, EntityEncoder, Header, Method, Uri}
+import org.http4s.{EntityDecoder, EntityEncoder, Headers, Method, Uri}
 import org.http4s.client.Client
 import org.http4s.client.middleware.RetryPolicy
 import org.http4s.client.dsl.Http4sClientDsl
@@ -56,8 +56,8 @@ import org.http4s.WaitQueueTimeoutException
 class RpcClient[F[_]: Async](
     endpoint: String,
     maxConcurrent: Int,
-    httpClient: Client[F]
-    // headers: Header[String, String]*
+    httpClient: Client[F],
+    headers: Headers = Headers.empty
 ) extends Http4sClientDsl[F]
     with ConseilLogSupport {
 
@@ -84,7 +84,7 @@ class RpcClient[F[_]: Async](
       .mapAsync(maxConcurrent) { chunks =>
         httpClient
           .expect[Seq[RpcResponse[R]]](
-            Method.POST(chunks.toList, Uri.unsafeFromString(endpoint)) // TODO: headers ?
+            Method.POST(chunks.toList, Uri.unsafeFromString(endpoint), headers)
           )
       }
       .flatMap(Stream.emits)
@@ -124,15 +124,15 @@ object RpcClient {
   def resource[F[_]: Async](
       endpoint: String,
       maxConcurrent: Int,
-      httpClient: Client[F]
-      // headers: Header[String, String]*
+      httpClient: Client[F],
+      headers: Headers = Headers.empty
   ): Resource[F, RpcClient[F]] =
     Resource.pure(
       new RpcClient[F](
         endpoint,
         maxConcurrent,
-        httpClient
-        // headers: _*
+        httpClient,
+        headers
       )
     )
 
