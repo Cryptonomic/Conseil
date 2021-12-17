@@ -5,8 +5,9 @@ import java.util.concurrent.Executors
 import scala.concurrent.{ExecutionContext, Future}
 
 import cats.effect.{IO, Resource}
-// import org.http4s.headers.Authorization
-// import org.http4s.BasicCredentials
+import org.http4s.headers.Authorization
+import org.http4s.BasicCredentials
+import org.http4s.Headers
 import org.http4s.blaze.client.BlazeClientBuilder
 import slick.jdbc.PostgresProfile.api._
 import slickeffect.Transactor
@@ -88,13 +89,13 @@ class BitcoinIndexer(
     */
   private def indexer: Resource[IO, BitcoinOperations[IO]] =
     for {
-      httpClient <- BlazeClientBuilder[IO](httpEC).resource
+      httpClient <- BlazeClientBuilder[IO].withExecutionContext(httpEC).resource
 
       rpcClient <- RpcClient.resource(
         bitcoinConf.node.url,
         maxConcurrent = bitcoinConf.batching.indexerThreadsCount,
-        httpClient // TODO: wrap it into retry and logger middleware
-        // Authorization(BasicCredentials(bitcoinConf.node.username, bitcoinConf.node.password))
+        httpClient, // TODO: wrap it into retry and logger middleware
+        Headers(Authorization(BasicCredentials(bitcoinConf.node.username, bitcoinConf.node.password)))
       )
 
       tx <- Transactor
