@@ -4,6 +4,7 @@ import tech.cryptonomic.conseil.common.config.ChainEvent
 import tech.cryptonomic.conseil.indexer.config.ConfigUtil.Depth._
 
 import scala.concurrent.duration.FiniteDuration
+import scala.util.Try
 
 /** configurations related to a chain-node network calls */
 final case class NetworkCallsConfiguration(
@@ -21,6 +22,7 @@ case class LorreConfiguration(
     feesAverageTimeWindow: FiniteDuration,
     depth: Depth,
     headHash: Option[String],
+    headOffset: Option[Long],
     chainEvents: List[ChainEvent],
     blockRightsFetching: BakingAndEndorsingRights,
     tokenContracts: TokenContracts,
@@ -37,6 +39,7 @@ final case class LorreConfigurationHelper(
     feesAverageTimeWindow: FiniteDuration,
     depth: String,
     headHash: Option[String],
+    headOffset: Option[String],
     chainEvents: List[ChainEvent],
     blockRightsFetching: BakingAndEndorsingRights,
     tokenContracts: TokenContracts,
@@ -44,7 +47,17 @@ final case class LorreConfigurationHelper(
     forkHandling: ForkHandling,
     enabledFeatures: Features
 ) {
-  def toConf: LorreConfiguration =
+  def toConf: LorreConfiguration = {
+    val hh = headHash match {
+      case Some("None") => None
+      case Some(value) => Some(value)
+      case None => None
+    }
+    val ho = headOffset match {
+      case Some("None") => None
+      case Some(value) => Try(value.toLong).toOption
+      case None => None
+    }
     new LorreConfiguration(
       sleepInterval,
       bootupRetryInterval,
@@ -52,7 +65,8 @@ final case class LorreConfigurationHelper(
       feeUpdateInterval,
       feesAverageTimeWindow,
       depth.toDepth.getOrElse(Newest),
-      headHash,
+      hh,
+      ho,
       chainEvents,
       blockRightsFetching,
       tokenContracts,
@@ -60,6 +74,7 @@ final case class LorreConfigurationHelper(
       forkHandling,
       enabledFeatures
     )
+  }
 }
 
 /** configuration for fetching baking and endorsing rights */
