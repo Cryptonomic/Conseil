@@ -340,7 +340,8 @@ object TezosIndexer extends ConseilLogSupport {
     val nodeOperator = new TezosNodeOperator(
       new TezosNodeInterface(conf, callsConf, streamingClientConf),
       selectedNetwork,
-      batchingConf
+      batchingConf,
+      lorreConf.headOffset
     )
 
     /* provides operations to handle rights to bake and endorse blocks */

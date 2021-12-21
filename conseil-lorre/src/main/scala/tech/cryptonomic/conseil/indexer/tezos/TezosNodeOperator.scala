@@ -73,7 +73,8 @@ private[tezos] object TezosNodeOperator {
 private[tezos] class TezosNodeOperator(
     val node: TezosRPCInterface,
     val network: String,
-    batchConf: BatchFetchConfiguration
+    batchConf: BatchFetchConfiguration,
+    headOffset: Option[Long]
 )(
     implicit val fetchFutureContext: ExecutionContext
 ) extends TezosBlocksDataFetchers
@@ -516,7 +517,7 @@ private[tezos] class TezosNodeOperator(
     */
   def getDelegatesForBlock(
       pkhs: List[PublicKeyHash],
-      blockHash: TezosBlockHash = blockHeadHash
+      blockHash: TezosBlockHash
   ): Future[Map[PublicKeyHash, Delegate]] = {
     /* implicitly uses: AccountsDataFetchers.delegateFetcher */
     import cats.instances.future._
@@ -545,11 +546,11 @@ private[tezos] class TezosNodeOperator(
     import TezosJsonDecoders.Circe.Blocks._
     import TezosJsonDecoders.Circe.decodeLiftingTo
 
-    val offsetString = offset.map(_.toString).getOrElse("")
+    val offsetString = offset.map("~"+ _.toString).getOrElse("")
 
     //starts immediately
     val fetchBlock =
-      node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString") flatMap { json =>
+      node.runAsyncGetQuery(network, s"blocks/${hash.value}$offsetString") flatMap { json =>
           decodeLiftingTo[Future, BlockData](JS.sanitize(json))
         }
 
@@ -569,9 +570,9 @@ private[tezos] class TezosNodeOperator(
     import TezosJsonDecoders.Circe.Blocks._
     import TezosJsonDecoders.Circe.decodeLiftingTo
 
-    val offsetString = offset.map(_.toString).getOrElse("")
+    val offsetString = offset.map("~"+ _.toString).getOrElse("")
 
-    node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString") flatMap { json =>
+    node.runAsyncGetQuery(network, s"blocks/${hash.value}$offsetString") flatMap { json =>
       decodeLiftingTo[Future, BlockData](JS.sanitize(json))
     }
   }
@@ -581,14 +582,14 @@ private[tezos] class TezosNodeOperator(
     * @return Block head
     */
   def getBlockHead(): Future[Block] =
-    getBlock(blockHeadHash)
+    getBlock(blockHeadHash, headOffset)
 
   /**
     * Gets just the block head without associated data.
     * @return Block head
     */
   def getBareBlockHead(): Future[BlockData] =
-    getBareBlock(blockHeadHash)
+    getBareBlock(blockHeadHash, headOffset)
 
   /**
     * Given a level range, creates sub-ranges of max the given size
@@ -776,9 +777,10 @@ class TezosNodeSenderOperator(
     override val node: TezosRPCInterface,
     network: String,
     batchConf: BatchFetchConfiguration,
-    sodiumConf: SodiumConfiguration
+    sodiumConf: SodiumConfiguration,
+    headOffset: Option[Long]
 )(implicit executionContext: ExecutionContext)
-    extends TezosNodeOperator(node, network, batchConf)
+    extends TezosNodeOperator(node, network, batchConf, headOffset)
     with ConseilLogSupport {
   import TezosNodeOperator._
   import TezosJsonDecoders.Circe.Operations._
