@@ -30,15 +30,14 @@ object converters {
     Encoder[Any].contramap {
       case x: java.lang.String => Json.fromString(x)
       case x: java.lang.Integer => Json.fromInt(x)
-      case x: java.sql.Timestamp => Json.fromLong(x.getTime)
       case x: java.lang.Boolean => Json.fromBoolean(x)
-      case x: scala.collection.immutable.Vector[Any] =>
-        x.map(_.asJson(anyEncoder)).asJson // Due to type erasure, a recursive call is made here.
+      case x: java.math.BigDecimal => Json.fromBigDecimal(x)
+      case x: java.sql.Timestamp => Json.fromLong(x.getTime)
       case x: BlocksRow => x.asJson(blocksRowCodec)
       case x: AccountsRow => x.asJson(accountsRowCodec)
       case x: OperationGroupsRow => x.asJson(operationGroupsRowCodec)
       case x: OperationsRow => x.asJson(operationsRowCodec)
-      case x: java.math.BigDecimal => Json.fromBigDecimal(x)
+      case x: Vector[Any] => x.map(_.asJson(anyEncoder)).asJson // Due to type erasure, a recursive call is made here.
       case x => Json.fromString(x.toString)
     }
 

@@ -6,8 +6,6 @@ import sttp.tapir.json.circe._
 
 trait ApiDataEndpoints {
 
-  // import tech.cryptonomic.conseil.platform.data.converters._
-
   protected def commonPath(platform: String) =
     infallibleEndpoint.in("v2" / "data" / platform / "network" / "entity")
 

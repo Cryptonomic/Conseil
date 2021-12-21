@@ -8,6 +8,7 @@ import tech.cryptonomic.conseil.platform.data.ApiDataEndpoints
 /** Trait containing endpoints definition */
 trait BitcoinDataEndpoints extends ApiDataEndpoints {
 
+  import tech.cryptonomic.conseil.platform.data.converters._
   import tech.cryptonomic.conseil.platform.data.schemas._
 
   val btcEndpoints = List(
