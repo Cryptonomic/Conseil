@@ -15,7 +15,7 @@ object converters {
         Decoder.decodeLong.map(s => new java.sql.Timestamp(s)).apply(c)
     }
 
-  implicit val accountRowCodec = deriveCodec[AccountsRow]
+  implicit val accountsRowCodec = deriveCodec[AccountsRow]
   implicit val blocksRowCodec = deriveCodec[BlocksRow]
   implicit val operationGroupsRowCodec = deriveCodec[OperationGroupsRow]
   implicit val operationsRowCodec = deriveCodec[OperationsRow]
