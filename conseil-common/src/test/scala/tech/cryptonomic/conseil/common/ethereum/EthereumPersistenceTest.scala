@@ -1,12 +1,13 @@
 package tech.cryptonomic.conseil.common.ethereum
 
 import scala.concurrent.ExecutionContext
-import cats.effect._
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.ethereum.EthereumPersistence._
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
+
+import cats.effect.unsafe.implicits.global
 
 class EthereumPersistenceTest
     extends ConseilSpec
@@ -14,8 +15,6 @@ class EthereumPersistenceTest
     with EthereumInMemoryDatabaseSetup
     with EthereumFixtures
     with EthereumStubs {
-
-  implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
   "Ethereum persistence" should {
       "save block from the JSON-RPC response" in new EthereumPersistenceStubs(dbHandler) {

@@ -122,9 +122,6 @@ services:
       LORRE_RUNNER_PLATFORM: "tezos"
       LORRE_RUNNER_NETWORK: "granadanet"
 
-      CONSEIL_LORRE_DEPTH: 1320
-      CONSEIL_LORRE_HEAD_HASH: "BMGvXZT9xqJeNNvEupHNLppwbmqnQR4sgd9XHyDWn818MBQDC27"
-
       # Feature-Flag: set to false to disable the concurrent computation of future endorsement/baking rights
       CONSEIL_LORRE_BLOCK_RIGHTS_FETCHING_ENABLED: "true"
 

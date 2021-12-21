@@ -69,7 +69,7 @@ object JsonUtil {
   }
 
   def toJson[T: Encoder](value: T): JsonString =
-    JsonString(value.asJson.pretty(Printer.spaces4))
+    JsonString(value.asJson.spaces4)
 
   def toListOfMaps[V: Decoder](json: String): Try[List[Map[String, V]]] =
     fromJson[List[Map[String, V]]](json)

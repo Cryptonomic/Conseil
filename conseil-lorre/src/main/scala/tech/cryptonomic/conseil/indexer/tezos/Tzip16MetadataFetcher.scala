@@ -8,28 +8,22 @@ import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.settings.ConnectionPoolSettings
+import akka.stream.Attributes
 import akka.stream.Attributes.LogLevels
 import akka.stream.scaladsl.{Flow, Source}
-import akka.stream.{ActorMaterializer, Attributes}
 import cats.data.Kleisli
 import scribe.Level
 import tech.cryptonomic.conseil.common.config.Platforms.TezosConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 import tech.cryptonomic.conseil.common.io.Logging.{ConseilLogSupport, ConseilLogger}
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{InternalOperationResults, _}
 import tech.cryptonomic.conseil.common.util.JsonUtil.JsonString
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
-import tech.cryptonomic.conseil.indexer.config.{
-  BatchFetchConfiguration,
-  HttpStreamingConfiguration,
-  NetworkCallsConfiguration
-}
+import tech.cryptonomic.conseil.indexer.config.{HttpStreamingConfiguration, NetworkCallsConfiguration}
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Try}
-import cats.instances._
 import cats.implicits._
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.OperationsRow
@@ -132,7 +126,6 @@ class Tzip16MetadataOperator(
 
     /** an effectful function that decodes the json value to an output `Out`*/
     override val decodeData: Kleisli[Future, String, Option[(String, Tzip16Metadata)]] = Kleisli { json =>
-      import cats.syntax.functor._
       import io.circe.parser.decode
       decode[Tzip16Metadata](json).toOption
         .pure[Future]
@@ -181,7 +174,6 @@ class Tzip16MetadataOperator(
 
     /** an effectful function that decodes the json value to an output `Out`*/
     override val decodeData: Kleisli[Future, String, Option[(String, Tzip16Metadata)]] = Kleisli { json =>
-      import cats.syntax.functor._
       import io.circe.parser.decode
       decode[Tzip16Metadata](json).toOption
         .pure[Future]
@@ -199,7 +191,6 @@ class TezosMetadataInterface(
 
   import config.node
 
-  implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   final val traceLoggingGetCategory = "tech.cryptonomic.conseil.indexer.tezos.node-rpc.get"
   final val traceLoggingBatchCategory = "tech.cryptonomic.conseil.indexer.tezos.node-rpc.batch"

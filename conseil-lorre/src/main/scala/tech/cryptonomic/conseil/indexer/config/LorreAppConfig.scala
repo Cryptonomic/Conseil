@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.indexer.config
 import com.github.ghik.silencer.silent
 import com.typesafe.config.Config
 import pureconfig._
-import pureconfig.error.{ConfigReaderFailure, ConfigReaderFailures, ConfigValueLocation, ThrowableFailure}
+import pureconfig.error._
 import pureconfig.generic.auto._
 import pureconfig.generic.FieldCoproductHint
 import scopt.{OptionParser, Read}
@@ -151,6 +151,7 @@ object LorreAppConfig {
             case Some(platformsConfig) if platformsConfig.enabled => Right(platformsConfig)
             case Some(platformsConfig) if !platformsConfig.enabled =>
               Left(ConfigReaderFailures(new ConfigReaderFailure {
+
                 override def description: String =
                   s"Could not run Lorre for platform: $platform, network: $network because this network is disabled"
                 override def location: Option[ConfigValueLocation] = None

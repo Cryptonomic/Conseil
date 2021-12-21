@@ -5,8 +5,8 @@ import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.stream.ActorMaterializer
-import cats.effect.{ContextShift, IO}
+import akka.stream.{ActorMaterializer, Materializer}
+import cats.effect.IO
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives.cors
 import tech.cryptonomic.conseil.api.ConseilApi.NoNetworkEnabledError
 import tech.cryptonomic.conseil.api.config.ConseilAppConfig.CombinedConfiguration
@@ -30,11 +30,12 @@ import tech.cryptonomic.conseil.common.config.Platforms
 import tech.cryptonomic.conseil.common.config.Platforms.BlockchainPlatform
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.sql.DatabaseRunner
-import tech.cryptonomic.conseil.common.util.DatabaseUtil
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
+
+import cats.effect.unsafe.implicits.global
 
 object ConseilApi {
 
@@ -49,18 +50,15 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
     extends EnableCORSDirectives
     with ConseilLogSupport {
 
-  import scala.collection.JavaConverters._
-
   private val transformation = new UnitTransformation(config.metadata)
   private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
 
-  implicit private val mat: ActorMaterializer = ActorMaterializer()
+  implicit private val mat: Materializer = ActorMaterializer()
   implicit private val dispatcher: ExecutionContext = system.dispatcher
-  implicit private val contextShift: ContextShift[IO] = IO.contextShift(dispatcher)
 
   config.nautilusCloud match {
     case ncc @ NautilusCloudConfiguration(true, _, _, _, _, delay, interval) =>
-      system.scheduler.schedule(delay, interval)(Security.updateKeys(ncc))
+      system.scheduler.scheduleWithFixedDelay(delay, interval)(() => Security.updateKeys(ncc))
     case _ => ()
   }
 
@@ -106,7 +104,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
               ip =>
                 extractStrictEntity(10.seconds) {
                   ent =>
-                    recordResponseValues(ip, ent.data.utf8String)(mat, correlationId) {
+                    recordResponseValues(ip, ent.data.utf8String)(correlationId) {
                       timeoutHandler {
                         concat(
                           validateApiKey { _ =>

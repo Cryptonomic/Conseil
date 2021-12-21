@@ -1,16 +1,13 @@
 package tech.cryptonomic.conseil.common.ethereum.rpc
 
-import scala.concurrent.ExecutionContext
-
-import cats.effect._
 import fs2.Stream
 
 import tech.cryptonomic.conseil.common.ethereum.{EthereumFixtures, EthereumStubs}
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with EthereumStubs {
+import cats.effect.unsafe.implicits.global
 
-  implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
+class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with EthereumStubs {
 
   "Ethereum JSON-RPC client" should {
 

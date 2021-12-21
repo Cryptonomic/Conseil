@@ -28,9 +28,6 @@ abstract class RegressionSuite {
   }
 
   object Setup {
-    implicit val ioShift = IO.contextShift(scala.concurrent.ExecutionContext.global)
-    val timer = IO.timer(scala.concurrent.ExecutionContext.global)
-
     /* We might wanna start with only 10k blocks */
     private def runLorre(platform: String, network: String) =
       Process(
@@ -53,7 +50,7 @@ abstract class RegressionSuite {
         _ <- if (syncNetwork.nonEmpty) syncData(syncPlatform, syncNetwork.get) else IO(0)
         proc <- IO(runApi.run())
         _ <- IO(println("waiting for conseil to start"))
-        _ <- timer.sleep(30.seconds)
+        _ <- IO.sleep(30.seconds)
       } yield proc
 
     val conseilProcess = Resource.make(startConseil) { conseil =>

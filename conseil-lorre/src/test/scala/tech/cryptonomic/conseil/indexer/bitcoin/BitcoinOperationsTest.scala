@@ -2,8 +2,7 @@ package tech.cryptonomic.conseil.indexer.bitcoin
 
 import java.sql.Timestamp
 
-import scala.concurrent.ExecutionContext
-import cats.effect.{ContextShift, IO}
+import cats.effect.IO
 import fs2.Stream
 import slickeffect.Transactor
 import org.scalamock.scalatest.MockFactory
@@ -15,9 +14,9 @@ import tech.cryptonomic.conseil.common.bitcoin.rpc.json.BlockchainInfo
 import tech.cryptonomic.conseil.indexer.config.{Custom, Everything, Newest}
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class BitcoinOperationsTest extends ConseilSpec with MockFactory {
+import cats.effect.unsafe.implicits.global
 
-  implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
+class BitcoinOperationsTest extends ConseilSpec with MockFactory {
 
   /* We can't currently mock the BitcoinOperations right now, because mixing-in ConseilLogSupport brings in
    * a `logger` attribute that is incompatible with scalamock capabilities.

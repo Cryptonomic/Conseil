@@ -1,14 +1,12 @@
 package tech.cryptonomic.conseil.common.bitcoin.rpc
 
-import scala.concurrent.ExecutionContext
-import cats.effect.{ContextShift, IO}
 import fs2.Stream
 import tech.cryptonomic.conseil.common.bitcoin.{BitcoinFixtures, BitcoinStubs}
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
 
-class BitcoinRpcClientTest extends ConseilSpec with BitcoinFixtures with BitcoinStubs {
+import cats.effect.unsafe.implicits.global
 
-  implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
+class BitcoinRpcClientTest extends ConseilSpec with BitcoinFixtures with BitcoinStubs {
 
   "Bitcoin JSON-RPC client" should {
 

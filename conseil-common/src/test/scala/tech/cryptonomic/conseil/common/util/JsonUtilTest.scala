@@ -80,7 +80,7 @@ class JsonUtilTest extends ConseilSpec with JsonMatchers {
       "convert a nested generic shapeless Record to json" in {
         import shapeless.record.Record
         /* this does the trick of encoding any Record whose fields have encoders themeselves */
-        import io.circe.generic.encoding.ReprObjectEncoder._
+        import io.circe.generic.encoding.ReprAsObjectEncoder._
 
         val record = Record(a = "b", c = Record(d = "e", f = "g"))
         val result = JsonUtil.toJson(record).json

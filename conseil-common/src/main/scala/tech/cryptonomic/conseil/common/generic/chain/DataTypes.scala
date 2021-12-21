@@ -79,7 +79,7 @@ object DataTypes {
 
     /** Method creating Predicate out of ApiPredicate which is received by the API */
     def toPredicate: Predicate =
-      Predicate("tmp", OperationType.in).patchWith(this)
+      Predicate("tmp", OperationType.in).patchUsing(this)
   }
 
   /** Class representing query ordering */
@@ -156,7 +156,7 @@ object DataTypes {
 
     /** Transforms Aggregation predicate received form API into AggregationPredicate */
     def toAggregationPredicate: AggregationPredicate =
-      AggregationPredicate(operation = OperationType.in).patchWith(this)
+      AggregationPredicate(operation = OperationType.in).patchUsing(this)
   }
 
   /** Aggregation that is received by the API */

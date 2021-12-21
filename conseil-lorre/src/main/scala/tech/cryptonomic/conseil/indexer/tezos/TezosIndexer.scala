@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import akka.Done
 import akka.actor.{ActorSystem, Terminated}
-import akka.stream.ActorMaterializer
+import akka.stream.{ActorMaterializer, Materializer}
 import akka.stream.scaladsl.Source
 import mouse.any._
 import cats.instances.future._
@@ -13,7 +13,6 @@ import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
 import tech.cryptonomic.conseil.indexer.LorreIndexer
@@ -68,7 +67,7 @@ class TezosIndexer private (
 )(
     implicit
     system: ActorSystem,
-    materializer: ActorMaterializer,
+    materializer: Materializer,
     dispatcher: ExecutionContext
 ) extends LorreIndexer
     with LorreProgressLogging {
@@ -78,23 +77,24 @@ class TezosIndexer private (
   /** Schedules method for fetching baking rights */
   if (featureFlags.blockRightsFetchingIsOn) {
     logger.info("I'm scheduling the concurrent tasks to update baking and endorsing rights")
-    system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
-      rightsProcessor.writeFutureRights()
-    )
+    system.scheduler
+      .scheduleWithFixedDelay(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
+        () => rightsProcessor.writeFutureRights
+      )
   }
 
   /** Schedules method for fetching TZIP-16 metadata */
   if (featureFlags.metadataFetchingIsOn) {
     logger.info("I'm scheduling the concurrent tasks to fetch TZIP-16 metadata")
-    system.scheduler.schedule(lorreConf.metadataFetching.initDelay, lorreConf.metadataFetching.interval)(
-      metadataProcessor.processMetadata
+    system.scheduler.scheduleWithFixedDelay(lorreConf.metadataFetching.initDelay, lorreConf.metadataFetching.interval)(
+      () => metadataProcessor.processMetadata
     )
   }
 
   if (featureFlags.registeredTokensIsOn) {
     logger.info("I'm scheduling the concurrent tasks to update registered tokens")
-    system.scheduler.schedule(lorreConf.tokenContracts.initialDelay, lorreConf.tokenContracts.interval)(
-      registeredTokensFetcher.updateRegisteredTokens
+    system.scheduler.scheduleWithFixedDelay(lorreConf.tokenContracts.initialDelay, lorreConf.tokenContracts.interval)(
+      () => registeredTokensFetcher.updateRegisteredTokens
     )
   }
 
@@ -326,7 +326,7 @@ object TezosIndexer extends ConseilLogSupport {
     val selectedNetwork = conf.network
 
     implicit val system: ActorSystem = ActorSystem("lorre-tezos-indexer")
-    implicit val materializer: ActorMaterializer = ActorMaterializer()
+    implicit val materializer: Materializer = ActorMaterializer()
     implicit val dispatcher: ExecutionContext = system.dispatcher
 
     val ignoreProcessFailuresOrigin: Option[String] = sys.env.get(LORRE_FAILURE_IGNORE_VAR)

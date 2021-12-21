@@ -12,6 +12,8 @@ import slick.basic.DatabaseConfig
 import slick.jdbc.PostgresProfile
 import slick.model.{Model, Table}
 
+import cats.effect.unsafe.implicits.global
+
 /**
   * Uses Slick's code-generation capabilities to infer code from Conseil database schema.
   * See http://slick.lightbend.com/doc/3.2.1/code-generation.html
@@ -76,7 +78,6 @@ object GenSchema extends App {
       uri: URI,
       outputDir: Option[String]
   ): IO[Unit] = {
-    implicit val shift = IO.contextShift(ExecutionContext.global)
 
     //we read configuration values
     val dc = DatabaseConfig.forURI[PostgresProfile](uri)
@@ -87,61 +88,51 @@ object GenSchema extends App {
      * Wrapping the operations on resource content with a `resource.use` call
      * will guarantee that those resources will be released after the execution.
      */
-    val resources = for {
-      db <- Resource.fromAutoCloseable(IO(dc.db))
-      blocker <- Blocker[IO]
-    } yield (db, blocker)
+    val resources = Resource.fromAutoCloseable(IO(dc.db))
 
-    resources.use {
-      case (db, blockingPool) =>
-        /* First we define the steps:
-         * - get the complete db model
-         * - extract schemas/namespaces from the model
-         * - filter the schemas we care about and write the sources for each
-         */
-        val getModel = IO.fromFuture(
-          IO.delay(
-            db.run(dc.profile.createModel(None)(ExecutionContext.global).withPinnedSession)
-          )
-        )
+    resources.use { db =>
+      /* First we define the steps:
+       * - get the complete db model
+       * - extract schemas/namespaces from the model
+       * - filter the schemas we care about and write the sources for each
+       */
+      val getModel = IO.fromFuture(
+        IO(db.run(dc.profile.createModel(None)(ExecutionContext.global).withPinnedSession))
+      )
 
-        val getSchemas = (model: Model) =>
-          IO {
-            val schemas = model.tables.groupBy(_.name.schema).collect {
-              case (Some(schema), tables) if schema != "public" => (schema, tables)
-            }
-            println(s"""The database contains the following namespaces for model generation: ${schemas.keySet.mkString(
-              ", "
-            )}""")
-            schemas
+      val getSchemas = (model: Model) =>
+        IO {
+          val schemas = model.tables.groupBy(_.name.schema).collect {
+            case (Some(schema), tables) if schema != "public" => (schema, tables)
           }
+          println(
+            s"""The database contains the following namespaces for model generation: ${schemas.keySet.mkString(", ")}"""
+          )
+          schemas
+        }
 
-        /* we combine multiple IO operations into a single sequence within the same IO wrapper with traverse */
-        val writeSources = (schemas: List[(String, Seq[Table])]) =>
-          schemas.traverse {
-            case (schema, tables) =>
-              blockingPool.blockOn(
-                IO(
-                  new SourceCodeGenerator(new Model(tables))
-                    .writeToFile(dc.profileName, s"$out$schema", s"$basePackage.$schema")
-                ).start
-              )
-          }.flatMap { fibers =>
-            fibers.traverse(_.join)
-          }.void
+      /* we combine multiple IO operations into a single sequence within the same IO wrapper with traverse */
+      val writeSources = (schemas: List[(String, Seq[Table])]) =>
+        schemas.traverse {
+          case (schema, tables) =>
+            IO(
+              new SourceCodeGenerator(new Model(tables))
+                .writeToFile(dc.profileName, s"$out$schema", s"$basePackage.$schema")
+            ).start
+        }.flatMap { fibers =>
+          fibers.traverse(_.join)
+        }.void
 
-        /* sequence the operations, you might notice we use a custom context from cats.effect
-         * to run the blocking filesystem operations on
-         */
-        for {
-          model <- getModel
-          schemas <- getSchemas(model)
-          _ <- writeSources(schemas.toList)
-        } yield ()
+      /* sequence the operations, you might notice we use a custom context from cats.effect
+       * to run the blocking filesystem operations on
+       */
+      for {
+        model <- getModel
+        schemas <- getSchemas(model)
+        _ <- writeSources(schemas.toList)
+      } yield ()
 
-    }.handleErrorWith(
-      error => IO(Console.err.println(s"Failed to generate the slick model: $error"))
-    )
+    }.handleErrorWith(error => IO(Console.err.println(s"Failed to generate the slick model: $error")))
 
   }
 }

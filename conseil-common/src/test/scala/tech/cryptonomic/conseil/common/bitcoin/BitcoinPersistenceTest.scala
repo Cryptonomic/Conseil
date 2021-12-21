@@ -1,12 +1,12 @@
 package tech.cryptonomic.conseil.common.bitcoin
 
-import scala.concurrent.ExecutionContext
-import cats.effect._
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.bitcoin.BitcoinPersistence._
 import tech.cryptonomic.conseil.common.testkit.ConseilSpec
+
+import cats.effect.unsafe.implicits.global
 
 class BitcoinPersistenceTest
     extends ConseilSpec
@@ -14,8 +14,6 @@ class BitcoinPersistenceTest
     with BitcoinInMemoryDatabaseSetup
     with BitcoinFixtures
     with BitcoinStubs {
-
-  implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
   "Bitcoin persistence" should {
       "save block from the JSON-RPC response" in new BitcoinPersistenceStubs(dbHandler) {

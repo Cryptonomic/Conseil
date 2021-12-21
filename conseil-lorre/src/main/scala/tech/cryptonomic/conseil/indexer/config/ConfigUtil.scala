@@ -1,7 +1,5 @@
 package tech.cryptonomic.conseil.indexer.config
 
-import com.github.ghik.silencer.silent
-import pureconfig.generic.EnumCoproductHint
 import scopt.Read
 
 import scala.util.Try
@@ -18,11 +16,7 @@ private[config] object ConfigUtil {
       }
     }
 
-    /* used by scopt to parse the depth object */
-    @silent("private val depthRead in object ConfigUtil is never used")
     implicit val depthRead: Read[Option[Depth]] = Read.reads(_.toDepth)
-    @silent("local val depthHint in object ConfigUtil is never used")
-    implicit val depthHint: EnumCoproductHint[Depth] = new EnumCoproductHint[Depth]
   }
 
   /** Used to pattern match on natural numbers */
