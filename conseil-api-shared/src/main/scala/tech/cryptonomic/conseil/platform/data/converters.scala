@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.platform.data
 
 import io.circe._
 import io.circe.generic.semiauto._
+import io.circe.syntax._
 
 import tech.cryptonomic.conseil.common.tezos.Tables._
 import tech.cryptonomic.conseil.platform.data.tezos.TezosDataOperations._
@@ -23,5 +24,24 @@ object converters {
   implicit val blockResultCodec = deriveCodec[BlockResult]
   implicit val operationGroupResultCodec = deriveCodec[OperationGroupResult]
   implicit val accountResultCodec = deriveCodec[AccountResult]
+
+  /** Implementation of JSON encoder for Any */
+  implicit val anyEncoder: Encoder[Any] =
+    Encoder[Any].contramap {
+      case x: java.lang.String => Json.fromString(x)
+      case x: java.lang.Integer => Json.fromInt(x)
+      case x: java.sql.Timestamp => Json.fromLong(x.getTime)
+      case x: java.lang.Boolean => Json.fromBoolean(x)
+      case x: scala.collection.immutable.Vector[Any] =>
+        x.map(_.asJson(anyEncoder)).asJson // Due to type erasure, a recursive call is made here.
+      case x: BlocksRow => x.asJson(blocksRowCodec)
+      case x: AccountsRow => x.asJson(accountsRowCodec)
+      case x: OperationGroupsRow => x.asJson(operationGroupsRowCodec)
+      case x: OperationsRow => x.asJson(operationsRowCodec)
+      case x: java.math.BigDecimal => Json.fromBigDecimal(x)
+      case x => Json.fromString(x.toString)
+    }
+
+  implicit val anyDecoder: Decoder[Any] = ???
 
 }
