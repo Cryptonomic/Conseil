@@ -6,7 +6,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.platform.data.ApiDataEndpoints
 
 /** Trait containing endpoints definition */
-trait BitcoinDataEndpoints extends ApiDataEndpoints { // with BitcoinFilterFromQueryString {
+trait BitcoinDataEndpoints extends ApiDataEndpoints {
 
   import tech.cryptonomic.conseil.platform.data.schemas._
 

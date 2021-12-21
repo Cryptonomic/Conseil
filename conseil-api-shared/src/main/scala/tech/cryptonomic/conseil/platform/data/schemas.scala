@@ -14,7 +14,7 @@ object schemas {
   implicit val accountsRowSchema: Schema[AccountsRow] = Schema.derived
   implicit val accountResultSchema: Schema[AccountResult] = Schema.derived
 
-  implicit val queryResponseSchema: Schema[QueryResponse] = ??? // Schema(SchemaType.SString) // FIXME: probably needs to be more specific
+  implicit val queryResponseSchema: Schema[QueryResponse] = Schema.string // FIXME: is String enough?
   implicit val qrSchema: Schema[QR] = Schema.derived
   implicit val outputTypeSchema: Schema[OutputType] = Schema.derived
   implicit val queryResultWithoutOutputSchema: Schema[QueryResponseWithOutput] = Schema.derived
