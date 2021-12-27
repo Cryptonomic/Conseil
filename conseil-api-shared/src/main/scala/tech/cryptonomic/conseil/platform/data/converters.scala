@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.platform.data
 
+import cats.syntax.functor._
 import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
@@ -41,6 +42,18 @@ object converters {
       case x => Json.fromString(x.toString)
     }
 
-  implicit val anyDecoder: Decoder[Any] = ???
+  implicit val anyDecoder: Decoder[Any] = List[Decoder[Any]](
+    Decoder[java.lang.String].widen,
+    Decoder[java.lang.Integer].widen,
+    Decoder[java.lang.Boolean].widen,
+    Decoder[java.math.BigDecimal].widen,
+    Decoder[java.sql.Timestamp].widen,
+    Decoder[BlocksRow].widen,
+    Decoder[AccountsRow].widen,
+    Decoder[OperationGroupsRow].widen,
+    Decoder[OperationsRow].widen,
+    Decoder[Vector[Any]].widen,
+    Decoder[Any].widen
+  ).reduceLeft(_ or _)
 
 }
