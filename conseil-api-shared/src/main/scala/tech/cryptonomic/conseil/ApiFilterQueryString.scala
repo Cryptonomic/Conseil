@@ -14,12 +14,6 @@ trait ApiFilterQueryString {
   val sortBy: EndpointInput.Query[Option[String]] = query[Option[String]]("sort_by")
 
   /** Query string used for choosing optional sorting order. It will be combined with 'sort_by' */
-  implicit val sortingQueryString =
-    query[String](_: String)
-      .map(fromValidString(_))(_.map(asString).getOrElse("ascending")) // FIXME: correct default?
-
-  implicit lazy val optionalSortingQueryString = query[Option[String]](_)
-
   implicit def sortingCodec: Codec[List[String], Option[Sorting], CodecFormat.TextPlain] =
     Codec
       .listHeadOption[String, String, CodecFormat.TextPlain]
