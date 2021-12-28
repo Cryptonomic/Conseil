@@ -14,15 +14,17 @@ trait ApiFilterQueryString {
   val sortBy: EndpointInput.Query[Option[String]] = query[Option[String]]("sort_by")
 
   /** Query string used for choosing optional sorting order. It will be combined with 'sort_by' */
-  // import io.circe.generic.semiauto._
-  // implicit val sortingCodec: io.circe.Codec.AsObject[Sorting] = deriveCodec[Sorting]
-
-  val order: EndpointInput.Query[Option[Sorting]] = ??? // query[Option[Sorting]]("sorting")
-
   implicit val sortingQueryString =
     query[String](_: String)
       .map(fromValidString(_))(_.map(asString).getOrElse("ascending")) // FIXME: correct default?
 
   implicit lazy val optionalSortingQueryString = query[Option[String]](_)
+
+  implicit def sortingCodec: Codec[List[String], Option[Sorting], CodecFormat.TextPlain] =
+    Codec
+      .listHeadOption[String, String, CodecFormat.TextPlain]
+      .map(_.flatMap(fromString))(_.map(asString))
+
+  val order: EndpointInput.Query[Option[Sorting]] = query[Option[Sorting]]("sorting")
 
 }
