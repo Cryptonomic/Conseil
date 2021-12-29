@@ -502,7 +502,17 @@ class GenericPlatformDiscoveryOperationsTest
           .toSet shouldMatchTo (
           Set(
             Attribute("big_map_id", "Big map id", DataType.Decimal, None, KeyType.UniqueKey, "originated_account_maps"),
-            Attribute("account_id", "Account id", DataType.String, None, KeyType.UniqueKey, "originated_account_maps")
+            Attribute("account_id", "Account id", DataType.String, None, KeyType.UniqueKey, "originated_account_maps"),
+            Attribute("block_level", "Block level", DataType.LargeInt, None, KeyType.NonKey, "originated_account_maps"),
+            Attribute("fork_id", "Fork id", DataType.String, None, KeyType.UniqueKey, "originated_account_maps"),
+            Attribute(
+              "invalidated_asof",
+              "Invalidated asof",
+              DataType.DateTime,
+              None,
+              KeyType.NonKey,
+              "originated_account_maps"
+            )
           )
         )
       }

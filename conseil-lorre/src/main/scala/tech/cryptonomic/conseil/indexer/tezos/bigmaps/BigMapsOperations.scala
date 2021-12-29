@@ -275,7 +275,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
               diff <- results.big_map_diff.toList.flatMap(keepLatestDiffsFormat)
             } yield
               BigMapsConversions.BlockContractIdsBigMapDiff(
-                (b.data.hash, contractIds, diff, TezosOptics.Blocks.extractLevel(b.data.metadata))
+                (b.data.hash, contractIds, diff, Some(b.data.header.level))
               )
         }
     )
