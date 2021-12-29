@@ -83,6 +83,7 @@ class TezosForkInvalidatingAmender(db: Database)(implicit ec: ExecutionContext)
       DBOps.ForkInvalidation.bigMaps.invalidate(forkLevel, asOf, forkId),
       DBOps.ForkInvalidation.bigMapContents.invalidate(forkLevel, asOf, forkId),
       DBOps.ForkInvalidation.bigMapContentsHistory.invalidate(forkLevel, asOf, forkId),
+      DBOps.ForkInvalidation.originatedAccountMaps.invalidate(forkLevel, asOf, forkId),
       DBOps.ForkInvalidation.deleteProcessedEvents(forkLevel)
     ).foldA
 }

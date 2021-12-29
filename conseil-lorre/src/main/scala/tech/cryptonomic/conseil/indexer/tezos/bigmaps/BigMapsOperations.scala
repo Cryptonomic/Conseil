@@ -273,7 +273,10 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
             for {
               contractIds <- results.originated_contracts.toList
               diff <- results.big_map_diff.toList.flatMap(keepLatestDiffsFormat)
-            } yield BigMapsConversions.BlockContractIdsBigMapDiff((b.data.hash, contractIds, diff))
+            } yield
+              BigMapsConversions.BlockContractIdsBigMapDiff(
+                (b.data.hash, contractIds, diff, TezosOptics.Blocks.extractLevel(b.data.metadata))
+              )
         }
     )
 
@@ -309,7 +312,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       contractsReferences: List[OriginatedAccountMapsRow]
   )(implicit tokenContracts: TokenContracts): Unit =
     contractsReferences.foreach {
-      case OriginatedAccountMapsRow(mapId, accountId) if tokenContracts.isKnownToken(ContractId(accountId)) =>
+      case OriginatedAccountMapsRow(mapId, accountId, _, _, _) if tokenContracts.isKnownToken(ContractId(accountId)) =>
         tokenContracts.setMapId(ContractId(accountId), mapId)
       case _ =>
     }
@@ -321,7 +324,8 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     //fetch the right maps
     val mapsQueries: List[DBIO[Option[(String, BigMapsRow)]]] =
       contractsReferences.collect {
-        case OriginatedAccountMapsRow(mapId, accountId) if tnsContracts.isKnownRegistrar(ContractId(accountId)) =>
+        case OriginatedAccountMapsRow(mapId, accountId, _, _, _)
+            if tnsContracts.isKnownRegistrar(ContractId(accountId)) =>
           Tables.BigMaps
             .findBy(_.bigMapId)
             .applied(mapId)

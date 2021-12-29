@@ -42,4 +42,3 @@ case class MichelsonType(
 case object MichelsonEmptyExpression extends MichelsonExpression
 
 case class MichelsonExpressionSequence(sequence: List[MichelsonExpression]) extends MichelsonExpression
-

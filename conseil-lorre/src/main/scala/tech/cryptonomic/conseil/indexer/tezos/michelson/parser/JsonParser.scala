@@ -188,12 +188,10 @@ object JsonParser {
         case x => Right(x.head)
       }
 
-
     private def extractMultipleInstructions(sectionName: String): List[MichelsonInstruction] =
       code.collect {
         case it @ JsonViewSection(`sectionName`, _) => it
       }.map(_.args.toMichelsonInstruction)
-
 
     private def extractCode: Result[MichelsonCode] =
       code.collectFirst {
