@@ -182,7 +182,9 @@ class BigMapsOperationsTest
           id =>
             OriginatedAccountMapsRow(
               bigMapId = BigDecimal(1),
-              accountId = id
+              accountId = id,
+              blockLevel = Some(1L),
+              forkId = Fork.mainForkId
             )
         )
 
@@ -669,7 +671,8 @@ class BigMapsOperationsTest
           id =>
             OriginatedAccountMapsRow(
               bigMapId = BigDecimal(1),
-              accountId = id
+              accountId = id,
+              forkId = Fork.mainForkId
             )
         )
 

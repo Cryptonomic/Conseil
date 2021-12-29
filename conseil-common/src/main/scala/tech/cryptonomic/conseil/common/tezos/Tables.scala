@@ -3386,28 +3386,45 @@ trait Tables {
 
   /** Entity class storing rows of table OriginatedAccountMaps
     *  @param bigMapId Database column big_map_id SqlType(numeric)
-    *  @param accountId Database column account_id SqlType(varchar) */
-  case class OriginatedAccountMapsRow(bigMapId: scala.math.BigDecimal, accountId: String)
+    *  @param accountId Database column account_id SqlType(varchar)
+    *  @param blockLevel Database column block_level SqlType(int8), Default(None)
+    *  @param forkId Database column fork_id SqlType(varchar)
+    *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None) */
+  case class OriginatedAccountMapsRow(
+      bigMapId: scala.math.BigDecimal,
+      accountId: String,
+      blockLevel: Option[Long] = None,
+      forkId: String,
+      invalidatedAsof: Option[java.sql.Timestamp] = None
+  )
 
   /** GetResult implicit for fetching OriginatedAccountMapsRow objects using plain SQL queries */
   implicit def GetResultOriginatedAccountMapsRow(
       implicit e0: GR[scala.math.BigDecimal],
-      e1: GR[String]
+      e1: GR[String],
+      e2: GR[Option[Long]],
+      e3: GR[Option[java.sql.Timestamp]]
   ): GR[OriginatedAccountMapsRow] = GR { prs =>
     import prs._
-    OriginatedAccountMapsRow.tupled((<<[scala.math.BigDecimal], <<[String]))
+    OriginatedAccountMapsRow.tupled(
+      (<<[scala.math.BigDecimal], <<[String], <<?[Long], <<[String], <<?[java.sql.Timestamp])
+    )
   }
 
   /** Table description of table originated_account_maps. Objects of this class serve as prototypes for rows in queries. */
   class OriginatedAccountMaps(_tableTag: Tag)
       extends profile.api.Table[OriginatedAccountMapsRow](_tableTag, Some("tezos"), "originated_account_maps") {
-    def * = (bigMapId, accountId) <> (OriginatedAccountMapsRow.tupled, OriginatedAccountMapsRow.unapply)
+    def * =
+      (bigMapId, accountId, blockLevel, forkId, invalidatedAsof) <> (OriginatedAccountMapsRow.tupled, OriginatedAccountMapsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(bigMapId), Rep.Some(accountId))).shaped.<>({ r =>
-        import r._; _1.map(_ => OriginatedAccountMapsRow.tupled((_1.get, _2.get)))
-      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
+      ((Rep.Some(bigMapId), Rep.Some(accountId), blockLevel, Rep.Some(forkId), invalidatedAsof)).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => OriginatedAccountMapsRow.tupled((_1.get, _2.get, _3, _4.get, _5)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
 
     /** Database column big_map_id SqlType(numeric) */
     val bigMapId: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("big_map_id")
@@ -3415,8 +3432,18 @@ trait Tables {
     /** Database column account_id SqlType(varchar) */
     val accountId: Rep[String] = column[String]("account_id")
 
+    /** Database column block_level SqlType(int8), Default(None) */
+    val blockLevel: Rep[Option[Long]] = column[Option[Long]]("block_level", O.Default(None))
+
+    /** Database column fork_id SqlType(varchar) */
+    val forkId: Rep[String] = column[String]("fork_id")
+
+    /** Database column invalidated_asof SqlType(timestamp), Default(None) */
+    val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
+
     /** Primary key of OriginatedAccountMaps (database name originated_account_maps_pkey) */
-    val pk = primaryKey("originated_account_maps_pkey", (bigMapId, accountId))
+    val pk = primaryKey("originated_account_maps_pkey", (bigMapId, accountId, forkId))
 
     /** Index over (accountId) (database name accounts_maps_idx) */
     val index1 = index("accounts_maps_idx", accountId)

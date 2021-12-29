@@ -579,7 +579,10 @@ CREATE INDEX combined_big_map_operation_group_ids_idx ON tezos.big_map_contents 
 CREATE TABLE tezos.originated_account_maps (
     big_map_id numeric,
     account_id character varying,
-    PRIMARY KEY (big_map_id, account_id)
+    block_level bigint,
+    fork_id character varying NOT NULL,
+    invalidated_asof timestamp,
+    PRIMARY KEY (big_map_id, account_id, fork_id)
 );
 
 CREATE INDEX accounts_maps_idx ON tezos.originated_account_maps USING btree (account_id);

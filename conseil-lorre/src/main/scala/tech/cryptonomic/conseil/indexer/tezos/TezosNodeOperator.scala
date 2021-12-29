@@ -546,7 +546,7 @@ private[tezos] class TezosNodeOperator(
     import TezosJsonDecoders.Circe.Blocks._
     import TezosJsonDecoders.Circe.decodeLiftingTo
 
-    val offsetString = offset.map("~"+ _.toString).getOrElse("")
+    val offsetString = offset.map("~" + _.toString).getOrElse("")
 
     //starts immediately
     val fetchBlock =
@@ -570,7 +570,7 @@ private[tezos] class TezosNodeOperator(
     import TezosJsonDecoders.Circe.Blocks._
     import TezosJsonDecoders.Circe.decodeLiftingTo
 
-    val offsetString = offset.map("~"+ _.toString).getOrElse("")
+    val offsetString = offset.map("~" + _.toString).getOrElse("")
 
     node.runAsyncGetQuery(network, s"blocks/${hash.value}$offsetString") flatMap { json =>
       decodeLiftingTo[Future, BlockData](JS.sanitize(json))

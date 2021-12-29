@@ -42,7 +42,7 @@ object MichelsonRenderer {
       case MichelsonSchema(MichelsonEmptyExpression, MichelsonEmptyExpression, MichelsonCode(Nil), Nil) => ""
       case MichelsonSchema(parameter, storage, code, view) =>
         val views = view.map(_.render()).mkString(" ;\n")
-        val viewsRender = if(views.nonEmpty) s"\nviews { $views }" else ""
+        val viewsRender = if (views.nonEmpty) s"\nviews { $views }" else ""
         s"""parameter ${parameter.render()};
             |storage ${storage.render()};
             |code { ${code.render()} }""".stripMargin ++ viewsRender

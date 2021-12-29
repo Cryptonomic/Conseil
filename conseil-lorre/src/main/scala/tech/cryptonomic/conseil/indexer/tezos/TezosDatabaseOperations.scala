@@ -1029,6 +1029,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       EntityTableInvalidator(BigMapContents)(_.blockLevel.ifNull(-1L), _.invalidatedAsof, _.forkId)
     lazy val bigMapContentsHistory =
       EntityTableInvalidator(BigMapContentsHistory)(_.blockLevel.ifNull(-1L), _.invalidatedAsof, _.forkId)
+    lazy val originatedAccountMaps =
+      EntityTableInvalidator(OriginatedAccountMaps)(_.blockLevel.ifNull(-1L), _.invalidatedAsof, _.forkId)
 
     /** Deletes entries for the registry of processed chain events.
       * Due to a fork, those events will need be processed again over the new fork

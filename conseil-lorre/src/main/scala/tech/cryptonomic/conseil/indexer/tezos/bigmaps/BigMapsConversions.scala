@@ -20,7 +20,9 @@ object BigMapsConversions extends ConseilLogSupport {
   // Simplify understanding in parts of the code
   case class BlockBigMapDiff(get: BlockTagged[(TezosBlockHash, Option[OperationHash], Contract.BigMapDiff)])
       extends AnyVal
-  case class BlockContractIdsBigMapDiff(get: (TezosBlockHash, List[ContractId], Contract.BigMapDiff)) extends AnyVal
+  case class BlockContractIdsBigMapDiff(
+      get: (TezosBlockHash, List[ContractId], Contract.BigMapDiff, Option[BlockLevel])
+  ) extends AnyVal
 
   //input to collect token data to convert
   case class TokenUpdatesInput(
@@ -111,21 +113,23 @@ object BigMapsConversions extends ConseilLogSupport {
       implicit lazy val _ = logger
 
       def convert(from: BlockContractIdsBigMapDiff) = from.get match {
-        case (_, ids, BigMapAlloc(_, Decimal(id), _, _)) =>
+        case (_, ids, BigMapAlloc(_, Decimal(id), _, _), level) =>
           ids.map(
             contractId =>
               Tables.OriginatedAccountMapsRow(
                 bigMapId = id,
-                accountId = contractId.id
+                accountId = contractId.id,
+                blockLevel = level,
+                forkId = Fork.mainForkId
               )
           )
-        case (hash, ids, BigMapAlloc(_, InvalidDecimal(json), _, _)) =>
+        case (hash, ids, BigMapAlloc(_, InvalidDecimal(json), _, _), _) =>
           val showIds = ids.mkString(", ")
           logger.warn(
             s"Big Map Origin: A big_map_diff allocation hasn't been converted to a OriginatedAccounts-BigMap association on db, because the map id '$json' is not a valid number. The block containing the Transation operation is ${hash.value}, involving accounts $showIds"
           )
           List.empty
-        case (_, opHash, diffAction) =>
+        case (_, opHash, diffAction, _) =>
           logger.warn(
             s"Big Map Origin: A big_map_diff result will be ignored and not be converted to a relation for OriginatedAccounts to BigMap on db, because the diff action is not supported: $diffAction for operation $opHash"
           )
