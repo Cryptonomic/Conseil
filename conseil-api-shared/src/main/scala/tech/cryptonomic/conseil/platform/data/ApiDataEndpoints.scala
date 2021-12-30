@@ -4,7 +4,12 @@ import io.circe.{Decoder, Encoder}
 import sttp.tapir._
 import sttp.tapir.json.circe._
 
-trait ApiDataEndpoints {
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
+
+private[data] trait ApiDataEndpoints {
+
+  import tech.cryptonomic.conseil.platform.data.converters._
+  import tech.cryptonomic.conseil.platform.data.schemas._
 
   protected def commonPath(platform: String) =
     infallibleEndpoint.in("v2" / "data" / platform / "network" / "entity")
@@ -12,7 +17,7 @@ trait ApiDataEndpoints {
   /** V2 Query endpoint definition */
   def queryEndpoint(platform: String) =
     commonPath(platform).post
-  // .out(jsonBodyQueryResponseWithOutput)
+      .out(jsonBody[QueryResponseWithOutput])
 
   /** Common method for compatibility queries */
   def compatibilityQuery[A: Encoder: Decoder: Schema](endpointName: String) = jsonBody[A]
