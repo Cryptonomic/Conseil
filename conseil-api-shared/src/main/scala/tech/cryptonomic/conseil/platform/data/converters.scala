@@ -5,17 +5,14 @@ import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
 
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.common.tezos.Tables._
 import tech.cryptonomic.conseil.platform.data.tezos.TezosDataOperations._
 
-object converters {
+private[data] object converters {
 
-  implicit val TimestampCodec: Encoder[java.sql.Timestamp] with Decoder[java.sql.Timestamp] =
-    new Encoder[java.sql.Timestamp] with Decoder[java.sql.Timestamp] {
-      override def apply(a: java.sql.Timestamp): Json = Encoder.encodeLong.apply(a.getTime)
-      override def apply(c: HCursor): Decoder.Result[java.sql.Timestamp] =
-        Decoder.decodeLong.map(s => new java.sql.Timestamp(s)).apply(c)
-    }
+  implicit val timestampEncoder = Encoder.encodeLong.contramap[java.sql.Timestamp](_.getTime)
+  implicit val timestampDecoder = Decoder.decodeLong.map(new java.sql.Timestamp(_))
 
   implicit val accountsRowCodec = deriveCodec[AccountsRow]
   implicit val blocksRowCodec = deriveCodec[BlocksRow]
@@ -54,6 +51,10 @@ object converters {
     Decoder[OperationsRow].widen,
     Decoder[Vector[Any]].widen,
     Decoder[Any].widen
-  ).reduceLeft(_ or _)
+  ).reduceLeft(_ or _) // FIXME: is the order correct for `or`?
+
+  implicit val qrCodec = deriveCodec[QR]
+  implicit val outputTypeCodec = deriveCodec[OutputType]
+  implicit val queryResultWithOutputCodec = deriveCodec[QueryResponseWithOutput]
 
 }
