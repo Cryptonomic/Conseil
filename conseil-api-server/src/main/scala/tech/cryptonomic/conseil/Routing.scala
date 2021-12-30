@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil
 
 import cats.effect.{Async, IO}
+import cats.syntax.option._
 import org.http4s.HttpApp
 import sttp.model.StatusCode
 import sttp.tapir.generic.auto._
@@ -24,12 +25,10 @@ object Routing extends APIDocs {
       Http4sServerOptions
         .customInterceptors[IO, IO]
         .exceptionHandler { _ =>
-          Some(
-            ValuedEndpointOutput(
-              jsonBody[GenericServerError].and(statusCode(StatusCode.InternalServerError)),
-              GenericServerError("server failed")
-            )
-          )
+          ValuedEndpointOutput(
+            jsonBody[GenericServerError].and(statusCode(StatusCode.InternalServerError)),
+            GenericServerError("server failed")
+          ).some
         }
         .options
     ).toRoutes(endpoints).orNotFound
