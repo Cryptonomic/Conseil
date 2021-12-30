@@ -7,7 +7,7 @@ import tech.cryptonomic.conseil.common.tezos.{Tables => TezosTables}
 import tech.cryptonomic.conseil.platform.data.tezos.TezosDataOperations._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 
-object schemas {
+private[data] object schemas {
 
   implicit val timestampSchema: Schema[java.sql.Timestamp] = Schema(SchemaType.SString())
   implicit val blocksSchemaTezos: Schema[TezosTables.BlocksRow] = Schema.derived
@@ -20,7 +20,7 @@ object schemas {
   implicit val queryResponseSchema: Schema[QueryResponse] = Schema.string // FIXME: is String enough?
   implicit val qrSchema: Schema[QR] = Schema.derived
   implicit val outputTypeSchema: Schema[OutputType] = Schema.derived
-  implicit val queryResultWithoutOutputSchema: Schema[QueryResponseWithOutput] = Schema.derived
+  implicit val queryResultWithOutputSchema: Schema[QueryResponseWithOutput] = Schema.derived
 
   implicit val operationGroupsRowSchema: Schema[TezosTables.OperationGroupsRow] = Schema.derived
   implicit val operationsRowSchema: Schema[TezosTables.OperationsRow] = Schema.derived
