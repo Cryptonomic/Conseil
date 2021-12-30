@@ -24,7 +24,7 @@ object Dependencies {
     val endpoints4sAkkaServer = "4.0.0"
 
     val monix = "3.4.0"
-    val tapir = "0.19.0-M16"
+    val tapir = "0.20.0-M3"
 
     val cats = "2.6.1"
     val catsEffect = "3.2.9"
