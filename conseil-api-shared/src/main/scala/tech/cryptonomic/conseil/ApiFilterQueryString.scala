@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil
 
 import sttp.tapir._
+
 import tech.cryptonomic.conseil.ApiFilter.Sorting
 import tech.cryptonomic.conseil.ApiFilter.Sorting._
 

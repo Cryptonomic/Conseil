@@ -1,12 +1,12 @@
 package tech.cryptonomic.conseil.platform.data.tezos
 
 import sttp.tapir._
+
 import tech.cryptonomic.conseil.ApiFilter.Sorting
 import tech.cryptonomic.conseil.ApiFilterQueryString
 
 /** Trait containing helper functions which are necessary for parsing query parameter strings as Filter  */
-// protected
-object TezosFilterFromQueryString extends ApiFilterQueryString {
+private[tezos] trait TezosFilterFromQueryString extends ApiFilterQueryString {
 
   /** Query params type alias */
   type TezosQueryParams = (

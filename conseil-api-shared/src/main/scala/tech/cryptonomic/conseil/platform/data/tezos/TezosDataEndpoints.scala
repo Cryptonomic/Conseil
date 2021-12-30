@@ -7,7 +7,7 @@ import tech.cryptonomic.conseil.platform.data.ApiDataEndpoints
 import tech.cryptonomic.conseil.platform.data.tezos.TezosDataOperations._
 import tech.cryptonomic.conseil.common.tezos.Tables._
 
-trait TezosDataEndpoints extends ApiDataEndpoints { // with TezosFilterFromQueryString {
+trait TezosDataEndpoints extends ApiDataEndpoints with TezosFilterFromQueryString {
 
   import tech.cryptonomic.conseil.platform.data.converters._
   import tech.cryptonomic.conseil.platform.data.schemas._
@@ -33,7 +33,7 @@ trait TezosDataEndpoints extends ApiDataEndpoints { // with TezosFilterFromQuery
   /** V2 Blocks endpoint definition */
   def tezosBlocksEndpoint =
     root.get
-      .in("blocks" / TezosFilterFromQueryString.tezosQsFilter)
+      .in("blocks" / tezosQsFilter)
       .out(compatibilityQuery[List[QueryResponse]]("blocks"))
 
   /** V2 Blocks head endpoint definition */
@@ -51,7 +51,7 @@ trait TezosDataEndpoints extends ApiDataEndpoints { // with TezosFilterFromQuery
   /** V2 Accounts endpoint definition */
   def tezosAccountsEndpoint =
     root.get
-      .in("accounts" / TezosFilterFromQueryString.tezosQsFilter)
+      .in("accounts" / tezosQsFilter)
       .out(compatibilityQuery[List[QueryResponse]]("accounts"))
 
   /** V2 Accounts by ID endpoint definition */
@@ -63,7 +63,7 @@ trait TezosDataEndpoints extends ApiDataEndpoints { // with TezosFilterFromQuery
   /** V2 Operation groups endpoint definition */
   def tezosOperationGroupsEndpoint =
     root.get
-      .in("operation_groups" / TezosFilterFromQueryString.tezosQsFilter)
+      .in("operation_groups" / tezosQsFilter)
       .out(compatibilityQuery[List[QueryResponse]]("operation groups"))
 
   /** V2 Operation groups by ID endpoint definition */
@@ -75,15 +75,15 @@ trait TezosDataEndpoints extends ApiDataEndpoints { // with TezosFilterFromQuery
   /** V2 average fees endpoint definition */
   def tezosAvgFeesEndpoint =
     root.get
-      .in("operations" / "avgFees" / TezosFilterFromQueryString.tezosQsFilter)
+      .in("operations" / "avgFees" / tezosQsFilter)
       .out(compatibilityQuery[QueryResponse]("average fees"))
 
   /** V2 Operations endpoint definition */
   def tezosOperationsEndpoint =
     root.get
-      .in("operations" / TezosFilterFromQueryString.tezosQsFilter)
+      .in("operations" / tezosQsFilter)
       .out(compatibilityQuery[List[QueryResponse]]("operations"))
 
-  private def createTags(entity: String): List[String] = List(s"Tezos $entity")
+  protected def createTags(entity: String): List[String] = List(s"Tezos $entity")
 
 }
