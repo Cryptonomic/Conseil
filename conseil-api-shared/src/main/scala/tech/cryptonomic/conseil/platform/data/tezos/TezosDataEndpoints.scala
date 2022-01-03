@@ -12,29 +12,29 @@ trait TezosDataEndpoints extends ApiDataEndpoints with TezosFilterFromQueryStrin
   import tech.cryptonomic.conseil.platform.data.converters._
   import tech.cryptonomic.conseil.platform.data.schemas._
 
-  val xtzEndpoints = List(
-    tezosQueryEndpoint,
-    tezosBlocksEndpoint,
+  lazy val xtzEndpoints = List(
+    // tezosQueryEndpoint,
+    // tezosBlocksEndpoint,
     tezosBlocksHeadEndpoint,
     tezosBlockByHashEndpoint,
-    tezosAccountsEndpoint,
+    // tezosAccountsEndpoint,
     tezosAccountByIdEndpoint,
-    tezosOperationGroupsEndpoint,
-    tezosOperationGroupByIdEndpoint,
-    tezosAvgFeesEndpoint,
-    tezosOperationsEndpoint
+    // tezosOperationGroupsEndpoint,
+    tezosOperationGroupByIdEndpoint
+    // tezosAvgFeesEndpoint,
+    // tezosOperationsEndpoint
   )
 
-  implicit private val platform = "tezos"
-  private val root = commonPath(platform)
+  val xtzPlatform = "tezos"
+  private val root: Endpoint[Unit, Unit, Nothing, Unit, Any] = commonPath(xtzPlatform)
 
-  def tezosQueryEndpoint = queryEndpoint(platform)
+  // def tezosQueryEndpoint = queryEndpoint(xtzPlatform)
 
   /** V2 Blocks endpoint definition */
-  def tezosBlocksEndpoint =
-    root.get
-      .in("blocks" / tezosQsFilter)
-      .out(compatibilityQuery[List[QueryResponse]]("blocks"))
+  // def tezosBlocksEndpoint =
+  //   root.get
+  //     .in("blocks" / tezosQsFilter)
+  //     .out(compatibilityQuery[List[QueryResponse]]("blocks"))
 
   /** V2 Blocks head endpoint definition */
   def tezosBlocksHeadEndpoint =
@@ -49,10 +49,10 @@ trait TezosDataEndpoints extends ApiDataEndpoints with TezosFilterFromQueryStrin
       .out(compatibilityQuery[BlocksRow]("blocks by hash"))
 
   /** V2 Accounts endpoint definition */
-  def tezosAccountsEndpoint =
-    root.get
-      .in("accounts" / tezosQsFilter)
-      .out(compatibilityQuery[List[QueryResponse]]("accounts"))
+  // def tezosAccountsEndpoint =
+  //   root.get
+  //     .in("accounts" / tezosQsFilter)
+  //     .out(compatibilityQuery[List[QueryResponse]]("accounts"))
 
   /** V2 Accounts by ID endpoint definition */
   def tezosAccountByIdEndpoint =
@@ -61,10 +61,10 @@ trait TezosDataEndpoints extends ApiDataEndpoints with TezosFilterFromQueryStrin
       .out(compatibilityQuery[AccountResult]("account"))
 
   /** V2 Operation groups endpoint definition */
-  def tezosOperationGroupsEndpoint =
-    root.get
-      .in("operation_groups" / tezosQsFilter)
-      .out(compatibilityQuery[List[QueryResponse]]("operation groups"))
+  // def tezosOperationGroupsEndpoint =
+  //   root.get
+  //     .in("operation_groups" / tezosQsFilter)
+  //     .out(compatibilityQuery[List[QueryResponse]]("operation groups"))
 
   /** V2 Operation groups by ID endpoint definition */
   def tezosOperationGroupByIdEndpoint =
@@ -73,16 +73,16 @@ trait TezosDataEndpoints extends ApiDataEndpoints with TezosFilterFromQueryStrin
       .out(compatibilityQuery[OperationGroupResult]("operation group"))
 
   /** V2 average fees endpoint definition */
-  def tezosAvgFeesEndpoint =
-    root.get
-      .in("operations" / "avgFees" / tezosQsFilter)
-      .out(compatibilityQuery[QueryResponse]("average fees"))
+  // def tezosAvgFeesEndpoint =
+  //   root.get
+  //     .in("operations" / "avgFees" / tezosQsFilter)
+  //     .out(compatibilityQuery[QueryResponse]("average fees"))
 
   /** V2 Operations endpoint definition */
-  def tezosOperationsEndpoint =
-    root.get
-      .in("operations" / tezosQsFilter)
-      .out(compatibilityQuery[List[QueryResponse]]("operations"))
+  // def tezosOperationsEndpoint =
+  //   root.get
+  //     .in("operations" / tezosQsFilter)
+  //     .out(compatibilityQuery[List[QueryResponse]]("operations"))
 
   protected def createTags(entity: String): List[String] = List(s"Tezos $entity")
 

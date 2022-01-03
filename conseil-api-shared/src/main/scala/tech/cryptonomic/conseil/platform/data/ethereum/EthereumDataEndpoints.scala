@@ -3,8 +3,8 @@ package tech.cryptonomic.conseil.platform.data.ethereum
 /** Represents list of endpoints exposed for Ethereum Blockchain */
 trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
 
-  val ethEndpoints = List(
-    ethereumQueryEndpoint,
+  lazy val ethEndpoints = List(
+    // ethereumQueryEndpoint,
     ethereumBlocksEndpoint,
     ethereumBlocksHeadEndpoint,
     ethereumBlockByHashEndpoint,
@@ -21,44 +21,44 @@ trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
     ethereumAccountsHistoryEndpoint
   )
 
-  private val platform: String = "ethereum"
+  val ethPlatform: String = "ethereum"
 
-  def ethereumQueryEndpoint = queryEndpoint(platform)
+  // def ethereumQueryEndpoint = queryEndpoint(ethPlatform)
 
-  def ethereumBlocksEndpoint = blocksEndpoint(platform)
+  def ethereumBlocksEndpoint = blocksEndpoint(ethPlatform)
 
-  def ethereumBlocksHeadEndpoint = blocksHeadEndpoint(platform)
+  def ethereumBlocksHeadEndpoint = blocksHeadEndpoint(ethPlatform)
 
-  def ethereumBlockByHashEndpoint = blockByHashEndpoint(platform)
+  def ethereumBlockByHashEndpoint = blockByHashEndpoint(ethPlatform)
 
-  def ethereumTransactionsEndpoint = transactionsEndpoint(platform)
+  def ethereumTransactionsEndpoint = transactionsEndpoint(ethPlatform)
 
-  def ethereumTransactionByHashEndpoint = transactionByHashEndpoint(platform)
+  def ethereumTransactionByHashEndpoint = transactionByHashEndpoint(ethPlatform)
 
-  def ethereumLogsEndpoint = logsEndpoint(platform)
+  def ethereumLogsEndpoint = logsEndpoint(ethPlatform)
 
-  def ethereumReceiptsEndpoint = receiptsEndpoint(platform)
+  def ethereumReceiptsEndpoint = receiptsEndpoint(ethPlatform)
 
-  def ethereumContractsEndpoint = contractsEndpoint(platform)
+  def ethereumContractsEndpoint = contractsEndpoint(ethPlatform)
 
-  def ethereumTokensEndpoint = tokensEndpoint(platform)
+  def ethereumTokensEndpoint = tokensEndpoint(ethPlatform)
 
-  def ethereumTokenTransfersEndpoint = tokenTransfersEndpoint(platform)
+  def ethereumTokenTransfersEndpoint = tokenTransfersEndpoint(ethPlatform)
 
-  def ethereumTokensHistoryEndpoint = tokensHistoryEndpoint(platform)
+  def ethereumTokensHistoryEndpoint = tokensHistoryEndpoint(ethPlatform)
 
-  def ethereumAccountsEndpoint = accountsEndpoint(platform)
+  def ethereumAccountsEndpoint = accountsEndpoint(ethPlatform)
 
-  def ethereumAccountByAddressEndpoint = accountByAddressEndpoint(platform)
+  def ethereumAccountByAddressEndpoint = accountByAddressEndpoint(ethPlatform)
 
-  def ethereumAccountsHistoryEndpoint = accountsHistoryEndpoint(platform)
+  def ethereumAccountsHistoryEndpoint = accountsHistoryEndpoint(ethPlatform)
 }
 
 /** Represents list of endpoints exposed for Quorum Blockchain (based on Ethereum) */
 trait QuorumDataEndpoints extends EthereumDataEndpointsCreator {
 
-  val quorumEndpoints = List(
-    quorumQueryEndpoint,
+  lazy val quorumEndpoints = List(
+    // quorumQueryEndpoint,
     quorumBlocksEndpoint,
     quorumBlocksHeadEndpoint,
     quorumBlockByHashEndpoint,
@@ -73,32 +73,32 @@ trait QuorumDataEndpoints extends EthereumDataEndpointsCreator {
     quorumAccountByAddressEndpoint
   )
 
-  private val platform: String = "quorum"
+  val quorumPlatform: String = "quorum"
 
-  def quorumQueryEndpoint = queryEndpoint(platform)
+  // def quorumQueryEndpoint = queryEndpoint(quorumPlatform)
 
-  def quorumBlocksEndpoint = blocksEndpoint(platform)
+  def quorumBlocksEndpoint = blocksEndpoint(quorumPlatform)
 
-  def quorumBlocksHeadEndpoint = blocksHeadEndpoint(platform)
+  def quorumBlocksHeadEndpoint = blocksHeadEndpoint(quorumPlatform)
 
-  def quorumBlockByHashEndpoint = blockByHashEndpoint(platform)
+  def quorumBlockByHashEndpoint = blockByHashEndpoint(quorumPlatform)
 
-  def quorumTransactionsEndpoint = transactionsEndpoint(platform)
+  def quorumTransactionsEndpoint = transactionsEndpoint(quorumPlatform)
 
-  def quorumTransactionByHashEndpoint = transactionByHashEndpoint(platform)
+  def quorumTransactionByHashEndpoint = transactionByHashEndpoint(quorumPlatform)
 
-  def quorumLogsEndpoint = logsEndpoint(platform)
+  def quorumLogsEndpoint = logsEndpoint(quorumPlatform)
 
-  def quorumReceiptsEndpoint = receiptsEndpoint(platform)
+  def quorumReceiptsEndpoint = receiptsEndpoint(quorumPlatform)
 
-  def quorumContractsEndpoint = contractsEndpoint(platform)
+  def quorumContractsEndpoint = contractsEndpoint(quorumPlatform)
 
-  def quorumTokensEndpoint = tokensEndpoint(platform)
+  def quorumTokensEndpoint = tokensEndpoint(quorumPlatform)
 
-  def quorumTokenTransfersEndpoint = tokenTransfersEndpoint(platform)
+  def quorumTokenTransfersEndpoint = tokenTransfersEndpoint(quorumPlatform)
 
-  def quorumAccountsEndpoint = accountsEndpoint(platform)
+  def quorumAccountsEndpoint = accountsEndpoint(quorumPlatform)
 
-  def quorumAccountByAddressEndpoint = accountByAddressEndpoint(platform)
+  def quorumAccountByAddressEndpoint = accountByAddressEndpoint(quorumPlatform)
 
 }

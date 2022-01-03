@@ -15,9 +15,9 @@ private[data] trait ApiDataEndpoints {
     infallibleEndpoint.in("v2" / "data" / platform / "network" / "entity")
 
   /** V2 Query endpoint definition */
-  def queryEndpoint(platform: String) =
-    commonPath(platform).post
-      .out(jsonBody[QueryResponseWithOutput])
+  // def queryEndpoint(platform: String) =
+  //   commonPath(platform).post
+  //     .out(jsonBody[QueryResponseWithOutput])
 
   /** Common method for compatibility queries */
   def compatibilityQuery[A: Encoder: Decoder: Schema](endpointName: String) = jsonBody[A]

@@ -12,7 +12,7 @@ trait PlatformDiscoveryEndpoints {
 
   import tech.cryptonomic.conseil.platform.discovery.converters._
 
-  val discoveryEndpoints = List(
+  lazy val discoveryEndpoints = List(
     platformsEndpoint,
     networksEndpoint,
     entitiesEndpoint,
@@ -22,9 +22,10 @@ trait PlatformDiscoveryEndpoints {
   )
 
   /** Common path for metadata endpoints */
-  private val commonPath = infallibleEndpoint
-    .in("v2" / "metadata")
-    .in(header[Option[String]]("apiKey"))
+  private val commonPath: Endpoint[Unit, Option[String], Nothing, Unit, Any] =
+    infallibleEndpoint
+      .in("v2" / "metadata")
+      .in(header[Option[String]]("apiKey"))
 
   /** Metadata platforms endpoint */
   def platformsEndpoint =

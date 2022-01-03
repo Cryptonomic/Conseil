@@ -19,8 +19,10 @@ trait APIDocs
     with QuorumDataEndpoints
     with BitcoinDataEndpoints {
 
-  private val allPlatformEndpoints: List[Endpoint[Unit, _, _, _, Any]] = discoveryEndpoints /* ++ xtzEndpoints ++ ethEndpoints ++ quorumEndpoints ++ btcEndpoints */
-  private val docs: OpenAPI = OpenAPIDocsInterpreter()
-    .toOpenAPI(protocol.appInfo :: allPlatformEndpoints, "My App", "1.0")
+  private val allPlatformEndpoints: List[Endpoint[Unit, _, _, _, Any]] =
+    discoveryEndpoints ++ xtzEndpoints ++ ethEndpoints ++ quorumEndpoints ++ btcEndpoints
+  private val docs: OpenAPI =
+    OpenAPIDocsInterpreter().toOpenAPI(protocol.appInfo :: allPlatformEndpoints, "My App", "1.0")
   val docsRoute = SwaggerUI[IO](docs.toYaml)
+
 }

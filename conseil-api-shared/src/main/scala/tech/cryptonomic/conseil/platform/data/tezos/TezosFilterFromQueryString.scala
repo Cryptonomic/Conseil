@@ -47,7 +47,7 @@ private[tezos] trait TezosFilterFromQueryString extends ApiFilterQueryString {
         order
 
   /** Function for mapping query string to Filter */
-  val tezosQsFilter =
+  def tezosQsFilter =
     filterQs.map(TezosFilter.tupled)(
       filter =>
         (

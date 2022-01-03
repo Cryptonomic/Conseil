@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.platform.data.ethereum
 
 import tech.cryptonomic.conseil.platform.data.ApiDataEndpoints
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
+// import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 
 import sttp.tapir._
 
