@@ -1,22 +1,33 @@
 package tech.cryptonomic.conseil.platform.data.ethereum
 
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes
 import tech.cryptonomic.conseil.platform.data.ApiDataEndpoints
-// import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 
 import sttp.tapir._
+import sttp.model.StatusCode
 
 trait EthereumDataEndpointsCreator extends ApiDataEndpoints {
 
-  private def createPath(platform: String) = "v2" / "data" / platform / query[String]("network")
-  // private def compQueryResponseList = (x: String) => compatibilityQuery[List[QueryResponse]](x)
-  // private def compQueryResponse = (x: String) => compatibilityQuery[QueryResponse](x)
-  private val common = (x: String) => infallibleEndpoint.get.in(createPath(x)).in(header[Option[String]]("apiKey"))
+  import tech.cryptonomic.conseil.platform.data.converters._
+  import tech.cryptonomic.conseil.platform.data.schemas._
+
+  private def createPath(platform: String): EndpointInput[String] = "v2" / "data" / platform / query[String]("network")
+
+  private def compQueryResponse(x: String): EndpointOutput[DataTypes.QueryResponse] =
+    compatibilityQuery[DataTypes.QueryResponse](x)
+  private def compQueryResponseList(x: String): EndpointOutput[List[DataTypes.QueryResponse]] =
+    compatibilityQuery[List[DataTypes.QueryResponse]](x)
+
+  private def common(x: String): Endpoint[Unit, (String, Option[String]), Unit, Unit, Any] =
+    infallibleEndpoint.get
+      .in(createPath(x))
+      .in(header[Option[String]]("apiKey"))
+      .errorOut(statusCode(StatusCode.NotFound))
 
   /** V2 Blocks endpoint definition */
   private[ethereum] def blocksEndpoint(platform: String) =
     common(platform)
-    // .in(createPath(platform) / "transactions" / query[Option[String]](ethereumQsFilter))
-      .in("blocks" / query[Option[String]]("ethereumQsFilter"))
+      .in(createPath(platform) / "blocks" / query[Option[String]]("ethereumQsFilter"))
   // .out(compQueryResponseList("blocks"))
 
   /** V2 Blocks head endpoint definition */
@@ -52,8 +63,7 @@ trait EthereumDataEndpointsCreator extends ApiDataEndpoints {
   /** V2 Receipts endpoint definition */
   private[ethereum] def receiptsEndpoint(platform: String) =
     common(platform)
-    // .in(createPath(platform) / "receipts" / query[Option[String]](ethereumQsFilter))
-      .in("receipts" / query[Option[String]]("ethereumQsFilter"))
+      .in(createPath(platform) / "receipts" / query[Option[String]]("ethereumQsFilter"))
   // .out(compQueryResponseList("receipts"))
 
   /** V2 Contracts endpoint definition */
@@ -98,6 +108,6 @@ trait EthereumDataEndpointsCreator extends ApiDataEndpoints {
       .in("accounts_history" / query[Option[String]]("ethereumQsFilter"))
   // .out(compQueryResponseList("accounts history"))
 
-  // private def createTags(platform: String, tag: String): List[String] = List(s"$platform $tag")
+  private def createTags(platform: String, tag: String): List[String] = List(s"$platform $tag")
 
 }

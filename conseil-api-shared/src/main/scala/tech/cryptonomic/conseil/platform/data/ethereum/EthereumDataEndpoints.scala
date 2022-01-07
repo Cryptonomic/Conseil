@@ -4,7 +4,7 @@ package tech.cryptonomic.conseil.platform.data.ethereum
 trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
 
   lazy val ethEndpoints = List(
-    // ethereumQueryEndpoint,
+    ethereumQueryEndpoint,
     ethereumBlocksEndpoint,
     ethereumBlocksHeadEndpoint,
     ethereumBlockByHashEndpoint,
@@ -23,7 +23,7 @@ trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
 
   val ethPlatform: String = "ethereum"
 
-  // def ethereumQueryEndpoint = queryEndpoint(ethPlatform)
+  def ethereumQueryEndpoint = queryEndpoint(ethPlatform)
 
   def ethereumBlocksEndpoint = blocksEndpoint(ethPlatform)
 
@@ -58,7 +58,7 @@ trait EthereumDataEndpoints extends EthereumDataEndpointsCreator {
 trait QuorumDataEndpoints extends EthereumDataEndpointsCreator {
 
   lazy val quorumEndpoints = List(
-    // quorumQueryEndpoint,
+    quorumQueryEndpoint,
     quorumBlocksEndpoint,
     quorumBlocksHeadEndpoint,
     quorumBlockByHashEndpoint,
@@ -75,7 +75,7 @@ trait QuorumDataEndpoints extends EthereumDataEndpointsCreator {
 
   val quorumPlatform: String = "quorum"
 
-  // def quorumQueryEndpoint = queryEndpoint(quorumPlatform)
+  def quorumQueryEndpoint = queryEndpoint(quorumPlatform)
 
   def quorumBlocksEndpoint = blocksEndpoint(quorumPlatform)
 
