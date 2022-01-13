@@ -181,21 +181,21 @@ object JsonParser {
       } yield MichelsonSchema(parameter, storage, code, views)
 
     private def extractExpression(sectionName: String): Result[MichelsonExpression] =
-      code.collectFirst {
-        case it @ JsonExpressionSection(`sectionName`, _) => it
+      code.collectFirst { case it @ JsonExpressionSection(`sectionName`, _) =>
+        it
       }.toList.flatMap(_.toMichelsonExpression) match {
         case Nil => Left(ParserError(s"No expression $sectionName found"))
         case x => Right(x.head)
       }
 
     private def extractMultipleInstructions(sectionName: String): List[MichelsonInstruction] =
-      code.collect {
-        case it @ JsonViewSection(`sectionName`, _) => it
+      code.collect { case it @ JsonViewSection(`sectionName`, _) =>
+        it
       }.map(_.args.toMichelsonInstruction)
 
     private def extractCode: Result[MichelsonCode] =
-      code.collectFirst {
-        case it @ JsonCodeSection("code", _) => it.toMichelsonCode
+      code.collectFirst { case it @ JsonCodeSection("code", _) =>
+        it.toMichelsonCode
       }.toRight(ParserError("No code section found"))
   }
 

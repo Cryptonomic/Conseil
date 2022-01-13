@@ -83,7 +83,6 @@ object Logging {
     * The individual logger entries will override a logging threshold and is not needed to enable a logging
     * category, which is considered on by default
     *
-    *
     * @param muted when enabled, it will stop every logging from occurring, like sending to dev/null
     * @param loggers a list of configurations for specific loggers
     * @param outputLevel the global threshold to append on the log
@@ -123,7 +122,7 @@ object Logging {
       Try(
         (searchEnv orElse level).map(Level(_)).get
       ).recoverWith {
-        case err if (fromEnv.isEmpty && level.isEmpty) =>
+        case err if fromEnv.isEmpty && level.isEmpty =>
           error(
             s"The logging configuration might be incorrect for $name. The logger level seems to be missing or incorrect. Use muted: true, to turn off a logger.",
             err
@@ -162,18 +161,17 @@ object Logging {
     configuredRootLogger.replace()
 
     /* Apply any custom config to the individual logger */
-    loggingConfig.loggers.foreach {
-      case loggerConf =>
-        Logger(loggerConf.name)
-          .clearHandlers()
-          /* Accept an explicit flag to mute, independently of included level
-           * It can be implicitly muted if an environment value is searched and not found, with no explicit default
-           */
-          .withModifier(
-            if (loggerConf.muted) LevelFilter.ExcludeAll
-            else loggerConf.logLevel.map(LevelFilter >= _).getOrElse(LevelFilter.ExcludeAll)
-          )
-          .replace()
+    loggingConfig.loggers.foreach { case loggerConf =>
+      Logger(loggerConf.name)
+        .clearHandlers()
+        /* Accept an explicit flag to mute, independently of included level
+         * It can be implicitly muted if an environment value is searched and not found, with no explicit default
+         */
+        .withModifier(
+          if (loggerConf.muted) LevelFilter.ExcludeAll
+          else loggerConf.logLevel.map(LevelFilter >= _).getOrElse(LevelFilter.ExcludeAll)
+        )
+        .replace()
     }
 
   }

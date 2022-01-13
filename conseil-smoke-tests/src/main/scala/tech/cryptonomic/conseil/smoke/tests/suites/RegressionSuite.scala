@@ -21,8 +21,8 @@ abstract class RegressionSuite {
     val key = Try(
       ConfigFactory.load().getStringList("conseil.security.api-keys.keys").get(0)
     )
-    key.failed.foreach(
-      e => println(s" ${e.getMessage} No apiKey found in configuration, I can't test conseil api without")
+    key.failed.foreach(e =>
+      println(s" ${e.getMessage} No apiKey found in configuration, I can't test conseil api without")
     )
     key.get
   }

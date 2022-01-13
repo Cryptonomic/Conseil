@@ -119,8 +119,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     //straightforward Database IO Actions waiting to be just run
     val saveBlocksAction = Tables.Blocks ++= blocks.map(_.convertTo[BlocksRow])
     val saveBlocksBalanceUpdatesAction = Tables.BalanceUpdates ++= blocks.flatMap { block =>
-            block.data.convertToA[List, BalanceUpdatesRow]
-          }
+      block.data.convertToA[List, BalanceUpdatesRow]
+    }
 
     val saveGroupsAction = Tables.OperationGroups ++= blocks.flatMap(_.convertToA[List, OperationGroupsRow])
 
@@ -132,8 +132,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     val saveBalanceUpdatesForOperationId = Kleisli[DBIO, ((String, Int), List[BalanceUpdatesRow]), Option[Int]] {
       case ((operationGroupHash, operationRowId), balanceRows) =>
         Tables.BalanceUpdates ++= balanceRows.map(
-              _.copy(operationGroupHash = Some(operationGroupHash), sourceId = Some(operationRowId))
-            )
+          _.copy(operationGroupHash = Some(operationGroupHash), sourceId = Some(operationRowId))
+        )
     }
 
     /* Compose the kleisli functions to get a single "action function"
@@ -201,9 +201,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     )
 
     operationSequence
-      .traverse[DBIO, Unit](
-        op => op(blocks)
-      )
+      .traverse[DBIO, Unit](op => op(blocks))
       .void
   }
 
@@ -289,8 +287,9 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       case Some(pks) =>
         for {
           total <- tableTotal
-          marked = if (total > pks.size) applySelection(tableQuery, pks)
-          else tableQuery
+          marked =
+            if (total > pks.size) applySelection(tableQuery, pks)
+            else tableQuery
           deleted <- marked.delete
         } yield deleted
       case None =>
@@ -313,8 +312,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       timestamp: Instant,
       cycle: Option[Int],
       selectors: Set[AccountIdPattern] = Set(".*")
-  )(
-      implicit ec: ExecutionContext
+  )(implicit
+      ec: ExecutionContext
   ): DBIO[Option[Int]] = {
 
     /* as taken almost literally from this S.O. suggestion
@@ -339,23 +338,21 @@ object TezosDatabaseOperations extends ConseilLogSupport {
 
     //for each pattern, create a query and then union them all
     val regexQueries = selectors
-      .map(
-        sel =>
-          Tables.Accounts
-            .filter(_.accountId ~ sel)
-            .map(_.accountId)
-            .distinct
+      .map(sel =>
+        Tables.Accounts
+          .filter(_.accountId ~ sel)
+          .map(_.accountId)
+          .distinct
       )
       .reduce(_ union _)
 
     regexQueries.distinct.result
-      .flatMap(
-        ids =>
-          writeAccountsCheckpoint(
-            List(
-              (hash, level, Some(timestamp), cycle, None, ids.map(makeAccountId).toList)
-            )
+      .flatMap(ids =>
+        writeAccountsCheckpoint(
+          List(
+            (hash, level, Some(timestamp), cycle, None, ids.map(makeAccountId).toList)
           )
+        )
       )
   }
 
@@ -593,14 +590,13 @@ object TezosDatabaseOperations extends ConseilLogSupport {
 
     logger.info("Writing bakers to DB and copying contracts to bakers table...")
 
-    val (rows, historyRows) = bakers.flatMap {
-      case BlockTagged(blockReference, bakersMap) =>
-        bakersMap
-          .map(_.taggedWithBlock(blockReference).convertTo[Tables.BakersRow])
-          .map { row =>
-            val history = (row, blockReference.timestamp).convertTo[Tables.BakersHistoryRow]
-            row -> history
-          }
+    val (rows, historyRows) = bakers.flatMap { case BlockTagged(blockReference, bakersMap) =>
+      bakersMap
+        .map(_.taggedWithBlock(blockReference).convertTo[Tables.BakersRow])
+        .map { row =>
+          val history = (row, blockReference.timestamp).convertTo[Tables.BakersHistoryRow]
+          row -> history
+        }
     }.unzip
 
     (keepMostRecent andThen Tables.Bakers.insertOrUpdateAll)(rows).flatMap { res =>
@@ -616,8 +612,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     Tables.Operations
       .filter(op => op.kind === "ballot" && op.cycle === cycle && op.invalidatedAsof.isEmpty)
       .groupBy(_.ballot)
-      .map {
-        case (vote, ops) => vote -> ops.length
+      .map { case (vote, ops) =>
+        vote -> ops.length
       }
       .result
       .map { res =>
@@ -638,8 +634,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     Tables.Operations
       .filter(op => op.kind === "ballot" && op.blockLevel === level && op.invalidatedAsof.isEmpty)
       .groupBy(_.ballot)
-      .map {
-        case (vote, ops) => vote -> ops.length
+      .map { case (vote, ops) =>
+        vote -> ops.length
       }
       .result
       .map { res =>
@@ -679,8 +675,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     DBIOAction
       .sequence(
         updateAccountsWithBakers(blockHashes) ::
-            updateAccountsHistoryWithBakers(blockHashes) ::
-            Nil
+          updateAccountsHistoryWithBakers(blockHashes) ::
+          Nil
       )
       .transactionally
 
@@ -699,9 +695,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
         .map { case (accounts, bakers) => accounts.accountId }
 
     Tables.AccountsHistory
-      .filter(
-        account => (account.accountId in bakersIds) && (account.blockId inSet blockHashes.map(_.value))
-      )
+      .filter(account => (account.accountId in bakersIds) && (account.blockId inSet blockHashes.map(_.value)))
       .map(account => (account.isBaker, account.isActiveBaker))
       .update((true, Some(true)))
   }
@@ -751,16 +745,15 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       val baseSelection = Tables.Operations
         .filter(op => op.invalidatedAsof.isEmpty && op.timestamp >= lowBound)
 
-      baseSelection.groupBy(_.kind).map {
-        case (kind, subQuery) =>
-          (
-            kind,
-            subQuery.map(_.fee.getOrElse(zeroBD)).avg,
-            subQuery.map(_.fee.getOrElse(zeroBD)).stdDevPop,
-            subQuery.map(_.timestamp).max,
-            subQuery.map(_.cycle).max,
-            subQuery.map(_.blockLevel).max
-          )
+      baseSelection.groupBy(_.kind).map { case (kind, subQuery) =>
+        (
+          kind,
+          subQuery.map(_.fee.getOrElse(zeroBD)).avg,
+          subQuery.map(_.fee.getOrElse(zeroBD)).stdDevPop,
+          subQuery.map(_.timestamp).max,
+          subQuery.map(_.cycle).max,
+          subQuery.map(_.blockLevel).max
+        )
       }
     }
 
@@ -774,8 +767,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       * @param asOf     when the computation is to be considered, by default uses the time of invocation
       * @return         the average fees for each given operation kind, if it exists
       */
-    def calculateAverage(daysPast: Long, asOf: Instant = Instant.now())(
-        implicit ec: ExecutionContext
+    def calculateAverage(daysPast: Long, asOf: Instant = Instant.now())(implicit
+        ec: ExecutionContext
     ): DBIO[Seq[AverageFees]] = {
 
       /* We need to limit the past timestamps for this computation to a reasonable value.
@@ -797,19 +790,18 @@ object TezosDatabaseOperations extends ConseilLogSupport {
 
       //here we assume all the values are present, as we used defaults for any of them, or know they exists for certain
       feesStatsQuery(timestampLowerBound).result.map { rows =>
-        rows.map {
-          case (kind, Some(mean), Some(stddev), Some(ts), cycle, Some(level)) =>
-            val mu = math.ceil(mean.toDouble).toInt
-            val sigma = math.ceil(stddev.toDouble).toInt
-            AverageFees(
-              low = math.max(mu - sigma, 0),
-              medium = mu,
-              high = mu + sigma,
-              timestamp = ts,
-              kind = kind,
-              cycle = cycle,
-              level = level
-            )
+        rows.map { case (kind, Some(mean), Some(stddev), Some(ts), cycle, Some(level)) =>
+          val mu = math.ceil(mean.toDouble).toInt
+          val sigma = math.ceil(stddev.toDouble).toInt
+          AverageFees(
+            low = math.max(mu - sigma, 0),
+            medium = mu,
+            high = mu + sigma,
+            timestamp = ts,
+            kind = kind,
+            cycle = cycle,
+            level = level
+          )
         }
       }
 
@@ -841,15 +833,15 @@ object TezosDatabaseOperations extends ConseilLogSupport {
 
   /** Reads and inserts CSV file to the database for the given table.
     * Also Gives possibility to upsert when table is already filled with data
-    * */
+    */
   def initTableFromCsv[A <: AbstractTable[_], H <: HList](
       db: Database,
       table: TableQuery[A],
       network: String,
       separator: Char = ',',
       upsert: Boolean = false
-  )(
-      implicit hd: HeaderDecoder[A#TableElementType],
+  )(implicit
+      hd: HeaderDecoder[A#TableElementType],
       g: Generic.Aux[A#TableElementType, H],
       m: Mapper.Aux[ConfigUtil.Csv.Trimmer.type, H, H],
       ec: ExecutionContext
@@ -902,8 +894,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     }
 
   /** Cleans and inserts registered tokens into db */
-  def initRegisteredTokensTable(db: Database, list: List[RegisteredToken])(
-      implicit ec: ExecutionContext
+  def initRegisteredTokensTable(db: Database, list: List[RegisteredToken])(implicit
+      ec: ExecutionContext
   ): Future[Unit] = {
     import io.scalaland.chimney.dsl._
 

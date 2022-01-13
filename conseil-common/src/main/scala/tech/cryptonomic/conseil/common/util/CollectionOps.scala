@@ -14,11 +14,11 @@ object CollectionOps {
     * aggregating by the first element of the tuple as a key
     */
   def groupByKey[K, V](pairedSeq: Seq[(K, V)]): Map[K, Seq[V]] =
-    pairedSeq.groupBy {
-      case (k, v) => k
+    pairedSeq.groupBy { case (k, v) =>
+      k
     }.mapValues { pairs =>
-      pairs.map {
-        case (k, vs) => vs
+      pairs.map { case (k, vs) =>
+        vs
       }
     }
 

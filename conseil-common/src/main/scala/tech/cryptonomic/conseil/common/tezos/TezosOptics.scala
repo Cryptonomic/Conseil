@@ -97,7 +97,7 @@ object TezosOptics {
 
     /** a function to set the header timestamp for a block, returning the modified block */
     def setTimestamp(ts: ZonedDateTime): (Block => Block) =
-      onData composeLens onHeader composeLens onHeaderTimestamp set (ts)
+      onData composeLens onHeader composeLens onHeaderTimestamp set ts
 
     /** a function to set metadata balance updates in a block, returning the modified block */
     def setBalances(updates: List[BalanceUpdate]): Block => Block = forMetadataBalanceUpdates.set(updates)
@@ -105,57 +105,60 @@ object TezosOptics {
     /** a function to traverse all originated scripts for a block */
     private[TezosOptics] val acrossOriginatedScripts: Traversal[Block, Scripted.Contracts] =
       acrossOperationGroups composeTraversal
-          acrossOperations composePrism
-          selectOrigination composeLens
-          onOriginationScript composePrism some
+        acrossOperations composePrism
+        selectOrigination composeLens
+        onOriginationScript composePrism some
 
     /** a function to traverse all of a block's script storage expressions */
-    val acrossScriptsStorage = acrossOriginatedScripts composeLens Contracts.onStorage composeLens Contracts.onExpression
+    val acrossScriptsStorage =
+      acrossOriginatedScripts composeLens Contracts.onStorage composeLens Contracts.onExpression
 
     /** a function to traverse all of a block's script code expressions */
     val acrossScriptsCode = acrossOriginatedScripts composeLens Contracts.onCode composeLens Contracts.onExpression
 
     /** functions to operate on all big maps copy diffs within a block */
-    val acrossBigMapDiffCopy = acrossOperationGroups composeTraversal acrossOperations composeTraversal Operations.acrossOperationBigMapDiffCopy
+    val acrossBigMapDiffCopy =
+      acrossOperationGroups composeTraversal acrossOperations composeTraversal Operations.acrossOperationBigMapDiffCopy
 
     /** functions to operate on all big maps remove diffs within a block */
-    val acrossBigMapDiffRemove = acrossOperationGroups composeTraversal acrossOperations composeTraversal Operations.acrossOperationBigMapDiffRemove
+    val acrossBigMapDiffRemove =
+      acrossOperationGroups composeTraversal acrossOperations composeTraversal Operations.acrossOperationBigMapDiffRemove
 
     /** a function to traverse all of a block's transaction operations */
     val acrossTransactions: Traversal[Block, Transaction] =
       acrossOperationGroups composeTraversal
-          acrossOperations composePrism
-          selectTransaction
+        acrossOperations composePrism
+        selectTransaction
 
     /** a function to traverse all of a block's origination operations */
     val acrossOriginations: Traversal[Block, Origination] =
       acrossOperationGroups composeTraversal
-          acrossOperations composePrism
-          selectOrigination
+        acrossOperations composePrism
+        selectOrigination
 
     /** a function to traverse all of a block's internal transaction operations */
     val acrossInternalTransactions: Traversal[Block, InternalOperationResults.Transaction] =
       acrossTransactions composeLens
-          onTransactionMetadata composeOptional
-          whenInternalResults composeTraversal
-          each composePrism
-          selectInternalTransaction
+        onTransactionMetadata composeOptional
+        whenInternalResults composeTraversal
+        each composePrism
+        selectInternalTransaction
 
     /** a function to traverse all of a block's transaction parameters' expressions */
     val acrossTransactionParameters: Traversal[Block, String] =
       acrossTransactions composeLens
-          onTransactionParameters composePrism
-          some composeLens
-          Contracts.onParametersValue composeLens
-          Contracts.onExpression
+        onTransactionParameters composePrism
+        some composeLens
+        Contracts.onParametersValue composeLens
+        Contracts.onExpression
 
     /** a function to traverse all of a block's internal transaction parameters' expressions */
     val acrossInternalParameters: Traversal[Block, String] =
       acrossInternalTransactions composeLens
-          onInternalParameters composePrism
-          some composeLens
-          Contracts.onParametersValue composeLens
-          Contracts.onExpression
+        onInternalParameters composePrism
+        some composeLens
+        Contracts.onParametersValue composeLens
+        Contracts.onExpression
 
     /** Function adds indexes to the operations in given operation group
       * It's complicated as we need to put order on operations and internal operations,
@@ -165,7 +168,7 @@ object TezosOptics {
       * 2, - intOp0
       * 3, - intOp1
       * 4, op2
-      * */
+      */
     private def addIndexesToOperationGroup(group: OperationsGroup): OperationsGroup = {
       var index = -1
       val contents = group.contents.map {
@@ -329,113 +332,103 @@ object TezosOptics {
     //Note, cycle 0 starts at the level 2 block
     def extractCycle(block: Block): Option[Int] =
       discardGenesis(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
-        .flatMap(
-          b =>
-            b.level
-              .map(_.cycle)
-              .orElse(b.level_info.map(_.cycle))
+        .flatMap(b =>
+          b.level
+            .map(_.cycle)
+            .orElse(b.level_info.map(_.cycle))
         ) //this is Option[Int]
 
     //Note, cycle 0 starts at the level 2 block
     def extractCycle(block: BlockData): Option[Int] =
       discardGenesis(block.metadata) //this returns an Option[BlockHeaderMetadata]
-        .flatMap(
-          b =>
-            b.level
-              .map(_.cycle)
-              .orElse(b.level_info.map(_.cycle))
+        .flatMap(b =>
+          b.level
+            .map(_.cycle)
+            .orElse(b.level_info.map(_.cycle))
         ) //this is Option[Int]
 
     //Note, cycle 0 starts at the level 2 block
     def extractCycle(block: BlockMetadata): Option[Int] =
       discardGenesis(block) //this returns an Option[BlockHeaderMetadata]
-        .flatMap(
-          b =>
-            b.level
-              .map(_.cycle)
-              .orElse(b.level_info.map(_.cycle))
+        .flatMap(b =>
+          b.level
+            .map(_.cycle)
+            .orElse(b.level_info.map(_.cycle))
         ) //this is Option[Int]
 
     //Note, cycle 0 starts at the level 2 block
     def extractCyclePosition(block: BlockMetadata): Option[Int] =
       discardGenesis(block) //this returns an Option[BlockHeaderMetadata]
-        .flatMap(
-          b =>
-            b.level
-              .map(_.cycle_position)
-              .orElse(b.level_info.map(_.cycle_position))
+        .flatMap(b =>
+          b.level
+            .map(_.cycle_position)
+            .orElse(b.level_info.map(_.cycle_position))
         ) //this is Option[Int]
 
     //Note, cycle 0 starts at the level 2 block
     def extractPeriod(block: BlockMetadata): Option[Int] =
       discardGenesis(block)
-        .flatMap(
-          b =>
-            b.level
-              .map(_.voting_period)
-              .orElse(
-                b.voting_period_info
-                  .map(_.voting_period.index)
-              )
+        .flatMap(b =>
+          b.level
+            .map(_.voting_period)
+            .orElse(
+              b.voting_period_info
+                .map(_.voting_period.index)
+            )
         )
 
     //Note, cycle 0 starts at the level 2 block
     def extractLevel(block: BlockMetadata): Option[BlockLevel] =
       discardGenesis(block)
-        .flatMap(
-          b =>
-            b.level
-              .map(_.level)
-              .orElse(
-                b.level_info.map(_.level)
-              )
+        .flatMap(b =>
+          b.level
+            .map(_.level)
+            .orElse(
+              b.level_info.map(_.level)
+            )
         )
 
     //Note, cycle 0 starts at the level 2 block
     def extractLevelPosition(block: BlockMetadata): Option[Int] =
       discardGenesis(block)
-        .flatMap(
-          b =>
-            b.level
-              .map(_.level_position)
-              .orElse(
-                b.level_info.map(_.level_position)
-              )
+        .flatMap(b =>
+          b.level
+            .map(_.level_position)
+            .orElse(
+              b.level_info.map(_.level_position)
+            )
         )
 
     //Note, cycle 0 starts at the level 2 block
     def extractVotingPeriod(block: BlockMetadata): Option[Int] =
       discardGenesis(block)
-        .flatMap(
-          b =>
-            b.level
-              .map(_.voting_period)
-              .orElse(
-                b.voting_period_info.map(_.voting_period.index)
-              )
+        .flatMap(b =>
+          b.level
+            .map(_.voting_period)
+            .orElse(
+              b.voting_period_info.map(_.voting_period.index)
+            )
         )
 
     //Note, cycle 0 starts at the level 2 block
     def extractVotingPeriodKind(block: BlockMetadata): Option[VotingPeriod.Kind] =
       discardGenesis(block)
-        .flatMap(
-          b =>
-            b.voting_period_kind
-              .orElse(
-                b.voting_period_info.map(_.voting_period.kind)
-              )
+        .flatMap(b =>
+          b.voting_period_kind
+            .orElse(
+              b.voting_period_info.map(_.voting_period.kind)
+            )
         )
 
     //Note, cycle 0 starts at the level 2 block
     def extractVotingPeriodPosition(block: BlockMetadata): Option[Int] =
       discardGenesis(block)
-        .flatMap(
-          b =>
-            b.level
-              .map(_.voting_period_position)
-              .orElse(
-                b.voting_period_info.map(_.position)
-              )
+        .flatMap(b =>
+          b.level
+            .map(_.voting_period_position)
+            .orElse(
+              b.voting_period_info.map(_.position)
+            )
         )
   }
 
@@ -474,58 +467,62 @@ object TezosOptics {
       GenPrism[InternalOperationResults.InternalOperationResult, InternalTransaction]
 
     val whenOriginationBigMapDiffs =
-      Optional[OperationResult.Origination, List[Contract.CompatBigMapDiff]](_.big_map_diff)(
-        diffs => result => result.copy(big_map_diff = diffs.some)
+      Optional[OperationResult.Origination, List[Contract.CompatBigMapDiff]](_.big_map_diff)(diffs =>
+        result => result.copy(big_map_diff = diffs.some)
       )
 
     val whenTransactionBigMapDiffs =
-      Optional[OperationResult.Transaction, List[Contract.CompatBigMapDiff]](_.big_map_diff)(
-        diffs => result => result.copy(big_map_diff = diffs.some)
+      Optional[OperationResult.Transaction, List[Contract.CompatBigMapDiff]](_.big_map_diff)(diffs =>
+        result => result.copy(big_map_diff = diffs.some)
       )
 
-    private[TezosOptics] val selectBigMapAlloc = stdLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
-            Contract.BigMapDiff,
-            Contract.BigMapAlloc
-          ]
+    private[TezosOptics] val selectBigMapAlloc =
+      stdLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
+        Contract.BigMapDiff,
+        Contract.BigMapAlloc
+      ]
 
-    private[TezosOptics] val selectBigMapUpdate = stdLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
-            Contract.BigMapDiff,
-            Contract.BigMapUpdate
-          ]
+    private[TezosOptics] val selectBigMapUpdate =
+      stdLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
+        Contract.BigMapDiff,
+        Contract.BigMapUpdate
+      ]
 
-    private[TezosOptics] val selectBigMapCopy = stdLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
-            Contract.BigMapDiff,
-            Contract.BigMapCopy
-          ]
+    private[TezosOptics] val selectBigMapCopy =
+      stdLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
+        Contract.BigMapDiff,
+        Contract.BigMapCopy
+      ]
 
-    private[TezosOptics] val selectBigMapRemove = stdLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
-            Contract.BigMapDiff,
-            Contract.BigMapRemove
-          ]
+    private[TezosOptics] val selectBigMapRemove =
+      stdLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
+        Contract.BigMapDiff,
+        Contract.BigMapRemove
+      ]
 
     val acrossOperationBigMapDiffAlloc =
       selectOrigination composeLens
-          onOriginationResult composeOptional
-          whenOriginationBigMapDiffs composeTraversal
-          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composePrism selectBigMapAlloc)
+        onOriginationResult composeOptional
+        whenOriginationBigMapDiffs composeTraversal
+        (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composePrism selectBigMapAlloc)
 
     val acrossOperationBigMapDiffUpdate =
       selectTransaction composeLens
-          onTransactionResult composeOptional
-          whenTransactionBigMapDiffs composeTraversal
-          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composePrism selectBigMapUpdate)
+        onTransactionResult composeOptional
+        whenTransactionBigMapDiffs composeTraversal
+        (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composePrism selectBigMapUpdate)
 
     val acrossOperationBigMapDiffCopy =
       selectTransaction composeLens
-          onTransactionResult composeOptional
-          whenTransactionBigMapDiffs composeTraversal
-          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composePrism selectBigMapCopy)
+        onTransactionResult composeOptional
+        whenTransactionBigMapDiffs composeTraversal
+        (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composePrism selectBigMapCopy)
 
     val acrossOperationBigMapDiffRemove =
       selectTransaction composeLens
-          onTransactionResult composeOptional
-          whenTransactionBigMapDiffs composeTraversal
-          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composePrism selectBigMapRemove)
+        onTransactionResult composeOptional
+        whenTransactionBigMapDiffs composeTraversal
+        (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composePrism selectBigMapRemove)
 
     private def isApplied(status: String) = Status.parse(status).contains(Status.applied)
 
@@ -561,11 +558,12 @@ object TezosOptics {
     //basic building blocks to reach into the account's structure
     private[TezosOptics] val onScript = GenLens[Account](_.script)
 
-    /** an optional lens allowing to reach into the script code field of an account*/
+    /** an optional lens allowing to reach into the script code field of an account */
     val whenAccountCode = onScript composePrism some composeLens Contracts.onCode composeLens Contracts.onExpression
 
-    /** an optional lens allowing to reach into the script storage field of an account*/
-    val whenAccountStorage = onScript composePrism some composeLens Contracts.onStorage composeLens Contracts.onExpression
+    /** an optional lens allowing to reach into the script storage field of an account */
+    val whenAccountStorage =
+      onScript composePrism some composeLens Contracts.onStorage composeLens Contracts.onExpression
   }
 
   /** Provides optics to navigate across contracts data structures */

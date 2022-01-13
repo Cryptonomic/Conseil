@@ -137,8 +137,8 @@ object TezosTypes {
 
   /** only accepts standard block metadata, discarding the genesis metadata */
   val discardGenesis: BlockMetadata => Option[BlockHeaderMetadata] = {
-    val partialSelector: PartialFunction[BlockMetadata, BlockHeaderMetadata] = {
-      case md: BlockHeaderMetadata => md
+    val partialSelector: PartialFunction[BlockMetadata, BlockHeaderMetadata] = { case md: BlockHeaderMetadata =>
+      md
     }
     partialSelector.lift
   }

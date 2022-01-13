@@ -51,7 +51,7 @@ object DataTypes {
   /** Attribute shouldn't be queried because it is of a type that we forbid to query */
   case class InvalidAttributeDataType(message: String) extends AttributesValidationError
 
-  /** Attribute values should not be listed because minimal length is greater than filter length for given column  */
+  /** Attribute values should not be listed because minimal length is greater than filter length for given column */
   case class InvalidAttributeFilterLength(message: String, minMatchLength: Int) extends AttributesValidationError
 
   /** Class which contains output type with the response */
@@ -203,7 +203,7 @@ object DataTypes {
       )
   }
 
-  /** Finds invalid snapshot fields*/
+  /** Finds invalid snapshot fields */
   def findInvalidSnapshotFields(
       query: Query,
       entity: EntityPath,
@@ -214,9 +214,8 @@ object DataTypes {
 
     query.snapshot.foldMap { snapshot =>
       metadataConfiguration.entity(entity).flatMap { entityCfg =>
-        entityCfg.attributes.find {
-          case (k, v) =>
-            k == snapshot.field && v.temporalColumn.getOrElse(false)
+        entityCfg.attributes.find { case (k, v) =>
+          k == snapshot.field && v.temporalColumn.getOrElse(false)
         }
       } match {
         case Some(_) => List.empty

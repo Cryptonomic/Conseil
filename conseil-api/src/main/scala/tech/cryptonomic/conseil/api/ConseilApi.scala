@@ -100,37 +100,34 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
         enableCORS {
           implicit val correlationId: UUID = UUID.randomUUID()
           handleExceptions(loggingExceptionHandler) {
-            extractClientIP {
-              ip =>
-                extractStrictEntity(10.seconds) {
-                  ent =>
-                    recordResponseValues(ip, ent.data.utf8String)(correlationId) {
-                      timeoutHandler {
+            extractClientIP { ip =>
+              extractStrictEntity(10.seconds) { ent =>
+                recordResponseValues(ip, ent.data.utf8String)(correlationId) {
+                  timeoutHandler {
+                    concat(
+                      validateApiKey { _ =>
                         concat(
-                          validateApiKey { _ =>
-                            concat(
-                              logRequest("Conseil", Logging.DebugLevel) {
-                                AppInfo.route
-                              },
-                              logRequest("Metadata Route", Logging.DebugLevel) {
-                                platformDiscovery.route
-                              },
-                              concat(ApiCache.cachedDataEndpoints.map {
-                                case (platform, routes) =>
-                                  logRequest(s"$platform Data Route", Logging.DebugLevel) {
-                                    routes.getRoute ~ routes.postRoute
-                                  }
-                              }.toSeq: _*)
-                            )
+                          logRequest("Conseil", Logging.DebugLevel) {
+                            AppInfo.route
                           },
-                          options {
-                            // Support for CORS pre-flight checks.
-                            complete("Supported methods : GET and POST.")
-                          }
+                          logRequest("Metadata Route", Logging.DebugLevel) {
+                            platformDiscovery.route
+                          },
+                          concat(ApiCache.cachedDataEndpoints.map { case (platform, routes) =>
+                            logRequest(s"$platform Data Route", Logging.DebugLevel) {
+                              routes.getRoute ~ routes.postRoute
+                            }
+                          }.toSeq: _*)
                         )
+                      },
+                      options {
+                        // Support for CORS pre-flight checks.
+                        complete("Supported methods : GET and POST.")
                       }
-                    }
+                    )
+                  }
                 }
+              }
             }
           }
         }
@@ -180,11 +177,10 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
 
     private val metadataOperations: Map[(String, String), DatabaseRunner] = config.platforms
       .getDatabases()
-      .mapValues(
-        db =>
-          new DatabaseRunner {
-            override lazy val dbReadHandle = db
-          }
+      .mapValues(db =>
+        new DatabaseRunner {
+          override lazy val dbReadHandle = db
+        }
       )
 
     lazy val cachedDiscoveryOperations: GenericPlatformDiscoveryOperations =
@@ -202,8 +198,8 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
       * @see `tech.cryptonomic.conseil.common.config.Platforms` to get list of possible platforms.
       */
     lazy val cachedDataEndpoints: Map[String, ApiDataRoutes] =
-      cache.map {
-        case (key, value) => key.name -> value
+      cache.map { case (key, value) =>
+        key.name -> value
       }
 
     private val visiblePlatforms =

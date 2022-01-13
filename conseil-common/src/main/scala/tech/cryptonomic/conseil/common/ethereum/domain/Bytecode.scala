@@ -35,33 +35,32 @@ case class Bytecode(value: String) {
       .grouped(2)
       .map(Integer.valueOf(_, 16))
       .zipWithIndex
-      .foldLeft((0, Seq.empty[Opcode])) {
-        case (opcodes, (bytes, offset)) =>
-          opcodes match {
-            case (0, opcodes) =>
-              Instructions.registry.find(_.opcode == bytes) match {
-                case Some(instruction) if instruction.args > 0 =>
-                  (
-                    instruction.args,
-                    opcodes :+ Opcode(
-                          offset,
-                          instruction,
-                          Try(
-                            BigInt(
-                              normalized.substring(
-                                offset * 2 + 2,
-                                Integer.min(offset * 2 + 2 + instruction.args * 2, normalized.size)
-                              ),
-                              16
-                            )
-                          ).getOrElse(0)
-                        )
+      .foldLeft((0, Seq.empty[Opcode])) { case (opcodes, (bytes, offset)) =>
+        opcodes match {
+          case (0, opcodes) =>
+            Instructions.registry.find(_.opcode == bytes) match {
+              case Some(instruction) if instruction.args > 0 =>
+                (
+                  instruction.args,
+                  opcodes :+ Opcode(
+                    offset,
+                    instruction,
+                    Try(
+                      BigInt(
+                        normalized.substring(
+                          offset * 2 + 2,
+                          Integer.min(offset * 2 + 2 + instruction.args * 2, normalized.size)
+                        ),
+                        16
+                      )
+                    ).getOrElse(0)
                   )
-                case Some(instruction) => (0, opcodes :+ Opcode(offset, instruction, 0))
-                case None => (0, opcodes) // opcode not found, continue
-              }
-            case (skip, opcodes) => (skip - 1, opcodes)
-          }
+                )
+              case Some(instruction) => (0, opcodes :+ Opcode(offset, instruction, 0))
+              case None => (0, opcodes) // opcode not found, continue
+            }
+          case (skip, opcodes) => (skip - 1, opcodes)
+        }
 
       }
       ._2
@@ -80,27 +79,25 @@ case class Bytecode(value: String) {
     * }}}
     */
   def implements(function: String): Boolean =
-    opcodes.exists(
-      o => o.instruction.name == "PUSH4" && o.parameters == BigInt(Utils.keccak(function), 16)
-    )
+    opcodes.exists(o => o.instruction.name == "PUSH4" && o.parameters == BigInt(Utils.keccak(function), 16))
 
   // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md
   lazy val isErc20: Boolean =
     implements("totalSupply()") &&
-      implements("balanceOf(address)") &&
-      implements("transfer(address,uint256)") &&
-      implements("transferFrom(address,address,uint256)") &&
-      implements("approve(address,uint256)") &&
-      implements("allowance(address,address)")
+    implements("balanceOf(address)") &&
+    implements("transfer(address,uint256)") &&
+    implements("transferFrom(address,address,uint256)") &&
+    implements("approve(address,uint256)") &&
+    implements("allowance(address,address)")
 
   // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md
   lazy val isErc721: Boolean =
     implements("balanceOf(address)") &&
-      implements("ownerOf(uint256)") &&
-      (implements("transfer(address,uint256)") || implements("transferFrom(address,address,uint256)")) &&
-      implements("approve(address,uint256)") &&
-      implements("getApproved(uint256)") &&
-      implements("isApprovedForAll(address,address)") &&
-      implements("safeTransferFrom(address,address,uint256)") &&
-      implements("safeTransferFrom(address,address,uint256,bytes)")
+    implements("ownerOf(uint256)") &&
+    (implements("transfer(address,uint256)") || implements("transferFrom(address,address,uint256)")) &&
+    implements("approve(address,uint256)") &&
+    implements("getApproved(uint256)") &&
+    implements("isApprovedForAll(address,address)") &&
+    implements("safeTransferFrom(address,address,uint256)") &&
+    implements("safeTransferFrom(address,address,uint256,bytes)")
 }

@@ -64,7 +64,6 @@ class EthereumClient[F[_]: Async](
 
   /**
     * Get Block by hash.
-    *
     */
   def getBlockByHash(hash: String): Stream[F, Block] =
     Stream(EthGetBlockByHash.request(hash = hash))
@@ -106,14 +105,13 @@ class EthereumClient[F[_]: Async](
           Stream
             .emit(EthGetCode.request(receipt.contractAddress.get, receipt.blockNumber))
             .through(client.stream[EthGetCode.Params, Bytecode](batchSize))
-            .map(
-              bytecode =>
-                Contract(
-                  address = receipt.contractAddress.get,
-                  blockHash = receipt.blockHash,
-                  blockNumber = receipt.blockNumber,
-                  bytecode = bytecode
-                )
+            .map(bytecode =>
+              Contract(
+                address = receipt.contractAddress.get,
+                blockHash = receipt.blockHash,
+                blockNumber = receipt.blockNumber,
+                bytecode = bytecode
+              )
             )
         }
 
@@ -164,24 +162,22 @@ class EthereumClient[F[_]: Async](
               }
               .map(balance => (address, balance))
           }
-          .map {
-            case (address, balance) =>
-              TokenBalance(
-                accountAddress = address,
-                blockHash = tokenTransfer.blockHash,
-                blockNumber = tokenTransfer.blockNumber,
-                transactionHash = tokenTransfer.transactionHash,
-                tokenAddress = tokenTransfer.tokenAddress,
-                value = Utils.hexStringToBigDecimal(balance),
-                asof = Timestamp.from(Instant.ofEpochSecond(Integer.decode(block.timestamp).toLong))
-              )
+          .map { case (address, balance) =>
+            TokenBalance(
+              accountAddress = address,
+              blockHash = tokenTransfer.blockHash,
+              blockNumber = tokenTransfer.blockNumber,
+              transactionHash = tokenTransfer.transactionHash,
+              tokenAddress = tokenTransfer.tokenAddress,
+              value = Utils.hexStringToBigDecimal(balance),
+              asof = Timestamp.from(Instant.ofEpochSecond(Integer.decode(block.timestamp).toLong))
+            )
           }
 
       }
 
   /**
     * Get account balance at given block number from transaction
-    *
     */
   def getAccountBalance(block: Block): Pipe[F, Transaction, Account] =
     stream =>
@@ -195,21 +191,19 @@ class EthereumClient[F[_]: Async](
               .through(client.stream[EthGetBalance.Params, String](batchSize = 1))
               .map(balance => (address, balance))
           }
-          .map {
-            case (address, balance) =>
-              Account(
-                address,
-                transaction.blockHash,
-                transaction.blockNumber,
-                timestamp = block.timestamp,
-                Utils.hexStringToBigDecimal(balance)
-              )
+          .map { case (address, balance) =>
+            Account(
+              address,
+              transaction.blockHash,
+              transaction.blockNumber,
+              timestamp = block.timestamp,
+              Utils.hexStringToBigDecimal(balance)
+            )
           }
       }
 
   /**
     * Get contract account balance at given block number from transaction
-    *
     */
   def getContractBalance(block: Block): Pipe[F, Contract, Account] =
     stream =>
@@ -237,7 +231,6 @@ class EthereumClient[F[_]: Async](
 
   /**
     * Add token info for contract address implementing ERC20 or ERC721
-    *
     */
   def addTokenInfo: Pipe[F, Account, Account] =
     stream =>
@@ -249,14 +242,13 @@ class EthereumClient[F[_]: Async](
             .through(client.stream[EthCall.Params, String](batchSize = 1))
             .chunkN(4)
             .map(_.toList)
-            .collect {
-              case name :: symbol :: decimals :: totalSupply :: Nil =>
-                token.copy(
-                  name = Some(Utils.hexToString(name)),
-                  symbol = Some(Utils.hexToString(symbol)),
-                  decimals = Utils.hexToInt(decimals),
-                  totalSupply = Some(Utils.hexStringToBigDecimal(totalSupply))
-                )
+            .collect { case name :: symbol :: decimals :: totalSupply :: Nil =>
+              token.copy(
+                name = Some(Utils.hexToString(name)),
+                symbol = Some(Utils.hexToString(symbol)),
+                decimals = Utils.hexToInt(decimals),
+                totalSupply = Some(Utils.hexStringToBigDecimal(totalSupply))
+              )
             }
             .handleErrorWith {
               // if any of the methods is not defined on a contract do not add token data

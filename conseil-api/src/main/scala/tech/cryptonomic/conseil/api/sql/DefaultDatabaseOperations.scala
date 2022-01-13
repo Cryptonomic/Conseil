@@ -56,8 +56,8 @@ object DefaultDatabaseOperations {
     * @param matchingString string which is being matched
     * @return               distinct elements in given column as a list
     */
-  def selectDistinctLike(schema: String, table: String, column: String, matchingString: String)(
-      implicit ec: ExecutionContext
+  def selectDistinctLike(schema: String, table: String, column: String, matchingString: String)(implicit
+      ec: ExecutionContext
   ): DBIO[List[String]] =
     sql"""SELECT DISTINCT #$column::VARCHAR FROM #${schema + "." + table} WHERE #$column LIKE '%#$matchingString%' AND #$column IS NOT NULL"""
       .as[String]

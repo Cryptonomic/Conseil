@@ -49,8 +49,8 @@ case class MetadataConfiguration(metadataConfiguration: Map[PlatformName, Platfo
   // fetches all networks
   def allNetworks: Map[NetworkPath, NetworkConfiguration] = allPlatforms.flatMap {
     case (platformPath, platformConfiguration) =>
-      platformConfiguration.networks.map {
-        case (networkName, networkConfiguration) => (platformPath.addLevel(networkName), networkConfiguration)
+      platformConfiguration.networks.map { case (networkName, networkConfiguration) =>
+        (platformPath.addLevel(networkName), networkConfiguration)
       }
   }
 
@@ -61,8 +61,8 @@ case class MetadataConfiguration(metadataConfiguration: Map[PlatformName, Platfo
   // fetches all entities
   def allEntities: Map[EntityPath, EntityConfiguration] = allNetworks.flatMap {
     case (networkPath, networkConfiguration) =>
-      networkConfiguration.entities.map {
-        case (entityName, entityConfiguration) => (networkPath.addLevel(entityName), entityConfiguration)
+      networkConfiguration.entities.map { case (entityName, entityConfiguration) =>
+        (networkPath.addLevel(entityName), entityConfiguration)
       }
   }
 
@@ -73,8 +73,8 @@ case class MetadataConfiguration(metadataConfiguration: Map[PlatformName, Platfo
   // fetches all attributes
   def allAttributes: Map[AttributePath, AttributeConfiguration] = allEntities.flatMap {
     case (entityPath, entityConfiguration) =>
-      entityConfiguration.attributes.map {
-        case (attributeName, attributeConfiguration) => (entityPath.addLevel(attributeName), attributeConfiguration)
+      entityConfiguration.attributes.map { case (attributeName, attributeConfiguration) =>
+        (entityPath.addLevel(attributeName), attributeConfiguration)
       }
   }
 

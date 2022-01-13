@@ -26,11 +26,11 @@ private[tezos] class TezosNamesOperations(tnsContracts: TNSContract, node: Tezos
     extends ConseilLogSupport {
   implicit val showLookupReferences: Show[LookupMapReference] = Show.show {
     case LookupMapReference(
-        ContractId(contractId),
-        Name(name),
-        PublicKeyHash(accountId),
-        BigMapId(bigMapId),
-        ScriptId(keyHash)
+          ContractId(contractId),
+          Name(name),
+          PublicKeyHash(accountId),
+          BigMapId(bigMapId),
+          ScriptId(keyHash)
         ) =>
       s"""Contract: $contractId, registeredName: $name, address: $accountId, big map: $bigMapId, key: $keyHash"""
 
@@ -52,28 +52,26 @@ private[tezos] class TezosNamesOperations(tnsContracts: TNSContract, node: Tezos
         case (lookupRef, JsonString(json)) if json.trim.nonEmpty =>
           tnsContracts
             .readLookupMapContent(lookupRef.contractId, json)
-            .filter(
-              nameRecord =>
-                //double-check we're looking at the right data for the call
-                nameRecord.name == lookupRef.lookupName.value && nameRecord.resolver == lookupRef.resolver.value
+            .filter(nameRecord =>
+              //double-check we're looking at the right data for the call
+              nameRecord.name == lookupRef.lookupName.value && nameRecord.resolver == lookupRef.resolver.value
             )
       }.flattenOption
 
   /* call the remote node to get map contents, as referred by the input values */
-  private def fetchContent(
-      implicit ec: ExecutionContext
+  private def fetchContent(implicit
+      ec: ExecutionContext
   ): Map[Block, List[LookupMapReference]] => Future[List[(LookupMapReference, JsonString)]] =
     mapReferences =>
-      mapReferences.toList.traverse {
-        case (block, references) =>
-          val showReferences = references.map(_.show).mkString("\n")
-          if (references.nonEmpty)
-            logger.info(
-              s"About to fetch big map contents to find TNS name registrations for block ${block.data.hash.value} at level ${block.data.header.level} and the following references:\n $showReferences"
-            )
-          references.traverse { ref =>
-            node.getBigMapContents(block.data.hash, ref.mapId.id, ref.mapKeyHash).map(ref -> _)
-          }
+      mapReferences.toList.traverse { case (block, references) =>
+        val showReferences = references.map(_.show).mkString("\n")
+        if (references.nonEmpty)
+          logger.info(
+            s"About to fetch big map contents to find TNS name registrations for block ${block.data.hash.value} at level ${block.data.header.level} and the following references:\n $showReferences"
+          )
+        references.traverse { ref =>
+          node.getBigMapContents(block.data.hash, ref.mapId.id, ref.mapKeyHash).map(ref -> _)
+        }
 
       }.map(_.flatten)
 

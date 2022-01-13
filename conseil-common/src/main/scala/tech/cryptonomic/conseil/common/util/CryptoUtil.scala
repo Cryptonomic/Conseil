@@ -138,7 +138,7 @@ object CryptoUtil {
     /* base128 little-endian decoding with special treat for the lower byte */
     def readSigned(bytes: Array[Byte]): BigInt = {
       val positive = (bytes.head & signMask) == 0
-      val masked = ((bytes.head & 0x3F) +: bytes.tail.map(_ & 0x7F)).map(_.toByte)
+      val masked = ((bytes.head & 0x3f) +: bytes.tail.map(_ & 0x7f)).map(_.toByte)
 
       val result = masked.zipWithIndex.foldRight(BigInt(0)) {
         case ((byte, 0), bigInt) =>

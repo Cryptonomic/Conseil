@@ -36,8 +36,8 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
     DBIO.seq(
       Tables.Blocks += block.convertTo[Tables.BlocksRow],
       Tables.Transactions ++= transactions
-            .map(_.convertTo[Tables.TransactionsRow])
-            .map(_.copy(timestamp = Some(timestamp))),
+        .map(_.convertTo[Tables.TransactionsRow])
+        .map(_.copy(timestamp = Some(timestamp))),
       Tables.Receipts ++= receipts.map(_.convertTo[Tables.ReceiptsRow]).map(_.copy(timestamp = Some(timestamp))),
       Tables.Logs ++= receipts.flatMap(_.logs).map(_.convertTo[Tables.LogsRow]).map(_.copy(timestamp = Some(timestamp)))
     )
@@ -82,8 +82,8 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
     *
     * @param accounts account eth_getBalance data
     */
-  def upsertAccounts(accounts: List[Account])(
-      implicit ec: ExecutionContext
+  def upsertAccounts(accounts: List[Account])(implicit
+      ec: ExecutionContext
   ): DBIOAction[List[Unit], NoStream, Effect.Read with Effect.Write with Effect.Transactional] = {
     import tech.cryptonomic.conseil.common.sql.CustomProfileExtension.api._
     DBIO.sequence(

@@ -37,13 +37,12 @@ object Conseil extends App with ConseilAppConfig with FailFastCirceSupport with 
           maxRetry = retries,
           deadline = Some(config.server.startupDeadline fromNow),
           giveUpOnThrowable = retryGiveUpStrategy
-        )(ConseilApi.create(config)).andThen {
-          case Failure(error) =>
-            logger.error(
-              "The server was not started correctly, I failed to create the required Metadata service",
-              error
-            )
-            Await.ready(system.terminate(), 10.seconds)
+        )(ConseilApi.create(config)).andThen { case Failure(error) =>
+          logger.error(
+            "The server was not started correctly, I failed to create the required Metadata service",
+            error
+          )
+          Await.ready(system.terminate(), 10.seconds)
         }.flatMap(
           runServer(_, config.server, config.platforms, config.verbose)
         )
@@ -51,8 +50,8 @@ object Conseil extends App with ConseilAppConfig with FailFastCirceSupport with 
       sys.addShutdownHook {
         serverBinding
           .flatMap(_.unbind().andThen { case _ => logger.info("Server stopped...") })
-          .andThen {
-            case _ => system.terminate()
+          .andThen { case _ =>
+            system.terminate()
           }
           .onComplete(_ => logger.info("We're done here, nothing else to see"))
       }

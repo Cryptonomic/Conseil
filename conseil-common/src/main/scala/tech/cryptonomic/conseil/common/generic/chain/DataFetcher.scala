@@ -59,7 +59,7 @@ trait DataFetcher[Eff[_], Coll[_], Err] {
   *
   * which suggest that we may encode this in a trait that separates the steps with a
   * - fetchData function, that, given a collection of inputs, returns the effectful result
-      of encoded data (e.g. json), paired with its input value (to preserve correlation)
+  *      of encoded data (e.g. json), paired with its input value (to preserve correlation)
   * - decodeData function that will decode every single endoded value to a full-blown output scala data type
   *
   * The effectul function is defined in term of a "Kleisli arrow", which is nothing but a fancy-named wrapper for A => F[B], where F[_] is the so-called effect
@@ -83,16 +83,19 @@ object DataFetcher {
     * 3. return the traversable collection containing paired input and output values, all wrapped in the effect F
     * The resulting effect will also encode a possible failure in virtue of the implicit MonadError instance that is provided
     */
-  def fetch[In, Out, Eff[_], Coll[_]: Traverse, Err](
-      implicit app: MonadError[Eff, Err],
+  def fetch[In, Out, Eff[_], Coll[_]: Traverse, Err](implicit
+      app: MonadError[Eff, Err],
       fetcher: DataFetcher.Aux[Eff, Coll, Err, In, Out, _]
   ): Kleisli[Eff, Coll[In], Coll[(In, Out)]] =
     fetcher.fetchData.onError { case err => Kleisli.pure(fetcher.onDataFetchError(err)) }
-      .andThen(
-        encoded =>
-          fetcher.decodeData.onError { case err => Kleisli.pure(fetcher.onDecodingError(err)) }
-            .second[In] //only decodes the second element of the tuple (the encoded value) and pass the first on (the input)
-            .traverse(encoded) //operates on a whole traverable Coll and wraps the resulting collection in a single Effect wrapper
+      .andThen(encoded =>
+        fetcher.decodeData.onError { case err => Kleisli.pure(fetcher.onDecodingError(err)) }
+          .second[
+            In
+          ] //only decodes the second element of the tuple (the encoded value) and pass the first on (the input)
+          .traverse(
+            encoded
+          ) //operates on a whole traverable Coll and wraps the resulting collection in a single Effect wrapper
       )
 
   /** Essentially fetch and decodes data as [[fetch]] does, but for a single input element.
@@ -101,8 +104,8 @@ object DataFetcher {
     * the first element of the output.
     * E.g. a [[List]] can always be created by providing a single element.
     */
-  def fetchOne[In, Out, Eff[_], Coll[_]: Traverse: Applicative, Err](
-      implicit app: MonadError[Eff, Err],
+  def fetchOne[In, Out, Eff[_], Coll[_]: Traverse: Applicative, Err](implicit
+      app: MonadError[Eff, Err],
       fetcher: DataFetcher.Aux[Eff, Coll, Err, In, Out, _]
   ): Kleisli[Eff, In, Option[(In, Out)]] =
     Kleisli((in: In) => fetch[In, Out, Eff, Coll, Err].run(in.pure[Coll])).map(_.get(0))
@@ -168,18 +171,19 @@ object DataFetcher {
     *
     * and once we run the resulting Kleisli on the merged fetchers, passing a `List[BlockHash]` we get a `Future[List[(BlockHash, CurrentVotes)]]`
     */
-  def fetchMerge[Eff[_]: Monad, Coll[_]: Traverse: FunctorFilter, Err, Input, Output1, Output2, Output, Encoding1, Encoding2](
+  def fetchMerge[Eff[_]: Monad, Coll[
+      _
+  ]: Traverse: FunctorFilter, Err, Input, Output1, Output2, Output, Encoding1, Encoding2](
       mf1: Aux[Eff, Coll, Err, Input, Output1, Encoding1],
       mf2: Aux[Eff, Coll, Err, Input, Output2, Encoding2]
   )(
       merge: (Output1, Output2) => Output = (o1: Output1, o2: Output2) => (o1, o2)
   )(implicit appErr: MonadError[Eff, Err]): Kleisli[Eff, Coll[Input], Coll[(Input, Output)]] =
     fetchCombine(mf1, mf2) { (outs1: Coll[(Input, Output1)], outs2: Coll[(Input, Output2)]) =>
-      outs1.mapFilter {
-        case (in, out1) =>
-          outs2.collectFirst {
-            case (`in`, out2) => (`in`, merge(out1, out2))
-          }
+      outs1.mapFilter { case (in, out1) =>
+        outs2.collectFirst { case (`in`, out2) =>
+          (`in`, merge(out1, out2))
+        }
       }
     }
 
@@ -196,8 +200,7 @@ object DataFetcher {
   def fetchCombine[Eff[_]: Monad, Coll[_], Err, Input, Encoding1, Encoding2, Output1, Output2, Output](
       fetcher1: Aux[Eff, Coll, Err, Input, Output1, Encoding1],
       fetcher2: Aux[Eff, Coll, Err, Input, Output2, Encoding2]
-  )(combine: (Coll[(Input, Output1)], Coll[(Input, Output2)]) => Coll[(Input, Output)])(
-      implicit
+  )(combine: (Coll[(Input, Output1)], Coll[(Input, Output2)]) => Coll[(Input, Output)])(implicit
       traverse: Traverse[Coll],
       appErr: MonadError[Eff, Err]
   ): Kleisli[Eff, Coll[Input], Coll[(Input, Output)]] =

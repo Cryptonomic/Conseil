@@ -50,16 +50,15 @@ trait ConseilAppConfig {
       metadataOverrides <- loadConfig[MetadataConfiguration]
       securityApi <- Security()
       nautilusCloud <- loadConfig[NautilusCloudConfiguration]("nautilus-cloud")
-    } yield
-      CombinedConfiguration(
-        conseil,
-        platforms,
-        securityApi,
-        FailFast(failFast),
-        VerboseOutput(verbose),
-        metadataOverrides,
-        nautilusCloud
-      )
+    } yield CombinedConfiguration(
+      conseil,
+      platforms,
+      securityApi,
+      FailFast(failFast),
+      VerboseOutput(verbose),
+      metadataOverrides,
+      nautilusCloud
+    )
 
     //something went wrong
     loadedConf.left.foreach { failures =>

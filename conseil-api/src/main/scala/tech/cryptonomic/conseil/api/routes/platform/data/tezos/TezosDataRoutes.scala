@@ -24,8 +24,8 @@ case class TezosDataRoutes(
     metadataConfiguration: MetadataConfiguration,
     operations: TezosDataOperations,
     maxQueryResultSize: Int
-)(
-    implicit apiExecutionContext: ExecutionContext
+)(implicit
+    apiExecutionContext: ExecutionContext
 ) extends TezosDataHelpers
     with ApiDataRoutes
     with ConseilLogSupport {
@@ -60,32 +60,30 @@ case class TezosDataRoutes(
   )
 
   /** V2 Route implementation for query endpoint */
-  override val postRoute: Route = tezosQueryEndpoint.implementedByAsync {
-    case (network, entity, apiQuery, _) =>
-      val path = EntityPath(entity, NetworkPath(network, platformPath))
+  override val postRoute: Route = tezosQueryEndpoint.implementedByAsync { case (network, entity, apiQuery, _) =>
+    val path = EntityPath(entity, NetworkPath(network, platformPath))
 
-      pathValidation(path) {
-        shouldHideForkEntries(entity)(
-          hideForkData =>
-            apiQuery
-              .validate(path, metadataService, metadataConfiguration)
-              .flatMap { validationResult =>
-                validationResult.map { validQuery =>
-                  operations
-                    .queryWithPredicates(
-                      platformPath.platform,
-                      entity,
-                      validQuery.withLimitCap(maxQueryResultSize),
-                      hideForkData
-                    )
-                    .map { queryResponses =>
-                      QueryResponseWithOutput(queryResponses, validQuery.output)
-                    }
-                }.left.map(Future.successful).bisequence
-              }
-              .map(Some(_))
-        )
-      }
+    pathValidation(path) {
+      shouldHideForkEntries(entity)(hideForkData =>
+        apiQuery
+          .validate(path, metadataService, metadataConfiguration)
+          .flatMap { validationResult =>
+            validationResult.map { validQuery =>
+              operations
+                .queryWithPredicates(
+                  platformPath.platform,
+                  entity,
+                  validQuery.withLimitCap(maxQueryResultSize),
+                  hideForkData
+                )
+                .map { queryResponses =>
+                  QueryResponseWithOutput(queryResponses, validQuery.output)
+                }
+            }.left.map(Future.successful).bisequence
+          }
+          .map(Some(_))
+      )
+    }
   }
 
   /* will provide an async operation with the information if this entity needs checking for fork-invalidation */
@@ -96,55 +94,49 @@ case class TezosDataRoutes(
   private def routeFromQuery[B](network: String, entity: String, filter: TezosFilter)(
       handleResult: List[QueryResponse] => Option[B]
   ): Future[Option[B]] =
-    shouldHideForkEntries(entity)(
-      hideForkData =>
-        platformNetworkValidation(network) {
-          operations
-            .queryWithPredicates("tezos", entity, filter.toQuery.withLimitCap(maxQueryResultSize), hideForkData)
-            .map(handleResult)
-        }
+    shouldHideForkEntries(entity)(hideForkData =>
+      platformNetworkValidation(network) {
+        operations
+          .queryWithPredicates("tezos", entity, filter.toQuery.withLimitCap(maxQueryResultSize), hideForkData)
+          .map(handleResult)
+      }
     )
 
   /** V2 Route implementation for blocks endpoint */
-  private val blocksRoute: Route = tezosBlocksEndpoint.implementedByAsync {
-    case ((network, filter), _) =>
-      routeFromQuery(network, "blocks", filter) { Option(_) }
+  private val blocksRoute: Route = tezosBlocksEndpoint.implementedByAsync { case ((network, filter), _) =>
+    routeFromQuery(network, "blocks", filter)(Option(_))
   }
 
   /** V2 Route implementation for blocks head endpoint */
-  private val blocksHeadRoute: Route = tezosBlocksHeadEndpoint.implementedByAsync {
-    case (network, _) =>
-      platformNetworkValidation(network) {
-        operations.fetchLatestBlock()
-      }
+  private val blocksHeadRoute: Route = tezosBlocksHeadEndpoint.implementedByAsync { case (network, _) =>
+    platformNetworkValidation(network) {
+      operations.fetchLatestBlock()
+    }
   }
 
   /** V2 Route implementation for blocks by hash endpoint */
-  private val blockByHashRoute: Route = tezosBlockByHashEndpoint.implementedByAsync {
-    case ((network, hash), _) =>
-      platformNetworkValidation(network) {
-        operations.fetchBlock(TezosBlockHash(hash))
-      }
+  private val blockByHashRoute: Route = tezosBlockByHashEndpoint.implementedByAsync { case ((network, hash), _) =>
+    platformNetworkValidation(network) {
+      operations.fetchBlock(TezosBlockHash(hash))
+    }
   }
 
   /** V2 Route implementation for accounts endpoint */
-  private val accountsRoute: Route = tezosAccountsEndpoint.implementedByAsync {
-    case ((network, filter), _) =>
-      routeFromQuery(network, "accounts", filter) { Some(_) }
+  private val accountsRoute: Route = tezosAccountsEndpoint.implementedByAsync { case ((network, filter), _) =>
+    routeFromQuery(network, "accounts", filter)(Some(_))
   }
 
   /** V2 Route implementation for account by ID endpoint */
-  private val accountByIdRoute: Route = tezosAccountByIdEndpoint.implementedByAsync {
-    case ((network, accountId), _) =>
-      platformNetworkValidation(network) {
-        operations.fetchAccount(makeAccountId(accountId))
-      }
+  private val accountByIdRoute: Route = tezosAccountByIdEndpoint.implementedByAsync { case ((network, accountId), _) =>
+    platformNetworkValidation(network) {
+      operations.fetchAccount(makeAccountId(accountId))
+    }
   }
 
   /** V2 Route implementation for operation groups endpoint */
   private val operationGroupsRoute: Route = tezosOperationGroupsEndpoint.implementedByAsync {
     case ((network, filter), _) =>
-      routeFromQuery(network, "operation_groups", filter) { Some(_) }
+      routeFromQuery(network, "operation_groups", filter)(Some(_))
   }
 
   /** V2 Route implementation for operation group by ID endpoint */
@@ -156,15 +148,13 @@ case class TezosDataRoutes(
   }
 
   /** V2 Route implementation for average fees endpoint */
-  private val avgFeesRoute: Route = tezosAvgFeesEndpoint.implementedByAsync {
-    case ((network, filter), _) =>
-      routeFromQuery(network, "fees", filter) { _.headOption }
+  private val avgFeesRoute: Route = tezosAvgFeesEndpoint.implementedByAsync { case ((network, filter), _) =>
+    routeFromQuery(network, "fees", filter)(_.headOption)
   }
 
   /** V2 Route implementation for operations endpoint */
-  private val operationsRoute: Route = tezosOperationsEndpoint.implementedByAsync {
-    case ((network, filter), _) =>
-      routeFromQuery(network, "operations", filter) { Some(_) }
+  private val operationsRoute: Route = tezosOperationsEndpoint.implementedByAsync { case ((network, filter), _) =>
+    routeFromQuery(network, "operations", filter)(Some(_))
   }
 
   /** V2 concatenated routes */

@@ -17,8 +17,8 @@ object ConfigUtil {
 
     /** Trims if passed a String value, otherwise returns the value unchanged */
     object Trimmer extends Poly1 {
-      implicit val stringTrim = at[String] { _.trim }
-      implicit def noop[T] = at[T] { identity }
+      implicit val stringTrim = at[String](_.trim)
+      implicit def noop[T] = at[T](identity)
     }
 
     implicit val timestampDecoder: CellDecoder[java.sql.Timestamp] = (e: String) => {
@@ -48,8 +48,7 @@ object ConfigUtil {
         table: TableQuery[T],
         network: String,
         separator: Char = ','
-    )(
-        implicit
+    )(implicit
         hd: HeaderDecoder[T#TableElementType],
         g: Generic.Aux[T#TableElementType, H],
         m: Mapper.Aux[Trimmer.type, H, H]
@@ -93,8 +92,7 @@ object ConfigUtil {
     def readRowsFromCsv[Row, H <: HList](
         csvSource: java.net.URL,
         separator: Char = ','
-    )(
-        implicit
+    )(implicit
         hd: HeaderDecoder[Row],
         g: Generic.Aux[Row, H],
         m: Mapper.Aux[Trimmer.type, H, H]

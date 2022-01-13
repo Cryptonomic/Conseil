@@ -34,25 +34,22 @@ class MetadataService(
 
     networks.values.flatten
       .map(_.path)
-      .map(
-        networkPath =>
-          networkPath -> transformation.overrideEntities(networkPath, futureEntities(networkPath), shouldLog = false)
+      .map(networkPath =>
+        networkPath -> transformation.overrideEntities(networkPath, futureEntities(networkPath), shouldLog = false)
       )
       .toMap
   }
 
   private val attributes: Map[EntityPath, List[Attribute]] = {
-    val entityPaths = entities.flatMap {
-      case (networkPath: NetworkPath, entities: List[Entity]) =>
-        entities.map(entity => networkPath.addLevel(entity.name))
+    val entityPaths = entities.flatMap { case (networkPath: NetworkPath, entities: List[Entity]) =>
+      entities.map(entity => networkPath.addLevel(entity.name))
     }.toSet
 
     val result = Future.traverse(entityPaths) { path =>
       platformDiscoveryOperations
         .getTableAttributes(path)
-        .map(
-          attributes =>
-            path -> transformation.overrideAttributes(path, attributes.getOrElse(List.empty), shouldLog = false)
+        .map(attributes =>
+          path -> transformation.overrideAttributes(path, attributes.getOrElse(List.empty), shouldLog = false)
         )
     }
 
