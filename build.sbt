@@ -4,6 +4,8 @@ import Commands._
 
 name := "Conseil"
 
+Global / onChangedBuildSource := ReloadOnSourceChanges
+
 ThisBuild / scalaVersion := "2.12.10"
 ThisBuild / parallelExecution in Test := false
 
@@ -18,7 +20,7 @@ ThisBuild / resolvers ++= Seq(
 )
 
 lazy val conseil = (project in file("."))
-  .aggregate(common, commonTestKit, /*api,*/ lorre, schema, smokeTests, apiShared, apiServer, apiClient)
+  .aggregate(common, commonTestKit, lorre, schema, smokeTests, apiShared, apiServer, apiClient)
 
 lazy val common = (project in file("conseil-common"))
   .settings(
@@ -52,32 +54,10 @@ lazy val apiShared = (project in file("conseil-api-shared"))
   .dependsOn(common, commonTestKit % Test)
 lazy val apiServer = (project in file("conseil-api-server"))
   .settings(name := "api-server", libraryDependencies ++= Dependencies.tapirServer)
-  .dependsOn(apiShared, common)
+  .dependsOn(apiShared)
 lazy val apiClient = (project in file("conseil-api-client"))
   .settings(name := "api-client", libraryDependencies ++= Dependencies.tapirClient)
-  .dependsOn(apiShared, common)
-
-// lazy val api = (project in file("conseil-api"))
-//   .settings(
-//     name := "conseil-api",
-//     mainClass := Some("tech.cryptonomic.conseil.api.Conseil"),
-//     libraryDependencies ++= Dependencies.conseilApiInclude,
-//     coverageExcludedPackages := Seq(
-//           "<empty>",
-//           "tech.cryptonomic.conseil.api.Conseil",
-//           "tech.cryptonomic.conseil.api.ConseilApi",
-//           "tech.cryptonomic.conseil.api.ConseilMainOutput",
-//           "tech.cryptonomic.conseil.api.config.ConseilAppConfig",
-//           "tech.cryptonomic.conseil.api.security.Security",
-//           "tech.cryptonomic.conseil.api.routes.platform.TezosApi"
-//         ).mkString(";")
-//   )
-//   .addRunCommand(
-//     description = "Task to run the main Conseil API Server",
-//     javaExtras = Seq("-Xms1024M", "-Xmx8192M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
-//   )
-//   .enableAssembly()
-//   .dependsOn(common, commonTestKit % Test)
+  .dependsOn(apiShared)
 
 lazy val lorre = (project in file("conseil-lorre"))
   .settings(
@@ -124,7 +104,11 @@ lazy val smokeTests = (project in file("conseil-smoke-tests"))
   .addRunCommand(description = "Task to run smoke tests locally")
   .disableAssembly()
 
-// addCommandAlias("runApi", "; api/runTask")
+addCommandAlias("runApi", "; apiServer/runTask")
 addCommandAlias("runLorre", "; lorre/runTask")
 addCommandAlias("runSchema", "; schema/runTask")
 addCommandAlias("runSmokeTests", "; smokeTests/runTask")
+
+addCommandAlias("c", "; compile")
+addCommandAlias("rc", "; reload ; clean")
+addCommandAlias("rcc", "; rc ; c")
