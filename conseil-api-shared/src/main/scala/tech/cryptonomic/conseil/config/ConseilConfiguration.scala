@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.api.config
+package tech.cryptonomic.conseil.config
 
 import scala.concurrent.duration.FiniteDuration
 

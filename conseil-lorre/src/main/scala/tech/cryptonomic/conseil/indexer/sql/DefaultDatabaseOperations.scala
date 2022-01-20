@@ -1,8 +1,5 @@
 package tech.cryptonomic.conseil.indexer.sql
 
-import slick.dbio.CleanUpAction
-import slick.jdbc.PostgresProfile.api._
-import slickeffect.implicits._
 import slick.lifted.AbstractTable
 
 import scala.concurrent.ExecutionContext
@@ -20,13 +17,11 @@ object DefaultDatabaseOperations {
       rows: List[A#TableElementType],
       upsert: Boolean
   )(implicit ec: ExecutionContext): DBIO[Option[Int]] =
-    if (upsert) {
-      table.insertOrUpdateAll(rows)
-    } else {
+    if (upsert) table.insertOrUpdateAll(rows)
+    else
       table.exists.result.flatMap {
         case true => DBIO.successful(Some(0))
         case false => table ++= rows
       }
-    }
 
 }

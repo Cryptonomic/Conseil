@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.api.config
+package tech.cryptonomic.conseil.config
 
 import pureconfig.error.ConfigReaderFailures
 import pureconfig.generic.auto._

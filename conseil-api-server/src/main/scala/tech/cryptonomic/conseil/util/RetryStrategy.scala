@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.util
 
-import tech.cryptonomic.conseil.api.ConseilApi.NoNetworkEnabledError
+import tech.cryptonomic.conseil.ConseilApi.NoNetworkEnabledError
 
 object RetryStrategy {
 

@@ -1,10 +1,10 @@
-package tech.cryptonomic.conseil.api
+package tech.cryptonomic.conseil
 
 import cats.effect.IO
 // import ch.megard.akka.http.cors.scaladsl.CorsDirectives.cors
-import tech.cryptonomic.conseil.api.ConseilApi.NoNetworkEnabledError
-import tech.cryptonomic.conseil.api.config.ConseilAppConfig.CombinedConfiguration
-import tech.cryptonomic.conseil.api.config.NautilusCloudConfiguration
+import tech.cryptonomic.conseil.ConseilApi.NoNetworkEnabledError
+import tech.cryptonomic.conseil.config.ConseilAppConfig.CombinedConfiguration
+import tech.cryptonomic.conseil.config.NautilusCloudConfiguration
 // import tech.cryptonomic.conseil.api.directives.{EnableCORSDirectives, RecordingDirectives, ValidatingDirectives}
 import tech.cryptonomic.conseil.platform.metadata.{AttributeValuesCacheConfiguration, UnitTransformation}
 import tech.cryptonomic.conseil.platform.data.tezos.TezosDataOperations
@@ -17,7 +17,7 @@ import tech.cryptonomic.conseil.common.sql.DatabaseRunner
 import tech.cryptonomic.conseil.platform.data.tezos.TezosDataRoutes
 import tech.cryptonomic.conseil.platform.discovery.GenericPlatformDiscoveryOperations
 
-import java.util.UUID
+// import java.util.UUID
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
@@ -32,6 +32,9 @@ object ConseilApi {
 }
 
 class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* with EnableCORSDirectives */ {
+
+  import tech.cryptonomic.conseil.info.model._
+  // import tech.cryptonomic.conseil.info.converters._
 
   private val transformation = new UnitTransformation(config.metadata)
   private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
@@ -55,18 +58,20 @@ class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* wit
 
   // this val is not lazy to force to fetch metadata and trigger logging at the start of the application
   implicit private val ec: ExecutionContext = ExecutionContext.global
-
-  val metadataService =
-    new MetadataService(config.platforms, transformation, cacheOverrides, ApiCache.cachedDiscoveryOperations)
-
   // implicit val correlationId: UUID = UUID.randomUUID()
 
-  val operations = new TezosDataOperations(
+  lazy val metadataService =
+    new MetadataService(config.platforms, transformation, cacheOverrides, ApiCache.cachedDiscoveryOperations)
+
+  lazy val operations = new TezosDataOperations(
     config.platforms.getDbConfig(Platforms.Tezos.name, config.platforms.getNetworks(Platforms.Tezos.name).head.name)
   )
-  val tezosDataRoutes = TezosDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
+  lazy val tezosDataRoutes =
+    TezosDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
+  lazy val appInfoRoute = protocol.appInfo.serverLogicSuccess(_ => currentInfo)
 
-  lazy val route = tezosDataRoutes.getRoute
+  // TODO: add [[platform.data]] + [[platform.discovery]] routes
+  lazy val route = appInfoRoute :: tezosDataRoutes.getRoute
 
   /**
     * Object, which initializes and holds all of the APIs (blockchain-specific endpoints) in the map.
@@ -83,14 +88,14 @@ class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* wit
         )
         TezosDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
       // case Platforms.Bitcoin =>
-      //   // val operations = new BitcoinDataOperations(config.platforms.getDbConfig(Platforms.Bitcoin.name, config.platforms.getNetworks(Platforms.Bitcoin.name).head.name))
-      //   // BitcoinDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
+      //   val operations = new BitcoinDataOperations(config.platforms.getDbConfig(Platforms.Bitcoin.name, config.platforms.getNetworks(Platforms.Bitcoin.name).head.name))
+      //   BitcoinDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
       // case Platforms.Ethereum =>
-      //   // val operations = new EthereumDataOperations(Platforms.Ethereum.name, config.platforms.getDbConfig(Platforms.Ethereum.name, config.platforms.getNetworks(Platforms.Ethereum.name).head.name))
-      //   // EthereumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
+      //   val operations = new EthereumDataOperations(Platforms.Ethereum.name, config.platforms.getDbConfig(Platforms.Ethereum.name, config.platforms.getNetworks(Platforms.Ethereum.name).head.name))
+      //   EthereumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
       // case Platforms.Quorum =>
-      //   // val operations = new EthereumDataOperations(Platforms.Quorum.name, config.platforms.getDbConfig(Platforms.Quorum.name, config.platforms.getNetworks(Platforms.Quorum.name).head.name))
-      //   // QuorumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
+      //   val operations = new EthereumDataOperations(Platforms.Quorum.name, config.platforms.getDbConfig(Platforms.Quorum.name, config.platforms.getNetworks(Platforms.Quorum.name).head.name))
+      //   QuorumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
     }
 
     private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
@@ -98,12 +103,7 @@ class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* wit
 
     private val metadataOperations: Map[(String, String), DatabaseRunner] = config.platforms
       .getDatabases()
-      .mapValues(
-        db => () => db
-        // new DatabaseRunner {
-        //   override lazy val dbReadHandle = db
-        // }
-      )
+      .mapValues(db => () => db)
 
     // lazy val cachedDiscoveryOperations: GenericPlatformDiscoveryOperations =
     lazy val cachedDiscoveryOperations =

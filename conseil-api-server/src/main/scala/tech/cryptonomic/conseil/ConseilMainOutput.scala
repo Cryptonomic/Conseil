@@ -1,8 +1,7 @@
-package tech.cryptonomic.conseil.api
+package tech.cryptonomic.conseil
 
 // import scribe._
-import tech.cryptonomic.conseil.BuildInfo
-import tech.cryptonomic.conseil.api.config.ConseilConfiguration
+import tech.cryptonomic.conseil.config.ConseilConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms.{PlatformConfiguration, PlatformsConfiguration}
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.io.MainOutputs._
