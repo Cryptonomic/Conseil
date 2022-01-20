@@ -20,10 +20,7 @@ import tech.cryptonomic.conseil.platform.discovery.GenericPlatformDiscoveryOpera
 import java.util.UUID
 
 import scala.concurrent.ExecutionContext
-// import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
-
-// import cats.effect.unsafe.implicits.global
 
 object ConseilApi {
 
@@ -31,24 +28,17 @@ object ConseilApi {
   case class NoNetworkEnabledError(message: String) extends Exception(message)
 
   /** Creates Conseil API based on a given configuration */
-  def create(config: CombinedConfiguration) /*(implicit system: ActorSystem)*/: ConseilApi = new ConseilApi(config)
+  def create(config: CombinedConfiguration): IO[ConseilApi] = IO(new ConseilApi(config))
 }
 
-class ConseilApi(config: CombinedConfiguration) /*(implicit system: ActorSystem)*/
-// extends EnableCORSDirectives
-    extends ConseilLogSupport {
+class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* with EnableCORSDirectives */ {
 
   private val transformation = new UnitTransformation(config.metadata)
   private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
 
-  // implicit private val mat: Materializer = ActorMaterializer()
-  // implicit private val dispatcher: ExecutionContext = system.dispatcher
-
   config.nautilusCloud match {
-    case ncc @ NautilusCloudConfiguration(true, _, _, _, _, delay, interval) =>
-      // system.scheduler.scheduleWithFixedDelay(delay, interval)(() => Security.updateKeys(ncc))
-      // FIXME: update security; or do it at the implementation/definition time
-      ncc
+    // FIXME: update security; or do it at the implementation/definition time
+    case ncc @ NautilusCloudConfiguration(true, _, _, _, _, delay, interval) => ncc
     case _ => ()
   }
 
@@ -69,7 +59,7 @@ class ConseilApi(config: CombinedConfiguration) /*(implicit system: ActorSystem)
   val metadataService =
     new MetadataService(config.platforms, transformation, cacheOverrides, ApiCache.cachedDiscoveryOperations)
 
-  implicit val correlationId: UUID = UUID.randomUUID()
+  // implicit val correlationId: UUID = UUID.randomUUID()
 
   val operations = new TezosDataOperations(
     config.platforms.getDbConfig(Platforms.Tezos.name, config.platforms.getNetworks(Platforms.Tezos.name).head.name)

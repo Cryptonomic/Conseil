@@ -32,10 +32,8 @@ class TezosDataOperations(dbConfig: Config) extends ApiDataOperations {
      * combine them with an OR, thus nullifying the effect of adding only one predicate overall
      */
     val groups = userQueryPredicates.map(_.group).distinct
-    if (groups.nonEmpty)
-      groups.map(predicateGroup => nonInvalidatedPredicate.copy(group = predicateGroup))
-    else
-      nonInvalidatedPredicate :: Nil
+    if (groups.nonEmpty) groups.map(predicateGroup => nonInvalidatedPredicate.copy(group = predicateGroup))
+    else nonInvalidatedPredicate :: Nil
   }
 
   override lazy val dbReadHandle: Database = Database.forConfig("", dbConfig)
@@ -83,18 +81,8 @@ class TezosDataOperations(dbConfig: Config) extends ApiDataOperations {
   def fetchOperationGroup(
       operationGroupHash: String
   )(implicit ec: ExecutionContext): Future[Option[OperationGroupResult]] = {
-    val groupsMapIO = for {
-      latest <- latestBlockIO if latest.nonEmpty
-      operations <- operationsForGroup(operationGroupHash)
-    } yield
-      operations.map {
-        case (opGroup, ops) =>
-          OperationGroupResult(
-            operation_group = opGroup,
-            operations = ops
-          )
-      }
-
+    val groupsMapIO =
+      operationsForGroup(operationGroupHash).map(_.map { case (opGroup, ops) => OperationGroupResult(opGroup, ops) })
     runQuery(groupsMapIO)
   }
 
@@ -116,8 +104,7 @@ class TezosDataOperations(dbConfig: Config) extends ApiDataOperations {
        * only key-value from the resulting map
        */
       val keyed = pairs.byKey()
-      keyed.keys.headOption
-        .map(k => (k, keyed(k)))
+      keyed.keys.headOption.map(k => (k, keyed(k)))
     }
 
   /**
