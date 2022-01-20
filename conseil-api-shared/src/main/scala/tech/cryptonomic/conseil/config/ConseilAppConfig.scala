@@ -29,11 +29,11 @@ trait ConseilAppConfig {
   }
 
   protected def loadApplicationConfiguration(
-      commandLineArgs: Array[String]
+      commandLineArgs: List[String]
   ): ConfigReader.Result[CombinedConfiguration] = {
 
     /** Use the pureconfig convention to handle configuration from the command line */
-    def readArgs(args: Array[String]): ConfigReader.Result[ArgumentsConfig] =
+    def readArgs(args: List[String]): ConfigReader.Result[ArgumentsConfig] =
       argsParser.parse(args, ArgumentsConfig()).toRight[ConfigReaderFailures](sys.exit(1))
 
     //this extra configuration might be needed as we add send operations to the conseil API
