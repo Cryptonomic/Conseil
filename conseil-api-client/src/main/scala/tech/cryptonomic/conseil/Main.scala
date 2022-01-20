@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil
+package tech.cryptonomic.conseil.api
 
 import cats.effect.{IO, IOApp}
 import cats.implicits._
@@ -7,8 +7,8 @@ import org.http4s.implicits._
 import org.http4s.Status
 import sttp.tapir.client.http4s.Http4sClientInterpreter
 
-import tech.cryptonomic.conseil.info.model.GenericServerError
-import tech.cryptonomic.conseil.info.converters.genericServerErrorDecoder
+import tech.cryptonomic.conseil.api.info.model.GenericServerError
+import tech.cryptonomic.conseil.api.info.converters.genericServerErrorDecoder
 
 object Main extends IOApp.Simple {
   val localhost = Some(uri"http://localhost:8080")
