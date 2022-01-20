@@ -7,50 +7,59 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.platform.data.ApiDataEndpoints
 import tech.cryptonomic.conseil.platform.data.tezos.TezosDataOperations._
 import tech.cryptonomic.conseil.common.tezos.Tables._
+// import cats.effect.IO
 
 trait TezosDataEndpoints extends ApiDataEndpoints with TezosFilterFromQueryString {
 
   import tech.cryptonomic.conseil.platform.data.converters._
   import tech.cryptonomic.conseil.platform.data.schemas._
 
+  // def xtzRoutes: List[ServerEndpoint[Any, IO]]
+
   lazy val xtzEndpoints = List(
     tezosQueryEndpoint,
-    // tezosBlocksEndpoint,
     tezosBlocksHeadEndpoint,
     tezosBlockByHashEndpoint,
-    // tezosAccountsEndpoint,
+    tezosAccountsEndpoint,
     tezosAccountByIdEndpoint,
-    // tezosOperationGroupsEndpoint,
-    tezosOperationGroupByIdEndpoint
-    // tezosAvgFeesEndpoint,
-    // tezosOperationsEndpoint
+    tezosOperationGroupsEndpoint,
+    tezosOperationGroupByIdEndpoint,
+    tezosAvgFeesEndpoint,
+    tezosOperationsEndpoint
   )
 
   val xtzPlatform = "tezos"
 
-  private def root: Endpoint[Unit, Unit, Nothing, Unit, Any] = commonPath(xtzPlatform)
+  private def root: Endpoint[Unit, String, Nothing, Unit, Any] =
+    infallibleEndpoint.in("v2" / "data" / xtzPlatform / query[String]("network"))
 
   def tezosQueryEndpoint = queryEndpoint(xtzPlatform)
 
   /** V2 Blocks endpoint definition */
-  def tezosBlocksEndpoint =
+  // val appInfo: Endpoint[Unit, String, GenericServerError, Info, Any] = base.get
+  // val appInfo: ServerEndpoint[Any, IO] = protocol.appInfo.serverLogicSuccess(_ => currentInfo)
+  def tezosBlocksEndpoint: Endpoint[Unit, (String, TezosFilter, Option[String]), _, List[QueryResponse], Any] =
     root.get
       .in("blocks" / tezosQsFilter)
+      .in(header[Option[String]]("apiKey"))
       .out(compatibilityQuery[List[QueryResponse]]("blocks"))
       .errorOut(statusCode(StatusCode.NotFound))
 
   /** V2 Blocks head endpoint definition */
-  def tezosBlocksHeadEndpoint =
+  def tezosBlocksHeadEndpoint: Endpoint[Unit, (String, Option[String]), Unit, BlocksRow, Any] =
     root.get
       .in("blocks" / "head")
+      .in(header[Option[String]]("apiKey"))
       .out(compatibilityQuery[BlocksRow]("blocks head"))
       .errorOut(statusCode(StatusCode.NotFound))
+
+  /* Up until here */
 
   /** V2 Blocks by hash endpoint definition */
   def tezosBlockByHashEndpoint =
     root.get
       .in("blocks" / query[String]("hash"))
-      .out(compatibilityQuery[BlocksRow]("blocks by hash"))
+      .out(compatibilityQuery[BlockResult]("blocks by hash"))
       .errorOut(statusCode(StatusCode.NotFound))
 
   /** V2 Accounts endpoint definition */

@@ -13,6 +13,8 @@ private[data] object schemas {
   implicit val blocksSchemaTezos: Schema[TezosTables.BlocksRow] = Schema.derived
   implicit val blocksSchemaEthereum: Schema[EthereumTables.BlocksRow] = Schema.derived
 
+  implicit val blockResultSchema: Schema[BlockResult] = Schema.derived
+
   implicit val accountsRowSchemaTezos: Schema[TezosTables.AccountsRow] = Schema.derived
   implicit val accountsRowSchemaEthereum: Schema[EthereumTables.AccountsRow] = Schema.derived
   implicit val accountResultSchema: Schema[AccountResult] = Schema.derived

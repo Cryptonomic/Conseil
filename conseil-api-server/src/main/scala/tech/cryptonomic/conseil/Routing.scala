@@ -1,13 +1,16 @@
 package tech.cryptonomic.conseil
 
-import cats.effect.{Async, IO}
+import tech.cryptonomic.conseil.platform.data.tezos.TezosDataRoutes
+
+import cats.effect.IO
 import cats.syntax.option._
 import org.http4s.HttpApp
 import sttp.model.StatusCode
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.circe._
 import sttp.tapir.server.ServerEndpoint
-import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
+import sttp.tapir.server.http4s.Http4sServerInterpreter
+import sttp.tapir.server.http4s.Http4sServerOptions
 import sttp.tapir.server.interceptor.ValuedEndpointOutput
 import sttp.tapir.statusCode
 
@@ -18,9 +21,14 @@ object Routing extends APIDocs {
 
   val appInfo: ServerEndpoint[Any, IO] = protocol.appInfo.serverLogicSuccess(_ => currentInfo)
 
-  val endpoints = appInfo :: docsRoute
+  private val tezosDataRoutes: TezosDataRoutes = ???
 
-  def instance[F[_]: Async]: HttpApp[IO] =
+  // TODO: add routes for discoveryEndpoints
+  val allPlatformRoutes =
+    appInfo :: docsRoute ++ tezosDataRoutes.getRoute
+
+  // def instance[F[_]: Async]: HttpApp[F] =
+  def instance: HttpApp[IO] =
     Http4sServerInterpreter[IO](
       Http4sServerOptions
         .customInterceptors[IO, IO]
@@ -31,6 +39,6 @@ object Routing extends APIDocs {
           ).some
         }
         .options
-    ).toRoutes(endpoints).orNotFound
+    ).toRoutes(allPlatformRoutes).orNotFound
 
 }

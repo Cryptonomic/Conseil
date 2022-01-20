@@ -117,7 +117,8 @@ object Dependencies {
   val tapirShared = Seq(
     "com.softwaremill.sttp.tapir" %% "tapir-core"       % Versions.tapir,
     "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % Versions.tapir,
-    logback
+    logback,
+    scopt(0)
   )
   val tapirServer = Seq(
     "com.softwaremill.sttp.tapir" %% "tapir-http4s-server"     % Versions.tapir,

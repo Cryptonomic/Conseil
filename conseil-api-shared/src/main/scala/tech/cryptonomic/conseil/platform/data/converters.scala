@@ -19,7 +19,7 @@ private[data] object converters {
   implicit val operationGroupsRowCodec = deriveCodec[OperationGroupsRow]
   implicit val operationsRowCodec = deriveCodec[OperationsRow]
 
-  // implicit val blockResultCodec = deriveCodec[BlockResult]
+  implicit val blockResultCodec = deriveCodec[BlockResult]
   implicit val operationGroupResultCodec = deriveCodec[OperationGroupResult]
   implicit val accountResultCodec = deriveCodec[AccountResult]
 

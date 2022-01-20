@@ -7,13 +7,14 @@ import sttp.tapir.json.circe._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
 import sttp.model.StatusCode
 
+// private[data] trait ApiDataEndpoints {
 private[data] trait ApiDataEndpoints {
 
   import tech.cryptonomic.conseil.platform.data.converters._
   import tech.cryptonomic.conseil.platform.data.schemas._
 
-  protected def commonPath(platform: String): Endpoint[Unit, Unit, Nothing, Unit, Any] =
-    infallibleEndpoint.in("v2" / "data" / platform / "network" / "entity")
+  protected def commonPath(platform: String): Endpoint[Unit, (String, String), Nothing, Unit, Any] =
+    infallibleEndpoint.in("v2" / "data" / platform / query[String]("network") / query[String]("entity"))
 
   /** V2 Query endpoint definition */
   def queryEndpoint(platform: String) =

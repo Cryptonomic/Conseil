@@ -17,7 +17,7 @@ object DataTypes {
   import io.scalaland.chimney.dsl._
 
   type QueryResponse = Map[String, Option[Any]]
-  case class QR(value: QueryResponse)
+  case class QR(value: QueryResponse) // extends AnyVal
 
   /** Method checks if type can be aggregated */
   lazy val canBeAggregated: DataType => AggregationType => Boolean = { dataType =>
