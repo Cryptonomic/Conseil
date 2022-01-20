@@ -53,7 +53,15 @@ lazy val apiShared = (project in file("conseil-api-shared"))
   .settings(name := "api-shared", libraryDependencies ++= Dependencies.tapirShared)
   .dependsOn(common, commonTestKit % Test)
 lazy val apiServer = (project in file("conseil-api-server"))
-  .settings(name := "api-server", libraryDependencies ++= Dependencies.tapirServer)
+  .settings(
+    name := "api-server",
+    mainClass := Some("tech.cryptonomic.conseil.api.Conseil"),
+    libraryDependencies ++= Dependencies.tapirServer
+  )
+  .addRunCommand(
+    description = "Task to run the main Conseil API Server",
+    javaExtras = Seq("-Xms1024M", "-Xmx8192M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
+  )
   .dependsOn(apiShared)
 lazy val apiClient = (project in file("conseil-api-client"))
   .settings(name := "api-client", libraryDependencies ++= Dependencies.tapirClient)
