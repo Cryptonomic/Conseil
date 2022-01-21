@@ -247,6 +247,12 @@ object TezosTypes {
       blockOrder: Option[Int] = None
   ) extends Operation
 
+  final case class Preendorsement(
+    level: BlockLevel,
+    metadata: PreendorsementMetadata,
+    blockOrder: Option[Int] = None
+  ) extends Operation
+
   final case class SeedNonceRevelation(
       level: BlockLevel,
       nonce: Nonce,
@@ -348,7 +354,12 @@ object TezosTypes {
   //metadata definitions, both shared or specific to operation kind
   final case class EndorsementMetadata(
       slot: Option[Int],
-      slots: List[Int],
+      slots: Option[List[Int]],
+      delegate: PublicKeyHash,
+      balance_updates: List[OperationMetadata.BalanceUpdate]
+  )
+
+  final case class PreendorsementMetadata(
       delegate: PublicKeyHash,
       balance_updates: List[OperationMetadata.BalanceUpdate]
   )

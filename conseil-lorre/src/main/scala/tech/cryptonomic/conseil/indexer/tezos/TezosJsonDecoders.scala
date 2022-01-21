@@ -252,6 +252,7 @@ private[tezos] object TezosJsonDecoders {
       //derive all the remaining decoders, sorted to preserve dependencies
       implicit val balanceUpdateDecoder: Decoder[OperationMetadata.BalanceUpdate] = deriveConfiguredDecoder
       implicit val endorsementMetadataDecoder: Decoder[EndorsementMetadata] = deriveConfiguredDecoder
+      implicit val preendorsementMetadataDecoder: Decoder[PreendorsementMetadata] = deriveConfiguredDecoder
       implicit val balanceUpdatesMetadataDecoder: Decoder[BalanceUpdatesMetadata] = deriveConfiguredDecoder
       implicit val revealResultDecoder: Decoder[OperationResult.Reveal] = deriveConfiguredDecoder
       implicit val transactionResultDecoder: Decoder[OperationResult.Transaction] = deriveConfiguredDecoder
