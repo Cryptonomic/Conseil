@@ -83,7 +83,7 @@ object BigMapsConversions extends ConseilLogSupport {
             Tables.BigMapContentsRow(
               bigMapId = id,
               key = toMichelsonScript[MichelsonInstruction](key.expression), //we're using instructions to represent data values
-              keyHash = Some(keyHash.value),
+              keyHash = keyHash.value,
               operationGroupId = opGroupHash.map(_.value),
               value = value.map(it => toMichelsonScript[MichelsonInstruction](it.expression)), //we're using instructions to represent data values
               valueMicheline = value.map(_.expression),
