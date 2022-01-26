@@ -77,7 +77,7 @@ class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* wit
     * will be initialized and eventually exposed.
     */
   private object ApiCache {
-    private lazy val cache = forVisiblePlatforms {
+    private lazy val cache: Map[BlockchainPlatform, TezosDataRoutes] = forVisiblePlatforms {
       case Platforms.Tezos =>
         val operations = new TezosDataOperations(
           config.platforms
@@ -98,9 +98,8 @@ class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* wit
     private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
     private val metadataCaching = MetadataCaching.empty[IO]
 
-    private val metadataOperations: Map[(String, String), DatabaseRunner] = config.platforms
-      .getDatabases()
-      .mapValues(db => () => db)
+    private val metadataOperations: Map[(String, String), DatabaseRunner] =
+      config.platforms.getDatabases().mapValues(db => () => db)
 
     // lazy val cachedDiscoveryOperations: GenericPlatformDiscoveryOperations =
     lazy val cachedDiscoveryOperations =
@@ -117,7 +116,6 @@ class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* wit
       *
       * @see `tech.cryptonomic.conseil.common.config.Platforms` to get list of possible platforms.
       */
-    // lazy val cachedDataEndpoints: Map[String, ApiDataRoutes] =
     lazy val cachedDataEndpoints = cache.map { case (key, value) => key.name -> value }
 
     private val visiblePlatforms = transformation.overridePlatforms(config.platforms.getPlatforms())
