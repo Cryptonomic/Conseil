@@ -424,7 +424,8 @@ object TezosIndexer extends ConseilLogSupport {
       node = new TezosNodeInterface(conf, callsConf, streamingClientConf),
       tezosIndexedDataOperations = indexedData,
       indexerSearch = forkSearchEngine.idsIndexerSearch,
-      amender = TezosForkInvalidatingAmender(db)
+      amender = TezosForkInvalidatingAmender(db),
+      batchConf = batchingConf
     )(dispatcher)
 
     val feeOperations = new TezosFeeOperations(db)
