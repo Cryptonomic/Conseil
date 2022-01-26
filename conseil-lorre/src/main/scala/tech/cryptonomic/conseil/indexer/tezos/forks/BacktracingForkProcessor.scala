@@ -7,6 +7,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BlockData, TezosBlockHa
 import tech.cryptonomic.conseil.indexer.tezos.{TezosBlocksDataFetchers, TezosIndexedDataOperations, TezosRPCInterface}
 import cats._
 import cats.implicits._
+import tech.cryptonomic.conseil.indexer.config.BatchFetchConfiguration
 import tech.cryptonomic.conseil.indexer.forks.ForkAmender
 import tech.cryptonomic.conseil.indexer.forks.ForkDetector.SearchBlockId
 
@@ -27,13 +28,16 @@ class BacktracingForkProcessor(
     val node: TezosRPCInterface,
     tezosIndexedDataOperations: TezosIndexedDataOperations,
     indexerSearch: SearchBlockId[Future, TezosBlockHash],
-    amender: ForkAmender[Future, TezosBlockHash]
+    amender: ForkAmender[Future, TezosBlockHash],
+    batchConf: BatchFetchConfiguration,
 )(ec: ExecutionContext)
     extends TezosBlocksDataFetchers
     with ConseilLogSupport {
 
+  import batchConf.blockOperationsConcurrencyLevel
+
   /** parallelism in the multiple requests decoding on the RPC interface */
-  override def fetchConcurrency: Int = 50
+  override def fetchConcurrency: Int = blockOperationsConcurrencyLevel
 
   implicit override def fetchFutureContext: ExecutionContext = ec
 
