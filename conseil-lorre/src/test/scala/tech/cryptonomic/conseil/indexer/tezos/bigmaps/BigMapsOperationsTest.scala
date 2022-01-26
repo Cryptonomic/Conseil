@@ -128,7 +128,7 @@ class BigMapsOperationsTest
           BigMapContentsRow(
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
-            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            keyHash = "exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN",
             value = Some("Pair 20 {}"),
             valueMicheline = Some("""{"prim":"Pair", "args": [{"int":"20"},[]]}"""),
             operationGroupId = Some(opGroupHash.value),
@@ -302,7 +302,7 @@ class BigMapsOperationsTest
         val initialBigMapContent = BigMapContentsRow(
           bigMapId = BigDecimal(1),
           key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
-          keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+          keyHash = "exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN",
           value = Some("Pair 20 {}"),
           forkId = Fork.mainForkId
         )
@@ -346,7 +346,7 @@ class BigMapsOperationsTest
           BigMapContentsRow(
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
-            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            keyHash = "exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN",
             value = Some("Pair 50 {}"),
             valueMicheline = Some("""{"prim":"Pair", "args": [{"int":"50"},[]]}"""),
             operationGroupId = Some(opGroupHash.value),
@@ -372,7 +372,7 @@ class BigMapsOperationsTest
         val initialBigMapContent = BigMapContentsRow(
           bigMapId = BigDecimal(1),
           key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
-          keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+          keyHash = "exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN",
           value = Some("Pair 20 {}"),
           forkId = Fork.mainForkId
         )
@@ -438,7 +438,7 @@ class BigMapsOperationsTest
           BigMapContentsRow(
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
-            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            keyHash = "exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN",
             value = Some("Pair 50 {}"),
             valueMicheline = Some("""{"prim":"Pair", "args": [{"int":"50"},[]]}"""),
             operationGroupId = Some(opGroupHashes(0).value),
@@ -473,7 +473,7 @@ class BigMapsOperationsTest
           BigMapContentsRow(
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
-            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            keyHash = "exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN",
             value = Some("Pair 20 {}"),
             forkId = Fork.mainForkId
           )
@@ -522,7 +522,7 @@ class BigMapsOperationsTest
           BigMapContentsRow(
             bigMapId = BigDecimal(2),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
-            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            keyHash = "exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN",
             value = Some("Pair 20 {}"),
             forkId = Fork.mainForkId
           )
@@ -551,14 +551,14 @@ class BigMapsOperationsTest
           BigMapContentsRow(
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
-            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            keyHash = "exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN",
             value = Some("Pair 10 {}"),
             forkId = Fork.mainForkId
           ),
           BigMapContentsRow(
             bigMapId = BigDecimal(2),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
-            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            keyHash = "exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN",
             value = Some("Pair 20 {}"),
             forkId = Fork.mainForkId
           )
@@ -629,7 +629,7 @@ class BigMapsOperationsTest
           BigMapContentsRow(
             bigMapId = BigDecimal(3),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
-            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            keyHash = "exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN",
             value = Some("Pair 20 {}"),
             forkId = Fork.mainForkId
           )
@@ -657,7 +657,7 @@ class BigMapsOperationsTest
           BigMapContentsRow(
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
-            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            keyHash = "exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN",
             value = Some("Pair 20 {}"),
             forkId = Fork.mainForkId
           )
