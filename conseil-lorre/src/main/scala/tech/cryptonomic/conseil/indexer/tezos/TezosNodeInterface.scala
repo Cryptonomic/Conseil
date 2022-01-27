@@ -6,7 +6,7 @@ import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.settings.ConnectionPoolSettings
-import akka.stream.{ActorMaterializer, Attributes}
+import akka.stream.{ActorMaterializer, Attributes, Materializer}
 import akka.stream.Attributes.LogLevels
 import akka.stream.scaladsl.{Flow, Source}
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
@@ -93,7 +93,7 @@ private[tezos] class TezosNodeInterface(
     with ConseilLogSupport {
   import config.node
 
-  implicit val materializer: ActorMaterializer = ActorMaterializer()
+  implicit val materializer: Materializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   private[this] val rejectingCalls = new java.util.concurrent.atomic.AtomicBoolean(false)
   private[this] lazy val rejected = Failure(

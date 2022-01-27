@@ -57,6 +57,7 @@ class MetadataServiceTest
             "mainnet",
             enabled = true,
             TezosNodeConfiguration("tezos-host", 123, "https://"),
+            BigDecimal.decimal(8000),
             dbCfg,
             None
           ),

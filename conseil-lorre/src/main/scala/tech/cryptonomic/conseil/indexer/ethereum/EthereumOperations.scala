@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.indexer.ethereum
 
-import cats.effect.{Concurrent, Resource}
+import cats.effect.{Async, Concurrent, Resource}
 import fs2.Stream
 import slickeffect.Transactor
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
@@ -20,7 +20,7 @@ import scala.concurrent.ExecutionContext
   * @param tx [[slickeffect.Transactor]] to perform a Slick operations on the database
   * @param batchConf Configuration containing batch fetch values
   */
-class EthereumOperations[F[_]: Concurrent](
+class EthereumOperations[F[_]: Async](
     ethereumClient: EthereumClient[F],
     persistence: EthereumPersistence[F],
     tx: Transactor[F],
@@ -171,11 +171,11 @@ class EthereumOperations[F[_]: Concurrent](
             .evalTap {
               case (block, txs, receipts, logs, contractAccounts, accounts, tokenTransfers, tokenBalances) =>
                 tx.transact(
-                  persistence.createBlock(block, txs, receipts) andThen
-                      persistence.createContractAccounts(contractAccounts) andThen
-                      persistence.upsertAccounts(accounts)(ExecutionContext.global) andThen
-                      persistence.createAccountBalances(contractAccounts ++ accounts) andThen
-                      persistence.createTokenTransfers(tokenTransfers) andThen
+                  persistence.createBlock(block, txs, receipts) >>
+                      persistence.createContractAccounts(contractAccounts) >>
+                      persistence.upsertAccounts(accounts)(ExecutionContext.global) >>
+                      persistence.createAccountBalances(contractAccounts ++ accounts) >>
+                      persistence.createTokenTransfers(tokenTransfers) >>
                       persistence.createTokenBalances(tokenBalances)
                 )
             }
@@ -192,7 +192,7 @@ object EthereumOperations {
     * @param tx [[slickeffect.Transactor]] to perform a Slick operations on the database
     * @param batchConf Configuration containing batch fetch values
     */
-  def resource[F[_]: Concurrent](
+  def resource[F[_]: Async](
       rpcClient: RpcClient[F],
       tx: Transactor[F],
       batchConf: EthereumBatchFetchConfiguration

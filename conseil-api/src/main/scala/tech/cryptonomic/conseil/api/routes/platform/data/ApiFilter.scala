@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.api.routes.platform.data
 
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OrderDirection, QueryOrdering}
-import endpoints.{Invalid, Valid, Validated}
+import endpoints4s.{Invalid, Valid, Validated}
 
 /** Trait which provides common elements for creating filters in API */
 trait ApiFilter {

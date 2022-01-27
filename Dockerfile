@@ -1,5 +1,7 @@
 FROM openjdk:8-stretch
-RUN apt-get update && apt-get install -y apt-transport-https libpq5 && \
+RUN apt-get update && apt-get install -y apt-transport-https libpq5 ca-certificates && \
+    sed -i 's/mozilla\/DST_Root_CA_X3.crt/!mozilla\/DST_Root_CA_X3.crt/' /etc/ca-certificates.conf && \
+    update-ca-certificates && \
     echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | tee /etc/apt/sources.list.d/sbt.list && \
     echo "deb https://repo.scala-sbt.org/scalasbt/debian /" | tee /etc/apt/sources.list.d/sbt_old.list && \
     curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | apt-key add && \
@@ -25,6 +27,7 @@ WORKDIR /src
 RUN sbt clean assembly -J-Xss32m
 
 FROM openjdk:13-alpine
+RUN apk add --upgrade apk-tools busybox musl-utils
 RUN apk --no-cache add ca-certificates
 RUN apk add netcat-openbsd
 WORKDIR /root/

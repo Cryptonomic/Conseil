@@ -125,6 +125,7 @@ object Platforms {
       network: String,
       enabled: Boolean,
       node: TezosNodeConfiguration,
+      bakerRollsSize: BigDecimal,
       db: Config,
       tns: Option[TNSContractConfiguration]
   ) extends PlatformConfiguration {

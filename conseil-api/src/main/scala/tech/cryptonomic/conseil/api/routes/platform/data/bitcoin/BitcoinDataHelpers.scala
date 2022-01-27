@@ -1,8 +1,8 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
 import akka.http.scaladsl.server.Route
-import endpoints.akkahttp.server.Endpoints
-import endpoints.algebra.Documentation
+import endpoints4s.akkahttp.server.Endpoints
+import endpoints4s.algebra.Documentation
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiServerJsonSchema
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryValidationError
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiValidation.defaultValidated

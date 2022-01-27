@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.ethereum
 
-import endpoints.algebra.JsonEntities
+import endpoints4s.algebra.JsonEntities
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiFilter.Sorting
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiFilterQueryString
 

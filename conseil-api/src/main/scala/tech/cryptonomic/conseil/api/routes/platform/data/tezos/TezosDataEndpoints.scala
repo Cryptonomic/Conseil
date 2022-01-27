@@ -5,7 +5,7 @@ import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosDataOperatio
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.BlocksRow
-import endpoints.algebra
+import endpoints4s.algebra
 import tech.cryptonomic.conseil.api.routes.validation.Validation.QueryValidating
 
 /** Trait containing endpoints definition */

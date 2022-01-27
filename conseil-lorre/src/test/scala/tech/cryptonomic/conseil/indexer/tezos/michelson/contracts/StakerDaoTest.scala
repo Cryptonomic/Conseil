@@ -72,7 +72,7 @@ class StakerDaoTest extends ConseilSpec {
         )
 
         //register the token info
-        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2-StakerDao"))
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "[TZIP-7-StakerDao]"))
         //set the map id for the contract
         sut.setMapId(ledgerId, mapId)
 

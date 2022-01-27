@@ -20,6 +20,7 @@ class ConseilAppConfigTest extends ConseilSpec {
                                             |platforms: [
                                             |  {
                                             |    name: "tezos"
+                                            |    baker-rolls-size: 8000
                                             |    network: "alphanet"
                                             |    enabled: true,
                                             |    node: {
@@ -41,6 +42,7 @@ class ConseilAppConfigTest extends ConseilSpec {
                                             |  },
                                             |  {
                                             |    name: "tezos"
+                                            |    baker-rolls-size: 8000
                                             |    network: "alphanet-staging"
                                             |    enabled: false,
                                             |    node: {
@@ -71,6 +73,7 @@ class ConseilAppConfigTest extends ConseilSpec {
             "alphanet",
             enabled = true,
             TezosNodeConfiguration("localhost", 8732, "http", "tezos/alphanet/"),
+            BigDecimal.decimal(8000),
             cfg.getConfigList("platforms").get(0).getConfig("db"),
             None
           ),
@@ -84,6 +87,7 @@ class ConseilAppConfigTest extends ConseilSpec {
               "tezos/alphanet-staging/",
               traceCalls = true
             ),
+            BigDecimal.decimal(8000),
             cfg.getConfigList("platforms").get(1).getConfig("db"),
             None
           )
@@ -98,6 +102,7 @@ class ConseilAppConfigTest extends ConseilSpec {
                                               |platforms: [
                                               |  {
                                               |    name: "tezos"
+                                              |    baker-rolls-size: 8000
                                               |    network: "alphanet"
                                               |    enabled: true,
                                               |    node: {
@@ -151,7 +156,7 @@ class ConseilAppConfigTest extends ConseilSpec {
         val typedConfig =
           pureconfig.loadConfig[Option[NautilusCloudConfiguration]](conf = config, namespace = "nautilus-cloud")
 
-        typedConfig.right.value shouldBe empty
+        typedConfig.value shouldBe empty
       }
 
       "extract Some, when configuration for Nautilus Cloud exists" in {

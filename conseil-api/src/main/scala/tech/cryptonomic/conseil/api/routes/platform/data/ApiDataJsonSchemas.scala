@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data
 
-import endpoints.generic
+import endpoints4s.generic
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataTypes.ApiQuery
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 

@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.common.bitcoin.rpc
 
-import cats.effect.{Concurrent, Resource}
+import cats.effect.{Async, Resource}
 import fs2.{Pipe, Stream}
 import io.circe.generic.auto._
 import org.http4s.circe.CirceEntityDecoder._
@@ -28,7 +28,7 @@ import tech.cryptonomic.conseil.common.bitcoin.rpc.json.{Block, BlockchainInfo, 
   *   val res0: List[String] = List(hash1, hash2)
   * }}}
   */
-class BitcoinClient[F[_]: Concurrent](client: RpcClient[F]) {
+class BitcoinClient[F[_]: Async](client: RpcClient[F]) {
 
   /**
     * Get blockchain info.
@@ -80,6 +80,6 @@ object BitcoinClient {
     *
     * @param client [[RpcClient]] to use with the Bitcoin JSON-RPC api.
     */
-  def resource[F[_]: Concurrent](client: RpcClient[F]): Resource[F, BitcoinClient[F]] =
+  def resource[F[_]: Async](client: RpcClient[F]): Resource[F, BitcoinClient[F]] =
     Resource.pure(new BitcoinClient[F](client))
 }

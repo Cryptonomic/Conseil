@@ -124,18 +124,23 @@ CREATE TABLE tezos.processed_chain_events (
 --
 
 CREATE TABLE tezos.registered_tokens (
-    id integer PRIMARY KEY,
     name text NOT NULL,
-    contract_type text NOT NULL,
-    account_id text NOT NULL,
-    scale integer NOT NULL,
+    symbol text NOT NULL,
+    decimals integer NOT NULL,
     interfaces text NOT NULL,
+    address text NOT NULL,
+    token_index integer,
+    balance_map integer NOT NULL,
+    balance_key_type text NOT NULL,
+    balance_path text NOT NULL,
+    markets text NOT NULL,
+    farms text NOT NULL,
     is_tzip16 boolean NOT NULL,
     is_nft boolean NOT NULL,
-    metadata_type text NOT NULL,
-    metadata_big_map_id integer NOT NULL,
-    metadata_big_map_type text NOT NULL,
-    metadata_path text NOT NULL
+    metadata_type text,
+    metadata_big_map_id integer,
+    metadata_big_map_type text,
+    metadata_path text
 );
 
 CREATE TABLE tezos.metadata (
@@ -159,7 +164,7 @@ CREATE TABLE tezos.nfts (
 );
 
 CREATE TABLE tezos.token_balances (
-    token_id integer,
+    token_address text,
     address text NOT NULL,
     balance numeric NOT NULL,
     block_id character varying NOT NULL,
@@ -167,7 +172,7 @@ CREATE TABLE tezos.token_balances (
     asof timestamp without time zone NOT NULL,
     invalidated_asof timestamp,
     fork_id character varying NOT NULL,
-    PRIMARY KEY (token_id, address, block_level, fork_id)
+    PRIMARY KEY (token_address, address, block_level, fork_id)
 );
 
 CREATE TABLE tezos.tezos_names (
@@ -462,6 +467,7 @@ CREATE TABLE tezos.operations (
     delegate character varying,
     slots character varying,
     nonce character varying,
+    operation_order integer,
     pkh character varying,
     secret character varying,
     source character varying,
@@ -527,14 +533,18 @@ CREATE SEQUENCE tezos.operations_operation_id_seq
 ALTER SEQUENCE tezos.operations_operation_id_seq OWNED BY tezos.operations.operation_id;
 
 CREATE TABLE tezos.big_maps (
-    big_map_id numeric PRIMARY KEY,
+    big_map_id numeric,
     key_type character varying,
-    value_type character varying
+    value_type character varying,
+    fork_id character varying NOT NULL,
+    block_level bigint,
+    invalidated_asof timestamp,
+    PRIMARY KEY (big_map_id, fork_id)
 );
 
 CREATE TABLE tezos.big_map_contents (
     big_map_id numeric NOT NULL,
-    key character varying,
+    key character varying NOT NULL,
     key_hash character varying,
     operation_group_id character varying,
     value character varying,
@@ -543,7 +553,9 @@ CREATE TABLE tezos.big_map_contents (
     "timestamp" timestamp without time zone,
     cycle integer,
     period integer,
-    PRIMARY KEY (big_map_id, key)
+    fork_id character varying NOT NULL,
+    invalidated_asof timestamp,
+    PRIMARY KEY (big_map_id, key_hash, fork_id)
 );
 
 CREATE TABLE tezos.big_map_contents_history (
@@ -555,7 +567,9 @@ CREATE TABLE tezos.big_map_contents_history (
     block_level bigint,
     "timestamp" timestamp without time zone,
     cycle integer,
-    period integer
+    period integer,
+    fork_id character varying NOT NULL,
+    invalidated_asof timestamp
 );
 
 CREATE INDEX big_map_id_idx ON tezos.big_map_contents USING btree (big_map_id);
@@ -565,7 +579,10 @@ CREATE INDEX combined_big_map_operation_group_ids_idx ON tezos.big_map_contents 
 CREATE TABLE tezos.originated_account_maps (
     big_map_id numeric,
     account_id character varying,
-    PRIMARY KEY (big_map_id, account_id)
+    block_level bigint,
+    fork_id character varying NOT NULL,
+    invalidated_asof timestamp,
+    PRIMARY KEY (big_map_id, account_id, fork_id)
 );
 
 CREATE INDEX accounts_maps_idx ON tezos.originated_account_maps USING btree (account_id);

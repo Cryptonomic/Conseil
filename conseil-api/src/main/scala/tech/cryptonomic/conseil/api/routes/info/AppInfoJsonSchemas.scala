@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.info
 
-import endpoints.generic
+import endpoints4s.generic
 import AppInfo.{GitInfo, Info}
 
 /** Trait containing AppInfo schema */

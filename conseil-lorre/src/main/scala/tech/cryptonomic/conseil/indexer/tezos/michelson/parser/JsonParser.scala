@@ -27,6 +27,7 @@ object JsonParser {
    * */
   sealed trait JsonSection
 
+  case class JsonViewSection(prim: String, args: JsonInstruction) extends JsonSection
   case class JsonExpressionSection(prim: String, args: List[JsonExpression]) extends JsonSection {
     def toMichelsonExpression: Option[MichelsonExpression] = args.headOption.map(_.toMichelsonExpression)
   }
@@ -48,6 +49,7 @@ object JsonParser {
       case Left(Right(jsonInstruction)) => jsonInstruction.toMichelsonInstruction.normalized
       case Right(Nil) => MichelsonEmptyInstruction
       case Right(jsonInstructions) => MichelsonInstructionSequence(jsonInstructions.map(_.toMichelsonInstruction))
+      case _ => MichelsonEmptyInstruction
     }
   }
 
@@ -175,13 +177,21 @@ object JsonParser {
         parameter <- extractExpression("parameter")
         storage <- extractExpression("storage")
         code <- extractCode
-      } yield MichelsonSchema(parameter, storage, code)
+        views = extractMultipleInstructions("view")
+      } yield MichelsonSchema(parameter, storage, code, views)
 
     private def extractExpression(sectionName: String): Result[MichelsonExpression] =
       code.collectFirst {
         case it @ JsonExpressionSection(`sectionName`, _) => it
-      }.flatMap(_.toMichelsonExpression)
-        .toRight(ParserError(s"No expression $sectionName found"))
+      }.toList.flatMap(_.toMichelsonExpression) match {
+        case Nil => Left(ParserError(s"No expression $sectionName found"))
+        case x => Right(x.head)
+      }
+
+    private def extractMultipleInstructions(sectionName: String): List[MichelsonInstruction] =
+      code.collect {
+        case it @ JsonViewSection(`sectionName`, _) => it
+      }.map(_.args.toMichelsonInstruction)
 
     private def extractCode: Result[MichelsonCode] =
       code.collectFirst {
@@ -193,7 +203,8 @@ object JsonParser {
     implicit val decodeSection: Decoder[JsonSection] =
       List[Decoder[JsonSection]](
         Decoder[JsonCodeSection].ensure(_.prim == "code", "No code section found").widen,
-        Decoder[JsonExpressionSection].widen
+        Decoder[JsonExpressionSection].widen,
+        Decoder[JsonViewSection].widen
       ).reduceLeft(_ or _)
 
     implicit val decodeExpression: Decoder[JsonExpression] = Decoder[JsonType].widen

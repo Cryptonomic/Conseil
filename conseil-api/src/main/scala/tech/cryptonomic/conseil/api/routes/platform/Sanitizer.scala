@@ -4,7 +4,7 @@ object Sanitizer {
 
   /** Sanitizes string to be viable to paste into plain SQL */
   def sanitizeForSql(str: String): String = {
-    val supportedCharacters = Set('_', '.', '+', ':', '-', ' ', '%', '"', '(', ')')
+    val supportedCharacters = Set('_', '.', '+', ':', '-', ' ', '%', '"', '(', ')', '{', '}')
     str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c)).flatMap {
       case '%' => """\%"""
       case c => c.toString

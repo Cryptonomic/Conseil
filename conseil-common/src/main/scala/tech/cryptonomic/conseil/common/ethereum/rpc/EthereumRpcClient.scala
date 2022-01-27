@@ -1,10 +1,8 @@
 package tech.cryptonomic.conseil.common.ethereum.rpc
 
-import cats.effect.{Concurrent, Resource}
+import cats.effect.{Async, Concurrent, IO, Resource}
 import fs2.{Pipe, Stream}
 import io.circe.generic.auto._
-import org.http4s.circe.CirceEntityDecoder._
-import org.http4s.circe.CirceEntityEncoder._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.ethereum.domain.{
   Account,
@@ -18,7 +16,6 @@ import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumRpcCommands._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction, TransactionReceipt}
 import tech.cryptonomic.conseil.common.ethereum.Utils
-import tech.cryptonomic.conseil.common.rpc.RpcClient.RpcException
 
 import java.sql.Timestamp
 import java.time.Instant
@@ -41,7 +38,7 @@ import java.time.Instant
   *   val res0: List[Block] = List(block1, block2)
   * }}}
   */
-class EthereumClient[F[_]: Concurrent](
+class EthereumClient[F[_]: Async](
     client: RpcClient[F]
 ) extends ConseilLogSupport {
 
@@ -50,6 +47,8 @@ class EthereumClient[F[_]: Concurrent](
   /**
     * Get the number of most recent block.
     */
+  import org.http4s.circe.CirceEntityCodec._
+
   def getMostRecentBlockNumber: Stream[F, String] =
     Stream(EthBlockNumber.request)
       .through(client.stream[EthBlockNumber.Params.type, String](batchSize = 1))
@@ -161,7 +160,7 @@ class EthereumClient[F[_]: Concurrent](
               .handleErrorWith {
                 // if balanceOf is not implemented by contract return 0x0
                 case ex =>
-                  Stream.emit("0x0").evalTap(_ => Concurrent[F].delay(logger.error(ex)))
+                  Stream.emit("0x0").evalTap(_ => Concurrent[F].delay(IO(logger.error(ex))))
               }
               .map(balance => (address, balance))
           }
@@ -276,6 +275,6 @@ object EthereumClient {
     *
     * @param client [[RpcClient]] to use with the EthereumClient JSON-RPC api.
     */
-  def resource[F[_]: Concurrent](client: RpcClient[F]): Resource[F, EthereumClient[F]] =
+  def resource[F[_]: Async](client: RpcClient[F]): Resource[F, EthereumClient[F]] =
     Resource.pure(new EthereumClient[F](client))
 }

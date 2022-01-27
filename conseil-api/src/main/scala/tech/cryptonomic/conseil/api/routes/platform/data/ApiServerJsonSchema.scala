@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.api.routes.platform.data
 
-import endpoints.akkahttp.server.JsonEntitiesFromSchemas
-import endpoints.algebra.{Decoder, Encoder}
+import endpoints4s.akkahttp.server.JsonEntitiesFromSchemas
+import endpoints4s.{Decoder, Encoder}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 import ApiDataStandardJsonCodecs.{
   anyDecoder,

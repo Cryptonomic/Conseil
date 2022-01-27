@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.indexer.tezos.processing
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import akka.Done
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import cats._
 import cats.implicits._
@@ -11,7 +11,6 @@ import tech.cryptonomic.conseil.indexer.config.{BakingAndEndorsingRights, BatchF
 import tech.cryptonomic.conseil.indexer.tezos.{
   TezosIndexedDataOperations,
   TezosNodeOperator,
-  Tzip16MetadataOperator,
   TezosDatabaseOperations => TezosDb
 }
 import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator.LazyPages
@@ -43,9 +42,8 @@ class AccountsProcessor(
     indexedData: TezosIndexedDataOperations,
     batchingConf: BatchFetchConfiguration,
     rightsConf: BakingAndEndorsingRights
-)(
-    implicit mat: ActorMaterializer
-) extends ConseilLogSupport {
+)(implicit mat: Materializer)
+    extends ConseilLogSupport {
 
   /** accounts, indexed by id */
   private type AccountsIndex = Map[AccountId, Account]

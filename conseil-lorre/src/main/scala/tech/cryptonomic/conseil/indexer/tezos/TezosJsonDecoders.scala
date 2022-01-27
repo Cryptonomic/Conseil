@@ -171,13 +171,13 @@ private[tezos] object TezosJsonDecoders {
       /* try decoding a number */
       implicit private val bignumDecoder: Decoder[Decimal] =
         Decoder.decodeString
-          .emapTry(jsonString => scala.util.Try(BigDecimal(jsonString)))
+          .emapTry(jsonString => Try(BigDecimal(jsonString)))
           .map(Decimal)
 
       /* try decoding a positive number */
       implicit private val positiveBignumDecoder: Decoder[PositiveDecimal] =
         Decoder.decodeString
-          .emapTry(jsonString => scala.util.Try(BigDecimal(jsonString)))
+          .emapTry(jsonString => Try(BigDecimal(jsonString)))
           .ensure(_ >= 0, "The passed-in json string is not a non-negative number")
           .map(PositiveDecimal)
 
@@ -257,12 +257,18 @@ private[tezos] object TezosJsonDecoders {
       implicit val transactionResultDecoder: Decoder[OperationResult.Transaction] = deriveConfiguredDecoder
       implicit val originationResultDecoder: Decoder[OperationResult.Origination] = deriveConfiguredDecoder
       implicit val delegationResultDecoder: Decoder[OperationResult.Delegation] = deriveConfiguredDecoder
+      implicit val registerGlobalConstantResultDecoder: Decoder[OperationResult.RegisterGlobalConstant] =
+        deriveConfiguredDecoder
       implicit val revealMetadataDecoder: Decoder[ResultMetadata[OperationResult.Reveal]] = deriveConfiguredDecoder
       implicit val transactionMetadataDecoder: Decoder[ResultMetadata[OperationResult.Transaction]] =
         deriveConfiguredDecoder
       implicit val originationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Origination]] =
         deriveConfiguredDecoder
       implicit val delegationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Delegation]] =
+        deriveConfiguredDecoder
+      implicit val registerGlobalConstantMetadataDecoder: Decoder[
+        ResultMetadata[OperationResult.RegisterGlobalConstant]
+      ] =
         deriveConfiguredDecoder
       implicit val internalOperationResultDecoder: Decoder[InternalOperationResults.InternalOperationResult] =
         deriveConfiguredDecoder

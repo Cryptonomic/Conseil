@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.discovery
 
-import cats.effect.{ContextShift, IO}
+import cats.effect.IO
 import com.rklaehn.radixtree.RadixTree
 import slick.dbio.{DBIO, DBIOAction}
 import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
@@ -22,6 +22,8 @@ import tech.cryptonomic.conseil.common.metadata._
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
+import cats.effect.unsafe.implicits.global
+
 /** Companion object providing apply method implementation */
 object GenericPlatformDiscoveryOperations {
 
@@ -31,7 +33,7 @@ object GenericPlatformDiscoveryOperations {
       cacheOverrides: AttributeValuesCacheConfiguration,
       cacheTTL: FiniteDuration,
       highCardinalityLimit: Int
-  )(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]): GenericPlatformDiscoveryOperations =
+  )(implicit executionContext: ExecutionContext): GenericPlatformDiscoveryOperations =
     new GenericPlatformDiscoveryOperations(dbRunners, caching, cacheOverrides, cacheTTL, highCardinalityLimit)
 }
 
@@ -42,7 +44,7 @@ class GenericPlatformDiscoveryOperations(
     cacheOverrides: AttributeValuesCacheConfiguration,
     cacheTTL: FiniteDuration,
     highCardinalityLimit: Int
-)(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO])
+)(implicit executionContext: ExecutionContext)
     extends PlatformDiscoveryOperations {
 
   import MetadataCaching._
@@ -194,7 +196,6 @@ class GenericPlatformDiscoveryOperations(
           } else {
             (for {
               _ <- caching.putEntities(key, ent)
-              _ <- contextShift.shift
               updatedEntities <- IO.fromFuture(
                 IO(
                   dbRunners((networkPath.up.platform, networkPath.network))
@@ -202,7 +203,7 @@ class GenericPlatformDiscoveryOperations(
                 )
               )
               _ <- caching.putEntities(key, updatedEntities(key).value)
-            } yield ()).unsafeRunAsyncAndForget()
+            } yield ()).unsafeRunAndForget()
             IO.pure(ent)
           }
       }
@@ -345,14 +346,13 @@ class GenericPlatformDiscoveryOperations(
               AttributeValuesCacheKey(platform, network, tableName, columnName),
               oldRadixTree
             )
-            _ <- contextShift.shift
             attributeValues <- IO.fromFuture(IO(makeAttributesQuery(platform, network, tableName, columnName, None)))
             radixTree = RadixTree(attributeValues.map(x => x.toLowerCase -> x): _*)
             _ <- caching.putAttributeValues(
               AttributeValuesCacheKey(platform, network, tableName, columnName),
               radixTree
             )
-          } yield ()).unsafeRunAsyncAndForget()
+          } yield ()).unsafeRunAndForget()
           IO.pure(oldRadixTree.filterPrefix(attributeFilter).values.take(maxResultLength).toList)
         case None =>
           IO.pure(List.empty)
@@ -403,10 +403,9 @@ class GenericPlatformDiscoveryOperations(
                 } else {
                   (for {
                     _ <- caching.putAttributes(key, attributes)
-                    _ <- contextShift.shift
                     updatedAttributes <- IO.fromFuture(IO(getUpdatedAttributes(entityPath, attributes)))
                     _ <- caching.putAttributes(key, updatedAttributes)
-                  } yield ()).unsafeRunAsyncAndForget()
+                  } yield ()).unsafeRunAndForget()
                   IO.pure(attributes)
                 }
             }.sequence
@@ -483,7 +482,6 @@ class GenericPlatformDiscoveryOperations(
           .map(keys => caching.getAllAttributesByKeys(keys))
           .sequence
           .map(_.reduce(_ ++ _))
-        _ <- contextShift.shift
         updatedAttributes <- entCache.foldMapM(
           (entC: CacheEntry[List[Entity]]) =>
             getAllUpdatedAttributes(platform.name, network.name, entC.value, attrCache)

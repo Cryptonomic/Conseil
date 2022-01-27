@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
 import tech.cryptonomic.conseil.api.routes.platform.data.{ApiDataEndpoints, ApiDataJsonSchemas, ApiDataTypes}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
-import endpoints.algebra
+import endpoints4s.algebra
 import tech.cryptonomic.conseil.api.routes.validation.Validation.QueryValidating
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes
 

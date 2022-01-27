@@ -28,7 +28,8 @@ class PlatformsTest extends ConseilSpec {
         """.stripMargin)
 
   private val configTezosNode = TezosNodeConfiguration("host", 0, "protocol")
-  private val configTezos = TezosConfiguration("mainnet", enabled = true, configTezosNode, dbCfg, None)
+  private val configTezos =
+    TezosConfiguration("mainnet", enabled = true, configTezosNode, BigDecimal.decimal(8000), dbCfg, None)
   private val configBitcoinNode = BitcoinNodeConfiguration("host", 0, "protocol", "username", "password")
   private val configBitcoinBatching = BitcoinBatchFetchConfiguration(1, 1, 1, 1, 1)
   private val configBitcoin =

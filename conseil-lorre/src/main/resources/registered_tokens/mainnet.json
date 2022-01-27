@@ -1,0 +1,51 @@
+[
+  {
+    "name": "Staker DAO",
+    "symbol": "SD symbol",
+    "decimals": 0,
+    "interfaces": ["TZIP-7-StakerDao"],
+    "address": "KT1EctCuorV2NfVb1XTQgvzJ88MQtWP8cMMv",
+    "tokenIndex": 1,
+    "balanceMap": 2,
+    "balanceKeyType": "address",
+    "balancePath": "path",
+    "markets": [],
+    "farms": [],
+    "isTzip16": false,
+    "isNft": false
+  },
+  {
+    "name": "USDtez",
+    "symbol": "USDtz",
+    "decimals": 6,
+    "interfaces": ["TZIP-7"],
+    "address": "KT1LN4LPSqTMS7Sd2CJw4bbDGRkMv2t68Fy9",
+    "tokenIndex": 1,
+    "balanceMap": 2,
+    "balanceKeyType": "address",
+    "balancePath": "path",
+    "markets": [],
+    "farms": [],
+    "isTzip16": false,
+    "isNft": false
+  },
+  {
+    "name": "hic et nunc NFT",
+    "symbol": "hic et nunc NFT",
+    "decimals": 6,
+    "interfaces": ["TZIP-16"],
+    "address": "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+    "tokenIndex": 1,
+    "balanceMap": 2,
+    "balanceKeyType": "address",
+    "balancePath": "path",
+    "markets": [],
+    "farms": [],
+    "isTzip16": true,
+    "isNft": true,
+    "metadataType": "other",
+    "metadataBigMapId": 514,
+    "metadataBigMapType": "ipfs",
+    "metadataPath": ""
+  }
+]

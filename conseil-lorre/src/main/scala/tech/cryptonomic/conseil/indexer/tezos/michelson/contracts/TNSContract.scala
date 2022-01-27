@@ -219,7 +219,7 @@ object TNSContract extends ConseilLogSupport {
        * Any other map (there should be exactly two) must then be the lookup, by exclusion.
        */
       val (reverseMaps, lookupMaps) = maps.partition {
-        case BigMapsRow(id, keyType, valueType) =>
+        case BigMapsRow(id, keyType, valueType, _, _, _) =>
           (keyType, valueType) match {
             case (Some("address"), Some("string")) => true
             case _ => false

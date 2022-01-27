@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
-import endpoints.algebra
+import endpoints4s.algebra
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiFilter.Sorting
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiFilterQueryString
 

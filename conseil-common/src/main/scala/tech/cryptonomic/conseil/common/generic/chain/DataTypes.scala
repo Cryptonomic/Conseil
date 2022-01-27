@@ -24,7 +24,7 @@ object DataTypes {
   /** Method checks if type can be aggregated */
   lazy val canBeAggregated: DataType => AggregationType => Boolean = { dataType =>
     {
-      case AggregationType.count => true
+      case AggregationType.count | AggregationType.countDistinct => true
       case AggregationType.max | AggregationType.min =>
         Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime, DataType.Currency)(dataType)
       case AggregationType.avg | AggregationType.sum =>
@@ -79,7 +79,7 @@ object DataTypes {
 
     /** Method creating Predicate out of ApiPredicate which is received by the API */
     def toPredicate: Predicate =
-      Predicate("tmp", OperationType.in).patchWith(this)
+      Predicate("tmp", OperationType.in).patchUsing(this)
   }
 
   /** Class representing query ordering */
@@ -156,7 +156,7 @@ object DataTypes {
 
     /** Transforms Aggregation predicate received form API into AggregationPredicate */
     def toAggregationPredicate: AggregationPredicate =
-      AggregationPredicate(operation = OperationType.in).patchWith(this)
+      AggregationPredicate(operation = OperationType.in).patchUsing(this)
   }
 
   /** Aggregation that is received by the API */
@@ -249,7 +249,7 @@ object DataTypes {
     /** Helper method for extracting prefixes needed for SQL */
     def prefixes: List[String] = values.toList.map(_.toString + "_")
     type AggregationType = Value
-    val sum, count, max, min, avg = Value
+    val sum, count, max, min, avg, countDistinct = Value
   }
 
   /** Enumeration of aggregation functions */

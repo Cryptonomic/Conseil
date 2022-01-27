@@ -1,8 +1,8 @@
 package tech.cryptonomic.conseil.api.routes.platform.data
 
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
-import endpoints.algebra.{Decoder, Encoder}
-import endpoints.{Invalid, Valid}
+import endpoints4s.{Decoder, Encoder}
+import endpoints4s.{Invalid, Valid}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Field, FormattedField, SimpleField}
 import ujson.{Bool, Num, Str}
 

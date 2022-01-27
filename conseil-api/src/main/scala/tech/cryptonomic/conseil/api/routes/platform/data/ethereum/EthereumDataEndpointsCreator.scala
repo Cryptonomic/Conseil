@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.api.routes.platform.data.ethereum
 
 import tech.cryptonomic.conseil.api.routes.platform.data.{ApiDataEndpoints, ApiDataJsonSchemas}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
-import endpoints.algebra
+import endpoints4s.algebra
 
 /** Trait containing endpoints definitions for Ethereum-related blockchains */
 trait EthereumDataEndpointsCreator

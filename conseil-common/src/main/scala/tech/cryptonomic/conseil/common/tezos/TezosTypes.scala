@@ -1,8 +1,14 @@
 package tech.cryptonomic.conseil.common.tezos
 
-import java.time.{Instant, ZonedDateTime}
-import scala.util.Try
+import tech.cryptonomic.conseil.common.config.Platforms._
+
 import cats.Functor
+import pureconfig._
+import pureconfig.generic.auto._
+
+import java.time.Instant
+import java.time.ZonedDateTime
+import scala.util.Try
 
 /**
   * Classes used for deserializing Tezos node RPC results.
@@ -14,7 +20,7 @@ object TezosTypes {
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding
   lazy val isBase58Check: String => Boolean = (s: String) => {
-    val pattern = "^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]*$".r.pattern
+    val pattern = "^[^\\W0OlI_]*$".r.pattern
     pattern.matcher(s).matches
   }
 
@@ -198,7 +204,9 @@ object TezosTypes {
   }
 
   /** root of the operation hiearchy */
-  sealed trait Operation extends Product with Serializable
+  sealed trait Operation extends Product with Serializable {
+    val blockOrder: Option[Int]
+  }
   //operations definition
   type ParametersCompatibility = Either[Parameters, Micheline]
 
@@ -229,24 +237,28 @@ object TezosTypes {
 
   final case class Endorsement(
       level: BlockLevel,
-      metadata: EndorsementMetadata
+      metadata: EndorsementMetadata,
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class EndorsementWithSlot(
       endorsement: EndorsementInternalObject,
-      metadata: EndorsementMetadata
+      metadata: EndorsementMetadata,
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class SeedNonceRevelation(
       level: BlockLevel,
       nonce: Nonce,
-      metadata: BalanceUpdatesMetadata
+      metadata: BalanceUpdatesMetadata,
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class ActivateAccount(
       pkh: PublicKeyHash,
       secret: Secret,
-      metadata: BalanceUpdatesMetadata
+      metadata: BalanceUpdatesMetadata,
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class Reveal(
@@ -256,7 +268,8 @@ object TezosTypes {
       storage_limit: PositiveBigNumber,
       public_key: PublicKey,
       source: PublicKeyHash,
-      metadata: ResultMetadata[OperationResult.Reveal]
+      metadata: ResultMetadata[OperationResult.Reveal],
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class Transaction(
@@ -269,7 +282,8 @@ object TezosTypes {
       destination: ContractId,
       parameters: Option[ParametersCompatibility],
       parameters_micheline: Option[ParametersCompatibility],
-      metadata: ResultMetadata[OperationResult.Transaction]
+      metadata: ResultMetadata[OperationResult.Transaction],
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class Parameters(
@@ -289,7 +303,8 @@ object TezosTypes {
       delegate: Option[PublicKeyHash],
       spendable: Option[Boolean],
       script: Option[Scripted.Contracts],
-      metadata: ResultMetadata[OperationResult.Origination]
+      metadata: ResultMetadata[OperationResult.Origination],
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class Delegation(
@@ -299,18 +314,35 @@ object TezosTypes {
       gas_limit: PositiveBigNumber,
       storage_limit: PositiveBigNumber,
       delegate: Option[PublicKeyHash],
-      metadata: ResultMetadata[OperationResult.Delegation]
+      metadata: ResultMetadata[OperationResult.Delegation],
+      blockOrder: Option[Int] = None
   ) extends Operation
 
-  final case object DoubleEndorsementEvidence extends Operation
-  final case object DoubleBakingEvidence extends Operation
-  final case class Proposals(source: Option[ContractId], period: Option[Int], proposals: Option[List[String]])
-      extends Operation
+  final case class DoubleEndorsementEvidence(blockOrder: Option[Int] = None) extends Operation
+  final case class DoubleBakingEvidence(blockOrder: Option[Int] = None) extends Operation
+  final case class Proposals(
+      source: Option[ContractId],
+      period: Option[Int],
+      proposals: Option[List[String]],
+      blockOrder: Option[Int] = None
+  ) extends Operation
   final case class Ballot(
       ballot: Voting.Vote,
       proposal: Option[String],
       source: Option[ContractId],
-      period: Option[Int]
+      period: Option[Int],
+      blockOrder: Option[Int] = None
+  ) extends Operation
+
+  final case class RegisterGlobalConstant(
+      source: Option[ContractId],
+      fee: PositiveBigNumber,
+      counter: PositiveBigNumber,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      value: Option[Micheline],
+      blockOrder: Option[Int] = None,
+      metadata: ResultMetadata[OperationResult.RegisterGlobalConstant]
   ) extends Operation
 
   //metadata definitions, both shared or specific to operation kind
@@ -333,6 +365,7 @@ object TezosTypes {
 
     sealed trait InternalOperationResult extends Product with Serializable {
       def nonce: Int
+      val blockOrder: Option[Int]
     }
 
     case class Reveal(
@@ -340,7 +373,8 @@ object TezosTypes {
         source: PublicKeyHash,
         nonce: Int,
         public_key: PublicKey,
-        result: OperationResult.Reveal
+        result: OperationResult.Reveal,
+        blockOrder: Option[Int] = None
     ) extends InternalOperationResult
 
     case class Parameters(entrypoint: String, value: Micheline)
@@ -353,7 +387,8 @@ object TezosTypes {
         destination: ContractId,
         parameters: Option[ParametersCompatibility],
         parameters_micheline: Option[ParametersCompatibility],
-        result: OperationResult.Transaction
+        result: OperationResult.Transaction,
+        blockOrder: Option[Int] = None
     ) extends InternalOperationResult
 
     /* some fields are only kept for backward-compatibility, as noted*/
@@ -367,7 +402,8 @@ object TezosTypes {
         delegatable: Option[Boolean], // retro-compat from protocol 5+
         delegate: Option[PublicKeyHash],
         script: Option[Scripted.Contracts],
-        result: OperationResult.Origination
+        result: OperationResult.Origination,
+        blockOrder: Option[Int] = None
     ) extends InternalOperationResult
 
     case class Delegation(
@@ -375,7 +411,8 @@ object TezosTypes {
         source: PublicKeyHash,
         nonce: Int,
         delegate: Option[PublicKeyHash],
-        result: OperationResult.Delegation
+        result: OperationResult.Delegation,
+        blockOrder: Option[Int] = None
     ) extends InternalOperationResult
 
   }
@@ -439,6 +476,14 @@ object TezosTypes {
         status: String,
         consumed_gas: Option[BigNumber],
         errors: Option[List[Error]]
+    )
+
+    final case class RegisterGlobalConstant(
+        status: String,
+        balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
+        consumed_gas: Option[BigNumber],
+        storage_size: Option[BigNumber],
+        global_address: Option[String]
     )
 
   }
@@ -566,7 +611,8 @@ object TezosTypes {
 
   final case class CycleBalance(
       cycle: Int,
-      deposit: PositiveBigNumber,
+      deposit: Option[PositiveBigNumber],
+      deposits: Option[PositiveBigNumber],
       fees: PositiveBigNumber,
       rewards: PositiveBigNumber
   )
@@ -647,9 +693,9 @@ object TezosTypes {
   /** Utilities related to the baking process */
   object Baking {
 
-    //we'll move this to a proper chain configuration value later on
     /** how big is a baker roll in tez */
-    final val BakerRollsSize = BigDecimal.decimal(8000)
+    final val BakerRollsSize =
+      loadConfig[TezosConfiguration](namespace = "platforms").fold(_ => BigDecimal.decimal(8000), _.bakerRollsSize)
 
     /** Starting from the staking balance, infers number of rolls for a given baker. */
     def computeRollsFromStakes(stakingBalance: PositiveBigNumber): Option[Int] =

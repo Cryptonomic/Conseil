@@ -85,7 +85,7 @@ class TezosDatabaseOperationsTest
                 block.copy(operationGroups = List(group))
             }
 
-        whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks))) { _ =>
+        whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks, noTokenContracts))) { _ =>
           //read and check what's on db
           val dbBlocks = dbHandler.run(Tables.Blocks.result).futureValue
 
@@ -183,9 +183,9 @@ class TezosDatabaseOperationsTest
                 case "delegation" =>
                   operationGroup.contents.find(_.isInstanceOf[Delegation])
                 case "double_endorsement_evidence" =>
-                  operationGroup.contents.find(_ == DoubleEndorsementEvidence)
+                  operationGroup.contents.find(_ == DoubleEndorsementEvidence())
                 case "double_baking_evidence" =>
-                  operationGroup.contents.find(_ == DoubleBakingEvidence)
+                  operationGroup.contents.find(_ == DoubleBakingEvidence())
                 case "proposals" =>
                   operationGroup.contents.find(_.isInstanceOf[Proposals])
                 case "ballot" =>
@@ -209,7 +209,7 @@ class TezosDatabaseOperationsTest
 
               val generatedConversion = (operationBlock, operationGroup.hash, operation).convertTo[Tables.OperationsRow]
               //skip the id, to take into account that it's only generated on save
-              generatedConversion shouldEqual opRow.copy(operationId = 0)
+              generatedConversion shouldEqual opRow.copy(operationId = 0, operationOrder = None)
 
               /* check stored balance updates */
               //convert and set the real stored operation id
@@ -246,7 +246,7 @@ class TezosDatabaseOperationsTest
             setBalances(randomUpdates)(block)
         }
 
-        whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks))) { _ =>
+        whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks, noTokenContracts))) { _ =>
           val dbUpdatesRows = dbHandler.run(Tables.BalanceUpdates.result).futureValue
 
           dbUpdatesRows should have size 4 //2 updates x 2 blocks, not considering genesis which has no balances
