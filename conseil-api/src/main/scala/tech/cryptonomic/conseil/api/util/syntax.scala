@@ -20,6 +20,6 @@ object syntax {
     def retry(maxRetry: Int, giveUpAfter: FiniteDuration): IO[A] =
       new ExponentialBackoffRetry().retry(maxRetry, giveUpAfter)(io)
     def retry(maxRetry: Int): IO[A] = new ExponentialBackoffRetry().retry(maxRetry)(io)
-    def retry: IO[A] = new ExponentialBackoffRetry().retry()(io)
+    def retry(): IO[A] = new ExponentialBackoffRetry().retry()(io)
   }
 }

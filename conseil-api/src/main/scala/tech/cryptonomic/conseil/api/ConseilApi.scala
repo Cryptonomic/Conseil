@@ -1,40 +1,24 @@
 package tech.cryptonomic.conseil.api
 
-import java.util.UUID
-import akka.actor.ActorSystem
-import akka.event.Logging
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
-import akka.stream.{ActorMaterializer, Materializer}
-import cats.effect.IO
-import ch.megard.akka.http.cors.scaladsl.CorsDirectives.cors
 import tech.cryptonomic.conseil.api.ConseilApi.NoNetworkEnabledError
 import tech.cryptonomic.conseil.api.config.ConseilAppConfig.CombinedConfiguration
 import tech.cryptonomic.conseil.api.config.NautilusCloudConfiguration
-import tech.cryptonomic.conseil.api.directives.{EnableCORSDirectives, RecordingDirectives, ValidatingDirectives}
-import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
-import tech.cryptonomic.conseil.api.routes.Docs
-import tech.cryptonomic.conseil.api.routes.info.AppInfo
-import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
-import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.{BitcoinDataOperations, BitcoinDataRoutes}
-import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{
-  EthereumDataOperations,
-  EthereumDataRoutes,
-  QuorumDataRoutes
-}
-import tech.cryptonomic.conseil.api.routes.platform.data.tezos.{TezosDataOperations, TezosDataRoutes}
-import tech.cryptonomic.conseil.api.routes.platform.discovery.{GenericPlatformDiscoveryOperations, PlatformDiscovery}
-import tech.cryptonomic.conseil.api.security.Security
+// import tech.cryptonomic.conseil.api.directives.{EnableCORSDirectives, RecordingDirectives, ValidatingDirectives}
+import tech.cryptonomic.conseil.api.platform.metadata.{AttributeValuesCacheConfiguration, UnitTransformation}
+import tech.cryptonomic.conseil.api.platform.data.tezos.TezosDataOperations
+import tech.cryptonomic.conseil.api.platform.metadata.MetadataService
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.config.Platforms
 import tech.cryptonomic.conseil.common.config.Platforms.BlockchainPlatform
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.sql.DatabaseRunner
+import tech.cryptonomic.conseil.api.platform.data.tezos.TezosDataRoutes
+import tech.cryptonomic.conseil.api.platform.discovery.GenericPlatformDiscoveryOperations
 
-import scala.concurrent.{Await, ExecutionContext}
-import scala.concurrent.duration.{Duration, DurationInt}
+import cats.effect.IO
+
+import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
-import cats.effect.unsafe.implicits.global
 
 object ConseilApi {
 
@@ -42,22 +26,19 @@ object ConseilApi {
   case class NoNetworkEnabledError(message: String) extends Exception(message)
 
   /** Creates Conseil API based on a given configuration */
-  def create(config: CombinedConfiguration)(implicit system: ActorSystem): ConseilApi = new ConseilApi(config)
+  def create(config: CombinedConfiguration): IO[ConseilApi] = IO(new ConseilApi(config))
 }
 
-class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
-    extends EnableCORSDirectives
-    with ConseilLogSupport {
+class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* with EnableCORSDirectives */ {
+
+  import tech.cryptonomic.conseil.api.info.model.currentInfo
 
   private val transformation = new UnitTransformation(config.metadata)
   private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
 
-  implicit private val mat: Materializer = ActorMaterializer()
-  implicit private val dispatcher: ExecutionContext = system.dispatcher
-
   config.nautilusCloud match {
-    case ncc @ NautilusCloudConfiguration(true, _, _, _, _, delay, interval) =>
-      system.scheduler.scheduleWithFixedDelay(delay, interval)(() => Security.updateKeys(ncc))
+    // FIXME: update security; or do it at the implementation/definition time
+    case ncc @ NautilusCloudConfiguration(true, _, _, _, _, delay, interval) => ncc
     case _ => ()
   }
 
@@ -73,66 +54,21 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
   }
 
   // this val is not lazy to force to fetch metadata and trigger logging at the start of the application
-  private val metadataService =
+  implicit private val ec: ExecutionContext = ExecutionContext.global
+  // implicit val correlationId = java.util.UUID.randomUUID()
+
+  lazy val metadataService =
     new MetadataService(config.platforms, transformation, cacheOverrides, ApiCache.cachedDiscoveryOperations)
 
-  lazy val route: Route = {
-    lazy val platformDiscovery = PlatformDiscovery(metadataService)
+  lazy val operations = new TezosDataOperations(
+    config.platforms.getDbConfig(Platforms.Tezos.name, config.platforms.getNetworks(Platforms.Tezos.name).head.name)
+  )
+  lazy val tezosDataRoutes =
+    TezosDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
+  lazy val appInfoRoute = protocol.appInfo.serverLogicSuccess(_ => currentInfo)
 
-    lazy val routeDirectives = new RecordingDirectives
-    lazy val securityDirectives = new ValidatingDirectives(config.security)
-
-    import routeDirectives._
-    import securityDirectives._
-
-    concat(
-      pathPrefix("docs") {
-        pathEndOrSingleSlash {
-          getFromResource("web/index.html")
-        }
-      },
-      pathPrefix("swagger-ui") {
-        getFromResourceDirectory("web/swagger-ui/")
-      },
-      Docs.route,
-      cors() {
-        enableCORS {
-          implicit val correlationId: UUID = UUID.randomUUID()
-          handleExceptions(loggingExceptionHandler) {
-            extractClientIP { ip =>
-              extractStrictEntity(10.seconds) { ent =>
-                recordResponseValues(ip, ent.data.utf8String)(correlationId) {
-                  timeoutHandler {
-                    concat(
-                      validateApiKey { _ =>
-                        concat(
-                          logRequest("Conseil", Logging.DebugLevel) {
-                            AppInfo.route
-                          },
-                          logRequest("Metadata Route", Logging.DebugLevel) {
-                            platformDiscovery.route
-                          },
-                          concat(ApiCache.cachedDataEndpoints.map { case (platform, routes) =>
-                            logRequest(s"$platform Data Route", Logging.DebugLevel) {
-                              routes.getRoute ~ routes.postRoute
-                            }
-                          }.toSeq: _*)
-                        )
-                      },
-                      options {
-                        // Support for CORS pre-flight checks.
-                        complete("Supported methods : GET and POST.")
-                      }
-                    )
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    )
-  }
+  // TODO: add [[platform.data]] + [[platform.discovery]] routes
+  lazy val route = appInfoRoute :: tezosDataRoutes.getRoute
 
   /**
     * Object, which initializes and holds all of the APIs (blockchain-specific endpoints) in the map.
@@ -141,48 +77,32 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
     * will be initialized and eventually exposed.
     */
   private object ApiCache {
-    implicit private val dispatcher: ExecutionContext = system.dispatchers.lookup("akka.http.dispatcher")
-    private lazy val cache: Map[BlockchainPlatform, ApiDataRoutes] = forVisiblePlatforms {
+    private lazy val cache: Map[BlockchainPlatform, TezosDataRoutes] = forVisiblePlatforms {
       case Platforms.Tezos =>
         val operations = new TezosDataOperations(
           config.platforms
             .getDbConfig(Platforms.Tezos.name, config.platforms.getNetworks(Platforms.Tezos.name).head.name)
         )
         TezosDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
-      case Platforms.Bitcoin =>
-        val operations = new BitcoinDataOperations(
-          config.platforms
-            .getDbConfig(Platforms.Bitcoin.name, config.platforms.getNetworks(Platforms.Bitcoin.name).head.name)
-        )
-        BitcoinDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
-      case Platforms.Ethereum =>
-        val operations = new EthereumDataOperations(
-          Platforms.Ethereum.name,
-          config.platforms
-            .getDbConfig(Platforms.Ethereum.name, config.platforms.getNetworks(Platforms.Ethereum.name).head.name)
-        )
-        EthereumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
-      case Platforms.Quorum =>
-        val operations = new EthereumDataOperations(
-          Platforms.Quorum.name,
-          config.platforms
-            .getDbConfig(Platforms.Quorum.name, config.platforms.getNetworks(Platforms.Quorum.name).head.name)
-        )
-        QuorumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
+      // case Platforms.Bitcoin =>
+      //   val operations = new BitcoinDataOperations(config.platforms.getDbConfig(Platforms.Bitcoin.name, config.platforms.getNetworks(Platforms.Bitcoin.name).head.name))
+      //   BitcoinDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
+      // case Platforms.Ethereum =>
+      //   val operations = new EthereumDataOperations(Platforms.Ethereum.name, config.platforms.getDbConfig(Platforms.Ethereum.name, config.platforms.getNetworks(Platforms.Ethereum.name).head.name))
+      //   EthereumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
+      // case Platforms.Quorum =>
+      //   val operations = new EthereumDataOperations(Platforms.Quorum.name, config.platforms.getDbConfig(Platforms.Quorum.name, config.platforms.getNetworks(Platforms.Quorum.name).head.name))
+      //   QuorumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
     }
 
     private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
-    private val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
+    private val metadataCaching = MetadataCaching.empty[IO]
 
-    private val metadataOperations: Map[(String, String), DatabaseRunner] = config.platforms
-      .getDatabases()
-      .mapValues(db =>
-        new DatabaseRunner {
-          override lazy val dbReadHandle = db
-        }
-      )
+    private val metadataOperations: Map[(String, String), DatabaseRunner] =
+      config.platforms.getDatabases().mapValues(db => () => db)
 
-    lazy val cachedDiscoveryOperations: GenericPlatformDiscoveryOperations =
+    // lazy val cachedDiscoveryOperations: GenericPlatformDiscoveryOperations =
+    lazy val cachedDiscoveryOperations =
       new GenericPlatformDiscoveryOperations(
         metadataOperations,
         metadataCaching,
@@ -196,13 +116,9 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
       *
       * @see `tech.cryptonomic.conseil.common.config.Platforms` to get list of possible platforms.
       */
-    lazy val cachedDataEndpoints: Map[String, ApiDataRoutes] =
-      cache.map { case (key, value) =>
-        key.name -> value
-      }
+    lazy val cachedDataEndpoints = cache.map { case (key, value) => key.name -> value }
 
-    private val visiblePlatforms =
-      transformation.overridePlatforms(config.platforms.getPlatforms())
+    private val visiblePlatforms = transformation.overridePlatforms(config.platforms.getPlatforms())
 
     /**
       * Function, that while used is going to execute function `init` for every platform found (and visible) in configuration.
@@ -223,7 +139,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
     } yield platform -> network
 
     if (visibleNetworks.nonEmpty) { // At least one blockchain is enabled
-      Await.ready(cachedDiscoveryOperations.init(visibleNetworks), Duration.Inf).onComplete {
+      cachedDiscoveryOperations.init(visibleNetworks).onComplete {
         case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
         case Success(_) => logger.info("Pre-caching successful!")
       }

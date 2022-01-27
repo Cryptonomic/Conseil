@@ -19,6 +19,7 @@ COPY --chown=builduser:builduser ./project/Commands.scala /src/project/
 COPY --chown=builduser:builduser ./project/Dependencies.scala /src/project/
 COPY --chown=builduser:builduser ./project/versioning.scala /src/project/
 COPY --chown=builduser:builduser ./conseil-common/src /src/conseil-common/src
+COPY --chown=builduser:builduser ./conseil-api-shared/src /src/conseil-api-shared/src
 COPY --chown=builduser:builduser ./conseil-api/src /src/conseil-api/src
 COPY --chown=builduser:builduser ./conseil-lorre/src /src/conseil-lorre/src
 COPY --chown=builduser:builduser ./build.sbt /src

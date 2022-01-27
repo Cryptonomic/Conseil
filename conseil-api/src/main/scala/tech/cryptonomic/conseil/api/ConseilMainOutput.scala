@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api
 
-import scribe._
+// import scribe._
 import tech.cryptonomic.conseil.BuildInfo
 import tech.cryptonomic.conseil.api.config.ConseilConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms.{PlatformConfiguration, PlatformsConfiguration}
@@ -9,14 +9,16 @@ import tech.cryptonomic.conseil.common.io.MainOutputs._
 
 /** Defines what to print when starting Conseil */
 trait ConseilMainOutput extends ConseilLogSupport {
+  import cats.effect.IO
+  import tech.cryptonomic.conseil.api.util.syntax._
 
   /** Shows the main application info
     * @param serverConf configuration of the http server
     */
-  protected[this] def displayInfo(serverConf: ConseilConfiguration): Unit = {
+  protected[this] def displayInfo(serverConf: ConseilConfiguration): IO[Unit] = {
     val showCommit = BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]")
-    logger.info(
-      s"""
+    // logger.info(
+    IO(s"""
         | ==================================***==================================
         |  Conseil v.${BuildInfo.version}
         |  $showCommit
@@ -25,8 +27,7 @@ trait ConseilMainOutput extends ConseilLogSupport {
         | Server started on ${serverConf.hostname} at port ${serverConf.port}
         | Bonjour...
         |
-        |""".stripMargin
-    )
+        |""".stripMargin).debug.void
   }
 
   /** Shows details on the current configuration */
@@ -48,9 +49,10 @@ trait ConseilMainOutput extends ConseilLogSupport {
   private def showAvailablePlatforms(conf: PlatformsConfiguration): String =
     conf.platforms
       .groupBy(_.platform)
-      .map { case (platform, configuration) =>
-        val networks = showAvailableNetworks(configuration)
-        s"  Platform: ${platform.name}$networks"
+      .map {
+        case (platform, configuration) =>
+          val networks = showAvailableNetworks(configuration)
+          s"  Platform: ${platform.name}$networks"
       }
       .mkString("\n")
 

@@ -51,10 +51,12 @@ lazy val commonTestKit = (project in file("conseil-common-testkit"))
 
 lazy val apiShared = (project in file("conseil-api-shared"))
   .settings(name := "api-shared", libraryDependencies ++= Dependencies.tapirShared)
+  .disableAssembly()
   .dependsOn(common, commonTestKit % Test)
-lazy val apiServer = (project in file("conseil-api-server"))
+
+lazy val apiServer = (project in file("conseil-api"))
   .settings(
-    name := "api-server",
+    name := "conseil-api",
     mainClass := Some("tech.cryptonomic.conseil.api.Conseil"),
     libraryDependencies ++= Dependencies.tapirServer
   )
@@ -62,9 +64,12 @@ lazy val apiServer = (project in file("conseil-api-server"))
     description = "Task to run the main Conseil API Server",
     javaExtras = Seq("-Xms1024M", "-Xmx8192M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
   )
+  .enableAssembly()
   .dependsOn(apiShared)
+
 lazy val apiClient = (project in file("conseil-api-client"))
   .settings(name := "api-client", libraryDependencies ++= Dependencies.tapirClient)
+  .disableAssembly()
   .dependsOn(apiShared)
 
 lazy val lorre = (project in file("conseil-lorre"))
@@ -117,6 +122,8 @@ addCommandAlias("runLorre", "; lorre/runTask")
 addCommandAlias("runSchema", "; schema/runTask")
 addCommandAlias("runSmokeTests", "; smokeTests/runTask")
 
-addCommandAlias("c", "; compile")
-addCommandAlias("rc", "; reload ; clean")
-addCommandAlias("rcc", "; rc ; c")
+addCommandAlias("cd", "project")
+addCommandAlias("r", "reload")
+addCommandAlias("c", "compile")
+addCommandAlias("rc", "reload ; c")
+addCommandAlias("rcc", "rc ; clean ; c")
