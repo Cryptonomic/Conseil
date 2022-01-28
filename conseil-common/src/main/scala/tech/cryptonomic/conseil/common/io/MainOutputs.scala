@@ -2,11 +2,13 @@ package tech.cryptonomic.conseil.common.io
 
 import tech.cryptonomic.conseil.common.config.Platforms._
 
+import cats.effect.IO
+
 /** Defines main output for Lorre or Conseil, at startup */
 object MainOutputs {
 
   /* prepare output to display database access */
-  def showDatabaseConfiguration(applicationScope: String): String = {
+  def showDatabaseConfiguration(applicationScope: String): IO[String] = {
     import java.util.Map.{Entry => JMEntry}
 
     import com.typesafe.config._
@@ -31,10 +33,10 @@ object MainOutputs {
     val dbConf = ConfigFactory.load.getConfig(s"$applicationScope.db").resolve()
 
     //the meat of the method
-    dbConf.entrySet.asScala.map { entry =>
+    IO(dbConf.entrySet.asScala.map { entry =>
       val (key, value) = renderValues(entry)
       s" - $key = $value"
-    }.mkString("Database configuration:\n\n", "\n", "\n")
+    }.mkString("Database configuration:\n\n", "\n", "\n"))
   }
 
   /* custom display of each configuration type */

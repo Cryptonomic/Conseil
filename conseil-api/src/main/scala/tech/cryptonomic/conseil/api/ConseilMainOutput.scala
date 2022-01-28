@@ -31,30 +31,33 @@ trait ConseilMainOutput extends ConseilLogSupport {
   }
 
   /** Shows details on the current configuration */
-  protected[this] def displayConfiguration(platformConfigs: PlatformsConfiguration): Unit =
-    logger.info(
-      s"""
+  protected[this] def displayConfiguration(platformConfigs: PlatformsConfiguration): IO[Unit] =
+    (for {
+      showPlatforms <- showAvailablePlatforms(platformConfigs)
+      showDatabase <- showDatabaseConfiguration("conseil")
+    } yield s"""
         | ==================================***==================================
         | Configuration details
         |
-        | ${showAvailablePlatforms(platformConfigs)}
-        | ${showDatabaseConfiguration("conseil")}
+        | $showPlatforms
+        | $showDatabase
         |
         | ==================================***==================================
         |
-        """.stripMargin
-    )
+        """.stripMargin).debug.void
 
   /* prepare output to display existing platforms and networks */
-  private def showAvailablePlatforms(conf: PlatformsConfiguration): String =
-    conf.platforms
-      .groupBy(_.platform)
-      .map {
-        case (platform, configuration) =>
-          val networks = showAvailableNetworks(configuration)
-          s"  Platform: ${platform.name}$networks"
-      }
-      .mkString("\n")
+  private def showAvailablePlatforms(conf: PlatformsConfiguration): IO[String] =
+    IO(
+      conf.platforms
+        .groupBy(_.platform)
+        .map {
+          case (platform, configuration) =>
+            val networks = showAvailableNetworks(configuration)
+            s"  Platform: ${platform.name}$networks"
+        }
+        .mkString("\n")
+    ).handleError(_ => "show available platforms")
 
   /* prepare output to display existing networks */
   private def showAvailableNetworks(configuration: List[PlatformConfiguration]): String =

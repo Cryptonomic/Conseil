@@ -8,15 +8,14 @@ import scala.util.Random
 import tech.cryptonomic.conseil.api.util.syntax._
 
 sealed trait Retry[A] {
-  case object RetriesExceededException extends RuntimeException
-  case object TimedOutException extends RuntimeException
-
   def minBackoff: Long
 
   def retry(maxRetry: Int = 3, giveUpAfter: FiniteDuration = 5.seconds, onFail: A => IO[A] = IO(_))(io: IO[A]): IO[A]
 }
 
 final class ExponentialBackoffRetry[A]() extends Retry[A] {
+  import tech.cryptonomic.conseil.api.util.RetryException._
+
   private def exponentialMultiplier(cnt: Int) = scala.math.pow(2, cnt)
 
   private def exponentialBackoffWithJitter(cnt: Int) =
@@ -35,7 +34,14 @@ final class ExponentialBackoffRetry[A]() extends Retry[A] {
             IO(s"retrying ${cnt} time").debug >>
             retryRec(cnt + 1)(io.flatMap(onFail))
 
-    IO("inside here").debug >> IO.sleep(1500.millis) >>
-      retryRec()(io) // .timeoutTo(giveUpAfter, IO.raiseError(throw TimedOutException))
+    IO("inside here").debug >>
+      IO.sleep(1500.millis) >>
+      retryRec()(io)
+        .timeoutTo(giveUpAfter, IO.raiseError(TimedOutException))
+        .onError {
+          case e: RetriesExceededException.type => e.raise
+          case e: TimedOutException.type => e.raise
+          case _ => UnknownRetryException.raise
+        }
   }
 }
