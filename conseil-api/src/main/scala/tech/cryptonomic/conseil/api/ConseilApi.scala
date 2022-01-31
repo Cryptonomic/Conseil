@@ -17,11 +17,7 @@ import tech.cryptonomic.conseil.api.routes.Docs
 import tech.cryptonomic.conseil.api.routes.info.AppInfo
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
 import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.{BitcoinDataOperations, BitcoinDataRoutes}
-import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{
-  EthereumDataOperations,
-  EthereumDataRoutes,
-  QuorumDataRoutes
-}
+import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{EthereumDataOperations, EthereumDataRoutes, QuorumDataRoutes}
 import tech.cryptonomic.conseil.api.routes.platform.data.tezos.{TezosDataOperations, TezosDataRoutes}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.{GenericPlatformDiscoveryOperations, PlatformDiscovery}
 import tech.cryptonomic.conseil.api.security.Security
@@ -31,10 +27,9 @@ import tech.cryptonomic.conseil.common.config.Platforms.BlockchainPlatform
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.sql.DatabaseRunner
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.duration.{Duration, DurationInt}
 import scala.util.{Failure, Success}
-
 import cats.effect.unsafe.implicits.global
 
 object ConseilApi {
@@ -228,7 +223,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
     } yield platform -> network
 
     if (visibleNetworks.nonEmpty) { // At least one blockchain is enabled
-      cachedDiscoveryOperations.init(visibleNetworks).onComplete {
+      Await.ready(cachedDiscoveryOperations.init(visibleNetworks), Duration.Inf).onComplete {
         case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
         case Success(_) => logger.info("Pre-caching successful!")
       }
