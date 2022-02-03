@@ -132,7 +132,7 @@ class TezosIndexer private (
       _ <- feeOperations
         .processTezosAverageFees(lorreConf.feesAverageTimeWindow)
         .whenA(iteration % lorreConf.feeUpdateInterval == 0)
-      _ <- rightsProcessor.updateRights()
+      _ <- if (featureFlags.futureRightsFetchingIsOn) rightsProcessor.updateRights() else Future.successful(())
     } yield Some(unhandled)
 
     /* Won't stop Lorre on failure from processing the chain, unless overridden by the environment to halt.
