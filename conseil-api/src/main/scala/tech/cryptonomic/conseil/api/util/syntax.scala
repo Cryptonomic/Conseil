@@ -5,15 +5,6 @@ import cats.effect.IO
 import scala.concurrent.duration.FiniteDuration
 
 object syntax {
-  implicit class DebugOps[A](io: IO[A]) {
-    def debug =
-      for {
-        a <- io
-        t = Thread.currentThread().getName()
-        _ = println(s"[$t] $a")
-      } yield a
-  }
-
   implicit class RetryOps[A](io: IO[A]) {
     def retry(maxRetry: Int, giveUpAfter: FiniteDuration, onFail: A => IO[A]): IO[A] =
       new ExponentialBackoffRetry().retry(maxRetry, giveUpAfter, onFail)(io)
