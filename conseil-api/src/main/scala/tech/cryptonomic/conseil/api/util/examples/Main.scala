@@ -5,6 +5,7 @@ import cats.effect.{IO, IOApp}
 import scala.concurrent.duration._
 import scala.util.Random
 
+import tech.cryptonomic.conseil.common.util.syntax._
 import tech.cryptonomic.conseil.api.util.syntax._
 
 object Main extends IOApp.Simple {

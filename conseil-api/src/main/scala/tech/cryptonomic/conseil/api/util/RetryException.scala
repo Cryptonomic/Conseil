@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.util
 
-import tech.cryptonomic.conseil.api.util.syntax._
+import tech.cryptonomic.conseil.common.util.syntax._
 
 import cats.effect.IO
 

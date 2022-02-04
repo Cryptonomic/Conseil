@@ -7,8 +7,11 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OperationType, P
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockLevel, TezosBlockHash}
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.util.CollectionOps._
+import tech.cryptonomic.conseil.common.util.syntax._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
+
+import cats.effect.IO
 
 object TezosDataOperations {
   case class BlockResult(block: Tables.BlocksRow, operation_groups: Seq[Tables.OperationGroupsRow])
@@ -43,8 +46,8 @@ class TezosDataOperations(dbConfig: Config) extends ApiDataOperations {
     *
     * @return Latest block.
     */
-  def fetchLatestBlock()(implicit ec: ExecutionContext): Future[Option[Tables.BlocksRow]] =
-    runQuery(latestBlockIO())
+  def fetchLatestBlock()(implicit ec: ExecutionContext): IO[Option[Tables.BlocksRow]] =
+    runQuery(latestBlockIO()).toIO
 
   /**
     * Fetches a block by block hash from the db.
@@ -52,13 +55,13 @@ class TezosDataOperations(dbConfig: Config) extends ApiDataOperations {
     * @param hash The block's hash
     * @return The block along with its operations, if the hash matches anything
     */
-  def fetchBlock(hash: TezosBlockHash)(implicit ec: ExecutionContext): Future[Option[BlockResult]] = {
+  def fetchBlock(hash: TezosBlockHash): IO[Option[BlockResult]] = {
     val joins = for {
       groups <- Tables.OperationGroups if groups.blockId === hash.value && groups.invalidatedAsof.isEmpty
       block <- Tables.Blocks if block.hash === hash.value && block.invalidatedAsof.isEmpty
     } yield (block, groups)
 
-    runQuery(joins.result).map { paired =>
+    runQuery(joins.result).toIO.map { paired =>
       val (blocks, groups) = paired.unzip
       blocks.headOption.map { block =>
         BlockResult(
@@ -80,10 +83,10 @@ class TezosDataOperations(dbConfig: Config) extends ApiDataOperations {
     */
   def fetchOperationGroup(
       operationGroupHash: String
-  )(implicit ec: ExecutionContext): Future[Option[OperationGroupResult]] = {
+  )(implicit ec: ExecutionContext): IO[Option[OperationGroupResult]] = {
     val groupsMapIO =
       operationsForGroup(operationGroupHash).map(_.map { case (opGroup, ops) => OperationGroupResult(opGroup, ops) })
-    runQuery(groupsMapIO)
+    runQuery(groupsMapIO).toIO
   }
 
   /**
@@ -113,14 +116,14 @@ class TezosDataOperations(dbConfig: Config) extends ApiDataOperations {
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return The account
     */
-  def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Option[AccountResult]] = {
+  def fetchAccount(account_id: AccountId): IO[Option[AccountResult]] = {
     val fetchOperation =
       Tables.Accounts
         .filter(row => row.accountId === account_id.value && row.invalidatedAsof.isEmpty)
         .take(1)
         .result
 
-    runQuery(fetchOperation).map { accounts =>
+    runQuery(fetchOperation).toIO.map { accounts =>
       accounts.headOption.map(AccountResult)
     }
   }

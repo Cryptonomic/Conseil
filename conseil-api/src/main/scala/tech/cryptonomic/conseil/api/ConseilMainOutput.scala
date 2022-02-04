@@ -1,23 +1,22 @@
 package tech.cryptonomic.conseil.api
 
-// import scribe._
 import tech.cryptonomic.conseil.BuildInfo
 import tech.cryptonomic.conseil.api.config.ConseilConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms.{PlatformConfiguration, PlatformsConfiguration}
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.io.MainOutputs._
+import tech.cryptonomic.conseil.common.util.syntax._
+
+import cats.effect.IO
 
 /** Defines what to print when starting Conseil */
 trait ConseilMainOutput extends ConseilLogSupport {
-  import cats.effect.IO
-  import tech.cryptonomic.conseil.api.util.syntax._
 
   /** Shows the main application info
     * @param serverConf configuration of the http server
     */
   protected[this] def displayInfo(serverConf: ConseilConfiguration): IO[Unit] = {
     val showCommit = BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]")
-    // logger.info(
     IO(s"""
         | ==================================***==================================
         |  Conseil v.${BuildInfo.version}
@@ -34,7 +33,9 @@ trait ConseilMainOutput extends ConseilLogSupport {
   protected[this] def displayConfiguration(platformConfigs: PlatformsConfiguration): IO[Unit] =
     (for {
       showPlatforms <- showAvailablePlatforms(platformConfigs)
+        .handleErrorWith(_ => IO("can't load platforms").debug)
       showDatabase <- showDatabaseConfiguration("conseil")
+        .handleErrorWith(_ => IO("can't load database config").debug)
     } yield s"""
         | ==================================***==================================
         | Configuration details

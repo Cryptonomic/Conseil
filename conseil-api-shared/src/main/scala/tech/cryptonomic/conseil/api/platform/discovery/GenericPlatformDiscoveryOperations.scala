@@ -9,7 +9,6 @@ import tech.cryptonomic.conseil.api.platform.Sanitizer
 import tech.cryptonomic.conseil.api.sql.DefaultDatabaseOperations._
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
-  AttributesValidationError,
   HighCardinalityAttribute,
   InvalidAttributeDataType,
   InvalidAttributeFilterLength
@@ -18,11 +17,10 @@ import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.Data
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.common.generic.chain.{DBIORunner, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.common.metadata._
+import tech.cryptonomic.conseil.common.util.syntax._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
-
-import cats.effect.unsafe.implicits.global
 
 /** Companion object providing apply method implementation */
 object GenericPlatformDiscoveryOperations {
@@ -52,25 +50,14 @@ class GenericPlatformDiscoveryOperations(
   import cats.implicits._
 
   /** Method for initializing values of the cache */
-  def init(config: List[(Platform, Network)]): Future[Unit] = {
-    val entities = preCacheEntities(config)
-
-    val attributes = preCacheAttributes(config)
-
-    val attributeValues = preCacheAttributeValues(config)
-
-    (for {
+  def init(config: List[(Platform, Network)]) =
+    for {
       mc <- caching
-      b1 <- entities.flatMap(mc.fillEntitiesCache)
-      b2 <- attributes.flatMap(mc.fillAttributesCache)
-      b3 <- attributeValues.flatMap(mc.fillAttributeValuesCache)
-    } yield (b1, b2, b3)).void.unsafeToFuture
-    // (
-    //   entities flatMap caching.fillEntitiesCache,
-    //   attributes flatMap caching.fillAttributesCache,
-    //   attributeValues flatMap caching.fillAttributeValuesCache
-    // ).tupled.void.unsafeToFuture
-  }
+      _ <- preCacheEntities(config).flatMap(mc.fillEntitiesCache)
+      _ <- preCacheAttributes(config).flatMap(mc.fillAttributesCache)
+      _ <- preCacheAttributeValues(config).flatMap(mc.fillAttributeValuesCache)
+    } yield ()
+  // } yield (entitiesFilled, attributesFilled, attributeValuesFilled)).void
 
   /** Pre-caching attributes from slick without cardinality for multiple platforms
     *
@@ -79,9 +66,8 @@ class GenericPlatformDiscoveryOperations(
     **/
   private def preCacheAttributes(xs: List[(Platform, Network)]): IO[AttributesCache] =
     xs.map {
-      case (platform, network) =>
-        IO.fromFuture(IO(dbRunners(platform.name, network.name).runQuery(preCacheAttributes(platform, network))))
-    }.sequence.map(_.reduce(_ ++ _))
+      case (platform, network) => dbRunners(platform.name, network.name).runQuery(preCacheAttributes(platform, network))
+    }.sequence.toIO.map(_.reduce(_ ++ _))
 
   /** Pre-caching attributes from slick without cardinality
     *
@@ -167,8 +153,8 @@ class GenericPlatformDiscoveryOperations(
   private def preCacheAttributeValues(xs: List[(Platform, Network)]): IO[AttributeValuesCache] =
     xs.map {
       case (platform, network) =>
-        IO.fromFuture(IO(dbRunners(platform.name, network.name).runQuery(preCacheAttributeValues(platform, network))))
-    }.sequence.map(_.reduce(_ ++ _))
+        dbRunners(platform.name, network.name).runQuery(preCacheAttributeValues(platform, network))
+    }.sequence.toIO.map(_.reduce(_ ++ _))
 
   /** Pre-caching attribute values from slick for specific platform
     *
@@ -191,32 +177,25 @@ class GenericPlatformDiscoveryOperations(
     *
     * @return list of entities as a Future
     */
-  override def getEntities(networkPath: NetworkPath): Future[List[Entity]] = {
-    val key = EntitiesCacheKey(networkPath.up.platform, networkPath.network)
-    val result = for {
+  override def getEntities(networkPath: NetworkPath) =
+    for {
       cache <- caching
+      key = EntitiesCacheKey(networkPath.up.platform, networkPath.network)
       entities <- cache.getEntities(key)
       res <- entities.traverse {
         case CacheEntry(last, ent) =>
-          if (!cacheExpired(last)) {
-            IO.pure(ent)
-          } else {
+          if (!cacheExpired(last)) ent.pure[IO]
+          else
             (for {
               _ <- cache.putEntities(key, ent)
-              updatedEntities <- IO.fromFuture(
-                IO(
-                  dbRunners((networkPath.up.platform, networkPath.network))
-                    .runQuery(preCacheEntities(networkPath.up.platform, networkPath.network))
-                )
-              )
+              // FIXME: redundancy
+              updatedEntities <- dbRunners((networkPath.up.platform, networkPath.network))
+                .runQuery(preCacheEntities(networkPath.up.platform, networkPath.network))
+                .toIO
               _ <- cache.putEntities(key, updatedEntities(key).value)
-            } yield ()).unsafeRunAndForget()
-            IO.pure(ent)
-          }
+            } yield ()) >> ent.pure[IO]
       }
     } yield res.toList.flatten
-    result.unsafeToFuture()
-  }
 
   /** Pre-caching entities values from slick for multiple platform-network pairs
     *
@@ -226,10 +205,8 @@ class GenericPlatformDiscoveryOperations(
   private def preCacheEntities(xs: List[(Platform, Network)]): IO[EntitiesCache] =
     xs.map {
       case (platform, network) =>
-        IO.fromFuture(
-          IO(dbRunners((platform.name, network.name)).runQuery(preCacheEntities(platform.name, network.name)))
-        )
-    }.sequence.map(_.reduce(_ ++ _))
+        dbRunners((platform.name, network.name)).runQuery(preCacheEntities(platform.name, network.name))
+    }.sequence.toIO.map(_.reduce(_ ++ _))
 
   /** Pre-caching entities values from slick for specific platform-network pair
     *
@@ -272,65 +249,54 @@ class GenericPlatformDiscoveryOperations(
       attributePath: AttributePath,
       withFilter: Option[String] = None,
       attributesCacheConfig: Option[AttributeCacheConfiguration] = None
-  ): Future[Either[List[AttributesValidationError], List[String]]] =
-    getTableAttributesWithoutUpdatingCache(attributePath.up) map (_.flatMap(_.find(_.name == attributePath.attribute))) flatMap {
-        attrOpt =>
-          val res = (attributesCacheConfig, withFilter) match {
-            case (Some(AttributeCacheConfiguration(cached, minMatchLength, maxResultLength)), Some(attributeFilter))
-                if cached =>
-              Either.cond(
-                test = attributeFilter.length >= minMatchLength,
-                right = getAttributeValuesFromCache(
+  ) =
+    getTableAttributesWithoutUpdatingCache(attributePath.up)
+      .map(_.find(_.name == attributePath.attribute))
+      .flatMap { attrOpt =>
+        (attributesCacheConfig, withFilter) match {
+          case (Some(AttributeCacheConfiguration(cached, minMatchLength, maxResultLength)), Some(attributeFilter))
+              if cached =>
+            if (attributeFilter.length >= minMatchLength)
+              getAttributeValuesFromCache(
+                attributePath.up.up.up.platform,
+                attributePath.up.up.network,
+                attributePath.up.entity,
+                attributePath.attribute,
+                attributeFilter,
+                maxResultLength
+              ).map(Right.apply)
+            else IO(Left(List(InvalidAttributeFilterLength(attributePath.attribute, minMatchLength))))
+          case (Some(AttributeCacheConfiguration(cached, _, maxResultLength)), None) if cached =>
+            getAttributeValuesFromCache(
+              attributePath.up.up.up.platform,
+              attributePath.up.up.network,
+              attributePath.up.entity,
+              attributePath.attribute,
+              "",
+              maxResultLength
+            ).map(Right.apply)
+          case _ =>
+            val invalidDataTypeValidationResult =
+              if (!attrOpt.exists(attr => canQueryType(attr.dataType)))
+                Some(InvalidAttributeDataType(attributePath.attribute))
+              else None
+            val highCardinalityValidationResult =
+              if (!isLowCardinality(attrOpt.flatMap(_.cardinality)))
+                Some(HighCardinalityAttribute(attributePath.attribute))
+              else None
+            val validationErrors = List(invalidDataTypeValidationResult, highCardinalityValidationResult).flatten
+            if (validationErrors.isEmpty)
+              attrOpt.map { attr =>
+                makeAttributesQuery(
                   attributePath.up.up.up.platform,
                   attributePath.up.up.network,
                   attributePath.up.entity,
-                  attributePath.attribute,
-                  attributeFilter,
-                  maxResultLength
-                ),
-                left = Future.successful(List(InvalidAttributeFilterLength(attributePath.attribute, minMatchLength)))
-              )
-            case (Some(AttributeCacheConfiguration(cached, _, maxResultLength)), None) if cached =>
-              Right(
-                getAttributeValuesFromCache(
-                  attributePath.up.up.up.platform,
-                  attributePath.up.up.network,
-                  attributePath.up.entity,
-                  attributePath.attribute,
-                  "",
-                  maxResultLength
+                  attr.name,
+                  withFilter
                 )
-              )
-            case _ =>
-              val invalidDataTypeValidationResult =
-                if (!attrOpt.exists(attr => canQueryType(attr.dataType)))
-                  Some(InvalidAttributeDataType(attributePath.attribute))
-                else None
-              val highCardinalityValidationResult =
-                if (!isLowCardinality(attrOpt.flatMap(_.cardinality)))
-                  Some(HighCardinalityAttribute(attributePath.attribute))
-                else None
-              val validationErrors = List(invalidDataTypeValidationResult, highCardinalityValidationResult).flatten
-              Either.cond(
-                test = validationErrors.isEmpty,
-                right = attrOpt
-                  .map(
-                    attr =>
-                      makeAttributesQuery(
-                        attributePath.up.up.up.platform,
-                        attributePath.up.up.network,
-                        attributePath.up.entity,
-                        attr.name,
-                        withFilter
-                      )
-                  )
-                  .toList
-                  .sequence
-                  .map(_.flatten),
-                left = Future.successful(validationErrors)
-              )
-          }
-          res.bisequence
+              }.toList.sequence.toIO.map(_.flatten.asRight)
+            else validationErrors.asLeft.pure[IO]
+        }
       }
 
   /** Gets attribute values from cache and updates them if necessary */
@@ -341,8 +307,8 @@ class GenericPlatformDiscoveryOperations(
       columnName: String,
       attributeFilter: String,
       maxResultLength: Int
-  ): Future[List[String]] =
-    (for {
+  ): IO[List[String]] =
+    for {
       c <- caching
       res <- c
         .getAttributeValues(AttributeValuesCacheKey(platform, network, tableName, columnName))
@@ -352,14 +318,14 @@ class GenericPlatformDiscoveryOperations(
           case Some(CacheEntry(_, oldRadixTree)) =>
             (for {
               _ <- c.putAttributeValues(AttributeValuesCacheKey(platform, network, tableName, columnName), oldRadixTree)
-              attributeValues <- IO.fromFuture(IO(makeAttributesQuery(platform, network, tableName, columnName, None)))
+              attributeValues <- makeAttributesQuery(platform, network, tableName, columnName, None).toIO
               radixTree = RadixTree(attributeValues.map(x => x.toLowerCase -> x): _*)
               _ <- c.putAttributeValues(AttributeValuesCacheKey(platform, network, tableName, columnName), radixTree)
-            } yield ()).unsafeRunAndForget()
-            IO.pure(oldRadixTree.filterPrefix(attributeFilter).values.take(maxResultLength).toList)
-          case None => IO.pure(List.empty)
+            } yield ()) /* FIXME: remove unsafeRun */ >>
+                oldRadixTree.filterPrefix(attributeFilter).values.take(maxResultLength).toList.pure[IO]
+          case None => List.empty.pure[IO]
         }
-    } yield res).unsafeToFuture()
+    } yield res
 
   /** Makes list of possible string values of the attributes
     *
@@ -391,36 +357,31 @@ class GenericPlatformDiscoveryOperations(
     * @param  entityPath path to the table from which we extract attributes
     * @return list of attributes as a Future
     */
-  override def getTableAttributes(entityPath: EntityPath): Future[Option[List[Attribute]]] =
-    (for {
+  override def getTableAttributes(entityPath: EntityPath): IO[List[Attribute]] =
+    for {
       cache <- caching
-      res <- cache.getCachingStatus.map { status =>
-        if (status == Finished) {
+      status <- cache.getCachingStatus
+      res <- status match {
+        case Finished =>
           val key = AttributesCacheKey(entityPath.up.up.platform, entityPath.up.network, entityPath.entity)
           cache
             .getAttributes(key)
             .flatMap { attributesOpt =>
               attributesOpt.map {
                 case CacheEntry(last, attributes) =>
-                  if (!cacheExpired(last)) {
-                    IO.pure(attributes)
-                  } else {
-                    (for {
+                  if (!cacheExpired(last)) attributes.pure[IO]
+                  else
+                    for {
                       _ <- cache.putAttributes(key, attributes)
-                      updatedAttributes <- IO.fromFuture(IO(getUpdatedAttributes(entityPath, attributes)))
+                      updatedAttributes <- getUpdatedAttributes(entityPath, attributes)
                       _ <- cache.putAttributes(key, updatedAttributes)
-                    } yield ()).unsafeRunAndForget()
-                    IO.pure(attributes)
-                  }
-              }.sequence
+                    } yield attributes
+              }.getOrElse(List.empty.pure[IO])
             }
-            .unsafeToFuture()
-        } else {
-          // if caching is not finished cardinality should be set to None
-          getTableAttributesWithoutUpdatingCache(entityPath).map(_.map(_.map(_.copy(cardinality = None))))
-        }
+        // if caching is not finished cardinality should be set to None
+        case _ => getTableAttributesWithoutUpdatingCache(entityPath).map(_.map(_.copy(cardinality = None)))
       }
-    } yield res).unsafeToFuture().flatten
+    } yield res
 
   /** Checks if cache expired */
   private def cacheExpired(lastUpdated: LastUpdated): Boolean =
@@ -432,19 +393,19 @@ class GenericPlatformDiscoveryOperations(
     * @param  entityPath path of the table from which we extract attributes
     * @return list of attributes as a Future
     */
-  override def getTableAttributesWithoutUpdatingCache(entityPath: EntityPath): Future[Option[List[Attribute]]] =
-    (for {
+  override def getTableAttributesWithoutUpdatingCache(entityPath: EntityPath): IO[List[Attribute]] =
+    for {
       cache <- caching
       res <- cache
         .getAttributes(AttributesCacheKey(entityPath.up.up.platform, entityPath.up.network, entityPath.entity))
-        .map(_.map(_.value))
-    } yield res)
-      .unsafeToFuture()
+        .map(_.map(_.value).getOrElse(List.empty))
+    } yield res
 
   /** Runs query and attributes with updated counts */
-  private def getUpdatedAttributes(entityPath: EntityPath, columns: List[Attribute]): Future[List[Attribute]] =
+  private def getUpdatedAttributes(entityPath: EntityPath, columns: List[Attribute]): IO[List[Attribute]] =
     dbRunners((entityPath.up.up.platform, entityPath.up.network))
       .runQuery(getUpdatedAttributesQuery(entityPath, columns))
+      .toIO
 
   /** Query for returning partial attributes with updated counts */
   private def getUpdatedAttributesQuery(entityPath: EntityPath, columns: List[Attribute]): DBIO[List[Attribute]] =
@@ -497,14 +458,13 @@ class GenericPlatformDiscoveryOperations(
       }
     } yield ()
 
-  def initAttributesCache(config: List[(Platform, Network)]): Future[Unit] = {
+  def initAttributesCache(config: List[(Platform, Network)]): IO[Unit] =
     for {
       cache <- caching
       _ <- cache.updateCachingStatus(InProgress)
       _ <- config.map(c => initSingleCacheEntry(c._1, c._2)).sequence.void
       _ <- cache.updateCachingStatus(Finished)
     } yield ()
-  }.unsafeToFuture()
 
   /** Helper method for updating */
   private def getAllUpdatedAttributes(
@@ -524,7 +484,7 @@ class GenericPlatformDiscoveryOperations(
         getUpdatedAttributesQuery(entityPath, attrs).map(entityName.key -> _)
     }
     val action = DBIO.sequence(queries).map(_.toList)
-    IO.fromFuture(IO(dbRunners((platform, network)).runQuery(action)))
+    dbRunners((platform, network)).runQuery(action).toIO
   }
 
 }

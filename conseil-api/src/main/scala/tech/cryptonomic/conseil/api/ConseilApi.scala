@@ -15,10 +15,11 @@ import tech.cryptonomic.conseil.common.sql.DatabaseRunner
 import tech.cryptonomic.conseil.api.platform.data.tezos.TezosDataRoutes
 import tech.cryptonomic.conseil.api.platform.discovery.GenericPlatformDiscoveryOperations
 
+import tech.cryptonomic.conseil.common.util.syntax._
+
 import cats.effect.IO
 
 import scala.concurrent.ExecutionContext
-import scala.util.{Failure, Success}
 
 object ConseilApi {
 
@@ -55,7 +56,6 @@ class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* wit
 
   // this val is not lazy to force to fetch metadata and trigger logging at the start of the application
   implicit private val ec: ExecutionContext = ExecutionContext.global
-  // implicit val correlationId = java.util.UUID.randomUUID()
 
   lazy val metadataService =
     new MetadataService(config.platforms, transformation, cacheOverrides, ApiCache.cachedDiscoveryOperations)
@@ -138,25 +138,30 @@ class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* wit
       network <- transformation.overrideNetworks(platform.path, config.platforms.getNetworks(platform.name))
     } yield platform -> network
 
-    if (visibleNetworks.nonEmpty) { // At least one blockchain is enabled
-      cachedDiscoveryOperations.init(visibleNetworks).onComplete {
-        case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
-        case Success(_) => logger.info("Pre-caching successful!")
-      }
+    def initMetadataCaching() =
+      cachedDiscoveryOperations
+        .init(visibleNetworks)
+        .flatMap(_ => IO("Pre-caching successful!").debug.void)
+        .handleErrorWith(_ => IO.raiseError(new RuntimeException("Pre-caching metadata failed")).debug.void)
 
-      cachedDiscoveryOperations.initAttributesCache(visibleNetworks).onComplete {
-        case Failure(exception) => logger.error("Pre-caching attributes failed", exception)
-        case Success(_) => logger.info("Pre-caching attributes successful!")
-      }
-    } else {
-      throw NoNetworkEnabledError(
-        """|Pre-caching can't be done, because there is no enabled block-chain defined.
+    def initAttributesCaching() =
+      cachedDiscoveryOperations
+        .initAttributesCache(visibleNetworks)
+        .flatMap(_ => IO("Pre-caching attributes successful!").debug.void)
+        .handleErrorWith(_ => IO.raiseError(new RuntimeException("Pre-caching attributes failed")).debug.void)
+
+    // At least one blockchain is enabled
+    if (visibleNetworks.nonEmpty) initMetadataCaching >> initAttributesCaching
+    else
+      IO.raiseError(
+        new NoNetworkEnabledError(
+          """|Pre-caching can't be done, because there is no enabled block-chain defined.
            | This probably means the application is NOT properly configured.
            | The API needs a platform section to be defined, which lists at least one enabled chain and network.
            | Please double-check the configuration file and start the API service again.
            |""".stripMargin
+        )
       )
-    }
   }
 
 }

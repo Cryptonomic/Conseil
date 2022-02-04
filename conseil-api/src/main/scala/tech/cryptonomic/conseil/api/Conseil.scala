@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.api
 
 import tech.cryptonomic.conseil.api.config.ConseilAppConfig
 import tech.cryptonomic.conseil.common.io.Logging
+import tech.cryptonomic.conseil.common.util.syntax._
 import tech.cryptonomic.conseil.api.util.syntax._
 
 import com.comcast.ip4s._
@@ -9,6 +10,7 @@ import org.http4s.ember.server.EmberServerBuilder
 
 import cats.effect.{ExitCode, IO, IOApp}
 import scala.concurrent.duration._
+import cats.effect.kernel.Outcome
 
 object Conseil extends IOApp with ConseilAppConfig with APIDocs with ConseilMainOutput {
 
@@ -26,10 +28,10 @@ object Conseil extends IOApp with ConseilAppConfig with APIDocs with ConseilMain
         _ => IO.raiseError(new RuntimeException("Cannot load provided config")),
         config =>
           ConseilApi.create(config).flatMap {
-            IO("config loaded successfully\n\n").debug >>
-              // IO.sleep(3.seconds).debug *>
-              IO("running server\n\n").debug >>
-              // IO.sleep(500.millis).debug *>
+            IO("config loaded successfully\n").debug >>
+              IO.sleep(500.millis).debug >>
+              IO("running server\n").debug >>
+              IO.sleep(500.millis).debug >>
               runServer(_, config)
                 .retry(4, 1.hour)
           }
@@ -43,12 +45,17 @@ object Conseil extends IOApp with ConseilAppConfig with APIDocs with ConseilMain
       .withHttpApp(Routing.instance(api))
       .build
       .useForever
+      .guaranteeCase {
+        case Outcome.Succeeded(x) => x
+        case _ => IO.raiseError(new RuntimeException("ember server builder failed"))
+      }
+  // .handleErrorWith(_ => IO.raiseError(new RuntimeException("ember server builder failed")))
 
   def runServer(api: ConseilApi, config: CombinedConfiguration) =
-    // IO.sleep(5.seconds) >>
     displayInfo(config.server) >>
+        IO.sleep(1500.millis) >>
         useServerBuilderResource(api) >>
-        IO.sleep(5.seconds) >>
-        IO(if (config.verbose.on) displayConfiguration(config.platforms) else ())
+        IO.sleep(1500.millis) >>
+        IO(if (config.verbose.on) displayConfiguration(config.platforms)).debug.void
 
 }
