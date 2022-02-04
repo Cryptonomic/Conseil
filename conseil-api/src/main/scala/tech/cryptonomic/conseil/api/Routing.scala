@@ -9,7 +9,6 @@ import sttp.tapir.json.circe._
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 import sttp.tapir.server.interceptor.ValuedEndpointOutput
 import sttp.tapir.statusCode
-import sttp.tapir.server.interceptor.exception.ExceptionContext
 
 object Routing {
 
@@ -21,7 +20,7 @@ object Routing {
     Http4sServerInterpreter[IO](
       Http4sServerOptions
         .customInterceptors[IO, IO]
-        .exceptionHandler { whoami: ExceptionContext =>
+        .exceptionHandler { _ =>
           ValuedEndpointOutput(
             jsonBody[GenericServerError].and(statusCode(StatusCode.InternalServerError)),
             GenericServerError("serverResource failed")

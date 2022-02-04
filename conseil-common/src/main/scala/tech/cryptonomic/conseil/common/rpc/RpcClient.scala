@@ -1,17 +1,20 @@
 package tech.cryptonomic.conseil.common.rpc
 
-import scala.concurrent.duration.Duration
-import scala.util.control.NoStackTrace
-import cats.effect.{Async, Concurrent, Resource}
-import fs2.Stream
-import org.http4s.{EntityDecoder, EntityEncoder, Headers, Method, Uri}
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
+import tech.cryptonomic.conseil.common.rpc.RpcClient._
+
+import org.http4s.{EntityDecoder, EntityEncoder, Method, Uri}
 import org.http4s.client.Client
 import org.http4s.client.middleware.RetryPolicy
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.Status._
-import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
-import tech.cryptonomic.conseil.common.rpc.RpcClient._
 import org.http4s.WaitQueueTimeoutException
+
+import cats.effect.{Async, Concurrent, Resource}
+import fs2.Stream
+
+import scala.concurrent.duration.Duration
+import scala.util.control.NoStackTrace
 
 /**
   * JSON-RPC client according to the specification at https://www.jsonrpc.org/specification

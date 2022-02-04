@@ -121,13 +121,9 @@ case class TezosDataRoutes(
     shouldHideForkEntries(entity)(
       hideForkData =>
         platformNetworkValidation(network) {
-          IO.fromFuture {
-            IO {
-              operations
-                .queryWithPredicates("tezos", entity, filter.toQuery.withLimitCap(maxQueryResultSize), hideForkData)
-            }
-          }.map(handleResult)
-        }
+          operations
+            .queryWithPredicates("tezos", entity, filter.toQuery.withLimitCap(maxQueryResultSize), hideForkData)
+        }.map(handleResult)
     )
   // private
   // def routeFromQuery[A](network: String, entity: String, filter: TezosFilter)(
@@ -161,7 +157,7 @@ case class TezosDataRoutes(
   // private
   val blocksHeadRoute = tezosBlocksHeadEndpoint.serverLogic[IO] {
     case (network, _) =>
-      platformNetworkValidation(network)(IO.fromFuture(IO(operations.fetchLatestBlock()))).map {
+      platformNetworkValidation(network)(operations.fetchLatestBlock()).map {
         case Some(value) => Right(value)
         case None => // FIXME: how to encluse it as [Left] properly
           // throw new RuntimeException("oh noes, can't get the head of [BlocksRow]")
@@ -192,7 +188,7 @@ case class TezosDataRoutes(
   // }
   private val blockByHashRoute = tezosBlockByHashEndpoint.serverLogic[IO] {
     case (network, hash) =>
-      platformNetworkValidation(network)(IO.fromFuture(IO(operations.fetchBlock(TezosBlockHash(hash))))).map {
+      platformNetworkValidation(network)(operations.fetchBlock(TezosBlockHash(hash))).map {
         case None => Left(())
         case Some(value) => Right(value)
       }
@@ -220,7 +216,7 @@ case class TezosDataRoutes(
   // /** V2 Route implementation for account by ID endpoint */
   private val accountByIdRoute = tezosAccountByIdEndpoint.serverLogic[IO] {
     case (network, accountId) =>
-      platformNetworkValidation(network)(IO.fromFuture(IO(operations.fetchAccount(makeAccountId(accountId))))).map {
+      platformNetworkValidation(network)(operations.fetchAccount(makeAccountId(accountId))).map {
         case None => Left(())
         case Some(value) => Right(value)
       }
@@ -248,7 +244,7 @@ case class TezosDataRoutes(
   // /** V2 Route implementation for operation group by ID endpoint */
   private val operationGroupByIdRoute = tezosOperationGroupByIdEndpoint.serverLogic[IO] {
     case (network, operationGroupId) =>
-      platformNetworkValidation(network)(IO.fromFuture(IO(operations.fetchOperationGroup(operationGroupId)))).map {
+      platformNetworkValidation(network)(operations.fetchOperationGroup(operationGroupId)).map {
         case None => Left(())
         case Some(value) => Right(value)
       }
@@ -319,5 +315,8 @@ case class TezosDataRoutes(
   // private def pathValidation[A](path: metadata.Path)(operation: => Future[Option[A]]): Future[Option[A]] =
   //   if (metadataService.exists(path)) operation else Future.successful(None)
   private def pathValidation[A](path: Path)(operation: => IO[Option[A]]): IO[Option[A]] =
-    if (metadataService.exists(path)) operation else IO.none
+    for {
+      exists <- metadataService.exists(path)
+      res <- if (exists) operation else IO.none
+    } yield res
 }
