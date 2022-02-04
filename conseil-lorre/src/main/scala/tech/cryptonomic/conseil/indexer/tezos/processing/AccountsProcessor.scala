@@ -143,16 +143,13 @@ class AccountsProcessor(
         taggedAccounts: List[BlockTagged[AccountsIndex]]
     ): Future[List[(BlockTagged[AccountsIndex], List[Tables.AccountsRow])]] =
       Future.traverse(taggedAccounts) { accountsPerLevel =>
-        if (accountsPerLevel.ref.level % rightsConf.cycleSize == 1) {
+        if (accountsPerLevel.ref.level % rightsConf.cycleSize == 1)
           nodeOperator.fetchActiveBakers(accountsPerLevel.ref.hash).flatMap { activeBakers =>
             //the returned ids also reference the input hash, but we can discard it
             //we only want the active ids to fetch the inactive by difference from the database
             val activeIds = activeBakers.map(_._2.toSet).getOrElse(Set.empty)
             indexedData.getFilteredBakerAccounts(exclude = activeIds).map(accountsPerLevel -> _)
-          }
-        } else {
-          Future.successful(accountsPerLevel -> List.empty)
-        }
+          } else Future.successful(accountsPerLevel -> List.empty)
       }
 
     /** Marks all the input accounts as "activated",
@@ -302,7 +299,7 @@ class AccountsProcessor(
     */
   def markBakerAccounts(blockHashes: Set[TezosBlockHash])(implicit ec: ExecutionContext): Future[Done] =
     indexedData.runQuery(TezosDb.updateAnyBakerAccountStored(blockHashes)).flatMap {
-      case accounts :: history :: Nil =>
+      case accounts :: _ :: Nil =>
         logger.info(s"$accounts entries were identified and stored as bakers")
         Future.successful(Done)
       case other =>
