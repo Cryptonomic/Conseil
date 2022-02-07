@@ -3,12 +3,14 @@ package tech.cryptonomic.conseil.indexer.tezos.forks
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BlockLevel, TezosBlockHash}
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperations => DBOps}
 import tech.cryptonomic.conseil.indexer.forks.ForkAmender
+
 import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 import slick.dbio.DBIO
 import slick.jdbc.PostgresProfile.api._
 import cats.implicits._
 import slickeffect.implicits._
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 
 /** Provides static utilities */
 object TezosForkInvalidatingAmender {
@@ -24,7 +26,7 @@ object TezosForkInvalidatingAmender {
   * E.g. removing processed chain events from the db registry.
   */
 class TezosForkInvalidatingAmender(db: Database)(implicit ec: ExecutionContext)
-    extends ForkAmender[Future, TezosBlockHash] {
+    extends ForkAmender[Future, TezosBlockHash]  with ConseilLogSupport {
 
   /* Note that we need to defer constraint checks manually with postgres
    * policies on consistency levels.
@@ -46,8 +48,11 @@ class TezosForkInvalidatingAmender(db: Database)(implicit ec: ExecutionContext)
         indexedHeadLevel,
         detectionTime
       )
+      _ = logger.info(s"Wrote fork with ID $forkId")
       _ <- DBOps.deferConstraints()
+      _ = logger.info(s"Defered constraints")
       invalidated <- invalidateData(forkLevel, detectionTime, forkId)
+      _ = logger.info(s"Invalidated data $invalidated")
     } yield (forkId, invalidated)
 
     db.run(forkAndInvalidateAction.transactionally)

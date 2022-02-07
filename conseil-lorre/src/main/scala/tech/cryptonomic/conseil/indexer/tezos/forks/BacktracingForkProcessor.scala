@@ -85,6 +85,7 @@ class BacktracingForkProcessor(
         val forkLevel = xs.min
         for {
           forkBlockId <- indexerSearch.searchForLevel(forkLevel)
+          _ = logger.info(s"Found forked block hash $forkBlockId")
           amendment <- amender.amendFork(forkLevel, forkBlockId, currentHeadLevel, Instant.now())
         } yield amendment.some
     }
