@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.api
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.generic.chain.DataOperations
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
-// TODO: weird import
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.Query
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.sql.DatabaseRunner
