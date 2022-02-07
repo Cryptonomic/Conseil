@@ -51,7 +51,7 @@ class TezosForkInvalidatingAmender(db: Database)(implicit ec: ExecutionContext)
       _ = logger.info(s"Wrote fork with ID $forkId")
       _ <- DBOps.deferConstraints()
       _ = logger.info(s"Defered constraints")
-      invalidated <- invalidateData(forkLevel, detectionTime, forkId)
+      invalidated <- invalidateData(forkLevel - 1, detectionTime, forkId)
       _ = logger.info(s"Invalidated data $invalidated")
     } yield (forkId, invalidated)
 
