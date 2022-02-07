@@ -55,7 +55,13 @@ class TezosForkInvalidatingAmender(db: Database)(implicit ec: ExecutionContext)
       _ = logger.info(s"Invalidated data $invalidated")
     } yield (forkId, invalidated)
 
-    db.run(forkAndInvalidateAction.transactionally)
+    try {
+      db.run(forkAndInvalidateAction.transactionally)
+    } catch {
+      case e: Throwable =>
+        e.printStackTrace()
+        Future.successful("error" -> 123)
+    }
   }
 
   /* run invalidation on db across all impacted tables
