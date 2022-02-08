@@ -51,16 +51,12 @@ class TezosForkInvalidatingAmender(db: Database)(implicit ec: ExecutionContext)
       _ = logger.info(s"Wrote fork with ID $forkId")
       _ <- DBOps.deferConstraints()
       _ = logger.info(s"Defered constraints")
-      blocks <- invalidateBlocks(forkLevel, detectionTime, forkId)
       invalidated <- invalidateData(forkLevel, detectionTime, forkId)
       _ = logger.info(s"Invalidated data $invalidated")
-    } yield (forkId, invalidated + blocks)
+    } yield (forkId, invalidated)
 
     db.run(forkAndInvalidateAction.transactionally)
   }
-
-  private def invalidateBlocks(forkLevel: BlockLevel, asOf: Instant, forkId: String) =
-    DBOps.ForkInvalidation.blocks.invalidate(forkLevel, asOf, forkId)
 
   /* run invalidation on db across all impacted tables
    * The powerful combinator foldA uses the fact that
@@ -77,6 +73,7 @@ class TezosForkInvalidatingAmender(db: Database)(implicit ec: ExecutionContext)
       implicit ec: ExecutionContext
   ): DBIO[Int] =
     List(
+      DBOps.ForkInvalidation.blocks.invalidate(forkLevel, asOf, forkId),
       DBOps.ForkInvalidation.operationGroups.invalidate(forkLevel, asOf, forkId),
       DBOps.ForkInvalidation.operations.invalidate(forkLevel, asOf, forkId),
       DBOps.ForkInvalidation.accounts.invalidate(forkLevel, asOf, forkId),
