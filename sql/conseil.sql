@@ -811,6 +811,7 @@ ALTER TABLE ONLY tezos.baking_rights
     ADD CONSTRAINT bake_rights_block_fkey
     FOREIGN KEY (block_hash, fork_id)
     REFERENCES tezos.blocks(hash, fork_id)
+    NOT VALID
     DEFERRABLE INITIALLY DEFERRED;
 
 
@@ -822,6 +823,7 @@ ALTER TABLE ONLY tezos.endorsing_rights
     ADD CONSTRAINT endorse_rights_block_fkey
     FOREIGN KEY (block_hash, fork_id)
     REFERENCES tezos.blocks(hash, fork_id)
+    NOT VALID
     DEFERRABLE INITIALLY DEFERRED;
 
 
