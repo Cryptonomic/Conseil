@@ -129,7 +129,8 @@ class TezosIndexer private (
       unhandled <- accountsResetHandler.applyUnhandledAccountsResets(
         reloadedAccountEvents.orElse(lastReloadedAccountEvents).getOrElse(accountResetEvents)
       )
-      _ <- processTezosBlocks(maxLevel)
+      maxLevelNew <- indexedData.fetchMaxLevel
+      _ <- processTezosBlocks(maxLevelNew)
       _ <- feeOperations
         .processTezosAverageFees(lorreConf.feesAverageTimeWindow)
         .whenA(iteration % lorreConf.feeUpdateInterval == 0)
