@@ -127,7 +127,7 @@ case class TezosDataRoutes(
         case None => // FIXME: how to encluse it as [Left] properly
           // throw new RuntimeException("oh noes, can't get the head of [BlocksRow]")
           // IO.raiseError(new RuntimeException("oh noes"))
-          Left(throw new RuntimeException("oh noes"))
+          Left(new RuntimeException("oh noes"))
       }
   }
 

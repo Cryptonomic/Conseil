@@ -22,8 +22,7 @@ trait PlatformDiscoveryEndpoints {
   )
 
   /** Common path for metadata endpoints */
-  // private
-  lazy val commonPath =
+  private lazy val commonPath =
     infallibleEndpoint
       .in("v2" / "metadata")
       .in(header[Option[String]]("apiKey"))

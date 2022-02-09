@@ -14,8 +14,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints {
 
   val btcPlatform = "bitcoin"
 
-  // private
-  def root: EndpointInput[String] =
+  private def root: EndpointInput[String] =
     "v2" / "data" / btcPlatform / query[String]("network")
 
   // lazy val btcEndpoints: List[Endpoint[Unit, _, _, _, Any]] = List(
