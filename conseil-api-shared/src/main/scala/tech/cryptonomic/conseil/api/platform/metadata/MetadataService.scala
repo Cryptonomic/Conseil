@@ -38,15 +38,18 @@ class MetadataService(
   }
 
   private val attributes: IO[Map[EntityPath, List[Attribute]]] = {
-    val entityPaths: Set[EntityPath] = entities.flatMap {
-      case (networkPath: NetworkPath, entities: List[Entity]) =>
-        entities.map(entity => networkPath.addLevel(entity.name))
-    }.toSet
+    // FIXME: optimize & simplify
+    val entityPathsIO = entities.map {
+      case (networkPath: NetworkPath, entities: IO[List[Entity]]) =>
+        entities.map(_.map(entity => networkPath.addLevel(entity.name)).toSet.toList)
+    }.toList.sequence.map(_.flatten)
 
-    entityPaths.toList.traverse { path =>
-      platformDiscoveryOperations
-        .getTableAttributes(path)
-        .map(path -> transformation.overrideAttributes(path, _, shouldLog = false))
+    entityPathsIO.flatMap {
+      _.traverse { path =>
+        platformDiscoveryOperations
+          .getTableAttributes(path)
+          .map(path -> transformation.overrideAttributes(path, _, shouldLog = false))
+      }
     }.map(_.toMap)
   }
 
