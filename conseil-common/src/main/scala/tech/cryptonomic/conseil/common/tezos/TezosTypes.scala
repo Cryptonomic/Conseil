@@ -248,9 +248,9 @@ object TezosTypes {
   ) extends Operation
 
   final case class Preendorsement(
-    level: BlockLevel,
-    metadata: PreendorsementMetadata,
-    blockOrder: Option[Int] = None
+      level: BlockLevel,
+      metadata: PreendorsementMetadata,
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class SeedNonceRevelation(

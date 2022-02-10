@@ -29,7 +29,7 @@ class BacktracingForkProcessor(
     tezosIndexedDataOperations: TezosIndexedDataOperations,
     indexerSearch: SearchBlockId[Future, TezosBlockHash],
     amender: ForkAmender[Future, TezosBlockHash],
-    batchConf: BatchFetchConfiguration,
+    batchConf: BatchFetchConfiguration
 )(ec: ExecutionContext)
     extends TezosBlocksDataFetchers
     with ConseilLogSupport {
