@@ -242,13 +242,25 @@ object DataTypes {
     val in, between, like, lt, gt, eq, startsWith, endsWith, before, after, isnull = Value
   }
 
+  /** Helps with changing camel case to snake case */
+  object StringHelper {
+
+    /** Helper regex */
+    private val separatees = "[a-z](?=[A-Z])|[0-9](?=[a-zA-Z])|[A-Z](?=[A-Z][a-z])|[a-zA-Z](?=[0-9])".r
+
+    /** Helper method for converting camel case to snake case */
+    def camel2Snake(s: String): String = separatees.replaceAllIn(s, _.group(0) + '_').toLowerCase
+  }
+
+
   /** Enumeration of aggregation functions */
   object AggregationType extends Enumeration {
 
+
     /** Helper method for extracting prefixes needed for SQL */
-    def prefixes: List[String] = values.toList.map(_.toString + "_")
+    def prefixes: List[String] = values.toList.map(x => StringHelper.camel2Snake(x.toString) + "_")
     type AggregationType = Value
-    val sum, count, max, min, avg, countDistinct = Value
+    val countDistinct, sum, count, max, min, avg  = Value
   }
 
   /** Enumeration of aggregation functions */

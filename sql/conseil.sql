@@ -544,7 +544,7 @@ CREATE TABLE tezos.big_maps (
 
 CREATE TABLE tezos.big_map_contents (
     big_map_id numeric NOT NULL,
-    key character varying,
+    key character varying NOT NULL,
     key_hash character varying,
     operation_group_id character varying,
     value character varying,
@@ -555,7 +555,7 @@ CREATE TABLE tezos.big_map_contents (
     period integer,
     fork_id character varying NOT NULL,
     invalidated_asof timestamp,
-    PRIMARY KEY (big_map_id, key, fork_id)
+    PRIMARY KEY (big_map_id, key_hash, fork_id)
 );
 
 CREATE TABLE tezos.big_map_contents_history (
