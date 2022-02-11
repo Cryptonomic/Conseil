@@ -121,58 +121,56 @@ trait Tables {
 
   /** Table description of table accounts. Objects of this class serve as prototypes for rows in queries. */
   class Accounts(_tableTag: Tag) extends profile.api.Table[AccountsRow](_tableTag, Some("tezos"), "accounts") {
-    def * =
+    def * = (
+      accountId,
+      blockId,
+      counter,
+      script,
+      storage,
+      balance,
+      blockLevel,
+      manager,
+      spendable,
+      delegateSetable,
+      delegateValue,
+      isBaker,
+      isActivated,
+      invalidatedAsof,
+      forkId,
+      scriptHash
+    ) <> (AccountsRow.tupled, AccountsRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (
       (
-        accountId,
-        blockId,
+        Rep.Some(accountId),
+        Rep.Some(blockId),
         counter,
         script,
         storage,
-        balance,
-        blockLevel,
+        Rep.Some(balance),
+        Rep.Some(blockLevel),
         manager,
         spendable,
         delegateSetable,
         delegateValue,
-        isBaker,
-        isActivated,
+        Rep.Some(isBaker),
+        Rep.Some(isActivated),
         invalidatedAsof,
-        forkId,
+        Rep.Some(forkId),
         scriptHash
-      ) <> (AccountsRow.tupled, AccountsRow.unapply)
-
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      (
-        (
-          Rep.Some(accountId),
-          Rep.Some(blockId),
-          counter,
-          script,
-          storage,
-          Rep.Some(balance),
-          Rep.Some(blockLevel),
-          manager,
-          spendable,
-          delegateSetable,
-          delegateValue,
-          Rep.Some(isBaker),
-          Rep.Some(isActivated),
-          invalidatedAsof,
-          Rep.Some(forkId),
-          scriptHash
-        )
-      ).shaped.<>(
-        { r =>
-          import r._;
-          _1.map(_ =>
-            AccountsRow.tupled(
-              (_1.get, _2.get, _3, _4, _5, _6.get, _7.get, _8, _9, _10, _11, _12.get, _13.get, _14, _15.get, _16)
-            )
-          )
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
+    ).shaped.<>(
+      { r =>
+        import r._;
+        _1.map(_ =>
+          AccountsRow.tupled(
+            (_1.get, _2.get, _3, _4, _5, _6.get, _7.get, _8, _9, _10, _11, _12.get, _13.get, _14, _15.get, _16)
+          )
+        )
+      },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column account_id SqlType(varchar) */
     val accountId: Rep[String] = column[String]("account_id")
@@ -282,13 +280,10 @@ trait Tables {
       (accountId, blockId, blockLevel, asof, cycle) <> (AccountsCheckpointRow.tupled, AccountsCheckpointRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      ((Rep.Some(accountId), Rep.Some(blockId), Rep.Some(blockLevel), Rep.Some(asof), cycle)).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => AccountsCheckpointRow.tupled((_1.get, _2.get, _3.get, _4.get, _5)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
+    def ? = ((Rep.Some(accountId), Rep.Some(blockId), Rep.Some(blockLevel), Rep.Some(asof), cycle)).shaped.<>(
+      { r => import r._; _1.map(_ => AccountsCheckpointRow.tupled((_1.get, _2.get, _3.get, _4.get, _5))) },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column account_id SqlType(varchar) */
     val accountId: Rep[String] = column[String]("account_id")
@@ -387,56 +382,54 @@ trait Tables {
   /** Table description of table accounts_history. Objects of this class serve as prototypes for rows in queries. */
   class AccountsHistory(_tableTag: Tag)
       extends profile.api.Table[AccountsHistoryRow](_tableTag, Some("tezos"), "accounts_history") {
-    def * =
-      (
-        accountId,
-        blockId,
-        counter,
-        storage,
-        balance,
-        blockLevel,
-        delegateValue,
-        asof,
-        isBaker,
-        cycle,
-        isActivated,
-        isActiveBaker,
-        invalidatedAsof,
-        forkId,
-        scriptHash
-      ) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
+    def * = (
+      accountId,
+      blockId,
+      counter,
+      storage,
+      balance,
+      blockLevel,
+      delegateValue,
+      asof,
+      isBaker,
+      cycle,
+      isActivated,
+      isActiveBaker,
+      invalidatedAsof,
+      forkId,
+      scriptHash
+    ) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
+    def ? = (
       (
-        (
-          Rep.Some(accountId),
-          Rep.Some(blockId),
-          counter,
-          storage,
-          Rep.Some(balance),
-          Rep.Some(blockLevel),
-          delegateValue,
-          Rep.Some(asof),
-          Rep.Some(isBaker),
-          cycle,
-          Rep.Some(isActivated),
-          isActiveBaker,
-          invalidatedAsof,
-          Rep.Some(forkId),
-          scriptHash
-        )
-      ).shaped.<>(
-        { r =>
-          import r._;
-          _1.map(_ =>
-            AccountsHistoryRow.tupled(
-              (_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9.get, _10, _11.get, _12, _13, _14.get, _15)
-            )
-          )
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        Rep.Some(accountId),
+        Rep.Some(blockId),
+        counter,
+        storage,
+        Rep.Some(balance),
+        Rep.Some(blockLevel),
+        delegateValue,
+        Rep.Some(asof),
+        Rep.Some(isBaker),
+        cycle,
+        Rep.Some(isActivated),
+        isActiveBaker,
+        invalidatedAsof,
+        Rep.Some(forkId),
+        scriptHash
       )
+    ).shaped.<>(
+      { r =>
+        import r._;
+        _1.map(_ =>
+          AccountsHistoryRow.tupled(
+            (_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9.get, _10, _11.get, _12, _13, _14.get, _15)
+          )
+        )
+      },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column account_id SqlType(varchar) */
     val accountId: Rep[String] = column[String]("account_id")
@@ -605,44 +598,43 @@ trait Tables {
         .mapTo[BakerRegistryRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      (Rep.Some(
-        name
-      ) :: isAcceptingDelegation :: externalDataUrl :: split :: paymentAccounts :: minimumDelegation :: payoutDelay :: payoutFrequency :: minimumPayout :: isCheap :: payForOwnBlocks :: payForEndorsements :: payGainedFees :: payForAccusationGains :: subtractLostDepositsWhenAccused :: subtractLostRewardsWhenAccused :: subtractLostFeesWhenAccused :: payForRevelation :: subtractLostRewardsWhenMissRevelation :: subtractLostFeesWhenMissRevelation :: compensateMissedBlocks :: payForStolenBlocks :: compensateMissedEndorsements :: compensateLowPriorityEndorsementLoss :: overdelegationThreshold :: subtractRewardsFromUninvitedDelegation :: recordManager :: Rep
-        .Some(timestamp) :: HNil).shaped.<>(
-        r =>
-          BakerRegistryRow(
-            r(0).asInstanceOf[Option[String]].get,
-            r(1).asInstanceOf[Option[Boolean]],
-            r(2).asInstanceOf[Option[String]],
-            r(3).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(4).asInstanceOf[Option[String]],
-            r(5).asInstanceOf[Option[Int]],
-            r(6).asInstanceOf[Option[Int]],
-            r(7).asInstanceOf[Option[Int]],
-            r(8).asInstanceOf[Option[Int]],
-            r(9).asInstanceOf[Option[Boolean]],
-            r(10).asInstanceOf[Option[Boolean]],
-            r(11).asInstanceOf[Option[Boolean]],
-            r(12).asInstanceOf[Option[Boolean]],
-            r(13).asInstanceOf[Option[Boolean]],
-            r(14).asInstanceOf[Option[Boolean]],
-            r(15).asInstanceOf[Option[Boolean]],
-            r(16).asInstanceOf[Option[Boolean]],
-            r(17).asInstanceOf[Option[Boolean]],
-            r(18).asInstanceOf[Option[Boolean]],
-            r(19).asInstanceOf[Option[Boolean]],
-            r(20).asInstanceOf[Option[Boolean]],
-            r(21).asInstanceOf[Option[Boolean]],
-            r(22).asInstanceOf[Option[Boolean]],
-            r(23).asInstanceOf[Option[Boolean]],
-            r(24).asInstanceOf[Option[Int]],
-            r(25).asInstanceOf[Option[Boolean]],
-            r(26).asInstanceOf[Option[String]],
-            r(27).asInstanceOf[Option[java.sql.Timestamp]].get
-          ),
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
+    def ? = (Rep.Some(
+      name
+    ) :: isAcceptingDelegation :: externalDataUrl :: split :: paymentAccounts :: minimumDelegation :: payoutDelay :: payoutFrequency :: minimumPayout :: isCheap :: payForOwnBlocks :: payForEndorsements :: payGainedFees :: payForAccusationGains :: subtractLostDepositsWhenAccused :: subtractLostRewardsWhenAccused :: subtractLostFeesWhenAccused :: payForRevelation :: subtractLostRewardsWhenMissRevelation :: subtractLostFeesWhenMissRevelation :: compensateMissedBlocks :: payForStolenBlocks :: compensateMissedEndorsements :: compensateLowPriorityEndorsementLoss :: overdelegationThreshold :: subtractRewardsFromUninvitedDelegation :: recordManager :: Rep
+      .Some(timestamp) :: HNil).shaped.<>(
+      r =>
+        BakerRegistryRow(
+          r(0).asInstanceOf[Option[String]].get,
+          r(1).asInstanceOf[Option[Boolean]],
+          r(2).asInstanceOf[Option[String]],
+          r(3).asInstanceOf[Option[scala.math.BigDecimal]],
+          r(4).asInstanceOf[Option[String]],
+          r(5).asInstanceOf[Option[Int]],
+          r(6).asInstanceOf[Option[Int]],
+          r(7).asInstanceOf[Option[Int]],
+          r(8).asInstanceOf[Option[Int]],
+          r(9).asInstanceOf[Option[Boolean]],
+          r(10).asInstanceOf[Option[Boolean]],
+          r(11).asInstanceOf[Option[Boolean]],
+          r(12).asInstanceOf[Option[Boolean]],
+          r(13).asInstanceOf[Option[Boolean]],
+          r(14).asInstanceOf[Option[Boolean]],
+          r(15).asInstanceOf[Option[Boolean]],
+          r(16).asInstanceOf[Option[Boolean]],
+          r(17).asInstanceOf[Option[Boolean]],
+          r(18).asInstanceOf[Option[Boolean]],
+          r(19).asInstanceOf[Option[Boolean]],
+          r(20).asInstanceOf[Option[Boolean]],
+          r(21).asInstanceOf[Option[Boolean]],
+          r(22).asInstanceOf[Option[Boolean]],
+          r(23).asInstanceOf[Option[Boolean]],
+          r(24).asInstanceOf[Option[Int]],
+          r(25).asInstanceOf[Option[Boolean]],
+          r(26).asInstanceOf[Option[String]],
+          r(27).asInstanceOf[Option[java.sql.Timestamp]].get
+        ),
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column name SqlType(varchar) */
     val name: Rep[String] = column[String]("name")
@@ -809,53 +801,50 @@ trait Tables {
 
   /** Table description of table bakers. Objects of this class serve as prototypes for rows in queries. */
   class Bakers(_tableTag: Tag) extends profile.api.Table[BakersRow](_tableTag, Some("tezos"), "bakers") {
-    def * =
+    def * = (
+      pkh,
+      blockId,
+      balance,
+      frozenBalance,
+      stakingBalance,
+      delegatedBalance,
+      rolls,
+      deactivated,
+      gracePeriod,
+      blockLevel,
+      cycle,
+      period,
+      invalidatedAsof,
+      forkId
+    ) <> (BakersRow.tupled, BakersRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (
       (
-        pkh,
-        blockId,
+        Rep.Some(pkh),
+        Rep.Some(blockId),
         balance,
         frozenBalance,
         stakingBalance,
         delegatedBalance,
-        rolls,
-        deactivated,
-        gracePeriod,
-        blockLevel,
+        Rep.Some(rolls),
+        Rep.Some(deactivated),
+        Rep.Some(gracePeriod),
+        Rep.Some(blockLevel),
         cycle,
         period,
         invalidatedAsof,
-        forkId
-      ) <> (BakersRow.tupled, BakersRow.unapply)
-
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      (
-        (
-          Rep.Some(pkh),
-          Rep.Some(blockId),
-          balance,
-          frozenBalance,
-          stakingBalance,
-          delegatedBalance,
-          Rep.Some(rolls),
-          Rep.Some(deactivated),
-          Rep.Some(gracePeriod),
-          Rep.Some(blockLevel),
-          cycle,
-          period,
-          invalidatedAsof,
-          Rep.Some(forkId)
-        )
-      ).shaped.<>(
-        { r =>
-          import r._;
-          _1.map(_ =>
-            BakersRow
-              .tupled((_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get, _10.get, _11, _12, _13, _14.get))
-          )
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        Rep.Some(forkId)
       )
+    ).shaped.<>(
+      { r =>
+        import r._;
+        _1.map(_ =>
+          BakersRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get, _10.get, _11, _12, _13, _14.get))
+        )
+      },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column pkh SqlType(varchar) */
     val pkh: Rep[String] = column[String]("pkh")
@@ -949,13 +938,10 @@ trait Tables {
       (delegatePkh, blockId, blockLevel, cycle, period) <> (BakersCheckpointRow.tupled, BakersCheckpointRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      ((Rep.Some(delegatePkh), Rep.Some(blockId), Rep.Some(blockLevel), cycle, period)).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => BakersCheckpointRow.tupled((_1.get, _2.get, _3.get, _4, _5)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
+    def ? = ((Rep.Some(delegatePkh), Rep.Some(blockId), Rep.Some(blockLevel), cycle, period)).shaped.<>(
+      { r => import r._; _1.map(_ => BakersCheckpointRow.tupled((_1.get, _2.get, _3.get, _4, _5))) },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column delegate_pkh SqlType(varchar) */
     val delegatePkh: Rep[String] = column[String]("delegate_pkh")
@@ -1050,56 +1036,54 @@ trait Tables {
   /** Table description of table bakers_history. Objects of this class serve as prototypes for rows in queries. */
   class BakersHistory(_tableTag: Tag)
       extends profile.api.Table[BakersHistoryRow](_tableTag, Some("tezos"), "bakers_history") {
-    def * =
+    def * = (
+      pkh,
+      blockId,
+      balance,
+      frozenBalance,
+      stakingBalance,
+      delegatedBalance,
+      rolls,
+      deactivated,
+      gracePeriod,
+      blockLevel,
+      cycle,
+      period,
+      asof,
+      invalidatedAsof,
+      forkId
+    ) <> (BakersHistoryRow.tupled, BakersHistoryRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (
       (
-        pkh,
-        blockId,
+        Rep.Some(pkh),
+        Rep.Some(blockId),
         balance,
         frozenBalance,
         stakingBalance,
         delegatedBalance,
-        rolls,
-        deactivated,
-        gracePeriod,
-        blockLevel,
+        Rep.Some(rolls),
+        Rep.Some(deactivated),
+        Rep.Some(gracePeriod),
+        Rep.Some(blockLevel),
         cycle,
         period,
-        asof,
+        Rep.Some(asof),
         invalidatedAsof,
-        forkId
-      ) <> (BakersHistoryRow.tupled, BakersHistoryRow.unapply)
-
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      (
-        (
-          Rep.Some(pkh),
-          Rep.Some(blockId),
-          balance,
-          frozenBalance,
-          stakingBalance,
-          delegatedBalance,
-          Rep.Some(rolls),
-          Rep.Some(deactivated),
-          Rep.Some(gracePeriod),
-          Rep.Some(blockLevel),
-          cycle,
-          period,
-          Rep.Some(asof),
-          invalidatedAsof,
-          Rep.Some(forkId)
-        )
-      ).shaped.<>(
-        { r =>
-          import r._;
-          _1.map(_ =>
-            BakersHistoryRow.tupled(
-              (_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get, _10.get, _11, _12, _13.get, _14, _15.get)
-            )
-          )
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        Rep.Some(forkId)
       )
+    ).shaped.<>(
+      { r =>
+        import r._;
+        _1.map(_ =>
+          BakersHistoryRow.tupled(
+            (_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get, _10.get, _11, _12, _13.get, _14, _15.get)
+          )
+        )
+      },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column pkh SqlType(varchar) */
     val pkh: Rep[String] = column[String]("pkh")
@@ -1205,39 +1189,35 @@ trait Tables {
   /** Table description of table baking_rights. Objects of this class serve as prototypes for rows in queries. */
   class BakingRights(_tableTag: Tag)
       extends profile.api.Table[BakingRightsRow](_tableTag, Some("tezos"), "baking_rights") {
-    def * =
+    def * = (
+      blockHash,
+      blockLevel,
+      delegate,
+      priority,
+      estimatedTime,
+      cycle,
+      governancePeriod,
+      invalidatedAsof,
+      forkId
+    ) <> (BakingRightsRow.tupled, BakingRightsRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (
       (
         blockHash,
-        blockLevel,
-        delegate,
-        priority,
+        Rep.Some(blockLevel),
+        Rep.Some(delegate),
+        Rep.Some(priority),
         estimatedTime,
         cycle,
         governancePeriod,
         invalidatedAsof,
-        forkId
-      ) <> (BakingRightsRow.tupled, BakingRightsRow.unapply)
-
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      (
-        (
-          blockHash,
-          Rep.Some(blockLevel),
-          Rep.Some(delegate),
-          Rep.Some(priority),
-          estimatedTime,
-          cycle,
-          governancePeriod,
-          invalidatedAsof,
-          Rep.Some(forkId)
-        )
-      ).shaped.<>(
-        { r =>
-          import r._; _2.map(_ => BakingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7, _8, _9.get)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        Rep.Some(forkId)
       )
+    ).shaped.<>(
+      { r => import r._; _2.map(_ => BakingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7, _8, _9.get))) },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column block_hash SqlType(varchar), Default(None) */
     val blockHash: Rep[Option[String]] = column[Option[String]]("block_hash", O.Default(None))
@@ -1374,58 +1354,56 @@ trait Tables {
   /** Table description of table balance_updates. Objects of this class serve as prototypes for rows in queries. */
   class BalanceUpdates(_tableTag: Tag)
       extends profile.api.Table[BalanceUpdatesRow](_tableTag, Some("tezos"), "balance_updates") {
-    def * =
+    def * = (
+      id,
+      source,
+      sourceId,
+      sourceHash,
+      kind,
+      accountId,
+      change,
+      level,
+      category,
+      operationGroupHash,
+      blockId,
+      blockLevel,
+      cycle,
+      period,
+      invalidatedAsof,
+      forkId
+    ) <> (BalanceUpdatesRow.tupled, BalanceUpdatesRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (
       (
-        id,
-        source,
+        Rep.Some(id),
+        Rep.Some(source),
         sourceId,
         sourceHash,
-        kind,
-        accountId,
-        change,
+        Rep.Some(kind),
+        Rep.Some(accountId),
+        Rep.Some(change),
         level,
         category,
         operationGroupHash,
-        blockId,
-        blockLevel,
+        Rep.Some(blockId),
+        Rep.Some(blockLevel),
         cycle,
         period,
         invalidatedAsof,
-        forkId
-      ) <> (BalanceUpdatesRow.tupled, BalanceUpdatesRow.unapply)
-
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      (
-        (
-          Rep.Some(id),
-          Rep.Some(source),
-          sourceId,
-          sourceHash,
-          Rep.Some(kind),
-          Rep.Some(accountId),
-          Rep.Some(change),
-          level,
-          category,
-          operationGroupHash,
-          Rep.Some(blockId),
-          Rep.Some(blockLevel),
-          cycle,
-          period,
-          invalidatedAsof,
-          Rep.Some(forkId)
-        )
-      ).shaped.<>(
-        { r =>
-          import r._;
-          _1.map(_ =>
-            BalanceUpdatesRow.tupled(
-              (_1.get, _2.get, _3, _4, _5.get, _6.get, _7.get, _8, _9, _10, _11.get, _12.get, _13, _14, _15, _16.get)
-            )
-          )
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        Rep.Some(forkId)
       )
+    ).shaped.<>(
+      { r =>
+        import r._;
+        _1.map(_ =>
+          BalanceUpdatesRow.tupled(
+            (_1.get, _2.get, _3, _4, _5.get, _6.get, _7.get, _8, _9, _10, _11.get, _12.get, _13, _14, _15, _16.get)
+          )
+        )
+      },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column id SqlType(serial), AutoInc */
     val id: Rep[Int] = column[Int]("id", O.AutoInc)
@@ -1495,7 +1473,7 @@ trait Tables {
   /** Entity class storing rows of table BigMapContents
     *  @param bigMapId Database column big_map_id SqlType(numeric)
     *  @param key Database column key SqlType(varchar)
-    *  @param keyHash Database column key_hash SqlType(varchar), Default(None)
+    *  @param keyHash Database column key_hash SqlType(varchar)
     *  @param operationGroupId Database column operation_group_id SqlType(varchar), Default(None)
     *  @param value Database column value SqlType(varchar), Default(None)
     *  @param valueMicheline Database column value_micheline SqlType(varchar), Default(None)
@@ -1509,7 +1487,7 @@ trait Tables {
   case class BigMapContentsRow(
       bigMapId: scala.math.BigDecimal,
       key: String,
-      keyHash: Option[String] = None,
+      keyHash: String,
       operationGroupId: Option[String] = None,
       value: Option[String] = None,
       valueMicheline: Option[String] = None,
@@ -1535,7 +1513,7 @@ trait Tables {
       (
         <<[scala.math.BigDecimal],
         <<[String],
-        <<?[String],
+        <<[String],
         <<?[String],
         <<?[String],
         <<?[String],
@@ -1552,11 +1530,27 @@ trait Tables {
   /** Table description of table big_map_contents. Objects of this class serve as prototypes for rows in queries. */
   class BigMapContents(_tableTag: Tag)
       extends profile.api.Table[BigMapContentsRow](_tableTag, Some("tezos"), "big_map_contents") {
-    def * =
+    def * = (
+      bigMapId,
+      key,
+      keyHash,
+      operationGroupId,
+      value,
+      valueMicheline,
+      blockLevel,
+      timestamp,
+      cycle,
+      period,
+      forkId,
+      invalidatedAsof
+    ) <> (BigMapContentsRow.tupled, BigMapContentsRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (
       (
-        bigMapId,
-        key,
-        keyHash,
+        Rep.Some(bigMapId),
+        Rep.Some(key),
+        Rep.Some(keyHash),
         operationGroupId,
         value,
         valueMicheline,
@@ -1564,34 +1558,16 @@ trait Tables {
         timestamp,
         cycle,
         period,
-        forkId,
+        Rep.Some(forkId),
         invalidatedAsof
-      ) <> (BigMapContentsRow.tupled, BigMapContentsRow.unapply)
-
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      (
-        (
-          Rep.Some(bigMapId),
-          Rep.Some(key),
-          keyHash,
-          operationGroupId,
-          value,
-          valueMicheline,
-          blockLevel,
-          timestamp,
-          cycle,
-          period,
-          Rep.Some(forkId),
-          invalidatedAsof
-        )
-      ).shaped.<>(
-        { r =>
-          import r._;
-          _1.map(_ => BigMapContentsRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8, _9, _10, _11.get, _12)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
+    ).shaped.<>(
+      { r =>
+        import r._;
+        _1.map(_ => BigMapContentsRow.tupled((_1.get, _2.get, _3.get, _4, _5, _6, _7, _8, _9, _10, _11.get, _12)))
+      },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column big_map_id SqlType(numeric) */
     val bigMapId: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("big_map_id")
@@ -1599,8 +1575,8 @@ trait Tables {
     /** Database column key SqlType(varchar) */
     val key: Rep[String] = column[String]("key")
 
-    /** Database column key_hash SqlType(varchar), Default(None) */
-    val keyHash: Rep[Option[String]] = column[Option[String]]("key_hash", O.Default(None))
+    /** Database column key_hash SqlType(varchar) */
+    val keyHash: Rep[String] = column[String]("key_hash")
 
     /** Database column operation_group_id SqlType(varchar), Default(None) */
     val operationGroupId: Rep[Option[String]] = column[Option[String]]("operation_group_id", O.Default(None))
@@ -1631,7 +1607,7 @@ trait Tables {
       column[Option[java.sql.Timestamp]]("invalidated_asof", O.Default(None))
 
     /** Primary key of BigMapContents (database name big_map_contents_pkey) */
-    val pk = primaryKey("big_map_contents_pkey", (bigMapId, key, forkId))
+    val pk = primaryKey("big_map_contents_pkey", (bigMapId, keyHash, forkId))
 
     /** Index over (bigMapId) (database name big_map_id_idx) */
     val index1 = index("big_map_id_idx", bigMapId)
@@ -1703,10 +1679,25 @@ trait Tables {
   /** Table description of table big_map_contents_history. Objects of this class serve as prototypes for rows in queries. */
   class BigMapContentsHistory(_tableTag: Tag)
       extends profile.api.Table[BigMapContentsHistoryRow](_tableTag, Some("tezos"), "big_map_contents_history") {
-    def * =
+    def * = (
+      bigMapId,
+      key,
+      keyHash,
+      operationGroupId,
+      value,
+      blockLevel,
+      timestamp,
+      cycle,
+      period,
+      forkId,
+      invalidatedAsof
+    ) <> (BigMapContentsHistoryRow.tupled, BigMapContentsHistoryRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (
       (
-        bigMapId,
-        key,
+        Rep.Some(bigMapId),
+        Rep.Some(key),
         keyHash,
         operationGroupId,
         value,
@@ -1714,33 +1705,16 @@ trait Tables {
         timestamp,
         cycle,
         period,
-        forkId,
+        Rep.Some(forkId),
         invalidatedAsof
-      ) <> (BigMapContentsHistoryRow.tupled, BigMapContentsHistoryRow.unapply)
-
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      (
-        (
-          Rep.Some(bigMapId),
-          Rep.Some(key),
-          keyHash,
-          operationGroupId,
-          value,
-          blockLevel,
-          timestamp,
-          cycle,
-          period,
-          Rep.Some(forkId),
-          invalidatedAsof
-        )
-      ).shaped.<>(
-        { r =>
-          import r._;
-          _1.map(_ => BigMapContentsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8, _9, _10.get, _11)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
+    ).shaped.<>(
+      { r =>
+        import r._;
+        _1.map(_ => BigMapContentsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8, _9, _10.get, _11)))
+      },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column big_map_id SqlType(numeric) */
     val bigMapId: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("big_map_id")
@@ -1817,13 +1791,10 @@ trait Tables {
       (bigMapId, keyType, valueType, forkId, blockLevel, invalidatedAsof) <> (BigMapsRow.tupled, BigMapsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      ((Rep.Some(bigMapId), keyType, valueType, Rep.Some(forkId), blockLevel, invalidatedAsof)).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => BigMapsRow.tupled((_1.get, _2, _3, _4.get, _5, _6)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
+    def ? = ((Rep.Some(bigMapId), keyType, valueType, Rep.Some(forkId), blockLevel, invalidatedAsof)).shaped.<>(
+      { r => import r._; _1.map(_ => BigMapsRow.tupled((_1.get, _2, _3, _4.get, _5, _6))) },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column big_map_id SqlType(numeric) */
     val bigMapId: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("big_map_id")
@@ -1967,48 +1938,48 @@ trait Tables {
         .mapTo[BlocksRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      (Rep.Some(level) :: Rep
-        .Some(proto) :: Rep.Some(predecessor) :: Rep.Some(timestamp) :: Rep.Some(fitness) :: context :: signature :: Rep
-        .Some(protocol) :: chainId :: Rep.Some(
-        hash
-      ) :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: priority :: Rep
-        .Some(utcYear) :: Rep.Some(utcMonth) :: Rep.Some(utcDay) :: Rep.Some(utcTime) :: invalidatedAsof :: Rep
-        .Some(forkId) :: HNil).shaped.<>(
-        r =>
-          BlocksRow(
-            r(0).asInstanceOf[Option[Long]].get,
-            r(1).asInstanceOf[Option[Int]].get,
-            r(2).asInstanceOf[Option[String]].get,
-            r(3).asInstanceOf[Option[java.sql.Timestamp]].get,
-            r(4).asInstanceOf[Option[String]].get,
-            r(5).asInstanceOf[Option[String]],
-            r(6).asInstanceOf[Option[String]],
-            r(7).asInstanceOf[Option[String]].get,
-            r(8).asInstanceOf[Option[String]],
-            r(9).asInstanceOf[Option[String]].get,
-            r(10).asInstanceOf[Option[String]],
-            r(11).asInstanceOf[Option[String]],
-            r(12).asInstanceOf[Option[Int]],
-            r(13).asInstanceOf[Option[String]],
-            r(14).asInstanceOf[Option[String]],
-            r(15).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(16).asInstanceOf[Option[Long]],
-            r(17).asInstanceOf[Option[Int]],
-            r(18).asInstanceOf[Option[Int]],
-            r(19).asInstanceOf[Option[Int]],
-            r(20).asInstanceOf[Option[Int]],
-            r(21).asInstanceOf[Option[Int]],
-            r(22).asInstanceOf[Option[Int]],
-            r(23).asInstanceOf[Option[Int]].get,
-            r(24).asInstanceOf[Option[Int]].get,
-            r(25).asInstanceOf[Option[Int]].get,
-            r(26).asInstanceOf[Option[String]].get,
-            r(27).asInstanceOf[Option[java.sql.Timestamp]],
-            r(28).asInstanceOf[Option[String]].get
-          ),
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
+    def ? = (Rep.Some(level) :: Rep.Some(proto) :: Rep.Some(predecessor) :: Rep.Some(timestamp) :: Rep.Some(
+      fitness
+    ) :: context :: signature :: Rep.Some(protocol) :: chainId :: Rep.Some(
+      hash
+    ) :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: priority :: Rep
+      .Some(utcYear) :: Rep.Some(utcMonth) :: Rep.Some(utcDay) :: Rep.Some(utcTime) :: invalidatedAsof :: Rep.Some(
+      forkId
+    ) :: HNil).shaped.<>(
+      r =>
+        BlocksRow(
+          r(0).asInstanceOf[Option[Long]].get,
+          r(1).asInstanceOf[Option[Int]].get,
+          r(2).asInstanceOf[Option[String]].get,
+          r(3).asInstanceOf[Option[java.sql.Timestamp]].get,
+          r(4).asInstanceOf[Option[String]].get,
+          r(5).asInstanceOf[Option[String]],
+          r(6).asInstanceOf[Option[String]],
+          r(7).asInstanceOf[Option[String]].get,
+          r(8).asInstanceOf[Option[String]],
+          r(9).asInstanceOf[Option[String]].get,
+          r(10).asInstanceOf[Option[String]],
+          r(11).asInstanceOf[Option[String]],
+          r(12).asInstanceOf[Option[Int]],
+          r(13).asInstanceOf[Option[String]],
+          r(14).asInstanceOf[Option[String]],
+          r(15).asInstanceOf[Option[scala.math.BigDecimal]],
+          r(16).asInstanceOf[Option[Long]],
+          r(17).asInstanceOf[Option[Int]],
+          r(18).asInstanceOf[Option[Int]],
+          r(19).asInstanceOf[Option[Int]],
+          r(20).asInstanceOf[Option[Int]],
+          r(21).asInstanceOf[Option[Int]],
+          r(22).asInstanceOf[Option[Int]],
+          r(23).asInstanceOf[Option[Int]].get,
+          r(24).asInstanceOf[Option[Int]].get,
+          r(25).asInstanceOf[Option[Int]].get,
+          r(26).asInstanceOf[Option[String]].get,
+          r(27).asInstanceOf[Option[java.sql.Timestamp]],
+          r(28).asInstanceOf[Option[String]].get
+        ),
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column level SqlType(int8) */
     val level: Rep[Long] = column[Long]("level")
@@ -2164,41 +2135,39 @@ trait Tables {
   /** Table description of table endorsing_rights. Objects of this class serve as prototypes for rows in queries. */
   class EndorsingRights(_tableTag: Tag)
       extends profile.api.Table[EndorsingRightsRow](_tableTag, Some("tezos"), "endorsing_rights") {
-    def * =
+    def * = (
+      blockHash,
+      blockLevel,
+      delegate,
+      slot,
+      estimatedTime,
+      cycle,
+      governancePeriod,
+      endorsedBlock,
+      invalidatedAsof,
+      forkId
+    ) <> (EndorsingRightsRow.tupled, EndorsingRightsRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (
       (
         blockHash,
-        blockLevel,
-        delegate,
-        slot,
+        Rep.Some(blockLevel),
+        Rep.Some(delegate),
+        Rep.Some(slot),
         estimatedTime,
         cycle,
         governancePeriod,
         endorsedBlock,
         invalidatedAsof,
-        forkId
-      ) <> (EndorsingRightsRow.tupled, EndorsingRightsRow.unapply)
-
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      (
-        (
-          blockHash,
-          Rep.Some(blockLevel),
-          Rep.Some(delegate),
-          Rep.Some(slot),
-          estimatedTime,
-          cycle,
-          governancePeriod,
-          endorsedBlock,
-          invalidatedAsof,
-          Rep.Some(forkId)
-        )
-      ).shaped.<>(
-        { r =>
-          import r._; _2.map(_ => EndorsingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7, _8, _9, _10.get)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        Rep.Some(forkId)
       )
+    ).shaped.<>(
+      { r =>
+        import r._; _2.map(_ => EndorsingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7, _8, _9, _10.get)))
+      },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column block_hash SqlType(varchar), Default(None) */
     val blockHash: Rep[Option[String]] = column[Option[String]]("block_hash", O.Default(None))
@@ -2315,25 +2284,22 @@ trait Tables {
       (low, medium, high, timestamp, kind, cycle, level, invalidatedAsof, forkId) <> (FeesRow.tupled, FeesRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
+    def ? = (
       (
-        (
-          Rep.Some(low),
-          Rep.Some(medium),
-          Rep.Some(high),
-          Rep.Some(timestamp),
-          Rep.Some(kind),
-          cycle,
-          level,
-          invalidatedAsof,
-          Rep.Some(forkId)
-        )
-      ).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => FeesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7, _8, _9.get)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        Rep.Some(low),
+        Rep.Some(medium),
+        Rep.Some(high),
+        Rep.Some(timestamp),
+        Rep.Some(kind),
+        cycle,
+        level,
+        invalidatedAsof,
+        Rep.Some(forkId)
       )
+    ).shaped.<>(
+      { r => import r._; _1.map(_ => FeesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7, _8, _9.get))) },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column low SqlType(int4) */
     val low: Rep[Int] = column[Int]("low")
@@ -2390,9 +2356,7 @@ trait Tables {
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       ((Rep.Some(forkId), Rep.Some(forkLevel), Rep.Some(forkHash), Rep.Some(headLevel), Rep.Some(timestamp))).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => ForksRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))
-        },
+        { r => import r._; _1.map(_ => ForksRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get))) },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
 
@@ -2501,14 +2465,39 @@ trait Tables {
 
   /** Table description of table governance. Objects of this class serve as prototypes for rows in queries. */
   class Governance(_tableTag: Tag) extends profile.api.Table[GovernanceRow](_tableTag, Some("tezos"), "governance") {
-    def * =
+    def * = (
+      votingPeriod,
+      votingPeriodKind,
+      cycle,
+      level,
+      blockHash,
+      proposalHash,
+      yayCount,
+      nayCount,
+      passCount,
+      yayRolls,
+      nayRolls,
+      passRolls,
+      totalRolls,
+      blockYayCount,
+      blockNayCount,
+      blockPassCount,
+      blockYayRolls,
+      blockNayRolls,
+      blockPassRolls,
+      invalidatedAsof,
+      forkId
+    ) <> (GovernanceRow.tupled, GovernanceRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (
       (
-        votingPeriod,
-        votingPeriodKind,
+        Rep.Some(votingPeriod),
+        Rep.Some(votingPeriodKind),
         cycle,
         level,
-        blockHash,
-        proposalHash,
+        Rep.Some(blockHash),
+        Rep.Some(proposalHash),
         yayCount,
         nayCount,
         passCount,
@@ -2523,68 +2512,41 @@ trait Tables {
         blockNayRolls,
         blockPassRolls,
         invalidatedAsof,
-        forkId
-      ) <> (GovernanceRow.tupled, GovernanceRow.unapply)
-
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      (
-        (
-          Rep.Some(votingPeriod),
-          Rep.Some(votingPeriodKind),
-          cycle,
-          level,
-          Rep.Some(blockHash),
-          Rep.Some(proposalHash),
-          yayCount,
-          nayCount,
-          passCount,
-          yayRolls,
-          nayRolls,
-          passRolls,
-          totalRolls,
-          blockYayCount,
-          blockNayCount,
-          blockPassCount,
-          blockYayRolls,
-          blockNayRolls,
-          blockPassRolls,
-          invalidatedAsof,
-          Rep.Some(forkId)
-        )
-      ).shaped.<>(
-        { r =>
-          import r._;
-          _1.map(_ =>
-            GovernanceRow.tupled(
-              (
-                _1.get,
-                _2.get,
-                _3,
-                _4,
-                _5.get,
-                _6.get,
-                _7,
-                _8,
-                _9,
-                _10,
-                _11,
-                _12,
-                _13,
-                _14,
-                _15,
-                _16,
-                _17,
-                _18,
-                _19,
-                _20,
-                _21.get
-              )
+        Rep.Some(forkId)
+      )
+    ).shaped.<>(
+      { r =>
+        import r._;
+        _1.map(_ =>
+          GovernanceRow.tupled(
+            (
+              _1.get,
+              _2.get,
+              _3,
+              _4,
+              _5.get,
+              _6.get,
+              _7,
+              _8,
+              _9,
+              _10,
+              _11,
+              _12,
+              _13,
+              _14,
+              _15,
+              _16,
+              _17,
+              _18,
+              _19,
+              _20,
+              _21.get
             )
           )
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
+        )
+      },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column voting_period SqlType(int4) */
     val votingPeriod: Rep[Int] = column[Int]("voting_period")
@@ -2688,13 +2650,10 @@ trait Tables {
     def * = (address, alias) <> (KnownAddressesRow.tupled, KnownAddressesRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      ((Rep.Some(address), Rep.Some(alias))).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => KnownAddressesRow.tupled((_1.get, _2.get)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
+    def ? = ((Rep.Some(address), Rep.Some(alias))).shaped.<>(
+      { r => import r._; _1.map(_ => KnownAddressesRow.tupled((_1.get, _2.get))) },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column address SqlType(varchar) */
     val address: Rep[String] = column[String]("address")
@@ -2736,13 +2695,10 @@ trait Tables {
     def * = (address, rawMetadata, name, description, lastUpdated) <> (MetadataRow.tupled, MetadataRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      ((Rep.Some(address), Rep.Some(rawMetadata), Rep.Some(name), description, lastUpdated)).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => MetadataRow.tupled((_1.get, _2.get, _3.get, _4, _5)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
+    def ? = ((Rep.Some(address), Rep.Some(rawMetadata), Rep.Some(name), description, lastUpdated)).shaped.<>(
+      { r => import r._; _1.map(_ => MetadataRow.tupled((_1.get, _2.get, _3.get, _4, _5))) },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column address SqlType(text) */
     val address: Rep[String] = column[String]("address")
@@ -2799,37 +2755,35 @@ trait Tables {
 
   /** Table description of table nfts. Objects of this class serve as prototypes for rows in queries. */
   class Nfts(_tableTag: Tag) extends profile.api.Table[NftsRow](_tableTag, Some("tezos"), "nfts") {
-    def * =
-      (
-        contractAddress,
-        opGroupHash,
-        blockLevel,
-        timestamp,
-        contractName,
-        assetType,
-        assetLocation,
-        rawMetadata
-      ) <> (NftsRow.tupled, NftsRow.unapply)
+    def * = (
+      contractAddress,
+      opGroupHash,
+      blockLevel,
+      timestamp,
+      contractName,
+      assetType,
+      assetLocation,
+      rawMetadata
+    ) <> (NftsRow.tupled, NftsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
+    def ? = (
       (
-        (
-          Rep.Some(contractAddress),
-          Rep.Some(opGroupHash),
-          Rep.Some(blockLevel),
-          Rep.Some(timestamp),
-          Rep.Some(contractName),
-          Rep.Some(assetType),
-          Rep.Some(assetLocation),
-          Rep.Some(rawMetadata)
-        )
-      ).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => NftsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        Rep.Some(contractAddress),
+        Rep.Some(opGroupHash),
+        Rep.Some(blockLevel),
+        Rep.Some(timestamp),
+        Rep.Some(contractName),
+        Rep.Some(assetType),
+        Rep.Some(assetLocation),
+        Rep.Some(rawMetadata)
       )
+    ).shaped.<>(
+      { r =>
+        import r._; _1.map(_ => NftsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get)))
+      },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column contract_address SqlType(text) */
     val contractAddress: Rep[String] = column[String]("contract_address")
@@ -2908,40 +2862,37 @@ trait Tables {
   /** Table description of table operation_groups. Objects of this class serve as prototypes for rows in queries. */
   class OperationGroups(_tableTag: Tag)
       extends profile.api.Table[OperationGroupsRow](_tableTag, Some("tezos"), "operation_groups") {
-    def * =
-      (
-        protocol,
-        chainId,
-        hash,
-        branch,
-        signature,
-        blockId,
-        blockLevel,
-        invalidatedAsof,
-        forkId
-      ) <> (OperationGroupsRow.tupled, OperationGroupsRow.unapply)
+    def * = (
+      protocol,
+      chainId,
+      hash,
+      branch,
+      signature,
+      blockId,
+      blockLevel,
+      invalidatedAsof,
+      forkId
+    ) <> (OperationGroupsRow.tupled, OperationGroupsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
+    def ? = (
       (
-        (
-          Rep.Some(protocol),
-          chainId,
-          Rep.Some(hash),
-          Rep.Some(branch),
-          signature,
-          Rep.Some(blockId),
-          Rep.Some(blockLevel),
-          invalidatedAsof,
-          Rep.Some(forkId)
-        )
-      ).shaped.<>(
-        { r =>
-          import r._;
-          _1.map(_ => OperationGroupsRow.tupled((_1.get, _2, _3.get, _4.get, _5, _6.get, _7.get, _8, _9.get)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        Rep.Some(protocol),
+        chainId,
+        Rep.Some(hash),
+        Rep.Some(branch),
+        signature,
+        Rep.Some(blockId),
+        Rep.Some(blockLevel),
+        invalidatedAsof,
+        Rep.Some(forkId)
       )
+    ).shaped.<>(
+      { r =>
+        import r._; _1.map(_ => OperationGroupsRow.tupled((_1.get, _2, _3.get, _4.get, _5, _6.get, _7.get, _8, _9.get)))
+      },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column protocol SqlType(varchar) */
     val protocol: Rep[String] = column[String]("protocol")
@@ -3175,70 +3126,69 @@ trait Tables {
         .mapTo[OperationsRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(
-        kind
-      ) :: level :: delegate :: slots :: nonce :: operationOrder :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: storageMicheline :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
-        .Some(blockHash) :: Rep.Some(blockLevel) :: ballot :: Rep.Some(internal) :: period :: ballotPeriod :: Rep
-        .Some(timestamp) :: errors :: Rep.Some(utcYear) :: Rep.Some(utcMonth) :: Rep.Some(utcDay) :: Rep.Some(
-        utcTime
-      ) :: invalidatedAsof :: Rep.Some(forkId) :: HNil).shaped.<>(
-        r =>
-          OperationsRow(
-            r(0).asInstanceOf[Option[String]],
-            r(1).asInstanceOf[Option[Int]],
-            r(2).asInstanceOf[Option[Int]],
-            r(3).asInstanceOf[Option[Int]].get,
-            r(4).asInstanceOf[Option[String]].get,
-            r(5).asInstanceOf[Option[String]].get,
-            r(6).asInstanceOf[Option[Long]],
-            r(7).asInstanceOf[Option[String]],
-            r(8).asInstanceOf[Option[String]],
-            r(9).asInstanceOf[Option[String]],
-            r(10).asInstanceOf[Option[Int]],
-            r(11).asInstanceOf[Option[String]],
-            r(12).asInstanceOf[Option[String]],
-            r(13).asInstanceOf[Option[String]],
-            r(14).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(15).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(16).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(17).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(18).asInstanceOf[Option[String]],
-            r(19).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(20).asInstanceOf[Option[String]],
-            r(21).asInstanceOf[Option[String]],
-            r(22).asInstanceOf[Option[String]],
-            r(23).asInstanceOf[Option[String]],
-            r(24).asInstanceOf[Option[String]],
-            r(25).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(26).asInstanceOf[Option[String]],
-            r(27).asInstanceOf[Option[Boolean]],
-            r(28).asInstanceOf[Option[Boolean]],
-            r(29).asInstanceOf[Option[String]],
-            r(30).asInstanceOf[Option[String]],
-            r(31).asInstanceOf[Option[String]],
-            r(32).asInstanceOf[Option[String]],
-            r(33).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(34).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(35).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(36).asInstanceOf[Option[String]],
-            r(37).asInstanceOf[Option[String]].get,
-            r(38).asInstanceOf[Option[Long]].get,
-            r(39).asInstanceOf[Option[String]],
-            r(40).asInstanceOf[Option[Boolean]].get,
-            r(41).asInstanceOf[Option[Int]],
-            r(42).asInstanceOf[Option[Int]],
-            r(43).asInstanceOf[Option[java.sql.Timestamp]].get,
-            r(44).asInstanceOf[Option[String]],
-            r(45).asInstanceOf[Option[Int]].get,
-            r(46).asInstanceOf[Option[Int]].get,
-            r(47).asInstanceOf[Option[Int]].get,
-            r(48).asInstanceOf[Option[String]].get,
-            r(49).asInstanceOf[Option[java.sql.Timestamp]],
-            r(50).asInstanceOf[Option[String]].get
-          ),
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
+    def ? = (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(
+      kind
+    ) :: level :: delegate :: slots :: nonce :: operationOrder :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: storageMicheline :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
+      .Some(blockHash) :: Rep.Some(blockLevel) :: ballot :: Rep
+      .Some(internal) :: period :: ballotPeriod :: Rep.Some(timestamp) :: errors :: Rep.Some(utcYear) :: Rep.Some(
+      utcMonth
+    ) :: Rep.Some(utcDay) :: Rep.Some(utcTime) :: invalidatedAsof :: Rep.Some(forkId) :: HNil).shaped.<>(
+      r =>
+        OperationsRow(
+          r(0).asInstanceOf[Option[String]],
+          r(1).asInstanceOf[Option[Int]],
+          r(2).asInstanceOf[Option[Int]],
+          r(3).asInstanceOf[Option[Int]].get,
+          r(4).asInstanceOf[Option[String]].get,
+          r(5).asInstanceOf[Option[String]].get,
+          r(6).asInstanceOf[Option[Long]],
+          r(7).asInstanceOf[Option[String]],
+          r(8).asInstanceOf[Option[String]],
+          r(9).asInstanceOf[Option[String]],
+          r(10).asInstanceOf[Option[Int]],
+          r(11).asInstanceOf[Option[String]],
+          r(12).asInstanceOf[Option[String]],
+          r(13).asInstanceOf[Option[String]],
+          r(14).asInstanceOf[Option[scala.math.BigDecimal]],
+          r(15).asInstanceOf[Option[scala.math.BigDecimal]],
+          r(16).asInstanceOf[Option[scala.math.BigDecimal]],
+          r(17).asInstanceOf[Option[scala.math.BigDecimal]],
+          r(18).asInstanceOf[Option[String]],
+          r(19).asInstanceOf[Option[scala.math.BigDecimal]],
+          r(20).asInstanceOf[Option[String]],
+          r(21).asInstanceOf[Option[String]],
+          r(22).asInstanceOf[Option[String]],
+          r(23).asInstanceOf[Option[String]],
+          r(24).asInstanceOf[Option[String]],
+          r(25).asInstanceOf[Option[scala.math.BigDecimal]],
+          r(26).asInstanceOf[Option[String]],
+          r(27).asInstanceOf[Option[Boolean]],
+          r(28).asInstanceOf[Option[Boolean]],
+          r(29).asInstanceOf[Option[String]],
+          r(30).asInstanceOf[Option[String]],
+          r(31).asInstanceOf[Option[String]],
+          r(32).asInstanceOf[Option[String]],
+          r(33).asInstanceOf[Option[scala.math.BigDecimal]],
+          r(34).asInstanceOf[Option[scala.math.BigDecimal]],
+          r(35).asInstanceOf[Option[scala.math.BigDecimal]],
+          r(36).asInstanceOf[Option[String]],
+          r(37).asInstanceOf[Option[String]].get,
+          r(38).asInstanceOf[Option[Long]].get,
+          r(39).asInstanceOf[Option[String]],
+          r(40).asInstanceOf[Option[Boolean]].get,
+          r(41).asInstanceOf[Option[Int]],
+          r(42).asInstanceOf[Option[Int]],
+          r(43).asInstanceOf[Option[java.sql.Timestamp]].get,
+          r(44).asInstanceOf[Option[String]],
+          r(45).asInstanceOf[Option[Int]].get,
+          r(46).asInstanceOf[Option[Int]].get,
+          r(47).asInstanceOf[Option[Int]].get,
+          r(48).asInstanceOf[Option[String]].get,
+          r(49).asInstanceOf[Option[java.sql.Timestamp]],
+          r(50).asInstanceOf[Option[String]].get
+        ),
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column branch SqlType(varchar), Default(None) */
     val branch: Rep[Option[String]] = column[Option[String]]("branch", O.Default(None))
@@ -3488,23 +3438,19 @@ trait Tables {
   /** Table description of table originated_account_maps. Objects of this class serve as prototypes for rows in queries. */
   class OriginatedAccountMaps(_tableTag: Tag)
       extends profile.api.Table[OriginatedAccountMapsRow](_tableTag, Some("tezos"), "originated_account_maps") {
-    def * =
-      (
-        bigMapId,
-        accountId,
-        blockLevel,
-        forkId,
-        invalidatedAsof
-      ) <> (OriginatedAccountMapsRow.tupled, OriginatedAccountMapsRow.unapply)
+    def * = (
+      bigMapId,
+      accountId,
+      blockLevel,
+      forkId,
+      invalidatedAsof
+    ) <> (OriginatedAccountMapsRow.tupled, OriginatedAccountMapsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      ((Rep.Some(bigMapId), Rep.Some(accountId), blockLevel, Rep.Some(forkId), invalidatedAsof)).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => OriginatedAccountMapsRow.tupled((_1.get, _2.get, _3, _4.get, _5)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
+    def ? = ((Rep.Some(bigMapId), Rep.Some(accountId), blockLevel, Rep.Some(forkId), invalidatedAsof)).shaped.<>(
+      { r => import r._; _1.map(_ => OriginatedAccountMapsRow.tupled((_1.get, _2.get, _3, _4.get, _5))) },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column big_map_id SqlType(numeric) */
     val bigMapId: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("big_map_id")
@@ -3551,13 +3497,10 @@ trait Tables {
     def * = (eventLevel, eventType) <> (ProcessedChainEventsRow.tupled, ProcessedChainEventsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      ((Rep.Some(eventLevel), Rep.Some(eventType))).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => ProcessedChainEventsRow.tupled((_1.get, _2.get)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
+    def ? = ((Rep.Some(eventLevel), Rep.Some(eventType))).shaped.<>(
+      { r => import r._; _1.map(_ => ProcessedChainEventsRow.tupled((_1.get, _2.get))) },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column event_level SqlType(int8) */
     val eventLevel: Rep[Long] = column[Long]("event_level")
@@ -3646,78 +3589,76 @@ trait Tables {
   /** Table description of table registered_tokens. Objects of this class serve as prototypes for rows in queries. */
   class RegisteredTokens(_tableTag: Tag)
       extends profile.api.Table[RegisteredTokensRow](_tableTag, Some("tezos"), "registered_tokens") {
-    def * =
+    def * = (
+      name,
+      symbol,
+      decimals,
+      interfaces,
+      address,
+      tokenIndex,
+      balanceMap,
+      balanceKeyType,
+      balancePath,
+      markets,
+      farms,
+      isTzip16,
+      isNft,
+      metadataType,
+      metadataBigMapId,
+      metadataBigMapType,
+      metadataPath
+    ) <> (RegisteredTokensRow.tupled, RegisteredTokensRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (
       (
-        name,
-        symbol,
-        decimals,
-        interfaces,
-        address,
+        Rep.Some(name),
+        Rep.Some(symbol),
+        Rep.Some(decimals),
+        Rep.Some(interfaces),
+        Rep.Some(address),
         tokenIndex,
-        balanceMap,
-        balanceKeyType,
-        balancePath,
-        markets,
-        farms,
-        isTzip16,
-        isNft,
+        Rep.Some(balanceMap),
+        Rep.Some(balanceKeyType),
+        Rep.Some(balancePath),
+        Rep.Some(markets),
+        Rep.Some(farms),
+        Rep.Some(isTzip16),
+        Rep.Some(isNft),
         metadataType,
         metadataBigMapId,
         metadataBigMapType,
         metadataPath
-      ) <> (RegisteredTokensRow.tupled, RegisteredTokensRow.unapply)
-
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      (
-        (
-          Rep.Some(name),
-          Rep.Some(symbol),
-          Rep.Some(decimals),
-          Rep.Some(interfaces),
-          Rep.Some(address),
-          tokenIndex,
-          Rep.Some(balanceMap),
-          Rep.Some(balanceKeyType),
-          Rep.Some(balancePath),
-          Rep.Some(markets),
-          Rep.Some(farms),
-          Rep.Some(isTzip16),
-          Rep.Some(isNft),
-          metadataType,
-          metadataBigMapId,
-          metadataBigMapType,
-          metadataPath
-        )
-      ).shaped.<>(
-        { r =>
-          import r._;
-          _1.map(_ =>
-            RegisteredTokensRow.tupled(
-              (
-                _1.get,
-                _2.get,
-                _3.get,
-                _4.get,
-                _5.get,
-                _6,
-                _7.get,
-                _8.get,
-                _9.get,
-                _10.get,
-                _11.get,
-                _12.get,
-                _13.get,
-                _14,
-                _15,
-                _16,
-                _17
-              )
+      )
+    ).shaped.<>(
+      { r =>
+        import r._;
+        _1.map(_ =>
+          RegisteredTokensRow.tupled(
+            (
+              _1.get,
+              _2.get,
+              _3.get,
+              _4.get,
+              _5.get,
+              _6,
+              _7.get,
+              _8.get,
+              _9.get,
+              _10.get,
+              _11.get,
+              _12.get,
+              _13.get,
+              _14,
+              _15,
+              _16,
+              _17
             )
           )
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
+        )
+      },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column name SqlType(text) */
     val name: Rep[String] = column[String]("name")
@@ -3805,24 +3746,20 @@ trait Tables {
 
   /** Table description of table tezos_names. Objects of this class serve as prototypes for rows in queries. */
   class TezosNames(_tableTag: Tag) extends profile.api.Table[TezosNamesRow](_tableTag, Some("tezos"), "tezos_names") {
-    def * =
-      (
-        name,
-        owner,
-        resolver,
-        registeredAt,
-        registrationPeriod,
-        modified
-      ) <> (TezosNamesRow.tupled, TezosNamesRow.unapply)
+    def * = (
+      name,
+      owner,
+      resolver,
+      registeredAt,
+      registrationPeriod,
+      modified
+    ) <> (TezosNamesRow.tupled, TezosNamesRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      ((Rep.Some(name), owner, resolver, registeredAt, registrationPeriod, modified)).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => TezosNamesRow.tupled((_1.get, _2, _3, _4, _5, _6)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
+    def ? = ((Rep.Some(name), owner, resolver, registeredAt, registrationPeriod, modified)).shaped.<>(
+      { r => import r._; _1.map(_ => TezosNamesRow.tupled((_1.get, _2, _3, _4, _5, _6))) },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column name SqlType(varchar), PrimaryKey */
     val name: Rep[String] = column[String]("name", O.PrimaryKey)
@@ -3900,37 +3837,35 @@ trait Tables {
   /** Table description of table token_balances. Objects of this class serve as prototypes for rows in queries. */
   class TokenBalances(_tableTag: Tag)
       extends profile.api.Table[TokenBalancesRow](_tableTag, Some("tezos"), "token_balances") {
-    def * =
-      (
-        tokenAddress,
-        address,
-        balance,
-        blockId,
-        blockLevel,
-        asof,
-        invalidatedAsof,
-        forkId
-      ) <> (TokenBalancesRow.tupled, TokenBalancesRow.unapply)
+    def * = (
+      tokenAddress,
+      address,
+      balance,
+      blockId,
+      blockLevel,
+      asof,
+      invalidatedAsof,
+      forkId
+    ) <> (TokenBalancesRow.tupled, TokenBalancesRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
+    def ? = (
       (
-        (
-          Rep.Some(tokenAddress),
-          Rep.Some(address),
-          Rep.Some(balance),
-          Rep.Some(blockId),
-          Rep.Some(blockLevel),
-          Rep.Some(asof),
-          invalidatedAsof,
-          Rep.Some(forkId)
-        )
-      ).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => TokenBalancesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7, _8.get)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        Rep.Some(tokenAddress),
+        Rep.Some(address),
+        Rep.Some(balance),
+        Rep.Some(blockId),
+        Rep.Some(blockLevel),
+        Rep.Some(asof),
+        invalidatedAsof,
+        Rep.Some(forkId)
       )
+    ).shaped.<>(
+      { r =>
+        import r._; _1.map(_ => TokenBalancesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7, _8.get)))
+      },
+      (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+    )
 
     /** Database column token_address SqlType(text) */
     val tokenAddress: Rep[String] = column[String]("token_address")
