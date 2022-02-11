@@ -15,6 +15,7 @@ import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.TezosTypes
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, InternalOperationResults, Voting}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
+import tech.cryptonomic.conseil.indexer.config.Features
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts.Tzip16
@@ -36,13 +37,14 @@ class BlocksProcessor(
     db: Database,
     tnsOperations: TezosNamesOperations,
     accountsProcessor: AccountsProcessor,
-    bakersProcessor: BakersProcessor
+    bakersProcessor: BakersProcessor,
+    featureFlags: Features
 )(implicit tns: TNSContract)
     extends ConseilLogSupport {
 
   /* will store a single page of block results */
-  private[tezos] def processBlocksPage(results: nodeOperator.BlockFetchingResults)(
-      implicit ec: ExecutionContext
+  private[tezos] def processBlocksPage(results: nodeOperator.BlockFetchingResults)(implicit
+      ec: ExecutionContext
   ): Future[Int] = {
     def logBlockOutcome[A]: PartialFunction[Try[Option[A]], Unit] = {
       case Success(accountsCount) =>
@@ -55,19 +57,26 @@ class BlocksProcessor(
     //ignore the account ids for storage, and prepare the checkpoint account data
     //we do this on a single sweep over the list, pairing the results and then unzipping the outcome
     val (blocks, accountUpdates) =
-      results.map {
-        case (block, accountIds) =>
-          block -> accountIds.taggedWithBlockData(block.data)
+      results.map { case (block, accountIds) =>
+        block -> accountIds.taggedWithBlockData(block.data)
       }.unzip
+
+    val bakerOps = if (featureFlags.bakerFeaturesAreOn) {
+      for {
+        bakersCheckpoints <- accountsProcessor.processAccountsForBlocks(
+          accountUpdates
+        ) // should this fail, we still recover data from the checkpoint
+        _ <- bakersProcessor.processBakersForBlocks(bakersCheckpoints)
+        _ <- bakersProcessor.updateBakersBalances(blocks)
+        rollsData <- nodeOperator.getBakerRollsForBlocks(blocks)
+        _ <- processBlocksForGovernance(rollsData.toMap)
+      } yield ()
+    } else Future.successful(())
 
     for {
       _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
       _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
-      bakersCheckpoints <- accountsProcessor.processAccountsForBlocks(accountUpdates) // should this fail, we still recover data from the checkpoint
-      _ <- bakersProcessor.processBakersForBlocks(bakersCheckpoints)
-      _ <- bakersProcessor.updateBakersBalances(blocks)
-      rollsData <- nodeOperator.getBakerRollsForBlocks(blocks)
-      _ <- processBlocksForGovernance(rollsData.toMap)
+      _ <- bakerOps
     } yield results.size
 
   }
@@ -78,8 +87,8 @@ class BlocksProcessor(
     * @param bakerRollsByBlock blocks of interest, with any rolls data available
     * @return the outcome of the operation, which may fail with an error or produce no result value
     */
-  private def processBlocksForGovernance(bakerRollsByBlock: Map[Block, List[Voting.BakerRolls]])(
-      implicit ec: ExecutionContext
+  private def processBlocksForGovernance(bakerRollsByBlock: Map[Block, List[Voting.BakerRolls]])(implicit
+      ec: ExecutionContext
   ): Future[Unit] =
     TezosGovernanceOperations
       .extractGovernanceAggregations(db, nodeOperator)(bakerRollsByBlock)

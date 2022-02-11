@@ -111,9 +111,12 @@ object Retry {
         Try {
           deadline match {
             case Some(d) =>
-              Await.result(Future {
-                f()
-              }, d.timeLeft)
+              Await.result(
+                Future {
+                  f()
+                },
+                d.timeLeft
+              )
             case _ => f()
           }
         } match {

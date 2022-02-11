@@ -27,9 +27,7 @@ object GenSchema extends App {
   val configSection = "#slickgen"
 
   val confUri = {
-    val externallyProvided = args.headOption.map(
-      confFile => Paths.get(confFile).toUri.resolve(configSection)
-    )
+    val externallyProvided = args.headOption.map(confFile => Paths.get(confFile).toUri.resolve(configSection))
     val classpathProvided = new URI(configSection) //this looks up in the standard application.conf as a resource
     println(s"""
     | Loading schema definitions from db configurations located at
@@ -113,12 +111,11 @@ object GenSchema extends App {
 
       /* we combine multiple IO operations into a single sequence within the same IO wrapper with traverse */
       val writeSources = (schemas: List[(String, Seq[Table])]) =>
-        schemas.traverse {
-          case (schema, tables) =>
-            IO(
-              new SourceCodeGenerator(new Model(tables))
-                .writeToFile(dc.profileName, s"$out$schema", s"$basePackage.$schema")
-            ).start
+        schemas.traverse { case (schema, tables) =>
+          IO(
+            new SourceCodeGenerator(new Model(tables))
+              .writeToFile(dc.profileName, s"$out$schema", s"$basePackage.$schema")
+          ).start
         }.flatMap { fibers =>
           fibers.traverse(_.join)
         }.void

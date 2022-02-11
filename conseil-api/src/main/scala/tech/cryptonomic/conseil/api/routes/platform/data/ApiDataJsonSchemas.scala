@@ -74,11 +74,7 @@ trait ApiDataJsonSchemas extends generic.JsonSchemas {
 
   /** Timestamp schema */
   implicit lazy val timestampSchema: JsonSchema[java.sql.Timestamp] =
-    implicitly[JsonSchema[Long]].xmap(
-      millisFromEpoch => new java.sql.Timestamp(millisFromEpoch)
-    )(
-      ts => ts.getTime
-    )
+    implicitly[JsonSchema[Long]].xmap(millisFromEpoch => new java.sql.Timestamp(millisFromEpoch))(ts => ts.getTime)
 
   /** Snapshot schema */
   implicit lazy val snapshotSchema: JsonSchema[Snapshot] =

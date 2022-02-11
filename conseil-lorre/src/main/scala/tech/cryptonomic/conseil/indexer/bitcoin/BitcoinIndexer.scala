@@ -64,16 +64,15 @@ class BitcoinIndexer(
       * @param f [[cats.IO]] to repeat
       */
     indexer
-      .use(
-        bitcoinOperations =>
-          /**
-            * Place with all the computations for the Bitcoin.
-            * Currently, it only contains the blocks. But it can be extended to
-            * handle multiple computations.
-            */
-          (IO(logger.info("Start Lorre for Bitcoin")) *>
-              bitcoinOperations.loadBlocks(lorreConf.depth, lorreConf.headHash).compile.drain *>
-              IO.sleep(lorreConf.sleepInterval)).foreverM
+      .use(bitcoinOperations =>
+        /**
+          * Place with all the computations for the Bitcoin.
+          * Currently, it only contains the blocks. But it can be extended to
+          * handle multiple computations.
+          */
+        (IO(logger.info("Start Lorre for Bitcoin")) *>
+          bitcoinOperations.loadBlocks(lorreConf.depth, lorreConf.headHash).compile.drain *>
+          IO.sleep(lorreConf.sleepInterval)).foreverM
       )
       .unsafeRunSync()
 

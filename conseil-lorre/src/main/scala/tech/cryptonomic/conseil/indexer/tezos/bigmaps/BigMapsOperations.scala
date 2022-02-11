@@ -53,33 +53,30 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
      * to write back to db, sorted by growing level
      */
     val sortedQueries = {
-      val copyDataByLevel = diffsPerBlock.map {
-        case (blockData, diffs) =>
-          val queries = diffs.collect {
-            case Contract.BigMapCopy(_, Decimal(sourceId), Decimal(destinationId)) =>
-              Tables.BigMapContents
-                .filter(_.bigMapId === sourceId)
-                .map(
-                  it =>
-                    (
-                      destinationId,
-                      it.key,
-                      it.keyHash,
-                      it.operationGroupId,
-                      it.value,
-                      it.valueMicheline,
-                      it.blockLevel,
-                      it.timestamp,
-                      it.cycle,
-                      it.period,
-                      it.forkId,
-                      it.invalidatedAsof
-                    )
-                )
-                .result
-                .headOption
-          }
-          blockData.header.level -> DBIO.sequence(queries).map(_.flatten)
+      val copyDataByLevel = diffsPerBlock.map { case (blockData, diffs) =>
+        val queries = diffs.collect { case Contract.BigMapCopy(_, Decimal(sourceId), Decimal(destinationId)) =>
+          Tables.BigMapContents
+            .filter(_.bigMapId === sourceId)
+            .map(it =>
+              (
+                destinationId,
+                it.key,
+                it.keyHash,
+                it.operationGroupId,
+                it.value,
+                it.valueMicheline,
+                it.blockLevel,
+                it.timestamp,
+                it.cycle,
+                it.period,
+                it.forkId,
+                it.invalidatedAsof
+              )
+            )
+            .result
+            .headOption
+        }
+        blockData.header.level -> DBIO.sequence(queries).map(_.flatten)
 
       }
       TreeMap(copyDataByLevel: _*)
@@ -91,20 +88,19 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         .values
         .flatMap(_.lastOption)
 
-    val writesByLevel = sortedQueries.values.map(
-      readAction =>
-        readAction.flatMap { updateData =>
-          val rowsToWrite = dedup(updateData.map(BigMapContentsRow.tupled))
-          DBIO.sequence {
-            List(
-              Tables.BigMapContents.insertOrUpdateAll(rowsToWrite),
-              Tables.BigMapContentsHistory ++= updateData
-                    .map(BigMapContentsRow.tupled)
-                    .map(_.transformInto[Tables.BigMapContentsHistoryRow])
-                    .distinct
-            )
-          }
+    val writesByLevel = sortedQueries.values.map(readAction =>
+      readAction.flatMap { updateData =>
+        val rowsToWrite = dedup(updateData.map(BigMapContentsRow.tupled))
+        DBIO.sequence {
+          List(
+            Tables.BigMapContents.insertOrUpdateAll(rowsToWrite),
+            Tables.BigMapContentsHistory ++= updateData
+              .map(BigMapContentsRow.tupled)
+              .map(_.transformInto[Tables.BigMapContentsHistoryRow])
+              .distinct
+          )
         }
+      }
     )
 
     DBIO.sequence(writesByLevel).map { upserts =>
@@ -135,9 +131,8 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       diffsPerBlock.map(_._2).flatten
     } else blocks.flatMap(TezosOptics.Blocks.acrossBigMapDiffRemove.getAll)
 
-    val idsToRemove = removalDiffs.collect {
-      case Contract.BigMapRemove(_, Decimal(bigMapId)) =>
-        bigMapId
+    val idsToRemove = removalDiffs.collect { case Contract.BigMapRemove(_, Decimal(bigMapId)) =>
+      bigMapId
     }.toSet
 
     val showRemove = if (idsToRemove.nonEmpty) s"A total of ${idsToRemove.size}" else "No"
@@ -157,14 +152,12 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     */
   def saveMaps(blocks: List[Block]): DBIO[Option[Int]] = {
 
-    val diffsPerBlock = blocks.flatMap(
-      b =>
-        extractAppliedOriginationsResults(b).flatMap {
-          case (groupHash, op) => op.big_map_diff.toList.flatMap(keepLatestDiffsFormat).map(groupHash -> _)
-        }.map {
-          case (groupHash, diff) =>
-            BigMapsConversions.BlockBigMapDiff(fromBlockData(b.data, (b.data.hash, Some(groupHash), diff)))
-        }
+    val diffsPerBlock = blocks.flatMap(b =>
+      extractAppliedOriginationsResults(b).flatMap { case (groupHash, op) =>
+        op.big_map_diff.toList.flatMap(keepLatestDiffsFormat).map(groupHash -> _)
+      }.map { case (groupHash, diff) =>
+        BigMapsConversions.BlockBigMapDiff(fromBlockData(b.data, (b.data.hash, Some(groupHash), diff)))
+      }
     )
 
     val maps = if (logger.includes(Level.Debug)) {
@@ -175,11 +168,10 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         .mapValues(entries => List.concat(entries.map(_._2.toList): _*))
         .toMap
 
-      rowsPerBlock.foreach {
-        case (hash, rows) =>
-          logger.debug(
-            s"For block hash ${hash.value}, I'm about to add the following big maps: \n\t${rows.mkString(", ")}"
-          )
+      rowsPerBlock.foreach { case (hash, rows) =>
+        logger.debug(
+          s"For block hash ${hash.value}, I'm about to add the following big maps: \n\t${rows.mkString(", ")}"
+        )
       }
 
       rowsPerBlock.map(_._2).flatten
@@ -200,14 +192,12 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
   def upsertContent(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
 
     import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockTagged._
-    val diffsPerBlock = blocks.flatMap(
-      b =>
-        extractAppliedTransactionsResults(b).flatMap {
-          case (groupHash, op) => op.big_map_diff.toList.flatMap(keepLatestDiffsFormat).map(groupHash -> _)
-        }.map {
-          case (groupHash, diff) =>
-            BigMapsConversions.BlockBigMapDiff(fromBlockData(b.data, (b.data.hash, Some(groupHash), diff)))
-        }
+    val diffsPerBlock = blocks.flatMap(b =>
+      extractAppliedTransactionsResults(b).flatMap { case (groupHash, op) =>
+        op.big_map_diff.toList.flatMap(keepLatestDiffsFormat).map(groupHash -> _)
+      }.map { case (groupHash, diff) =>
+        BigMapsConversions.BlockBigMapDiff(fromBlockData(b.data, (b.data.hash, Some(groupHash), diff)))
+      }
     )
 
     val rowsPerBlock = diffsPerBlock
@@ -218,12 +208,11 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       .toMap
 
     if (logger.includes(Level.Debug)) {
-      rowsPerBlock.foreach {
-        case (hash, rows) =>
-          val showRows = rows.mkString(", ")
-          logger.debug(
-            s"For block hash ${hash.value}, I'm about to update big map contents with the following data: \n\t$showRows"
-          )
+      rowsPerBlock.foreach { case (hash, rows) =>
+        val showRows = rows.mkString(", ")
+        logger.debug(
+          s"For block hash ${hash.value}, I'm about to update big map contents with the following data: \n\t$showRows"
+        )
       }
     }
 
@@ -231,13 +220,12 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     //and then collect only the latest contents for each map-id and key
     val newContent = blocks
       .sortBy(_.data.header.level)(Ordering[Long].reverse)
-      .foldLeft(Map.empty[(BigDecimal, String), BigMapContentsRow]) {
-        case (collected, block) =>
-          val seen = collected.keySet
-          val rows = rowsPerBlock
-            .getOrElse(block.data.hash, List.empty)
-            .filterNot(row => seen((row.bigMapId, row.key)))
-          collected ++ rows.map(row => (row.bigMapId, row.key) -> row)
+      .foldLeft(Map.empty[(BigDecimal, String), BigMapContentsRow]) { case (collected, block) =>
+        val seen = collected.keySet
+        val rows = rowsPerBlock
+          .getOrElse(block.data.hash, List.empty)
+          .filterNot(row => seen((row.bigMapId, row.key)))
+        collected ++ rows.map(row => (row.bigMapId, row.key) -> row)
       }
       .values
 
@@ -250,9 +238,9 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         Seq(
           Tables.BigMapContents.insertOrUpdateAll(newContent),
           Tables.BigMapContentsHistory ++= rowsPerBlock.values.flatten
-                .map(_.into[Tables.BigMapContentsHistoryRow].transform)
-                .toList
-                .distinct
+            .map(_.into[Tables.BigMapContentsHistoryRow].transform)
+            .toList
+            .distinct
         )
       )
       .map(_.fold(Some(0))(_ |+| _))
@@ -266,18 +254,15 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     */
   def saveContractOrigin(blocks: List[Block]): DBIO[List[OriginatedAccountMapsRow]] = {
 
-    val diffsPerBlock = blocks.flatMap(
-      b =>
-        extractAppliedOriginationsResults(b).flatMap {
-          case (_, results) =>
-            for {
-              contractIds <- results.originated_contracts.toList
-              diff <- results.big_map_diff.toList.flatMap(keepLatestDiffsFormat)
-            } yield
-              BigMapsConversions.BlockContractIdsBigMapDiff(
-                (b.data.hash, contractIds, diff, Some(b.data.header.level))
-              )
-        }
+    val diffsPerBlock = blocks.flatMap(b =>
+      extractAppliedOriginationsResults(b).flatMap { case (_, results) =>
+        for {
+          contractIds <- results.originated_contracts.toList
+          diff <- results.big_map_diff.toList.flatMap(keepLatestDiffsFormat)
+        } yield BigMapsConversions.BlockContractIdsBigMapDiff(
+          (b.data.hash, contractIds, diff, Some(b.data.header.level))
+        )
+      }
     )
 
     val refs =
@@ -289,12 +274,11 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
           .mapValues(entries => List.concat(entries.map(_._2): _*))
           .toMap
 
-        rowsPerBlock.foreach {
-          case (hash, rows) =>
-            val showRows = rows.mkString(", ")
-            logger.debug(
-              s"For block hash ${hash.value}, I'm about to add the following links from big maps to originated accounts: \nt$showRows"
-            )
+        rowsPerBlock.foreach { case (hash, rows) =>
+          val showRows = rows.mkString(", ")
+          logger.debug(
+            s"For block hash ${hash.value}, I'm about to add the following links from big maps to originated accounts: \nt$showRows"
+          )
         }
 
         rowsPerBlock.flatMap(_._2).toList
@@ -339,14 +323,14 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
 
   /* Reorganize the input list to discard empty values and group them by first element, i.e. the contract id */
   private def collectMapsByContract(ids: List[Option[(String, BigMapsRow)]]): Map[ContractId, List[BigMapsRow]] =
-    ids.flattenOption.groupBy {
-      case (contractId, row) => ContractId(contractId)
+    ids.flattenOption.groupBy { case (contractId, row) =>
+      ContractId(contractId)
     }.mapValues(values => values.map(_._2))
 
   /* For each entry, tries to pass the values to the TNS object to initialize the map ids properly */
   private def setOnTNS(maps: Map[ContractId, List[BigMapsRow]])(implicit tnsContracts: TNSContract) =
-    maps.foreach {
-      case (contractId, rows) => tnsContracts.setMaps(contractId, rows)
+    maps.foreach { case (contractId, rows) =>
+      tnsContracts.setMaps(contractId, rows)
     }
 
   /** Matches blocks' transactions to extract updated balance for any contract corresponding to a known
@@ -378,22 +362,20 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
           op.destination -> (op.parameters_micheline.orElse(op.parameters), op.metadata.operation_result.big_map_diff)
         case Right(op) =>
           op.destination -> (op.parameters_micheline.orElse(op.parameters), op.result.big_map_diff)
-      }.toMap.mapValues {
-        case (optionalParams, optionalDiffs) =>
-          optionalParams -> keepLatestUpdateFormat(optionalDiffs.toList.flatten)
+      }.toMap.mapValues { case (optionalParams, optionalDiffs) =>
+        optionalParams -> keepLatestUpdateFormat(optionalDiffs.toList.flatten)
 
       }
 
       if (logger.includes(Level.Debug)) {
         val showTransactions =
-          updatesMap.map {
-            case (tokenId, (params, updates)) =>
-              val paramsValue = params.fold("missing params") {
-                case Left(params) => params.toString
-                case Right(micheline) => micheline.toString
-              }
-              val updateString = updates.mkString("\t", "\n\t", "\n")
-              s"Token ${tokenId.id}:\n $paramsValue -> $updateString"
+          updatesMap.map { case (tokenId, (params, updates)) =>
+            val paramsValue = params.fold("missing params") {
+              case Left(params) => params.toString
+              case Right(micheline) => micheline.toString
+            }
+            val updateString = updates.mkString("\t", "\n\t", "\n")
+            s"Token ${tokenId.id}:\n $paramsValue -> $updateString"
           }.mkString("\n")
 
         logger.debug(
@@ -416,17 +398,16 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         .map(_.address)
         .result
         .map { results =>
-          results.headOption.map(
-            tokenId =>
-              Tables.TokenBalancesRow(
-                tokenAddress = tokenId,
-                address = tokenUpdate.accountId.value,
-                balance = BigDecimal(tokenUpdate.balance),
-                blockId = blockData.hash.value,
-                blockLevel = blockData.header.level,
-                asof = toSql(blockData.header.timestamp),
-                forkId = Fork.mainForkId
-              )
+          results.headOption.map(tokenId =>
+            Tables.TokenBalancesRow(
+              tokenAddress = tokenId,
+              address = tokenUpdate.accountId.value,
+              balance = BigDecimal(tokenUpdate.balance),
+              blockId = blockData.hash.value,
+              blockLevel = blockData.header.level,
+              asof = toSql(blockData.header.timestamp),
+              forkId = Fork.mainForkId
+            )
           )
         }
     }.sequence[DBIO, Option[Tables.TokenBalancesRow]]
@@ -444,14 +425,14 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
   /* filter out pre-babylon big map updates */
   private def keepLatestUpdateFormat: List[Contract.CompatBigMapDiff] => List[Contract.BigMapUpdate] =
     compatibilityWrapped =>
-      compatibilityWrapped.collect {
-        case Left(update: Contract.BigMapUpdate) => update
+      compatibilityWrapped.collect { case Left(update: Contract.BigMapUpdate) =>
+        update
       }
 
   /* filter out pre-babylon big map diffs */
   private def keepLatestDiffsFormat: List[Contract.CompatBigMapDiff] => List[Contract.BigMapDiff] =
     compatibilityWrapped =>
-      compatibilityWrapped.collect {
-        case Left(diff) => diff
+      compatibilityWrapped.collect { case Left(diff) =>
+        diff
       }
 }

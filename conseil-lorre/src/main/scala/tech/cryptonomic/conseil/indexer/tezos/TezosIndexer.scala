@@ -64,8 +64,7 @@ class TezosIndexer private (
     backtrackingForkProcessor: BacktracingForkProcessor,
     feeOperations: TezosFeeOperations,
     terminationSequence: () => Future[ShutdownComplete]
-)(
-    implicit
+)(implicit
     system: ActorSystem,
     materializer: Materializer,
     dispatcher: ExecutionContext
@@ -75,11 +74,11 @@ class TezosIndexer private (
   val featureFlags = lorreConf.enabledFeatures
 
   /** Schedules method for fetching baking rights */
-  if (featureFlags.blockRightsFetchingIsOn) {
+  if (featureFlags.futureRightsFetchingIsOn) {
     logger.info("I'm scheduling the concurrent tasks to update baking and endorsing rights")
     system.scheduler
-      .scheduleWithFixedDelay(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
-        () => rightsProcessor.writeFutureRights
+      .scheduleWithFixedDelay(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(() =>
+        rightsProcessor.writeFutureRights
       )
   }
 
@@ -133,7 +132,7 @@ class TezosIndexer private (
       _ <- feeOperations
         .processTezosAverageFees(lorreConf.feesAverageTimeWindow)
         .whenA(iteration % lorreConf.feeUpdateInterval == 0)
-      _ <- rightsProcessor.updateRights()
+      _ <- if (featureFlags.futureRightsFetchingIsOn) rightsProcessor.updateRights() else Future.successful(())
     } yield Some(unhandled)
 
     /* Won't stop Lorre on failure from processing the chain, unless overridden by the environment to halt.
@@ -147,7 +146,8 @@ class TezosIndexer private (
           case f @ (AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _) | BakersProcessingFailed(_, _)) =>
             logger.error("Failed processing but will keep on going next cycle", f)
             None //we have no meaningful data as results, so we return nothing
-        } else processing
+        }
+      else processing
 
     //if something went wrong and wasn't recovered, this will actually blow the app
     val unhandledResetEvents = Await.result(attemptedProcessing, atMost = Duration.Inf) match {
@@ -190,7 +190,8 @@ class TezosIndexer private (
             .unprocessedResetRequestLevels(lorreConf.chainEvents)
             .map(Some(_))
 
-      } else emptyOutcome
+      }
+    else emptyOutcome
   }
 
   /**
@@ -222,7 +223,8 @@ class TezosIndexer private (
             .unprocessedResetRequestLevels(lorreConf.chainEvents)
             .map(Some(_))
 
-      } else emptyOutcome
+      }
+    else emptyOutcome
   }
 
   /**
@@ -246,8 +248,8 @@ class TezosIndexer private (
 
     /* collects the hashes of the blocks in the results */
     def extractProcessedHashes(fetched: nodeOperator.BlockFetchingResults): Set[TezosBlockHash] =
-      fetched.map {
-        case (block, _) => block.data.hash
+      fetched.map { case (block, _) =>
+        block.data.hash
       }.toSet
 
     blockPagesToSynchronize.flatMap {
@@ -264,12 +266,16 @@ class TezosIndexer private (
           .mapAsync(1) { fetchingResults =>
             blocksProcessor
               .processBlocksPage(fetchingResults)
-              .flatTap(
-                _ =>
-                  accountsProcessor.processTezosAccountsCheckpoint() >>
-                      bakersProcessor.processTezosBakersCheckpoint() >>
-                      accountsProcessor.markBakerAccounts(extractProcessedHashes(fetchingResults)) >>
-                      rightsProcessor.processBakingAndEndorsingRights(fetchingResults)
+              .flatTap(_ =>
+                accountsProcessor.processTezosAccountsCheckpoint() >>
+                  (if (featureFlags.bakerFeaturesAreOn) bakersProcessor.processTezosBakersCheckpoint()
+                   else Future.successful(Done)) >>
+                  (if (featureFlags.bakerFeaturesAreOn)
+                     accountsProcessor.markBakerAccounts(extractProcessedHashes(fetchingResults))
+                   else Future.successful(Done)) >>
+                  (if (featureFlags.rightsProcessingIsOn)
+                     rightsProcessor.processBakingAndEndorsingRights(fetchingResults)
+                   else Future.successful(Done))
               )
           }
           .runFold(0) { (processed, justDone) =>
@@ -314,7 +320,8 @@ class TezosIndexer private (
 
 object TezosIndexer extends ConseilLogSupport {
 
-  /** * Creates the Indexer which is dedicated for Tezos BlockChain */
+  /** * Creates the Indexer which is dedicated for Tezos BlockChain
+    */
   def fromConfig(
       lorreConf: LorreConfiguration,
       conf: TezosConfiguration,
@@ -361,7 +368,8 @@ object TezosIndexer extends ConseilLogSupport {
         nodeOperator,
         indexedData,
         batchingConf,
-        lorreConf.blockRightsFetching
+        lorreConf.blockRightsFetching,
+        lorreConf.enabledFeatures
       )
 
     /* handles wide-range accounts refresh due to occasional special events */
@@ -391,7 +399,8 @@ object TezosIndexer extends ConseilLogSupport {
       db,
       tnsOperations,
       accountsProcessor,
-      bakersProcessor
+      bakersProcessor,
+      lorreConf.enabledFeatures
     )
 
     val metadataProcessor = new MetadataProcessor(
@@ -472,12 +481,12 @@ object TezosIndexer extends ConseilLogSupport {
         TezosDb.initTableFromCsv(db, Tables.KnownAddresses, selectedNetwork),
         TezosDb.initTableFromCsv(db, Tables.BakerRegistry, selectedNetwork),
         TezosDb.initRegisteredTokensTableFromJson(db, selectedNetwork)
-      ).mapN {
-        case (_, _, _) => ()
+      ).mapN { case (_, _, _) =>
+        ()
       }
       /* Here we want to initialize the registered tokens and additionally get the token data back
-     * since it's needed to process calls to the same token smart contracts as the chain evolves
-     */
+       * since it's needed to process calls to the same token smart contracts as the chain evolves
+       */
 
     }
 

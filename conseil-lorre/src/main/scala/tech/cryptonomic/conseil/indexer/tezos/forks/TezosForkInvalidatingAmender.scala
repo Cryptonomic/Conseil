@@ -64,8 +64,8 @@ class TezosForkInvalidatingAmender(db: Database)(implicit ec: ExecutionContext)
    *   inside the DBIO wrapper to result in a single value.
    * This means we're able to immediately convert a List[DBIO[Int]] => DBIO[Int]
    */
-  private def invalidateData(forkLevel: BlockLevel, asOf: Instant, forkId: String)(
-      implicit ec: ExecutionContext
+  private def invalidateData(forkLevel: BlockLevel, asOf: Instant, forkId: String)(implicit
+      ec: ExecutionContext
   ): DBIO[Int] =
     List(
       DBOps.ForkInvalidation.blocks.invalidate(forkLevel, asOf, forkId),

@@ -16,7 +16,8 @@ trait Views {
 
   /** Entity class storing rows of view Accounts
     *  @param address Database column address SqlType(text)
-    *  @param value Database column value SqlType(numeric) */
+    *  @param value Database column value SqlType(numeric)
+    */
   case class AccountsRow(address: String, value: scala.math.BigDecimal)
 
   /** Table description of view accounts. Objects of this class serve as prototypes for rows in queries. */
@@ -37,7 +38,6 @@ trait Views {
     * Bitcoin accounts are based on unspent transaction output (UTXO) model (https://en.wikipedia.org/wiki/Unspent_transaction_output)
     * To calculate current balance for the given address, find all the existing transaction outputs with the address
     * and check that it hasn't already been spent.
-    *
     */
   lazy val AccountsViewSql: SqlAction[Int, NoStream, Effect] = sqlu"""
     CREATE OR REPLACE VIEW bitcoin.accounts AS

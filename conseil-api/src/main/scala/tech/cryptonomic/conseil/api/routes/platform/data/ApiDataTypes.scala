@@ -46,9 +46,8 @@ object ApiDataTypes {
           }.toList
         }
       }
-    (newPredicates, newSnapshot).mapN {
-      case (pred, snap) =>
-        query.copy(predicates = pred, snapshot = snap)
+    (newPredicates, newSnapshot).mapN { case (pred, snap) =>
+      query.copy(predicates = pred, snapshot = snap)
     }
   }
 
@@ -59,12 +58,12 @@ object ApiDataTypes {
       metadataService: MetadataService
   ): List[QueryValidationError] = {
     val fields = query.fields.map('query -> _.field) :::
-          query.predicates.map(predicate => 'predicate -> dropAggregationPrefixes(predicate.field)) :::
-          query.orderBy.map(orderBy => 'orderBy -> dropAggregationPrefixes(orderBy.field)) :::
-          query.aggregation.map('aggregation -> _.field)
+      query.predicates.map(predicate => 'predicate -> dropAggregationPrefixes(predicate.field)) :::
+      query.orderBy.map(orderBy => 'orderBy -> dropAggregationPrefixes(orderBy.field)) :::
+      query.aggregation.map('aggregation -> _.field)
 
-    fields.map {
-      case (source, field) => (metadataService.exists(path.addLevel(field)), source, field)
+    fields.map { case (source, field) =>
+      (metadataService.exists(path.addLevel(field)), source, field)
     }.collect {
       case (false, 'query, field) => InvalidQueryField(field)
       case (false, 'predicate, field) => InvalidPredicateField(field)
@@ -181,10 +180,10 @@ object ApiDataTypes {
             updatedQuery
         ) =>
           invalidNonExistingFields :::
-              invalidAggregationFieldForTypes :::
-              invalidPredicateFilteringFields :::
-              invalidQueryFieldFormats :::
-              invalidSnapshotField match {
+            invalidAggregationFieldForTypes :::
+            invalidPredicateFilteringFields :::
+            invalidQueryFieldFormats :::
+            invalidSnapshotField match {
             case Nil => Right(updatedQuery)
             case wrongFields => Left(wrongFields)
           }

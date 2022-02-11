@@ -62,10 +62,9 @@ class ForkDetector[Eff[_]: Monad, BlockId: Eq](
     * @return a match result [[IdMatchResult]]
     */
   def checkOnLevel(level: Long): Eff[IdMatchResult] =
-    (indexerSearch.searchForLevel(level), nodeSearch.searchForLevel(level)).mapN(
-      (indexedBlock, chainBlock) =>
-        if (indexedBlock.eqv(chainBlock)) SameId
-        else ForkedId
+    (indexerSearch.searchForLevel(level), nodeSearch.searchForLevel(level)).mapN((indexedBlock, chainBlock) =>
+      if (indexedBlock.eqv(chainBlock)) SameId
+      else ForkedId
     )
 
   /** Assuming a fork was detected for a specific level (i.e. high),

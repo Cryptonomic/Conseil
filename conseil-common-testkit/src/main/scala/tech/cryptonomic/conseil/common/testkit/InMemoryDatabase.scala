@@ -49,8 +49,8 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach with In
     dbInstance.start()
     val setupScripts =
       DBIO.sequence(initScripts.map(_.create)) andThen
-          DBIO.sequence(fixtures.map(_.create)) andThen
-          DBIO.sequence(initScripts.map(_.customize))
+        DBIO.sequence(fixtures.map(_.create)) andThen
+        DBIO.sequence(initScripts.map(_.customize))
     await(dbHandler.run(setupScripts), 5.seconds)
   }
 

@@ -13,7 +13,7 @@ import cats.Id
 )
 trait Conversion[F[_], FROM, TO] {
 
-  /** Takes a `FROM` object and retuns the `TO` object, with an effect `F`.*/
+  /** Takes a `FROM` object and retuns the `TO` object, with an effect `F`. */
   def convert(from: FROM): F[TO]
 
 }

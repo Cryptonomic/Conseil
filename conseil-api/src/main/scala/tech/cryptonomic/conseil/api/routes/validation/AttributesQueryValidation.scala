@@ -4,7 +4,7 @@ import endpoints4s.algebra
 import endpoints4s.algebra.Documentation
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.AttributesValidationError
 
-/** Trait adding validation for querying attributes  */
+/** Trait adding validation for querying attributes */
 trait AttributesQueryValidation {
   self: algebra.Responses =>
 

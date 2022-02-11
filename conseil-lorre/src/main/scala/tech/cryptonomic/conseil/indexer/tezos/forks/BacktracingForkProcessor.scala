@@ -29,7 +29,7 @@ class BacktracingForkProcessor(
     tezosIndexedDataOperations: TezosIndexedDataOperations,
     indexerSearch: SearchBlockId[Future, TezosBlockHash],
     amender: ForkAmender[Future, TezosBlockHash],
-    batchConf: BatchFetchConfiguration,
+    batchConf: BatchFetchConfiguration
 )(ec: ExecutionContext)
     extends TezosBlocksDataFetchers
     with ConseilLogSupport {
@@ -55,18 +55,17 @@ class BacktracingForkProcessor(
     implicit val fetcher = blocksRangeFetcher(level)
     val res = fetch[Long, BlockData, Future, List, Throwable].run((0L to depth).toList)
     res.flatMap { lst =>
-      lst.map {
-        case (l, chainBlock) =>
-          tezosIndexedDataOperations.fetchBlockAtLevel(chainBlock.header.level).map { indexedBlock =>
-            if (indexedBlock.forall(_.hash == chainBlock.hash.value)) {
-              -1
-            } else {
-              logger.info(
-                s"Hashes don't match: ${chainBlock.header.level} ${indexedBlock.map(_.hash)} && ${chainBlock.hash.value}"
-              )
-              level - l
-            }
+      lst.map { case (l, chainBlock) =>
+        tezosIndexedDataOperations.fetchBlockAtLevel(chainBlock.header.level).map { indexedBlock =>
+          if (indexedBlock.forall(_.hash == chainBlock.hash.value)) {
+            -1
+          } else {
+            logger.info(
+              s"Hashes don't match: ${chainBlock.header.level} ${indexedBlock.map(_.hash)} && ${chainBlock.hash.value}"
+            )
+            level - l
           }
+        }
       }.sequence
     }.map(_.filter(_ > 0))
   }

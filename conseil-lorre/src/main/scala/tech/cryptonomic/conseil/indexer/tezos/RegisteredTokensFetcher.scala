@@ -26,8 +26,8 @@ class RegisteredTokensFetcher(db: Database, tc: TokenContracts, terminationSeque
   implicit val decoder = deriveDecoder[RegisteredToken]
 
   /** Updates Registered tokens table from URL */
-  def updateRegisteredTokens(
-      implicit executionContext: ExecutionContext,
+  def updateRegisteredTokens(implicit
+      executionContext: ExecutionContext,
       system: ActorSystem,
       mat: Materializer
   ): Unit = {

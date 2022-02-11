@@ -48,10 +48,9 @@ trait ConseilMainOutput extends ConseilLogSupport {
   private def showAvailablePlatforms(conf: PlatformsConfiguration): String =
     conf.platforms
       .groupBy(_.platform)
-      .map {
-        case (platform, configuration) =>
-          val networks = showAvailableNetworks(configuration)
-          s"  Platform: ${platform.name}$networks"
+      .map { case (platform, configuration) =>
+        val networks = showAvailableNetworks(configuration)
+        s"  Platform: ${platform.name}$networks"
       }
       .mkString("\n")
 

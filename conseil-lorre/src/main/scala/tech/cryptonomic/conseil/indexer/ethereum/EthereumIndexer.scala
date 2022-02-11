@@ -74,18 +74,17 @@ class EthereumIndexer(
       } yield ()
 
     indexer
-      .use(
-        ethereumOperations =>
-          repeatEvery(lorreConf.sleepInterval) {
+      .use(ethereumOperations =>
+        repeatEvery(lorreConf.sleepInterval) {
 
-            /**
-              * Place with all the computations for the Ethereum.
-              * Currently, it only contains the blocks. But it can be extended to
-              * handle multiple computations.
-              */
-            IO.delay(logger.info("Start Lorre for Ethereum")) *>
-              ethereumOperations.loadBlocksAndLogs(lorreConf.depth, lorreConf.headHash).compile.drain
-          }
+          /**
+            * Place with all the computations for the Ethereum.
+            * Currently, it only contains the blocks. But it can be extended to
+            * handle multiple computations.
+            */
+          IO.delay(logger.info("Start Lorre for Ethereum")) *>
+            ethereumOperations.loadBlocksAndLogs(lorreConf.depth, lorreConf.headHash).compile.drain
+        }
       )
       .unsafeRunSync()
   }
