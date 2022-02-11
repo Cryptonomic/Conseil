@@ -941,7 +941,7 @@ private[tezos] object TezosDatabaseConversions {
         blockHash = None,
         blockLevel = from.level,
         delegate = from.delegate,
-        priority = from.priority,
+        priority = from.priority.orElse(from.round).get,
         estimatedTime = from.estimated_time.map(toSql),
         cycle = from.cycle,
         governancePeriod = from.governancePeriod,
