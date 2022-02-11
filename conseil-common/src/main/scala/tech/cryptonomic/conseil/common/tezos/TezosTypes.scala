@@ -223,7 +223,9 @@ object TezosTypes {
     "endorsement",
     "proposals",
     "ballot",
-    "endorsement_with_slot"
+    "endorsement_with_slot",
+    "preendorsement",
+    "double_preendorsement_evidence"
   )
 
   final case class Operations(
@@ -325,6 +327,8 @@ object TezosTypes {
   ) extends Operation
 
   final case class DoubleEndorsementEvidence(blockOrder: Option[Int] = None) extends Operation
+  final case class DoublePreendorsementEvidence(blockOrder: Option[Int] = None) extends Operation
+
   final case class DoubleBakingEvidence(blockOrder: Option[Int] = None) extends Operation
   final case class Proposals(
       source: Option[ContractId],
@@ -738,7 +742,8 @@ object TezosTypes {
   final case class BakingRights(
       level: BlockLevel,
       delegate: String,
-      priority: Int,
+      priority: Option[Int],
+      round: Option[Int],
       estimated_time: Option[ZonedDateTime],
       cycle: Option[Int],
       governancePeriod: Option[Int]

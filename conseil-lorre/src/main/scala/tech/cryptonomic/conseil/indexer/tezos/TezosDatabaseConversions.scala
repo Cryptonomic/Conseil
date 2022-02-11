@@ -646,6 +646,7 @@ private[tezos] object TezosDatabaseConversions {
   ] = { case (block, groupHash, op) =>
     val kind = op match {
       case DoubleEndorsementEvidence(_) => "double_endorsement_evidence"
+      case DoublePreendorsementEvidence(_) => "double_preendorsement_evidence"
       case DoubleBakingEvidence(_) => "double_baking_evidence"
       case _ => ""
     }
@@ -904,7 +905,7 @@ private[tezos] object TezosDatabaseConversions {
           blockHash = Some(fetchKey.blockHash.value),
           blockLevel = bakingRights.level,
           delegate = bakingRights.delegate,
-          priority = bakingRights.priority,
+          priority = bakingRights.priority.orElse(bakingRights.round).get,
           estimatedTime = bakingRights.estimated_time.map(toSql),
           cycle = fetchKey.cycle,
           governancePeriod = fetchKey.governancePeriod,

@@ -686,7 +686,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
 
     val sampleOperations: List[Operation] =
       sampleEndorsement :: sampleNonceRevelation :: sampleAccountActivation :: sampleReveal :: sampleTransaction :: sampleOrigination :: sampleDelegation ::
-          DoubleEndorsementEvidence() :: DoubleBakingEvidence() :: sampleProposals :: sampleBallot :: Nil
+          DoubleEndorsementEvidence() :: DoublePreendorsementEvidence() :: DoubleBakingEvidence() :: sampleProposals :: sampleBallot :: Nil
 
     /** Converts operations in a list by selectively adding
       * BigMapAlloc within it's results.

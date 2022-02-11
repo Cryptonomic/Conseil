@@ -190,6 +190,9 @@ object TezosOptics {
         case x: DoubleEndorsementEvidence =>
           index += 1
           x.copy(blockOrder = Some(index))
+        case x: DoublePreendorsementEvidence =>
+          index += 1
+          x.copy(blockOrder = Some(index))
         case x: DoubleBakingEvidence =>
           index += 1
           x.copy(blockOrder = Some(index))
