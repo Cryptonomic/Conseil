@@ -263,7 +263,7 @@ private[tezos] object TezosDatabaseConversions {
       kind = "endorsement_with_slot",
       level = Some(endorsement.operations.level),
       delegate = Some(metadata.delegate.value),
-      slots = Some(metadata.slots).map(concatenateToString),
+      slots = metadata.slots.map(concatenateToString),
       operationOrder = blockOrder,
       blockHash = block.data.hash.value,
       blockLevel = block.data.header.level,
@@ -271,7 +271,7 @@ private[tezos] object TezosDatabaseConversions {
       internal = false,
       cycle = TezosOptics.Blocks.extractCycle(block),
       branch = block.operationGroups.find(h => h.hash == groupHash).map(_.branch.value),
-      numberOfSlots = Some(metadata.slots.length),
+      numberOfSlots = metadata.slots.map(_.length),
       period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
       utcYear = year,
       utcMonth = month,
@@ -290,7 +290,7 @@ private[tezos] object TezosDatabaseConversions {
         kind = "endorsement",
         level = Some(level),
         delegate = Some(metadata.delegate.value),
-        slots = Some(metadata.slots).map(concatenateToString),
+        slots = metadata.slots.map(concatenateToString),
         operationOrder = blockOrder,
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
@@ -298,7 +298,7 @@ private[tezos] object TezosDatabaseConversions {
         internal = false,
         cycle = TezosOptics.Blocks.extractCycle(block),
         branch = block.operationGroups.find(h => h.hash == groupHash).map(_.branch.value),
-        numberOfSlots = Some(metadata.slots.length),
+        numberOfSlots = metadata.slots.map(_.length),
         period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
@@ -646,6 +646,7 @@ private[tezos] object TezosDatabaseConversions {
   ] = { case (block, groupHash, op) =>
     val kind = op match {
       case DoubleEndorsementEvidence(_) => "double_endorsement_evidence"
+      case DoublePreendorsementEvidence(_) => "double_preendorsement_evidence"
       case DoubleBakingEvidence(_) => "double_baking_evidence"
       case _ => ""
     }
@@ -904,7 +905,7 @@ private[tezos] object TezosDatabaseConversions {
           blockHash = Some(fetchKey.blockHash.value),
           blockLevel = bakingRights.level,
           delegate = bakingRights.delegate,
-          priority = bakingRights.priority,
+          priority = bakingRights.priority.orElse(bakingRights.round).get,
           estimatedTime = bakingRights.estimated_time.map(toSql),
           cycle = fetchKey.cycle,
           governancePeriod = fetchKey.governancePeriod,
@@ -940,7 +941,7 @@ private[tezos] object TezosDatabaseConversions {
         blockHash = None,
         blockLevel = from.level,
         delegate = from.delegate,
-        priority = from.priority,
+        priority = from.priority.orElse(from.round).get,
         estimatedTime = from.estimated_time.map(toSql),
         cycle = from.cycle,
         governancePeriod = from.governancePeriod,

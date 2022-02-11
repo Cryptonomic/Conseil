@@ -488,7 +488,7 @@ trait OperationsJsonData {
       level = 182308,
       metadata = EndorsementMetadata(
         slot = None,
-        slots = List(29, 27, 20, 17),
+        slots = Some(List(29, 27, 20, 17)),
         delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
         balance_updates = List(
           BalanceUpdate(

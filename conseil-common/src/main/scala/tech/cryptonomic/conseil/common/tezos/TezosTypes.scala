@@ -223,7 +223,9 @@ object TezosTypes {
     "endorsement",
     "proposals",
     "ballot",
-    "endorsement_with_slot"
+    "endorsement_with_slot",
+    "preendorsement",
+    "double_preendorsement_evidence"
   )
 
   final case class Operations(
@@ -244,6 +246,12 @@ object TezosTypes {
   final case class EndorsementWithSlot(
       endorsement: EndorsementInternalObject,
       metadata: EndorsementMetadata,
+      blockOrder: Option[Int] = None
+  ) extends Operation
+
+  final case class Preendorsement(
+      level: BlockLevel,
+      metadata: PreendorsementMetadata,
       blockOrder: Option[Int] = None
   ) extends Operation
 
@@ -319,6 +327,8 @@ object TezosTypes {
   ) extends Operation
 
   final case class DoubleEndorsementEvidence(blockOrder: Option[Int] = None) extends Operation
+  final case class DoublePreendorsementEvidence(blockOrder: Option[Int] = None) extends Operation
+
   final case class DoubleBakingEvidence(blockOrder: Option[Int] = None) extends Operation
   final case class Proposals(
       source: Option[ContractId],
@@ -348,7 +358,12 @@ object TezosTypes {
   //metadata definitions, both shared or specific to operation kind
   final case class EndorsementMetadata(
       slot: Option[Int],
-      slots: List[Int],
+      slots: Option[List[Int]],
+      delegate: PublicKeyHash,
+      balance_updates: List[OperationMetadata.BalanceUpdate]
+  )
+
+  final case class PreendorsementMetadata(
       delegate: PublicKeyHash,
       balance_updates: List[OperationMetadata.BalanceUpdate]
   )
@@ -727,7 +742,8 @@ object TezosTypes {
   final case class BakingRights(
       level: BlockLevel,
       delegate: String,
-      priority: Int,
+      priority: Option[Int],
+      round: Option[Int],
       estimated_time: Option[ZonedDateTime],
       cycle: Option[Int],
       governancePeriod: Option[Int]

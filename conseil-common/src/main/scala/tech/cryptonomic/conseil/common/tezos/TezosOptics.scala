@@ -178,6 +178,9 @@ object TezosOptics {
         case x: EndorsementWithSlot =>
           index += 1
           x.copy(blockOrder = Some(index))
+        case x: Preendorsement =>
+          index += 1
+          x.copy(blockOrder = Some(index))
         case x: SeedNonceRevelation =>
           index += 1
           x.copy(blockOrder = Some(index))
@@ -185,6 +188,9 @@ object TezosOptics {
           index += 1
           x.copy(blockOrder = Some(index))
         case x: DoubleEndorsementEvidence =>
+          index += 1
+          x.copy(blockOrder = Some(index))
+        case x: DoublePreendorsementEvidence =>
           index += 1
           x.copy(blockOrder = Some(index))
         case x: DoubleBakingEvidence =>
