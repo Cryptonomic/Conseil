@@ -84,22 +84,20 @@ class AccountsProcessor(
      */
     def extractBakersInfo(
         taggedAccounts: Seq[BlockTagged[AccountsIndex]]
-    ): (List[BlockTagged[AccountsIndex]], List[BlockTagged[DelegateKeys]]) =
+    ): (List[BlockTagged[AccountsIndex]], List[BlockTagged[DelegateKeys]]) = {
+      val taggedList = taggedAccounts.toList
       if (enabledFeatures.bakerFeaturesAreOn) {
-        val taggedList = taggedAccounts.toList
-
         def extractBakerKey(account: Account): Option[PublicKeyHash] =
           PartialFunction.condOpt(account.delegate) {
             case Some(Right(pkh)) => pkh
             case Some(Left(Protocol4Delegate(_, Some(pkh)))) => pkh
           }
-
         val taggedBakersKeys = taggedList.map(taggedIndex =>
           taggedIndex.map(accountsIndex => accountsIndex.values.toList.mapFilter(extractBakerKey))
         )
         (taggedList, taggedBakersKeys)
-      } else (List.empty, List.empty)
-
+      } else (taggedList, List.empty)
+    }
     /** Starting from accounts grouped by block, and the correspoding delegates,
       * we compute extra information and store everything in the database.
       * All of this is done on a "page" of those values, which represents a chunk
