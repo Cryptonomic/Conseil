@@ -225,7 +225,8 @@ object TezosTypes {
     "ballot",
     "endorsement_with_slot",
     "preendorsement",
-    "double_preendorsement_evidence"
+    "double_preendorsement_evidence",
+    "set_deposits_limit"
   )
 
   final case class Operations(
@@ -353,6 +354,17 @@ object TezosTypes {
       value: Option[Micheline],
       blockOrder: Option[Int] = None,
       metadata: ResultMetadata[OperationResult.RegisterGlobalConstant]
+  ) extends Operation
+
+  final case class SetDepositsLimit(
+      source: Option[ContractId],
+      fee: PositiveBigNumber,
+      counter: PositiveBigNumber,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      limit: PositiveBigNumber,
+      blockOrder: Option[Int] = None,
+      metadata: ResultMetadata[OperationResult.SetDepositsLimit]
   ) extends Operation
 
   //metadata definitions, both shared or specific to operation kind
@@ -499,6 +511,12 @@ object TezosTypes {
         consumed_gas: Option[BigNumber],
         storage_size: Option[BigNumber],
         global_address: Option[String]
+    )
+
+    final case class SetDepositsLimit(
+        status: String,
+        balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
+        consumed_gas: Option[BigNumber]
     )
 
   }

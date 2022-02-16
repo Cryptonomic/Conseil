@@ -205,7 +205,9 @@ object TezosOptics {
         case x: RegisterGlobalConstant =>
           index += 1
           x.copy(blockOrder = Some(index))
-
+        case x: SetDepositsLimit =>
+          index += 1
+          x.copy(blockOrder = Some(index))
         case x: Reveal =>
           index += 1
           val operation = x.copy(blockOrder = Some(index))
