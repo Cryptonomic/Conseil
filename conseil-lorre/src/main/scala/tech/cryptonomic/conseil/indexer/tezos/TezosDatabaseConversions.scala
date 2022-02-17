@@ -588,6 +588,42 @@ private[tezos] object TezosDatabaseConversions {
       )
   }
 
+  private val convertSetDepositsLimit: PartialFunction[
+    (Block, OperationHash, Operation),
+    Tables.OperationsRow
+  ] = {
+    case (
+          block,
+          groupHash,
+          SetDepositsLimit(source, fee, counter, gas_limit, storage_limit, limit, blockOrder, metadata)
+        ) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
+      Tables.OperationsRow(
+        operationId = 0,
+        operationGroupHash = groupHash.value,
+        kind = "set_deposits_limit",
+        operationOrder = blockOrder,
+        source = source.map(_.id),
+        fee = extractBigDecimal(fee),
+        counter = extractBigDecimal(counter),
+        gasLimit = extractBigDecimal(gas_limit),
+        storageLimit = extractBigDecimal(storage_limit),
+        status = Some(metadata.operation_result.status),
+        consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false,
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time,
+        forkId = Fork.mainForkId
+      )
+  }
+
   private val convertBallot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, Ballot(ballot, proposal, source, ballotPeriod, blockOrder)) =>
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
