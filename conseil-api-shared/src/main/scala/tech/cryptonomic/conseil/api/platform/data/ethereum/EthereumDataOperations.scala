@@ -1,16 +1,15 @@
 package tech.cryptonomic.conseil.api.platform.data.ethereum
 
+import cats.effect.IO
 import com.typesafe.config.Config
 import slick.jdbc.PostgresProfile.api._
+
 import tech.cryptonomic.conseil.api.ApiDataOperations
 import tech.cryptonomic.conseil.common.ethereum.EthereumTypes.EthereumBlockHash
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse}
+import tech.cryptonomic.conseil.common.util.syntax._
 
 import scala.concurrent.ExecutionContext
-
-import cats.effect.IO
-
-import tech.cryptonomic.conseil.common.util.syntax._
 
 /**
   * Contains list of available methods for fetching the data for Ethereum-related block-chains

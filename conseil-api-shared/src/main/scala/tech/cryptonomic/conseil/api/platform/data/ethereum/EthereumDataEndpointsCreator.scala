@@ -1,10 +1,10 @@
 package tech.cryptonomic.conseil.api.platform.data.ethereum
 
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes
-import tech.cryptonomic.conseil.api.platform.data.ApiDataEndpoints
-
 import sttp.tapir._
 import sttp.model.StatusCode
+
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes
+import tech.cryptonomic.conseil.api.platform.data.ApiDataEndpoints
 
 trait EthereumDataEndpointsCreator extends ApiDataEndpoints with EthereumFilterFromQueryString {
 

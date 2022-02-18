@@ -1,27 +1,26 @@
 package tech.cryptonomic.conseil.api
 
+import cats.effect.IO
+
 import tech.cryptonomic.conseil.api.ConseilApi.NoNetworkEnabledError
 import tech.cryptonomic.conseil.api.config.ConseilAppConfig.CombinedConfiguration
 import tech.cryptonomic.conseil.api.config.NautilusCloudConfiguration
-// import tech.cryptonomic.conseil.api.directives.{EnableCORSDirectives, RecordingDirectives, ValidatingDirectives}
-import tech.cryptonomic.conseil.api.platform.metadata.{AttributeValuesCacheConfiguration, UnitTransformation}
-import tech.cryptonomic.conseil.api.platform.data.tezos.TezosDataOperations
+import tech.cryptonomic.conseil.api.platform.data.bitcoin.BitcoinDataOperations
+import tech.cryptonomic.conseil.api.platform.data.bitcoin.BitcoinDataRoutes
 import tech.cryptonomic.conseil.api.platform.data.ethereum.EthereumDataOperations
+import tech.cryptonomic.conseil.api.platform.data.ethereum.EthereumDataRoutes
+import tech.cryptonomic.conseil.api.platform.data.tezos.TezosDataOperations
+import tech.cryptonomic.conseil.api.platform.data.tezos.TezosDataRoutes
+import tech.cryptonomic.conseil.api.platform.discovery.GenericPlatformDiscoveryOperations
+import tech.cryptonomic.conseil.api.platform.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.api.platform.metadata.MetadataService
+import tech.cryptonomic.conseil.api.platform.metadata.UnitTransformation
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.config.Platforms
 import tech.cryptonomic.conseil.common.config.Platforms.BlockchainPlatform
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.sql.DatabaseRunner
-import tech.cryptonomic.conseil.api.platform.data.tezos.TezosDataRoutes
-import tech.cryptonomic.conseil.api.platform.data.ethereum.EthereumDataRoutes
-import tech.cryptonomic.conseil.api.platform.data.bitcoin.BitcoinDataOperations
-import tech.cryptonomic.conseil.api.platform.data.bitcoin.BitcoinDataRoutes
-import tech.cryptonomic.conseil.api.platform.discovery.GenericPlatformDiscoveryOperations
-
 import tech.cryptonomic.conseil.common.util.syntax._
-
-import cats.effect.IO
 
 import scala.concurrent.ExecutionContext
 
