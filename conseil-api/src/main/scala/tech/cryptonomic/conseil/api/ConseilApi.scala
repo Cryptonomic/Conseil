@@ -6,6 +6,7 @@ import tech.cryptonomic.conseil.api.config.NautilusCloudConfiguration
 // import tech.cryptonomic.conseil.api.directives.{EnableCORSDirectives, RecordingDirectives, ValidatingDirectives}
 import tech.cryptonomic.conseil.api.platform.metadata.{AttributeValuesCacheConfiguration, UnitTransformation}
 import tech.cryptonomic.conseil.api.platform.data.tezos.TezosDataOperations
+import tech.cryptonomic.conseil.api.platform.data.ethereum.EthereumDataOperations
 import tech.cryptonomic.conseil.api.platform.metadata.MetadataService
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.config.Platforms
@@ -13,6 +14,9 @@ import tech.cryptonomic.conseil.common.config.Platforms.BlockchainPlatform
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.sql.DatabaseRunner
 import tech.cryptonomic.conseil.api.platform.data.tezos.TezosDataRoutes
+import tech.cryptonomic.conseil.api.platform.data.ethereum.EthereumDataRoutes
+import tech.cryptonomic.conseil.api.platform.data.bitcoin.BitcoinDataOperations
+import tech.cryptonomic.conseil.api.platform.data.bitcoin.BitcoinDataRoutes
 import tech.cryptonomic.conseil.api.platform.discovery.GenericPlatformDiscoveryOperations
 
 import tech.cryptonomic.conseil.common.util.syntax._
@@ -60,15 +64,29 @@ class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* wit
   lazy val metadataService =
     new MetadataService(config.platforms, transformation, cacheOverrides, ApiCache.cachedDiscoveryOperations)
 
-  lazy val operations = new TezosDataOperations(
+  lazy val tezosOperations = new TezosDataOperations(
     config.platforms.getDbConfig(Platforms.Tezos.name, config.platforms.getNetworks(Platforms.Tezos.name).head.name)
   )
   lazy val tezosDataRoutes =
-    TezosDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
+    TezosDataRoutes(metadataService, config.metadata, tezosOperations, config.server.maxQueryResultSize)
+
+  lazy val bitcoinOperations = new BitcoinDataOperations(
+    config.platforms.getDbConfig(Platforms.Bitcoin.name, config.platforms.getNetworks(Platforms.Bitcoin.name).head.name)
+  )
+  lazy val bitcoindDataRoutes =
+    BitcoinDataRoutes(metadataService, config.metadata, bitcoinOperations, config.server.maxQueryResultSize)
+
+  lazy val ethereumOperations = new EthereumDataOperations(
+    dbConfig = config.platforms
+      .getDbConfig(Platforms.Ethereum.name, config.platforms.getNetworks(Platforms.Ethereum.name).head.name)
+  )
+  lazy val ethereumDataRoutes =
+    EthereumDataRoutes(metadataService, config.metadata, ethereumOperations, config.server.maxQueryResultSize)
+
   lazy val appInfoRoute = protocol.appInfo.serverLogicSuccess(_ => currentInfo)
 
-  // TODO: add [[platform.data]] + [[platform.discovery]] routes
-  lazy val route = appInfoRoute :: tezosDataRoutes.getRoute
+  // TODO: add [[platform.data]] routes
+  lazy val route = appInfoRoute :: tezosDataRoutes.getRoute // :: bitcoindDataRoutes.getRoute :: ethereumDataRoutes.getRoute
 
   /**
     * Object, which initializes and holds all of the APIs (blockchain-specific endpoints) in the map.
@@ -79,6 +97,7 @@ class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* wit
   private object ApiCache {
     private lazy val cache: Map[BlockchainPlatform, TezosDataRoutes] = forVisiblePlatforms {
       case Platforms.Tezos =>
+        // FIXME: investigate here + aren't [[operations]] duplicated?
         val operations = new TezosDataOperations(
           config.platforms
             .getDbConfig(Platforms.Tezos.name, config.platforms.getNetworks(Platforms.Tezos.name).head.name)
@@ -101,7 +120,6 @@ class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* wit
     private val metadataOperations: Map[(String, String), DatabaseRunner] =
       config.platforms.getDatabases().mapValues(db => () => db)
 
-    // lazy val cachedDiscoveryOperations: GenericPlatformDiscoveryOperations =
     lazy val cachedDiscoveryOperations =
       new GenericPlatformDiscoveryOperations(
         metadataOperations,

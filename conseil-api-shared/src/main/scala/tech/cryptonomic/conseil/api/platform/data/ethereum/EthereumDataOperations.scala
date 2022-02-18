@@ -17,7 +17,7 @@ import tech.cryptonomic.conseil.common.util.syntax._
   *
   * @param prefix the name of the schema under which database are stored
   */
-class EthereumDataOperations(prefix: String, dbConfig: Config) extends ApiDataOperations {
+class EthereumDataOperations(prefix: String = "ethereum", dbConfig: Config) extends ApiDataOperations {
   override lazy val dbReadHandle: Database = Database.forConfig("", dbConfig)
 
   /** Fetches the list of blocks for given query */

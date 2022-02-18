@@ -9,19 +9,18 @@ import sttp.tapir.swagger.SwaggerUI
 
 import tech.cryptonomic.conseil.api.platform.discovery.PlatformDiscoveryEndpoints
 import tech.cryptonomic.conseil.api.platform.data.tezos.TezosDataEndpoints
-// import tech.cryptonomic.conseil.api.platform.data.ethereum.{EthereumDataEndpoints, QuorumDataEndpoints}
-// import tech.cryptonomic.conseil.api.platform.data.bitcoin.BitcoinDataEndpoints
+import tech.cryptonomic.conseil.api.platform.data.ethereum.EthereumDataEndpoints
+import tech.cryptonomic.conseil.api.platform.data.bitcoin.BitcoinDataEndpoints
 
 trait APIDocs
     extends PlatformDiscoveryEndpoints
-    // with EthereumDataEndpoints
+    with EthereumDataEndpoints
     // with QuorumDataEndpoints
-    // with BitcoinDataEndpoints {
+    with BitcoinDataEndpoints
     with TezosDataEndpoints {
 
   private lazy val allPlatformEndpoints =
-    discoveryEndpoints ++ xtzEndpoints
-  // discoveryEndpoints ++ xtzEndpoints ++ ethEndpoints ++ quorumEndpoints ++ btcEndpoints
+    discoveryEndpoints ++ xtzEndpoints ++ ethEndpoints /* ++ quorumEndpoints */ ++ btcEndpoints
 
   private lazy val docs: OpenAPI =
     OpenAPIDocsInterpreter().toOpenAPI(protocol.appInfo :: allPlatformEndpoints, "Conseil API", "1.0")
