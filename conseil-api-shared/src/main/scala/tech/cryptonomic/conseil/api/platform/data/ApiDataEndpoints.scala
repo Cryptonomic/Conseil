@@ -7,7 +7,6 @@ import sttp.tapir.json.circe._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
 import sttp.model.StatusCode
 
-// private[data] trait ApiDataEndpoints {
 private[data] trait ApiDataEndpoints {
 
   import tech.cryptonomic.conseil.api.platform.data.converters._

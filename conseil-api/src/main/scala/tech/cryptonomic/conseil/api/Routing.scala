@@ -15,7 +15,6 @@ object Routing {
   import tech.cryptonomic.conseil.api.info.model._
   import tech.cryptonomic.conseil.api.info.converters._
 
-  // def instance[F[_]: Async]: HttpApp[F] =
   def instance(api: ConseilApi): HttpApp[IO] =
     Http4sServerInterpreter[IO](
       Http4sServerOptions
