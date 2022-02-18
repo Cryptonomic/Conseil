@@ -6,7 +6,7 @@ import tech.cryptonomic.conseil.api.platform.data.ApiDataEndpoints
 import sttp.tapir._
 import sttp.model.StatusCode
 
-trait EthereumDataEndpointsCreator extends ApiDataEndpoints {
+trait EthereumDataEndpointsCreator extends ApiDataEndpoints with EthereumFilterFromQueryString {
 
   import tech.cryptonomic.conseil.api.platform.data.converters._
   import tech.cryptonomic.conseil.api.platform.data.schemas._
@@ -18,7 +18,7 @@ trait EthereumDataEndpointsCreator extends ApiDataEndpoints {
   private def compQueryResponseList(x: String): EndpointOutput[List[DataTypes.QueryResponse]] =
     compatibilityQuery[List[DataTypes.QueryResponse]](x)
 
-  private def common(x: String): Endpoint[Unit, (String, Option[String]), Unit, Unit, Any] =
+  private def common(x: String) =
     infallibleEndpoint.get
       .in(createPath(x))
       .in(header[Option[String]]("apiKey"))
@@ -27,86 +27,86 @@ trait EthereumDataEndpointsCreator extends ApiDataEndpoints {
   /** V2 Blocks endpoint definition */
   private[ethereum] def blocksEndpoint(platform: String) =
     common(platform)
-      .in(createPath(platform) / "blocks" / query[Option[String]]("ethereumQsFilter"))
-  // .out(compQueryResponseList("blocks"))
+      .in("blocks" / ethereumQsFilter)
+      .out(compQueryResponseList("blocks"))
 
   /** V2 Blocks head endpoint definition */
   private[ethereum] def blocksHeadEndpoint(platform: String) =
     common(platform)
       .in("blocks" / "head")
-  // .out(compQueryResponse("blocks head"))
+      .out(compQueryResponse("blocks head"))
 
   /** V2 Blocks by hash endpoint definition */
   private[ethereum] def blockByHashEndpoint(platform: String) =
     common(platform)
       .in("blocks" / query[String]("hash"))
-  // .out(compQueryResponse("block by hash"))
+      .out(compQueryResponse("block by hash"))
 
   /** V2 Transactions endpoint definition */
   private[ethereum] def transactionsEndpoint(platform: String) =
     common(platform)
-      .in("transactions" / query[Option[String]]("ethereumQsFilter"))
-  // .out(compQueryResponseList("transactions"))
+      .in("transactions" / ethereumQsFilter)
+      .out(compQueryResponseList("transactions"))
 
   /** V2 Transaction by id endpoint definition */
   private[ethereum] def transactionByHashEndpoint(platform: String) =
     common(platform)
       .in("transactions" / query[String]("hash"))
-  // .out(compQueryResponse("transaction by hash"))
+      .out(compQueryResponse("transaction by hash"))
 
   /** V2 Logs endpoint definition */
   private[ethereum] def logsEndpoint(platform: String) =
     common(platform)
-      .in("logs" / query[Option[String]]("ethereumQsFilter"))
-  // .out(compQueryResponseList("logs"))
+      .in("logs" / ethereumQsFilter)
+      .out(compQueryResponseList("logs"))
 
   /** V2 Receipts endpoint definition */
   private[ethereum] def receiptsEndpoint(platform: String) =
     common(platform)
-      .in(createPath(platform) / "receipts" / query[Option[String]]("ethereumQsFilter"))
-  // .out(compQueryResponseList("receipts"))
+      .in("receipts" / ethereumQsFilter)
+      .out(compQueryResponseList("receipts"))
 
   /** V2 Contracts endpoint definition */
   private[ethereum] def contractsEndpoint(platform: String) =
     common(platform)
-      .in("contracts" / query[Option[String]]("ethereumQsFilter"))
-  // .out(compQueryResponseList("contracts"))
+      .in("contracts" / ethereumQsFilter)
+      .out(compQueryResponseList("contracts"))
 
   /** V2 Tokens endpoint definition */
   private[ethereum] def tokensEndpoint(platform: String) =
     common(platform)
-      .in("tokens" / query[Option[String]]("ethereumQsFilter"))
-  // .out(compQueryResponseList("tokens"))
+      .in("tokens" / ethereumQsFilter)
+      .out(compQueryResponseList("tokens"))
 
   /** V2 Token transfers endpoint definition */
   private[ethereum] def tokenTransfersEndpoint(platform: String) =
     common(platform)
-      .in("token_transfers" / query[Option[String]]("ethereumQsFilter"))
-  // .out(compQueryResponseList("token transfers"))
+      .in("token_transfers" / ethereumQsFilter)
+      .out(compQueryResponseList("token transfers"))
 
   /** V2 Tokens history endpoint definition */
   private[ethereum] def tokensHistoryEndpoint(platform: String) =
     common(platform)
-      .in("tokens_history" / query[Option[String]]("ethereumQsFilter"))
-  // .out(compQueryResponseList("tokens history"))
+      .in("tokens_history" / ethereumQsFilter)
+      .out(compQueryResponseList("tokens history"))
 
   /** V2 Accounts endpoint definition */
   private[ethereum] def accountsEndpoint(platform: String) =
     common(platform)
-      .in("accounts" / query[Option[String]]("ethereumQsFilter"))
-  // .out(compQueryResponseList("accounts"))
+      .in("accounts" / ethereumQsFilter)
+      .out(compQueryResponseList("accounts"))
 
   /** V2 Accounts by address endpoint definition */
   private[ethereum] def accountByAddressEndpoint(platform: String) =
     common(platform)
       .in("accounts" / query[String]("address"))
-  // .out(compQueryResponse("account by address"))
+      .out(compQueryResponse("account by address"))
 
   /** V2 Accounts history endpoint definition */
   private[ethereum] def accountsHistoryEndpoint(platform: String) =
     common(platform)
-      .in("accounts_history" / query[Option[String]]("ethereumQsFilter"))
-  // .out(compQueryResponseList("accounts history"))
+      .in("accounts_history" / ethereumQsFilter)
+      .out(compQueryResponseList("accounts history"))
 
   private def createTags(platform: String, tag: String): List[String] = List(s"$platform $tag")
 
