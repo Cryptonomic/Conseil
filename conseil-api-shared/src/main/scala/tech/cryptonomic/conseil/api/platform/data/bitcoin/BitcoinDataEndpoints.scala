@@ -7,7 +7,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.api.platform.data.ApiDataEndpoints
 
 /** Trait containing endpoints definition */
-trait BitcoinDataEndpoints extends ApiDataEndpoints {
+trait BitcoinDataEndpoints extends ApiDataEndpoints with BitcoinFilterFromQueryString {
 
   import tech.cryptonomic.conseil.api.platform.data.converters._
   import tech.cryptonomic.conseil.api.platform.data.schemas._
@@ -19,16 +19,16 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints {
 
   // lazy val btcEndpoints: List[Endpoint[Unit, _, _, _, Any]] = List(
   lazy val btcEndpoints = List(
-    bitcoinQueryEndpoint
-    // bitcoinBlocksEndpoint,
-    // bitcoinBlocksHeadEndpoint,
-    // bitcoinBlockByHashEndpoint,
-    // bitcoinTransactionsEndpoint,
-    // bitcoinTransactionByIdEndpoint,
-    // bitcoinInputsEndpoint,
-    // bitcoinOutputsEndpoint,
-    // bitcoinAccountsEndpoint,
-    // bitcoinAccountByAddressEndpoint
+    bitcoinQueryEndpoint,
+    bitcoinBlocksEndpoint,
+    bitcoinBlocksHeadEndpoint,
+    bitcoinBlockByHashEndpoint,
+    bitcoinTransactionsEndpoint,
+    bitcoinTransactionByIdEndpoint,
+    bitcoinInputsEndpoint,
+    bitcoinOutputsEndpoint,
+    bitcoinAccountsEndpoint,
+    bitcoinAccountByAddressEndpoint
   )
 
   def bitcoinQueryEndpoint = queryEndpoint(btcPlatform)
@@ -36,7 +36,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints {
   /** V2 Blocks endpoint definition */
   def bitcoinBlocksEndpoint =
     infallibleEndpoint.get
-      .in(root / "blocks" / query[Option[String]]("bitcoinQsFilter"))
+      .in(root / "blocks" / bitcoinQsFilter)
       .in(header[Option[String]]("apiKey"))
       .out(compatibilityQuery[List[QueryResponse]]("blocks"))
       .errorOut(statusCode(StatusCode.NotFound))
@@ -60,7 +60,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints {
   /** V2 Transactions endpoint definition */
   def bitcoinTransactionsEndpoint =
     infallibleEndpoint.get
-      .in(root / "transactions" / query[Option[String]]("bitcoinQsFilter"))
+      .in(root / "transactions" / bitcoinQsFilter)
       .in(header[Option[String]]("apiKey"))
       .out(compatibilityQuery[List[QueryResponse]]("transactions"))
       .errorOut(statusCode(StatusCode.NotFound))
@@ -76,7 +76,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints {
   /** V2 Inputs for transactions endpoint definition */
   def bitcoinInputsEndpoint =
     infallibleEndpoint.get
-      .in(root / "inputs" / query[Option[String]]("bitcoinQsFilter"))
+      .in(root / "inputs" / bitcoinQsFilter)
       .in(header[Option[String]]("apiKey"))
       .out(compatibilityQuery[List[QueryResponse]]("inputs for transactions"))
       .errorOut(statusCode(StatusCode.NotFound))
@@ -84,7 +84,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints {
   /** V2 Outputs for transactions endpoint definition */
   def bitcoinOutputsEndpoint =
     infallibleEndpoint.get
-      .in(root / "outputs" / query[Option[String]]("bitcoinQsFilter"))
+      .in(root / "outputs" / bitcoinQsFilter)
       .in(header[Option[String]]("apiKey"))
       .out(compatibilityQuery[List[QueryResponse]]("outputs for transactions"))
       .errorOut(statusCode(StatusCode.NotFound))
@@ -92,7 +92,7 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints {
   /** V2 Accounts endpoint definition */
   def bitcoinAccountsEndpoint =
     infallibleEndpoint.get
-      .in(root / "accounts" / query[Option[String]]("bitcoinQsFilter"))
+      .in(root / "accounts" / bitcoinQsFilter)
       .in(header[Option[String]]("apiKey"))
       .out(compatibilityQuery[List[QueryResponse]]("accounts"))
       .errorOut(statusCode(StatusCode.NotFound))
