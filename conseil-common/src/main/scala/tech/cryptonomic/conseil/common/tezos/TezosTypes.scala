@@ -362,7 +362,7 @@ object TezosTypes {
       counter: PositiveBigNumber,
       gas_limit: PositiveBigNumber,
       storage_limit: PositiveBigNumber,
-      limit: PositiveBigNumber,
+      limit: Option[PositiveBigNumber],
       blockOrder: Option[Int] = None,
       metadata: ResultMetadata[OperationResult.SetDepositsLimit]
   ) extends Operation
