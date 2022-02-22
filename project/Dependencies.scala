@@ -19,11 +19,6 @@ object Dependencies {
     val slickEffect = "0.4.0"
     val postgres = "42.3.1"
 
-    val endpoints4s = "1.3.0"
-    val endpoints4sBackCompatible = "1.1.0"
-    val endpoints4sAkkaServer = "4.0.0"
-
-    val monix = "3.4.0"
     val tapir = "0.20.0-M3"
 
     val cats = "2.6.1"
@@ -106,18 +101,9 @@ object Dependencies {
 
   private val postgres = Seq("org.postgresql" % "postgresql" % Versions.postgres)
 
-  private val endpoints = Seq(
-    "org.endpoints4s" %% "algebra"             % Versions.endpoints4s,
-    "org.endpoints4s" %% "openapi"             % Versions.endpoints4sBackCompatible,
-    "org.endpoints4s" %% "json-schema-generic" % Versions.endpoints4sBackCompatible,
-    "org.endpoints4s" %% "json-schema-circe"   % Versions.endpoints4sBackCompatible,
-    "org.endpoints4s" %% "akka-http-server"    % Versions.endpoints4sAkkaServer
-  )
-
   val tapirShared = Seq(
     "com.softwaremill.sttp.tapir" %% "tapir-core"       % Versions.tapir,
     "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % Versions.tapir,
-    logback,
     scopt(0)
   )
   val tapirServer = Seq(
@@ -232,20 +218,20 @@ object Dependencies {
   val conseilCommonTestKitInclude: Seq[ModuleID] =
     concat(config, slick, scalaTestCompile, postgresTestContainerCompile, scribe)
 
-  val conseilApiInclude: Seq[ModuleID] =
-    concat(
-      scribe,
-      scopt,
-      akka,
-      akkaHttp,
-      akkaHttpJson,
-      akkaHttpCors,
-      silencer,
-      scalaMock,
-      scalaTestJson,
-      diffX,
-      endpoints
-    )
+  // val conseilApiInclude: Seq[ModuleID] =
+  //   concat(
+  //     scribe,
+  //     scopt,
+  //     akka,
+  //     akkaHttp,
+  //     akkaHttpJson,
+  //     akkaHttpCors,
+  //     silencer,
+  //     scalaMock,
+  //     scalaTestJson,
+  //     diffX,
+  //     endpoints
+  //   )
 
   val conseilLorreInclude: Seq[ModuleID] =
     concat(config, pureConfig, scopt, silencer, akka, akkaHttp, scalaTest, scalaMock, diffX, akkaHttpJson)
