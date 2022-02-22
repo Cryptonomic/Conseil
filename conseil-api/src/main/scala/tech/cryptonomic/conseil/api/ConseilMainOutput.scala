@@ -15,7 +15,7 @@ trait ConseilMainOutput extends ConseilLogSupport {
   /** Shows the main application info
     * @param serverConf configuration of the http server
     */
-  protected[this] def displayInfo(serverConf: ConseilConfiguration): IO[Unit] = {
+  protected[this] def displayInfo(serverConf: ConseilConfiguration) = {
     val showCommit = BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]")
     IO(s"""
         | ==================================***==================================
@@ -26,11 +26,11 @@ trait ConseilMainOutput extends ConseilLogSupport {
         | Server started on ${serverConf.hostname} at port ${serverConf.port}
         | Bonjour...
         |
-        |""".stripMargin).debug.void
+        |""".stripMargin)
   }
 
   /** Shows details on the current configuration */
-  protected[this] def displayConfiguration(platformConfigs: PlatformsConfiguration): IO[Unit] =
+  protected[this] def displayConfiguration(platformConfigs: PlatformsConfiguration) =
     (for {
       showPlatforms <- showAvailablePlatforms(platformConfigs)
         .handleErrorWith(_ => IO("can't load platforms").debug)
@@ -45,7 +45,7 @@ trait ConseilMainOutput extends ConseilLogSupport {
         |
         | ==================================***==================================
         |
-        """.stripMargin).debug.void
+        """.stripMargin)
 
   /* prepare output to display existing platforms and networks */
   private def showAvailablePlatforms(conf: PlatformsConfiguration): IO[String] =
