@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.api
 
 import tech.cryptonomic.conseil.api.config.ConseilAppConfig
-import tech.cryptonomic.conseil.common.io.Logging
 import tech.cryptonomic.conseil.common.util.syntax._
 import tech.cryptonomic.conseil.api.util.syntax._
 
@@ -15,9 +14,6 @@ import scala.concurrent.duration._
 object Conseil extends IOApp with ConseilAppConfig with APIDocs with ConseilMainOutput {
 
   import ConseilAppConfig.CombinedConfiguration
-
-  /* Sadly, we're currently forced to do this to actually configure the loggers */
-  Logging.init()
 
   def run(args: List[String]) = runConseil(args)
 
