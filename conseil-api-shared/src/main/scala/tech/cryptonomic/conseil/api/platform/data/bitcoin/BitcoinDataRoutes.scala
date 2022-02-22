@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.api.platform.data.bitcoin
 
+import tech.cryptonomic.conseil.api.platform.data.ApiDataRoutes
 import tech.cryptonomic.conseil.api.platform.metadata.MetadataService
 import tech.cryptonomic.conseil.common.bitcoin.BitcoinTypes.BitcoinBlockHash
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
@@ -11,17 +12,15 @@ import scala.concurrent.ExecutionContext
 import cats.effect.IO
 import cats.syntax.applicative._
 
-import tech.cryptonomic.conseil.api.platform.metadata.MetadataService
-
 case class BitcoinDataRoutes(
     metadataService: MetadataService,
     metadataConfiguration: MetadataConfiguration,
     operations: BitcoinDataOperations,
     maxQueryResultSize: Int
 )(implicit apiExecutionContext: ExecutionContext)
-// extends BitcoinDataHelpers
     extends BitcoinDataEndpoints
-    with ConseilLogSupport {
+    with ConseilLogSupport
+    with ApiDataRoutes {
 
   private val platformPath = PlatformPath("bitcoin")
 

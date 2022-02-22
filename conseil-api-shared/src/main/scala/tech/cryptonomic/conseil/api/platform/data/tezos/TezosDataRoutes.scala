@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.api.platform.data.tezos
 
 import tech.cryptonomic.conseil.api.platform.metadata.MetadataService
+import tech.cryptonomic.conseil.api.platform.data.ApiDataRoutes
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
@@ -24,9 +25,8 @@ case class TezosDataRoutes(
     maxQueryResultSize: Int
 )(implicit apiExecutionContext: ExecutionContext)
     extends TezosDataEndpoints
-    with ConseilLogSupport {
-  // with TezosDataHelpers
-  // with ApiDataRoutes
+    with ConseilLogSupport
+    with ApiDataRoutes {
 
   private val platformPath = PlatformPath("tezos")
 
