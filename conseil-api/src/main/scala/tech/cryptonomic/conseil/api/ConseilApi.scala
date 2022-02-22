@@ -9,6 +9,7 @@ import tech.cryptonomic.conseil.api.platform.data.bitcoin.BitcoinDataOperations
 import tech.cryptonomic.conseil.api.platform.data.bitcoin.BitcoinDataRoutes
 import tech.cryptonomic.conseil.api.platform.data.ethereum.EthereumDataOperations
 import tech.cryptonomic.conseil.api.platform.data.ethereum.EthereumDataRoutes
+import tech.cryptonomic.conseil.api.platform.data.ethereum.QuorumDataRoutes
 import tech.cryptonomic.conseil.api.platform.data.tezos.TezosDataOperations
 import tech.cryptonomic.conseil.api.platform.data.tezos.TezosDataRoutes
 import tech.cryptonomic.conseil.api.platform.discovery.GenericPlatformDiscoveryOperations
@@ -33,7 +34,7 @@ object ConseilApi {
   def create(config: CombinedConfiguration): IO[ConseilApi] = IO(new ConseilApi(config))
 }
 
-class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* with EnableCORSDirectives */ {
+class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport {
 
   import tech.cryptonomic.conseil.api.info.model.currentInfo
 
@@ -94,23 +95,34 @@ class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport /* wit
     * will be initialized and eventually exposed.
     */
   private object ApiCache {
-    private lazy val cache: Map[BlockchainPlatform, TezosDataRoutes] = forVisiblePlatforms {
+    private lazy val cache = forVisiblePlatforms {
       case Platforms.Tezos =>
-        // FIXME: investigate here + aren't [[operations]] duplicated?
+        // FIXME: investigate here + aren't [[operations]] & [[routes]] duplicated?
         val operations = new TezosDataOperations(
           config.platforms
             .getDbConfig(Platforms.Tezos.name, config.platforms.getNetworks(Platforms.Tezos.name).head.name)
         )
         TezosDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
-      // case Platforms.Bitcoin =>
-      //   val operations = new BitcoinDataOperations(config.platforms.getDbConfig(Platforms.Bitcoin.name, config.platforms.getNetworks(Platforms.Bitcoin.name).head.name))
-      //   BitcoinDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
-      // case Platforms.Ethereum =>
-      //   val operations = new EthereumDataOperations(Platforms.Ethereum.name, config.platforms.getDbConfig(Platforms.Ethereum.name, config.platforms.getNetworks(Platforms.Ethereum.name).head.name))
-      //   EthereumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
-      // case Platforms.Quorum =>
-      //   val operations = new EthereumDataOperations(Platforms.Quorum.name, config.platforms.getDbConfig(Platforms.Quorum.name, config.platforms.getNetworks(Platforms.Quorum.name).head.name))
-      //   QuorumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
+      case Platforms.Bitcoin =>
+        val operations = new BitcoinDataOperations(
+          config.platforms
+            .getDbConfig(Platforms.Bitcoin.name, config.platforms.getNetworks(Platforms.Bitcoin.name).head.name)
+        )
+        BitcoinDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
+      case Platforms.Ethereum =>
+        val operations = new EthereumDataOperations(
+          Platforms.Ethereum.name,
+          config.platforms
+            .getDbConfig(Platforms.Ethereum.name, config.platforms.getNetworks(Platforms.Ethereum.name).head.name)
+        )
+        EthereumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
+      case Platforms.Quorum =>
+        val operations = new EthereumDataOperations(
+          Platforms.Quorum.name,
+          config.platforms
+            .getDbConfig(Platforms.Quorum.name, config.platforms.getNetworks(Platforms.Quorum.name).head.name)
+        )
+        QuorumDataRoutes(metadataService, config.metadata, operations, config.server.maxQueryResultSize)
     }
 
     private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
