@@ -5,7 +5,6 @@ import tech.cryptonomic.conseil.api.platform.metadata.MetadataService
 import tech.cryptonomic.conseil.common.bitcoin.BitcoinTypes.BitcoinBlockHash
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.metadata.{NetworkPath, Path, PlatformPath}
-import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 
 import scala.concurrent.ExecutionContext
 
@@ -19,7 +18,6 @@ case class BitcoinDataRoutes(
     maxQueryResultSize: Int
 )(implicit apiExecutionContext: ExecutionContext)
     extends BitcoinDataEndpoints
-    with ConseilLogSupport
     with ApiDataRoutes {
 
   private val platformPath = PlatformPath("bitcoin")

@@ -1,13 +1,12 @@
 package tech.cryptonomic.conseil.api.platform.data.ethereum
 
 import tech.cryptonomic.conseil.api.platform.metadata.MetadataService
-import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.ethereum.EthereumTypes.EthereumBlockHash
 import tech.cryptonomic.conseil.common.metadata
 import tech.cryptonomic.conseil.common.metadata.{NetworkPath, PlatformPath}
 
-// import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
+import tech.cryptonomic.conseil.api.platform.data.ApiDataRoutes
 
 import scala.concurrent.ExecutionContext
 
@@ -17,10 +16,7 @@ import cats.syntax.applicative._
 import sttp.tapir.Endpoint
 
 /** Trait, which contains routes for Ethereum-related block-chains */
-trait EthereumDataRoutesCreator
-    extends EthereumDataEndpoints
-    // with ApiDataRoutes
-    with ConseilLogSupport {
+trait EthereumDataRoutesCreator extends EthereumDataEndpoints with ApiDataRoutes {
 
   implicit def ec: ExecutionContext
 
