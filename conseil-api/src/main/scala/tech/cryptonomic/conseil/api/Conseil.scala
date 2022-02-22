@@ -11,7 +11,7 @@ import cats.effect.{ExitCode, IO, IOApp}
 
 import scala.concurrent.duration._
 
-object Conseil extends IOApp with ConseilAppConfig with APIDocs with ConseilMainOutput {
+object Conseil extends IOApp with ConseilAppConfig with ConseilMainOutput {
 
   import ConseilAppConfig.CombinedConfiguration
 

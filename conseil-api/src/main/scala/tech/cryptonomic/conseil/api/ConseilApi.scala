@@ -34,7 +34,7 @@ object ConseilApi {
   def create(config: CombinedConfiguration): IO[ConseilApi] = IO(new ConseilApi(config))
 }
 
-class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport {
+class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport with APIDocs {
 
   import tech.cryptonomic.conseil.api.info.model.currentInfo
 
@@ -86,7 +86,7 @@ class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport {
   lazy val appInfoRoute = protocol.appInfo.serverLogicSuccess(_ => currentInfo)
 
   // TODO: add [[platform.data]] routes
-  lazy val route = appInfoRoute :: tezosDataRoutes.getRoute ++ bitcoindDataRoutes.getRoute ++ ethereumDataRoutes.getRoute
+  lazy val route = appInfoRoute :: docsRoute ++ tezosDataRoutes.getRoute ++ bitcoindDataRoutes.getRoute ++ ethereumDataRoutes.getRoute
 
   /**
     * Object, which initializes and holds all of the APIs (blockchain-specific endpoints) in the map.
