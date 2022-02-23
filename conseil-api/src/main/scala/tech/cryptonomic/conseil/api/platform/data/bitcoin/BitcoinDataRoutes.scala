@@ -44,77 +44,68 @@ case class BitcoinDataRoutes(
   // }
 
   /** V2 Route implementation for blocks endpoint */
-  private val blocksRoute = bitcoinBlocksEndpoint.serverLogic[IO] {
-    case (network, filter, _) =>
-      platformNetworkValidation(network) {
-        operations.fetchBlocks(filter.toQuery.withLimitCap(maxQueryResultSize)).map(Some.apply)
-      }.map(_.toRight(()))
+  private val blocksRoute = bitcoinBlocksEndpoint.serverLogic[IO] { case (network, filter, _) =>
+    platformNetworkValidation(network) {
+      operations.fetchBlocks(filter.toQuery.withLimitCap(maxQueryResultSize)).map(Some.apply)
+    }.map(_.toRight(()))
   }
 
   /** V2 Route implementation for blocks head endpoint */
-  private val blocksHeadRoute = bitcoinBlocksHeadEndpoint.serverLogic[IO] {
-    case (network, _) =>
-      platformNetworkValidation(network) {
-        operations.fetchBlocksHead()
-      }.map(_.toRight(()))
+  private val blocksHeadRoute = bitcoinBlocksHeadEndpoint.serverLogic[IO] { case (network, _) =>
+    platformNetworkValidation(network) {
+      operations.fetchBlocksHead()
+    }.map(_.toRight(()))
   }
 
   /** V2 Route implementation for blocks by hash endpoint */
-  private val blockByHashRoute = bitcoinBlockByHashEndpoint.serverLogic[IO] {
-    case (network, hash, _) =>
-      platformNetworkValidation(network) {
-        operations.fetchBlockByHash(BitcoinBlockHash(hash))
-      }.map(_.toRight(()))
+  private val blockByHashRoute = bitcoinBlockByHashEndpoint.serverLogic[IO] { case (network, hash, _) =>
+    platformNetworkValidation(network) {
+      operations.fetchBlockByHash(BitcoinBlockHash(hash))
+    }.map(_.toRight(()))
   }
 
   /** V2 Route implementation for transactions endpoint */
-  private val transactionsRoute = bitcoinTransactionsEndpoint.serverLogic[IO] {
-    case (network, filter, _) =>
-      platformNetworkValidation(network) {
-        operations.fetchTransactions(filter.toQuery.withLimitCap(maxQueryResultSize)).map(Some.apply)
-      }.map(_.toRight(()))
+  private val transactionsRoute = bitcoinTransactionsEndpoint.serverLogic[IO] { case (network, filter, _) =>
+    platformNetworkValidation(network) {
+      operations.fetchTransactions(filter.toQuery.withLimitCap(maxQueryResultSize)).map(Some.apply)
+    }.map(_.toRight(()))
   }
 
   /** V2 Route implementation for transaction by id endpoint */
-  private val transactionByIdRoute = bitcoinTransactionByIdEndpoint.serverLogic[IO] {
-    case (network, id, _) =>
-      platformNetworkValidation(network) {
-        operations.fetchTransactionById(id)
-      }.map(_.toRight(()))
+  private val transactionByIdRoute = bitcoinTransactionByIdEndpoint.serverLogic[IO] { case (network, id, _) =>
+    platformNetworkValidation(network) {
+      operations.fetchTransactionById(id)
+    }.map(_.toRight(()))
   }
 
   /** V2 Route implementation for inputs endpoint */
-  private val inputsRoute = bitcoinInputsEndpoint.serverLogic[IO] {
-    case (network, filter, _) =>
-      platformNetworkValidation(network) {
-        operations.fetchInputs(filter.toQuery.withLimitCap(maxQueryResultSize)).map(Some.apply)
-      }.map(_.toRight(()))
+  private val inputsRoute = bitcoinInputsEndpoint.serverLogic[IO] { case (network, filter, _) =>
+    platformNetworkValidation(network) {
+      operations.fetchInputs(filter.toQuery.withLimitCap(maxQueryResultSize)).map(Some.apply)
+    }.map(_.toRight(()))
   }
 
   /** V2 Route implementation for outputs endpoint */
-  private val outputsRoute = bitcoinOutputsEndpoint.serverLogic[IO] {
-    case (network, filter, _) =>
-      platformNetworkValidation(network) {
-        operations
-          .fetchOutputs(filter.toQuery.withLimitCap(maxQueryResultSize))
-          .map(Some.apply)
-      }.map(_.toRight(()))
+  private val outputsRoute = bitcoinOutputsEndpoint.serverLogic[IO] { case (network, filter, _) =>
+    platformNetworkValidation(network) {
+      operations
+        .fetchOutputs(filter.toQuery.withLimitCap(maxQueryResultSize))
+        .map(Some.apply)
+    }.map(_.toRight(()))
   }
 
   /** V2 Route implementation for accounts endpoint */
-  private val accountsRoute = bitcoinAccountsEndpoint.serverLogic[IO] {
-    case (network, filter, _) =>
-      platformNetworkValidation(network) {
-        operations.fetchAccounts(filter.toQuery.withLimitCap(maxQueryResultSize)).map(Some.apply)
-      }.map(_.toRight(()))
+  private val accountsRoute = bitcoinAccountsEndpoint.serverLogic[IO] { case (network, filter, _) =>
+    platformNetworkValidation(network) {
+      operations.fetchAccounts(filter.toQuery.withLimitCap(maxQueryResultSize)).map(Some.apply)
+    }.map(_.toRight(()))
   }
 
   /** V2 Route implementation for accounts by address endpoint */
-  private val accountsByAddressRoute = bitcoinAccountByAddressEndpoint.serverLogic[IO] {
-    case (network, address, _) =>
-      platformNetworkValidation(network) {
-        operations.fetchAccountByAddress(address)
-      }.map(_.toRight(()))
+  private val accountsByAddressRoute = bitcoinAccountByAddressEndpoint.serverLogic[IO] { case (network, address, _) =>
+    platformNetworkValidation(network) {
+      operations.fetchAccountByAddress(address)
+    }.map(_.toRight(()))
   }
 
   /** V2 concatenated routes */

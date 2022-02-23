@@ -86,7 +86,8 @@ class ConseilApi(config: CombinedConfiguration) extends ConseilLogSupport with A
   lazy val appInfoRoute = protocol.appInfo.serverLogicSuccess(_ => currentInfo)
 
   // TODO: add [[platform.data]] routes
-  lazy val route = appInfoRoute :: docsRoute ++ tezosDataRoutes.getRoute ++ bitcoindDataRoutes.getRoute ++ ethereumDataRoutes.getRoute
+  lazy val route =
+    appInfoRoute :: docsRoute ++ tezosDataRoutes.getRoute ++ bitcoindDataRoutes.getRoute ++ ethereumDataRoutes.getRoute
 
   /**
     * Object, which initializes and holds all of the APIs (blockchain-specific endpoints) in the map.

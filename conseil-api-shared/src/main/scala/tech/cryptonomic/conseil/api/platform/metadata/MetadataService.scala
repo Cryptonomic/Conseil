@@ -39,9 +39,8 @@ class MetadataService(
 
   private val attributes: IO[Map[EntityPath, List[Attribute]]] = {
     // FIXME: optimize & simplify
-    val entityPathsIO = entities.map {
-      case (networkPath: NetworkPath, entities: IO[List[Entity]]) =>
-        entities.map(_.map(entity => networkPath.addLevel(entity.name)).toSet.toList)
+    val entityPathsIO = entities.map { case (networkPath: NetworkPath, entities: IO[List[Entity]]) =>
+      entities.map(_.map(entity => networkPath.addLevel(entity.name)).toSet.toList)
     }.toList.sequence.map(_.flatten)
 
     entityPathsIO.flatMap {
@@ -69,7 +68,8 @@ class MetadataService(
       if (bool)
         platformDiscoveryOperations.getEntities(path).map { allEntities =>
           transformation.overrideEntities(path, allEntities, shouldLog = false)
-        } else List.empty.pure[IO]).flatten
+        }
+      else List.empty.pure[IO]).flatten
 
   // fetches table attributes
   def getTableAttributes(path: EntityPath): IO[List[Attribute]] = attributes.map(_.getOrElse(path, List.empty))
@@ -80,7 +80,8 @@ class MetadataService(
       if (bool)
         platformDiscoveryOperations.getTableAttributes(path).map { attributes =>
           transformation.overrideAttributes(path, attributes, shouldLog = false)
-        } else List.empty.pure[IO]).flatten
+        }
+      else List.empty.pure[IO]).flatten
 
   // fetches table attributes without updating cache
   def getTableAttributesWithoutUpdatingCache(path: EntityPath): IO[List[Attribute]] =

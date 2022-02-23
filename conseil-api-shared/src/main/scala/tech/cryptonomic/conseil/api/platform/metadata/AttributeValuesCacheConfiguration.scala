@@ -31,8 +31,8 @@ class AttributeValuesCacheConfiguration(metadataConfiguration: MetadataConfigura
 
   /** extracts tuple (platform, entity, attribute) which needs to be cached */
   def getAttributesToCache: List[(PlatformName, NetworkName, EntityName, AttributeName)] =
-    metadataConfiguration.allAttributes.filter {
-      case (_, conf) => conf.cacheConfig.exists(_.cached)
+    metadataConfiguration.allAttributes.filter { case (_, conf) =>
+      conf.cacheConfig.exists(_.cached)
     }.keys
       .filter(metadataConfiguration.isVisible)
       .map(path => (path.up.up.up.platform, path.up.up.network, path.up.entity, path.attribute))

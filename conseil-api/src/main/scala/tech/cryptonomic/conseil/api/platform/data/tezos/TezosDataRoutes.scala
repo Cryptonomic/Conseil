@@ -100,69 +100,62 @@ case class TezosDataRoutes(
   private def routeFromQuery[A](network: String, entity: String, filter: TezosFilter)(
       handleResult: List[QueryResponse] => Option[A]
   ): IO[Option[A]] =
-    shouldHideForkEntries(entity)(
-      hideForkData =>
-        platformNetworkValidation(network)(
-          operations
-            .queryWithPredicates("tezos", entity, filter.toQuery.withLimitCap(maxQueryResultSize), hideForkData)
-            .toIO
-            .map(handleResult)
-        )
+    shouldHideForkEntries(entity)(hideForkData =>
+      platformNetworkValidation(network)(
+        operations
+          .queryWithPredicates("tezos", entity, filter.toQuery.withLimitCap(maxQueryResultSize), hideForkData)
+          .toIO
+          .map(handleResult)
+      )
     )
 
   /** V2 Route implementation for blocks endpoint */
-  lazy val blocksRoute = tezosBlocksEndpoint.serverLogic[IO] {
-    case (network: String, filter: TezosFilter, _) =>
-      routeFromQuery(network, "blocks", filter)(Option.apply)
-        .map(_.getOrElse(Nil).asRight)
+  lazy val blocksRoute = tezosBlocksEndpoint.serverLogic[IO] { case (network: String, filter: TezosFilter, _) =>
+    routeFromQuery(network, "blocks", filter)(Option.apply)
+      .map(_.getOrElse(Nil).asRight)
   }
 
   /** V2 Route implementation for blocks head endpoint */
-  private val blocksHeadRoute = tezosBlocksHeadEndpoint.serverLogic[IO] {
-    case (network, _) =>
-      platformNetworkValidation(network)(operations.fetchLatestBlock()).map {
-        case Some(value) => Right(value)
-        case None => // FIXME: how to encluse it as [Left] properly
-          // throw new RuntimeException("oh noes, can't get the head of [BlocksRow]")
-          // IO.raiseError(new RuntimeException("oh noes"))
-          Left(new RuntimeException("oh noes"))
-      }
+  private val blocksHeadRoute = tezosBlocksHeadEndpoint.serverLogic[IO] { case (network, _) =>
+    platformNetworkValidation(network)(operations.fetchLatestBlock()).map {
+      case Some(value) => Right(value)
+      case None => // FIXME: how to encluse it as [Left] properly
+        // throw new RuntimeException("oh noes, can't get the head of [BlocksRow]")
+        // IO.raiseError(new RuntimeException("oh noes"))
+        Left(new RuntimeException("oh noes"))
+    }
   }
 
   /** V2 Route implementation for blocks by hash endpoint */
-  private val blockByHashRoute = tezosBlockByHashEndpoint.serverLogic[IO] {
-    case (network, hash) =>
-      platformNetworkValidation(network)(operations.fetchBlock(TezosBlockHash(hash))).map {
-        case None => Left(())
-        case Some(value) => Right(value)
-      }
+  private val blockByHashRoute = tezosBlockByHashEndpoint.serverLogic[IO] { case (network, hash) =>
+    platformNetworkValidation(network)(operations.fetchBlock(TezosBlockHash(hash))).map {
+      case None => Left(())
+      case Some(value) => Right(value)
+    }
   }
 
   /** V2 Route implementation for accounts endpoint */
-  private val accountsRoute = tezosAccountsEndpoint.serverLogic[IO] {
-    case (network, filter) =>
-      routeFromQuery(network, "accounts", filter)(Some.apply).map {
-        case None => Left(())
-        case Some(value) => Right(value)
-      }
+  private val accountsRoute = tezosAccountsEndpoint.serverLogic[IO] { case (network, filter) =>
+    routeFromQuery(network, "accounts", filter)(Some.apply).map {
+      case None => Left(())
+      case Some(value) => Right(value)
+    }
   }
 
   /** V2 Route implementation for account by ID endpoint */
-  private val accountByIdRoute = tezosAccountByIdEndpoint.serverLogic[IO] {
-    case (network, accountId) =>
-      platformNetworkValidation(network)(operations.fetchAccount(makeAccountId(accountId))).map {
-        case None => Left(())
-        case Some(value) => Right(value)
-      }
+  private val accountByIdRoute = tezosAccountByIdEndpoint.serverLogic[IO] { case (network, accountId) =>
+    platformNetworkValidation(network)(operations.fetchAccount(makeAccountId(accountId))).map {
+      case None => Left(())
+      case Some(value) => Right(value)
+    }
   }
 
   /** V2 Route implementation for operation groups endpoint */
-  private val operationGroupsRoute = tezosOperationGroupsEndpoint.serverLogic[IO] {
-    case (network, filter) =>
-      routeFromQuery(network, "operation_groups", filter)(Some.apply).map {
-        case None => Left(())
-        case Some(value) => Right(value)
-      }
+  private val operationGroupsRoute = tezosOperationGroupsEndpoint.serverLogic[IO] { case (network, filter) =>
+    routeFromQuery(network, "operation_groups", filter)(Some.apply).map {
+      case None => Left(())
+      case Some(value) => Right(value)
+    }
   }
 
   /** V2 Route implementation for operation group by ID endpoint */
@@ -175,21 +168,19 @@ case class TezosDataRoutes(
   }
 
   /** V2 Route implementation for average fees endpoint */
-  private val avgFeesRoute = tezosAvgFeesEndpoint.serverLogic[IO] {
-    case (network, filter) =>
-      routeFromQuery(network, "fees", filter)(_.headOption).map {
-        case None => Left(())
-        case Some(value) => Right(value)
-      }
+  private val avgFeesRoute = tezosAvgFeesEndpoint.serverLogic[IO] { case (network, filter) =>
+    routeFromQuery(network, "fees", filter)(_.headOption).map {
+      case None => Left(())
+      case Some(value) => Right(value)
+    }
   }
 
   /** V2 Route implementation for operations endpoint */
-  private val operationsRoute = tezosOperationsEndpoint.serverLogic[IO] {
-    case (network, filter) =>
-      routeFromQuery(network, "operations", filter)(Some.apply).map {
-        case None => Left(())
-        case Some(value) => Right(value)
-      }
+  private val operationsRoute = tezosOperationsEndpoint.serverLogic[IO] { case (network, filter) =>
+    routeFromQuery(network, "operations", filter)(Some.apply).map {
+      case None => Left(())
+      case Some(value) => Right(value)
+    }
   }
 
   /** Function for validation of the platform and network with flatten */

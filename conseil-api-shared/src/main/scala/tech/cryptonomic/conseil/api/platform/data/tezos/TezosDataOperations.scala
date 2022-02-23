@@ -132,13 +132,12 @@ class TezosDataOperations(dbConfig: Config) extends ApiDataOperations {
     * @return the most recent block, if one exists in the database.
     */
   def latestBlockIO()(implicit ec: ExecutionContext): DBIO[Option[Tables.BlocksRow]] =
-    fetchMaxBlockLevel.flatMap(
-      maxLevel =>
-        Tables.Blocks
-          .filter(row => row.level === maxLevel && row.invalidatedAsof.isEmpty)
-          .take(1)
-          .result
-          .headOption
+    fetchMaxBlockLevel.flatMap(maxLevel =>
+      Tables.Blocks
+        .filter(row => row.level === maxLevel && row.invalidatedAsof.isEmpty)
+        .take(1)
+        .result
+        .headOption
     )
 
   /* use as max block level when none exists */

@@ -11,7 +11,7 @@ object Sanitizer {
     }
   }
 
-  /** Sanitizes datePart aggregate function*/
+  /** Sanitizes datePart aggregate function */
   def sanitizeDatePartAggregation(str: String): String = {
     val supportedCharacters = Set('Y', 'M', 'D', 'A', '-')
     str.filterNot(c => c.isWhitespace || !supportedCharacters.contains(c))

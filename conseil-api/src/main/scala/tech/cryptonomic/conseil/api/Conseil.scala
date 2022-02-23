@@ -46,11 +46,11 @@ object Conseil extends IOApp with ConseilAppConfig with ConseilMainOutput {
 
   def runServer(api: ConseilApi, config: CombinedConfiguration) =
     displayInfo(config.server) >>
-        IO.sleep(1500.millis) >>
-        useServerBuilderResource(api).handleErrorWith {
-          case e: StackOverflowError => IO("stack overflow").debug >> IO.raiseError(e)
-        } >>
-        IO.sleep(1500.millis) >>
-        IO(if (config.verbose.on) displayConfiguration(config.platforms)).debug.void
+      IO.sleep(1500.millis) >>
+      useServerBuilderResource(api).handleErrorWith { case e: StackOverflowError =>
+        IO("stack overflow").debug >> IO.raiseError(e)
+      } >>
+      IO.sleep(1500.millis) >>
+      IO(if (config.verbose.on) displayConfiguration(config.platforms)).debug.void
 
 }

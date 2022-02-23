@@ -37,7 +37,7 @@ trait ApiDataOperations extends DatabaseRunner with DataOperations with ConseilL
     * @param  tableName name of the table which we query
     * @param  query     query predicates and fields
     * @return query result as a map
-    * */
+    */
   override def queryWithPredicates(prefix: String, tableName: String, query: Query, hideForkInvalid: Boolean = false)(
       implicit ec: ExecutionContext
   ): Future[List[QueryResponse]] = {

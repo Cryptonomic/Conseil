@@ -31,7 +31,7 @@ trait ConseilMainOutput extends ConseilLogSupport {
 
   /** Shows details on the current configuration */
   protected[this] def displayConfiguration(platformConfigs: PlatformsConfiguration) =
-    (for {
+    for {
       showPlatforms <- showAvailablePlatforms(platformConfigs)
         .handleErrorWith(_ => IO("can't load platforms").debug)
       showDatabase <- showDatabaseConfiguration("conseil")
@@ -45,17 +45,16 @@ trait ConseilMainOutput extends ConseilLogSupport {
         |
         | ==================================***==================================
         |
-        """.stripMargin)
+        """.stripMargin
 
   /* prepare output to display existing platforms and networks */
   private def showAvailablePlatforms(conf: PlatformsConfiguration): IO[String] =
     IO(
       conf.platforms
         .groupBy(_.platform)
-        .map {
-          case (platform, configuration) =>
-            val networks = showAvailableNetworks(configuration)
-            s"  Platform: ${platform.name}$networks"
+        .map { case (platform, configuration) =>
+          val networks = showAvailableNetworks(configuration)
+          s"  Platform: ${platform.name}$networks"
         }
         .mkString("\n")
     ).handleError(_ => "show available platforms")

@@ -21,12 +21,12 @@ private[bitcoin] trait BitcoinFilterFromQueryString {
   /** Function for extracting query string with query params */
   private def filterQs: EndpointInput[BitcoinQueryParams] =
     query[Option[Int]]("limit") and
-        query[List[String]]("block_id") and
-        query[List[String]]("block_hash") and
-        query[List[String]]("transaction_id") and
-        query[List[String]]("account_addresses") and
-        query[Option[String]]("sort_by") and
-        query[Option[String]]("order")
+      query[List[String]]("block_id") and
+      query[List[String]]("block_hash") and
+      query[List[String]]("transaction_id") and
+      query[List[String]]("account_addresses") and
+      query[Option[String]]("sort_by") and
+      query[Option[String]]("order")
 
   /** Function for mapping query string to Filter */
   val bitcoinQsFilter: EndpointInput[BitcoinFilter] =
@@ -40,17 +40,16 @@ private[bitcoin] trait BitcoinFilterFromQueryString {
         btcQP._6,
         btcQP._7.flatMap(Sorting.fromValidString(_).toEither.toOption)
       )
-    }(
-      filter =>
-        (
-          filter.limit,
-          filter.blockIds.toList,
-          filter.blockHashes.toList,
-          filter.transactionIDs.toList,
-          filter.accountAddresses.toList,
-          filter.sortBy,
-          filter.order.map(Sorting.asString)
-        )
+    }(filter =>
+      (
+        filter.limit,
+        filter.blockIds.toList,
+        filter.blockHashes.toList,
+        filter.transactionIDs.toList,
+        filter.accountAddresses.toList,
+        filter.sortBy,
+        filter.order.map(Sorting.asString)
+      )
     )
 
 }
