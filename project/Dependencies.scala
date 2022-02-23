@@ -109,7 +109,6 @@ object Dependencies {
   val tapirServer = Seq(
     "com.softwaremill.sttp.tapir" %% "tapir-http4s-server"     % Versions.tapir,
     "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % Versions.tapir,
-    "org.http4s"                  %% "http4s-dsl"              % Versions.http4s,
     "org.http4s"                  %% "http4s-ember-server"     % Versions.http4s
   )
   val tapirClient = Seq(
@@ -217,21 +216,6 @@ object Dependencies {
 
   val conseilCommonTestKitInclude: Seq[ModuleID] =
     concat(config, slick, scalaTestCompile, postgresTestContainerCompile, scribe)
-
-  // val conseilApiInclude: Seq[ModuleID] =
-  //   concat(
-  //     scribe,
-  //     scopt,
-  //     akka,
-  //     akkaHttp,
-  //     akkaHttpJson,
-  //     akkaHttpCors,
-  //     silencer,
-  //     scalaMock,
-  //     scalaTestJson,
-  //     diffX,
-  //     endpoints
-  //   )
 
   val conseilLorreInclude: Seq[ModuleID] =
     concat(config, pureConfig, scopt, silencer, akka, akkaHttp, scalaTest, scalaMock, diffX, akkaHttpJson)
