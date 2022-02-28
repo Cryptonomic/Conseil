@@ -28,8 +28,8 @@ object SmartContracts {
 
     val preProcessed = preProcessScript(script)
     val sortedParts = preProcessed.getOrElse('parameter, "") ::
-          preProcessed.getOrElse('storage, "") ::
-          preProcessed.getOrElse('code, "") :: Nil
+      preProcessed.getOrElse('storage, "") ::
+      preProcessed.getOrElse('code, "") :: Nil
     hashOf(sortedParts.mkString("\n"))
   }
 
@@ -77,11 +77,10 @@ object SmartContracts {
       val initialState = keyword -> Map(keyword -> Chain.one(stream.head))
       val (_, collected) =
         stream.tail
-          .foldLeft(initialState) {
-            case ((kw, collector), line) =>
-              val nextKeyword = startingKeyword(line).getOrElse(kw)
-              val updated = collector |+| Map(nextKeyword -> Chain.one(line))
-              nextKeyword -> updated
+          .foldLeft(initialState) { case ((kw, collector), line) =>
+            val nextKeyword = startingKeyword(line).getOrElse(kw)
+            val updated = collector |+| Map(nextKeyword -> Chain.one(line))
+            nextKeyword -> updated
           }
 
       collected.mapValues(_.mkString_(" "))

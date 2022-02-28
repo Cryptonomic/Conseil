@@ -23,10 +23,10 @@ class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupp
   private def requestMapModify[A](
       modify: RequestMap => RequestMap
   )(useValues: RequestValues => A)(implicit correlationId: UUID) =
-    (for {
+    for {
       map <- requestInfoMap.get
       _ <- requestInfoMap.update(_ => modify(map))
-    } yield useValues(map(correlationId)))
+    } yield useValues(map(correlationId))
 
   /** Directive adding recorded values to the MDC */
   def recordResponseValues(ip: RemoteAddress, stringEntity: String)(implicit correlationId: UUID): Directive[Unit] =
@@ -37,8 +37,8 @@ class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupp
         _ <- requestInfoMap.update(_ => requestMap.updated(correlationId, value))
       } yield ()).unsafeRunSync()
 
-      requestMapModify(
-        map => map.updated(correlationId, RequestValues.fromHttpRequestAndIp(request, ip, stringEntity))
+      requestMapModify(map =>
+        map.updated(correlationId, RequestValues.fromHttpRequestAndIp(request, ip, stringEntity))
       )(_ => ())
         .unsafeRunSync()
 
@@ -55,16 +55,15 @@ class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupp
 
   /** Custom exception handler with MDC logging */
   def loggingExceptionHandler(implicit correlationId: UUID): ExceptionHandler =
-    ExceptionHandler {
-      case e: Throwable =>
-        val response = HttpResponse(InternalServerError)
+    ExceptionHandler { case e: Throwable =>
+      val response = HttpResponse(InternalServerError)
 
-        requestMapModify(
-          modify = _.filterNot(_._1 == correlationId)
-        ) { values =>
-          values.logResponse(response, Some(e))
-        }.unsafeRunAndForget()
-        complete(response)
+      requestMapModify(
+        modify = _.filterNot(_._1 == correlationId)
+      ) { values =>
+        values.logResponse(response, Some(e))
+      }.unsafeRunAndForget()
+      complete(response)
     }
 
   /** Providing handling of the requests that timed out */

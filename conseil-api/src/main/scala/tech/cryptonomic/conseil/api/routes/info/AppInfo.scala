@@ -13,12 +13,11 @@ object AppInfo extends AppInfoEndpoint with akkahttp.server.Endpoints with akkah
   case class GitInfo(commitHash: Option[String], tags: List[String])
 
   /** the endpoints to expose application information through http */
-  val route: Route = appInfoEndpoint.implementedBy(
-    _ =>
-      Info(
-        application = BuildInfo.name,
-        version = BuildInfo.version,
-        git = GitInfo(commitHash = BuildInfo.gitHeadCommit, tags = BuildInfo.gitCurrentTags.toList)
-      )
+  val route: Route = appInfoEndpoint.implementedBy(_ =>
+    Info(
+      application = BuildInfo.name,
+      version = BuildInfo.version,
+      git = GitInfo(commitHash = BuildInfo.gitHeadCommit, tags = BuildInfo.gitCurrentTags.toList)
+    )
   )
 }

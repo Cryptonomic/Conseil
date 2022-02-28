@@ -31,19 +31,18 @@ class PlatformDiscovery(metadataService: MetadataService)
   private lazy val platformsRoute = platformsEndpoint.implementedBy(_ => metadataService.getPlatforms)
 
   /** Metadata route implementation for networks endpoint */
-  private lazy val networksRoute = networksEndpoint.implementedBy {
-    case (platform, _) => metadataService.getNetworks(PlatformPath(platform))
+  private lazy val networksRoute = networksEndpoint.implementedBy { case (platform, _) =>
+    metadataService.getNetworks(PlatformPath(platform))
   }
 
   /** Metadata route implementation for entities endpoint */
-  private lazy val entitiesRoute = entitiesEndpoint.implementedByAsync {
-    case (platform, network, _) => metadataService.getCurrentEntities(NetworkPath(network, PlatformPath(platform)))
+  private lazy val entitiesRoute = entitiesEndpoint.implementedByAsync { case (platform, network, _) =>
+    metadataService.getCurrentEntities(NetworkPath(network, PlatformPath(platform)))
   }
 
   /** Metadata route implementation for attributes endpoint */
-  private lazy val attributesRoute = attributesEndpoint.implementedByAsync {
-    case ((platform, network, entity), _) =>
-      metadataService.getCurrentTableAttributes(EntityPath(entity, NetworkPath(network, PlatformPath(platform))))
+  private lazy val attributesRoute = attributesEndpoint.implementedByAsync { case ((platform, network, entity), _) =>
+    metadataService.getCurrentTableAttributes(EntityPath(entity, NetworkPath(network, PlatformPath(platform))))
   }
 
   /** Metadata route implementation for attributes values endpoint */

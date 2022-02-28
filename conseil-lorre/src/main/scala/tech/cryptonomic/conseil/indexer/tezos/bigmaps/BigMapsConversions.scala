@@ -82,10 +82,14 @@ object BigMapsConversions extends ConseilLogSupport {
           Some(
             Tables.BigMapContentsRow(
               bigMapId = id,
-              key = toMichelsonScript[MichelsonInstruction](key.expression), //we're using instructions to represent data values
+              key = toMichelsonScript[MichelsonInstruction](
+                key.expression
+              ), //we're using instructions to represent data values
               keyHash = keyHash.value,
               operationGroupId = opGroupHash.map(_.value),
-              value = value.map(it => toMichelsonScript[MichelsonInstruction](it.expression)), //we're using instructions to represent data values
+              value = value.map(it =>
+                toMichelsonScript[MichelsonInstruction](it.expression)
+              ), //we're using instructions to represent data values
               valueMicheline = value.map(_.expression),
               blockLevel = Some(ref.level),
               timestamp = ref.timestamp.map(Timestamp.from),
@@ -114,14 +118,13 @@ object BigMapsConversions extends ConseilLogSupport {
 
       def convert(from: BlockContractIdsBigMapDiff) = from.get match {
         case (_, ids, BigMapAlloc(_, Decimal(id), _, _), level) =>
-          ids.map(
-            contractId =>
-              Tables.OriginatedAccountMapsRow(
-                bigMapId = id,
-                accountId = contractId.id,
-                blockLevel = level,
-                forkId = Fork.mainForkId
-              )
+          ids.map(contractId =>
+            Tables.OriginatedAccountMapsRow(
+              bigMapId = id,
+              accountId = contractId.id,
+              blockLevel = level,
+              forkId = Fork.mainForkId
+            )
           )
         case (hash, ids, BigMapAlloc(_, InvalidDecimal(json), _, _), _) =>
           val showIds = ids.mkString(", ")

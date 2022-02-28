@@ -16,8 +16,8 @@ trait DataOperations {
     * @param  query             query predicates and fields
     * @param  hideForkInvalid should the query take care of hiding fork-invalidated entries?
     * @return query result as a map
-    * */
-  def queryWithPredicates(schema: String, tableName: String, query: Query, hideForkInvalid: Boolean = false)(
-      implicit ec: ExecutionContext
+    */
+  def queryWithPredicates(schema: String, tableName: String, query: Query, hideForkInvalid: Boolean = false)(implicit
+      ec: ExecutionContext
   ): Future[List[QueryResponse]]
 }

@@ -42,8 +42,8 @@ class BakersProcessor(
   /* Fetches the data from the chain node and stores bakers into the data store.
    * @param ids a pre-filtered map of delegate hashes with latest block referring to them
    */
-  private def process(ids: Map[PublicKeyHash, BlockReference], onlyProcessLatest: Boolean = false)(
-      implicit ec: ExecutionContext
+  private def process(ids: Map[PublicKeyHash, BlockReference], onlyProcessLatest: Boolean = false)(implicit
+      ec: ExecutionContext
   ): Future[Done] = {
     import cats.Monoid
     import cats.instances.future._
@@ -52,17 +52,15 @@ class BakersProcessor(
     import cats.syntax.flatMap._
     import cats.syntax.monoid._
 
-    def logWriteFailure: PartialFunction[Try[_], Unit] = {
-      case Failure(e) =>
-        logger.error(s"Could not write bakers to the database", e)
+    def logWriteFailure: PartialFunction[Try[_], Unit] = { case Failure(e) =>
+      logger.error(s"Could not write bakers to the database", e)
     }
 
-    def logOutcome: PartialFunction[Try[(Option[Int], Option[Int])], Unit] = {
-      case Success((rows, historyRows)) =>
-        val showRows = rows.fold("Some")(String.valueOf)
-        val showHistoryRows = historyRows.fold("Some")(String.valueOf)
-        logger.info(s"$showRows bakers were touched on the database.")
-        logger.info(s"$showHistoryRows baker history rows were added to the database.")
+    def logOutcome: PartialFunction[Try[(Option[Int], Option[Int])], Unit] = { case Success((rows, historyRows)) =>
+      val showRows = rows.fold("Some")(String.valueOf)
+      val showHistoryRows = historyRows.fold("Some")(String.valueOf)
+      logger.info(s"$showRows bakers were touched on the database.")
+      logger.info(s"$showHistoryRows baker history rows were added to the database.")
     }
 
     def cleanup = {
@@ -77,14 +75,14 @@ class BakersProcessor(
     def prunedUpdates(): Future[Map[PublicKeyHash, BlockReference]] =
       if (onlyProcessLatest) db.run {
         TezosDb.getLevelsForBakers(ids.keySet).map { currentlyStored =>
-          ids.filterNot {
-            case (PublicKeyHash(pkh), BlockReference(_, updateLevel, _, _, _)) =>
-              currentlyStored.exists {
-                case (storedPkh, storedLevel) => storedPkh == pkh && storedLevel > updateLevel
-              }
+          ids.filterNot { case (PublicKeyHash(pkh), BlockReference(_, updateLevel, _, _, _)) =>
+            currentlyStored.exists { case (storedPkh, storedLevel) =>
+              storedPkh == pkh && storedLevel > updateLevel
+            }
           }
         }
-      } else Future.successful(ids)
+      }
+      else Future.successful(ids)
 
     logger.info("Ready to fetch updated bakers information from the chain")
 
@@ -101,10 +99,9 @@ class BakersProcessor(
         .mapAsync(1)(identity) //extracts the future value as an element of the stream
         .mapConcat(identity) //concatenates the list of values as single-valued elements in the stream
         .grouped(batchingConf.blockPageSize) //re-arranges the process batching
-        .mapAsync(1)(
-          taggedBakers =>
-            db.run(TezosDb.writeBakers(taggedBakers.toList))
-              .andThen(logWriteFailure)
+        .mapAsync(1)(taggedBakers =>
+          db.run(TezosDb.writeBakers(taggedBakers.toList))
+            .andThen(logWriteFailure)
         )
         .runFold((Monoid[Option[Int]].empty, Monoid[Option[Int]].empty)) {
           case ((processedRows, processedHistoryRows), (justDone, justDoneHistory)) =>
@@ -129,8 +126,8 @@ class BakersProcessor(
 
   private[tezos] def processBakersForBlocks(
       updates: List[BlockTagged[List[PublicKeyHash]]]
-  )(
-      implicit ec: ExecutionContext
+  )(implicit
+      ec: ExecutionContext
   ): Future[Done] = {
     logger.info("Processing latest Tezos data for account bakers...")
 
@@ -140,11 +137,10 @@ class BakersProcessor(
         if (collected.contains(key)) collected else collected + (key -> entry._2)
       }
 
-    val sorted = updates.flatMap {
-      case BlockTagged(ref, ids) =>
-        ids.map(_ -> ref)
-    }.sortBy {
-      case (id, ref) => ref.level
+    val sorted = updates.flatMap { case BlockTagged(ref, ids) =>
+      ids.map(_ -> ref)
+    }.sortBy { case (id, ref) =>
+      ref.level
     }(Ordering[Long].reverse)
 
     val toBeFetched = keepMostRecent(sorted)
@@ -169,8 +165,8 @@ class BakersProcessor(
   }
 
   /** Updates bakers in the DB */
-  private[tezos] def updateBakersBalances(blocks: List[Block])(
-      implicit ec: ExecutionContext
+  private[tezos] def updateBakersBalances(blocks: List[Block])(implicit
+      ec: ExecutionContext
   ): Future[Unit] = {
     import cats.implicits._
     logger.info("Updating Bakers table")
@@ -207,16 +203,15 @@ class BakersProcessor(
 
     def findUpdateDelegate(baker: Tables.BakersRow) = delegates.get(PublicKeyHash(baker.pkh))
 
-    bakers.map(baker => baker -> findUpdateDelegate(baker)).collect {
-      case (baker, Some(delegate)) =>
-        baker.copy(
-          balance = extractBalance(delegate.balance),
-          frozenBalance = extractBalance(delegate.frozen_balance),
-          stakingBalance = extractBalance(delegate.staking_balance),
-          rolls = delegate.rolls.getOrElse(0),
-          delegatedBalance = extractBalance(delegate.delegated_balance),
-          deactivated = delegate.deactivated
-        )
+    bakers.map(baker => baker -> findUpdateDelegate(baker)).collect { case (baker, Some(delegate)) =>
+      baker.copy(
+        balance = extractBalance(delegate.balance),
+        frozenBalance = extractBalance(delegate.frozen_balance),
+        stakingBalance = extractBalance(delegate.staking_balance),
+        rolls = delegate.rolls.getOrElse(0),
+        delegatedBalance = extractBalance(delegate.delegated_balance),
+        deactivated = delegate.deactivated
+      )
     }
   }
 

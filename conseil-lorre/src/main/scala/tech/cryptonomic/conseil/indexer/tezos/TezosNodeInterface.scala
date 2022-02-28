@@ -292,21 +292,19 @@ private[tezos] class TezosNodeInterface(
     //we need to thread the id all through the streaming http stages
     val uris = Source(ids.map(id => (convertIdToUrl(id), id)))
 
-    val toRequest: ((String, CID)) => (HttpRequest, CID) = {
-      case (url, id) =>
-        logger.debug(s"Will query: $url")
-        (HttpRequest(uri = Uri(url)), id)
+    val toRequest: ((String, CID)) => (HttpRequest, CID) = { case (url, id) =>
+      logger.debug(s"Will query: $url")
+      (HttpRequest(uri = Uri(url)), id)
     }
 
     uris
       .map(toRequest)
       .via(loggedRpcFlow)
-      .mapAsyncUnordered(concurrencyLevel) {
-        case (tried, id) =>
-          Future
-            .fromTry(tried.map(_.entity.toStrict(requestConfig.GETResponseEntityTimeout)))
-            .flatten
-            .map(entity => (entity, id))
+      .mapAsyncUnordered(concurrencyLevel) { case (tried, id) =>
+        Future
+          .fromTry(tried.map(_.entity.toStrict(requestConfig.GETResponseEntityTimeout)))
+          .flatten
+          .map(entity => (entity, id))
       }
       .map { case (content: HttpEntity.Strict, id) => (id, JsonString sanitize content.data.utf8String) }
       .via(loggedRpcResults)
@@ -324,8 +322,8 @@ private[tezos] class TezosNodeInterface(
 
     streamedGetQuery(ids, mapToCommand, concurrencyLevel)
       .runFold(List.empty[(CID, String)])(_ :+ _)
-      .andThen {
-        case _ => logger.debug(s"$batchId - Batch completed")
+      .andThen { case _ =>
+        logger.debug(s"$batchId - Batch completed")
       }
   }
 

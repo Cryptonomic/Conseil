@@ -36,7 +36,8 @@ trait Tables {
     *  @param previousBlockHash Database column previous_block_hash SqlType(text), Default(None)
     *  @param nextBlockHash Database column next_block_hash SqlType(text), Default(None)
     *  @param medianTime Database column median_time SqlType(timestamp)
-    *  @param time Database column time SqlType(timestamp) */
+    *  @param time Database column time SqlType(timestamp)
+    */
   case class BlocksRow(
       hash: String,
       size: Int,
@@ -58,8 +59,8 @@ trait Tables {
   )
 
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
-  implicit def GetResultBlocksRow(
-      implicit e0: GR[String],
+  implicit def GetResultBlocksRow(implicit
+      e0: GR[String],
       e1: GR[Int],
       e2: GR[Long],
       e3: GR[scala.math.BigDecimal],
@@ -138,29 +139,28 @@ trait Tables {
       ).shaped.<>(
         { r =>
           import r._;
-          _1.map(
-            _ =>
-              BlocksRow.tupled(
-                (
-                  _1.get,
-                  _2.get,
-                  _3.get,
-                  _4.get,
-                  _5.get,
-                  _6.get,
-                  _7.get,
-                  _8.get,
-                  _9.get,
-                  _10.get,
-                  _11.get,
-                  _12.get,
-                  _13.get,
-                  _14,
-                  _15,
-                  _16.get,
-                  _17.get
-                )
+          _1.map(_ =>
+            BlocksRow.tupled(
+              (
+                _1.get,
+                _2.get,
+                _3.get,
+                _4.get,
+                _5.get,
+                _6.get,
+                _7.get,
+                _8.get,
+                _9.get,
+                _10.get,
+                _11.get,
+                _12.get,
+                _13.get,
+                _14,
+                _15,
+                _16.get,
+                _17.get
               )
+            )
           )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -238,7 +238,8 @@ trait Tables {
     *  @param scriptSigHex Database column script_sig_hex SqlType(text), Default(None)
     *  @param sequence Database column sequence SqlType(int8)
     *  @param coinbase Database column coinbase SqlType(text), Default(None)
-    *  @param txInWitness Database column tx_in_witness SqlType(text), Default(None) */
+    *  @param txInWitness Database column tx_in_witness SqlType(text), Default(None)
+    */
   case class InputsRow(
       txid: String,
       blockHash: String,
@@ -254,8 +255,8 @@ trait Tables {
   )
 
   /** GetResult implicit for fetching InputsRow objects using plain SQL queries */
-  implicit def GetResultInputsRow(
-      implicit e0: GR[String],
+  implicit def GetResultInputsRow(implicit
+      e0: GR[String],
       e1: GR[Int],
       e2: GR[java.sql.Timestamp],
       e3: GR[Option[String]],
@@ -381,7 +382,8 @@ trait Tables {
     *  @param scriptPubKeyHex Database column script_pub_key_hex SqlType(text)
     *  @param scriptPubKeyReqSigs Database column script_pub_key_req_sigs SqlType(int4), Default(None)
     *  @param scriptPubKeyType Database column script_pub_key_type SqlType(text)
-    *  @param scriptPubKeyAddresses Database column script_pub_key_addresses SqlType(text), Default(None) */
+    *  @param scriptPubKeyAddresses Database column script_pub_key_addresses SqlType(text), Default(None)
+    */
   case class OutputsRow(
       txid: String,
       blockHash: String,
@@ -397,8 +399,8 @@ trait Tables {
   )
 
   /** GetResult implicit for fetching OutputsRow objects using plain SQL queries */
-  implicit def GetResultOutputsRow(
-      implicit e0: GR[String],
+  implicit def GetResultOutputsRow(implicit
+      e0: GR[String],
       e1: GR[Int],
       e2: GR[java.sql.Timestamp],
       e3: GR[Option[scala.math.BigDecimal]],
@@ -525,7 +527,8 @@ trait Tables {
     *  @param weight Database column weight SqlType(int4)
     *  @param version Database column version SqlType(int8)
     *  @param lockTime Database column lock_time SqlType(timestamp)
-    *  @param blockTime Database column block_time SqlType(timestamp) */
+    *  @param blockTime Database column block_time SqlType(timestamp)
+    */
   case class TransactionsRow(
       txid: String,
       blockHash: String,
@@ -541,8 +544,8 @@ trait Tables {
   )
 
   /** GetResult implicit for fetching TransactionsRow objects using plain SQL queries */
-  implicit def GetResultTransactionsRow(
-      implicit e0: GR[String],
+  implicit def GetResultTransactionsRow(implicit
+      e0: GR[String],
       e1: GR[Int],
       e2: GR[Long],
       e3: GR[java.sql.Timestamp]
@@ -569,7 +572,19 @@ trait Tables {
   class Transactions(_tableTag: Tag)
       extends profile.api.Table[TransactionsRow](_tableTag, Some("bitcoin"), "transactions") {
     def * =
-      (txid, blockHash, blockLevel, hash, hex, size, vsize, weight, version, lockTime, blockTime) <> (TransactionsRow.tupled, TransactionsRow.unapply)
+      (
+        txid,
+        blockHash,
+        blockLevel,
+        hash,
+        hex,
+        size,
+        vsize,
+        weight,
+        version,
+        lockTime,
+        blockTime
+      ) <> (TransactionsRow.tupled, TransactionsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -590,10 +605,9 @@ trait Tables {
       ).shaped.<>(
         { r =>
           import r._;
-          _1.map(
-            _ =>
-              TransactionsRow
-                .tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get, _10.get, _11.get))
+          _1.map(_ =>
+            TransactionsRow
+              .tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get, _10.get, _11.get))
           )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")

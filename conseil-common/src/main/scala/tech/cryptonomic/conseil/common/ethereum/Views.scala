@@ -22,7 +22,8 @@ trait Views {
     *  @param name Database column name SqlType(text)
     *  @param symbol Database column symbol SqlType(text)
     *  @param decimals Database column decimals SqlType(int4)
-    *  @param totalSupply Database column total_supply SqlType(numeric) */
+    *  @param totalSupply Database column total_supply SqlType(numeric)
+    */
   case class TokensRow(
       address: String,
       blockHash: String,
@@ -37,12 +38,21 @@ trait Views {
   /** Table description of view tokens. Objects of this class serve as prototypes for rows in queries. */
   class Tokens(_tableTag: Tag) extends profile.api.Table[TokensRow](_tableTag, Some("ethereum"), "tokens") {
     def * =
-      (address, blockHash, blockLevel, timestamp, name, symbol, decimals, totalSupply) <> (TokensRow.tupled, TokensRow.unapply)
+      (
+        address,
+        blockHash,
+        blockLevel,
+        timestamp,
+        name,
+        symbol,
+        decimals,
+        totalSupply
+      ) <> (TokensRow.tupled, TokensRow.unapply)
 
     /** Database column address SqlType(text) */
     val address: Rep[String] = column[String]("address")
 
-    /**  Database column block_hash SqlType(text) */
+    /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
 
     /** Database column block_level SqlType(int4) */
@@ -90,7 +100,8 @@ trait Views {
     *  @param blockLevel Database column block_level SqlType(int4)
     *  @param timestamp Database column timestamp SqlType(timestamp)
     *  @param bytecode Database column bytecode SqlType(text)
-    *  @param tokenStandard Database column token_standard SqlType(text) */
+    *  @param tokenStandard Database column token_standard SqlType(text)
+    */
   case class ContractsRow(
       address: String,
       blockHash: String,
@@ -104,12 +115,20 @@ trait Views {
   /** Table description of view contracts. Objects of this class serve as prototypes for rows in queries. */
   class Contracts(_tableTag: Tag) extends profile.api.Table[ContractsRow](_tableTag, Some("ethereum"), "contracts") {
     def * =
-      (address, blockHash, blockLevel, timestamp, bytecode, bytecodeHash, tokenStandard) <> (ContractsRow.tupled, ContractsRow.unapply)
+      (
+        address,
+        blockHash,
+        blockLevel,
+        timestamp,
+        bytecode,
+        bytecodeHash,
+        tokenStandard
+      ) <> (ContractsRow.tupled, ContractsRow.unapply)
 
     /** Database column address SqlType(text) */
     val address: Rep[String] = column[String]("address")
 
-    /**  Database column block_hash SqlType(text) */
+    /** Database column block_hash SqlType(text) */
     val blockHash: Rep[String] = column[String]("block_hash")
 
     /** Database column block_level SqlType(int4) */

@@ -43,24 +43,22 @@ class BakingAndEndorsingRightsProcessor(
 
   private[tezos] def processBakingAndEndorsingRights(
       fetchingResults: nodeOperator.BlockFetchingResults
-  )(
-      implicit ec: ExecutionContext
+  )(implicit
+      ec: ExecutionContext
   ): Future[Unit] = {
     import cats.implicits._
 
-    val blockHashesWithCycleAndGovernancePeriod = fetchingResults.map {
-      case (Block(data, _, _), _) => {
-        data.metadata match {
-          case TezosTypes.GenesisMetadata =>
-            RightsFetchKey(data.hash, None, None)
-          case BlockHeaderMetadata(_, _, _, _, _, voting_period_info, level, level_info) =>
-            RightsFetchKey(
-              data.hash,
-              level.map(_.cycle).orElse(level_info.map(_.cycle)),
-              level.map(_.voting_period).orElse(voting_period_info.map(_.voting_period.index))
-            )
+    val blockHashesWithCycleAndGovernancePeriod = fetchingResults.map { case (Block(data, _, _), _) =>
+      data.metadata match {
+        case TezosTypes.GenesisMetadata =>
+          RightsFetchKey(data.hash, None, None)
+        case BlockHeaderMetadata(_, _, _, _, _, voting_period_info, level, level_info) =>
+          RightsFetchKey(
+            data.hash,
+            level.map(_.cycle).orElse(level_info.map(_.cycle)),
+            level.map(_.voting_period).orElse(voting_period_info.map(_.voting_period.index))
+          )
 
-        }
       }
     }
 
@@ -79,12 +77,11 @@ class BakingAndEndorsingRightsProcessor(
       fetchingResults: nodeOperator.BlockFetchingResults
   ): Map[RightsFetchKey, List[EndorsingRights]] = {
 
-    val endorsementsForBlock = fetchingResults.map {
-      case (Block(data, operations, _), _) =>
-        data.hash -> operations.flatMap(_.contents.collect {
-              case e: EndorsementWithSlot => e
-              case e: Endorsement => e
-            })
+    val endorsementsForBlock = fetchingResults.map { case (Block(data, operations, _), _) =>
+      data.hash -> operations.flatMap(_.contents.collect {
+        case e: EndorsementWithSlot => e
+        case e: Endorsement => e
+      })
     }.toMap.withDefaultValue(List.empty)
 
     endorsingRights.map {
@@ -169,9 +166,8 @@ class BakingAndEndorsingRightsProcessor(
         logger.info(s"Got ${erResults.size} endorsing rights")
         db.run(TezosDb.updateEndorsingRights(erResults.toList))
       }
-      (br, er).mapN {
-        case (bb, ee) =>
-          logger.info(s"Updated $bb baking rights and $ee endorsing rights rows")
+      (br, er).mapN { case (bb, ee) =>
+        logger.info(s"Updated $bb baking rights and $ee endorsing rights rows")
       }
     }
   }

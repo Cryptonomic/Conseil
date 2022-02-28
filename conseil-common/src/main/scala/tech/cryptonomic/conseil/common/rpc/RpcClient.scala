@@ -71,8 +71,8 @@ class RpcClient[F[_]: Async](
     *
     * @return [[fs2.Stream]]] that contains result from JSON-RPC server call.
     */
-  def stream[P, R](batchSize: Int)(request: Stream[F, RpcRequest[P]])(
-      implicit decode: EntityDecoder[F, Seq[RpcResponse[R]]],
+  def stream[P, R](batchSize: Int)(request: Stream[F, RpcRequest[P]])(implicit
+      decode: EntityDecoder[F, Seq[RpcResponse[R]]],
       encode: EntityEncoder[F, List[RpcRequest[P]]]
   ): Stream[F, R] =
     request

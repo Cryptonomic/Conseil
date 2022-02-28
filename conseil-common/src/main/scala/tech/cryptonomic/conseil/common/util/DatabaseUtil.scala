@@ -25,12 +25,14 @@ object DatabaseUtil {
       * @return one SQLActionBuilder containing concatenated actions
       */
     def concatenateSqlActions(acc: SQLActionBuilder, actions: SQLActionBuilder*): SQLActionBuilder =
-      actions.foldLeft(acc) {
-        case (accumulator, action) =>
-          SQLActionBuilder(accumulator.queryParts ++ action.queryParts, (p: Unit, pp: PositionedParameters) => {
+      actions.foldLeft(acc) { case (accumulator, action) =>
+        SQLActionBuilder(
+          accumulator.queryParts ++ action.queryParts,
+          (p: Unit, pp: PositionedParameters) => {
             accumulator.unitPConv.apply(p, pp)
             action.unitPConv.apply(p, pp)
-          })
+          }
+        )
       }
 
     /** Creates SQLAction of sequence of values
@@ -53,16 +55,14 @@ object DatabaseUtil {
     }
 
     /** Implicit value that allows getting table row as Map[String, Any] */
-    implicit val getMap: GetResult[QueryResponse] = GetResult[QueryResponse](positionedResult => {
+    implicit val getMap: GetResult[QueryResponse] = GetResult[QueryResponse] { positionedResult =>
       val metadata = positionedResult.rs.getMetaData
-      (1 to positionedResult.numColumns)
-        .map(i => {
-          val columnName = metadata.getColumnName(i).toLowerCase
-          val columnValue = positionedResult.nextObjectOption
-          columnName -> columnValue
-        })
-        .toMap
-    })
+      (1 to positionedResult.numColumns).map { i =>
+        val columnName = metadata.getColumnName(i).toLowerCase
+        val columnValue = positionedResult.nextObjectOption
+        columnName -> columnValue
+      }.toMap
+    }
 
     /** Implicit class providing helper methods for SQLActionBuilder */
     implicit class SqlActionHelper(action: SQLActionBuilder) {
@@ -170,7 +170,7 @@ object DatabaseUtil {
       * @param snapshot snapshot values for temporal query
       * @param limit max returned rows count
       * @return SQLActionBuilder
-      * */
+      */
     def makeTemporalQuery(
         table: String,
         columns: List[Field],
@@ -225,25 +225,22 @@ object DatabaseUtil {
         .groupBy(_.group)
         .values
         .toList
-        .map(
-          group =>
-            group.map { predicate =>
-              concatenateSqlActions(
-                predicate.precision
-                  .map(precision => sql""" AND ROUND(#${predicate.field}, $precision) """)
-                  .getOrElse(sql""" AND #${predicate.field} """),
-                mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString))
-              )
-            }
+        .map(group =>
+          group.map { predicate =>
+            concatenateSqlActions(
+              predicate.precision
+                .map(precision => sql""" AND ROUND(#${predicate.field}, $precision) """)
+                .getOrElse(sql""" AND #${predicate.field} """),
+              mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString))
+            )
+          }
         )
       predicateGroups match {
         case Nil => Nil
         case group :: Nil => group
         case multiGroups =>
           //first intersperse with internal ORs then add the opening and closing parens
-          val orGroups = multiGroups.reduce(
-            (group1, group2) => group1 ::: sql") OR (True" :: group2
-          )
+          val orGroups = multiGroups.reduce((group1, group2) => group1 ::: sql") OR (True" :: group2)
           sql"AND (True" :: (orGroups :+ sql") ")
       }
     }
@@ -319,7 +316,7 @@ object DatabaseUtil {
     private def makeAggregationFormat(field: String, format: String): String =
       s"to_char($field, '$format')"
 
-    /** maps aggregation operation to the SQL function*/
+    /** maps aggregation operation to the SQL function */
     private def mapAggregationToSQL(aggregationType: AggregationType, column: String): String =
       aggregationType match {
         case AggregationType.sum => s"SUM($column)"

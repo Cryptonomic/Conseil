@@ -42,13 +42,12 @@ class BitcoinOperations[F[_]: Async](
             .zip(bitcoinClient.getBlockChainInfo.map(_.blocks))
 
       }
-      .flatMap {
-        case (block, latestBlock) =>
-          depth match {
-            case Newest => loadBlocksWithTransactions(block.map(_.level + 1).getOrElse(1) to latestBlock)
-            case Everything => loadBlocksWithTransactions(1 to latestBlock)
-            case Custom(depth) => loadBlocksWithTransactions(math.max(latestBlock - depth, 1) to latestBlock)
-          }
+      .flatMap { case (block, latestBlock) =>
+        depth match {
+          case Newest => loadBlocksWithTransactions(block.map(_.level + 1).getOrElse(1) to latestBlock)
+          case Everything => loadBlocksWithTransactions(1 to latestBlock)
+          case Custom(depth) => loadBlocksWithTransactions(math.max(latestBlock - depth, 1) to latestBlock)
+        }
       }
 
   /**
@@ -60,22 +59,21 @@ class BitcoinOperations[F[_]: Async](
   def loadBlocksWithTransactions(range: Range.Inclusive): Stream[F, Unit] =
     Stream
       .eval(tx.transact(persistence.getIndexedBlockHeights(range)))
-      .flatMap(
-        existingBlocks =>
-          Stream
-            .range(range.start, range.end + 1)
-            .filter(height => !existingBlocks.contains(height))
-            .through(bitcoinClient.getBlockHash(batchConf.hashBatchSize))
-            .through(bitcoinClient.getBlockByHash(batchConf.blocksBatchSize))
-            .through(bitcoinClient.getBlockWithTransactions(batchConf.transactionsBatchSize))
-            .evalTap { // log every 10 block
-              case (block, _) if (block.height % 10 == 0) =>
-                Concurrent[F].delay(logger.info(s"Save block with height: ${block.height}"))
-              case _ => Concurrent[F].unit
-            }
-            .map((persistence.createBlock _).tupled)
-            .evalTap(tx.transact)
-            .drain
+      .flatMap(existingBlocks =>
+        Stream
+          .range(range.start, range.end + 1)
+          .filter(height => !existingBlocks.contains(height))
+          .through(bitcoinClient.getBlockHash(batchConf.hashBatchSize))
+          .through(bitcoinClient.getBlockByHash(batchConf.blocksBatchSize))
+          .through(bitcoinClient.getBlockWithTransactions(batchConf.transactionsBatchSize))
+          .evalTap { // log every 10 block
+            case (block, _) if block.height % 10 == 0 =>
+              Concurrent[F].delay(logger.info(s"Save block with height: ${block.height}"))
+            case _ => Concurrent[F].unit
+          }
+          .map((persistence.createBlock _).tupled)
+          .evalTap(tx.transact)
+          .drain
       )
 
 }

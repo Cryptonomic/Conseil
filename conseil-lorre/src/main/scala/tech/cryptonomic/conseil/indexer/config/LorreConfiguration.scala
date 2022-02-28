@@ -105,10 +105,12 @@ final case class BatchFetchConfiguration(
 
 /** custom select specific features to be enabled when chain-indexing */
 final case class Features(
-    blockRightsFetchingIsOn: Boolean,
+    futureRightsFetchingIsOn: Boolean,
     forkHandlingIsOn: Boolean,
     metadataFetchingIsOn: Boolean,
-    registeredTokensIsOn: Boolean
+    registeredTokensIsOn: Boolean,
+    rightsProcessingIsOn: Boolean,
+    bakerFeaturesAreOn: Boolean
 )
 
 final case class TokenContracts(

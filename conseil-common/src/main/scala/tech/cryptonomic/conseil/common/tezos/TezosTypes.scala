@@ -137,8 +137,8 @@ object TezosTypes {
 
   /** only accepts standard block metadata, discarding the genesis metadata */
   val discardGenesis: BlockMetadata => Option[BlockHeaderMetadata] = {
-    val partialSelector: PartialFunction[BlockMetadata, BlockHeaderMetadata] = {
-      case md: BlockHeaderMetadata => md
+    val partialSelector: PartialFunction[BlockMetadata, BlockHeaderMetadata] = { case md: BlockHeaderMetadata =>
+      md
     }
     partialSelector.lift
   }
@@ -223,7 +223,10 @@ object TezosTypes {
     "endorsement",
     "proposals",
     "ballot",
-    "endorsement_with_slot"
+    "endorsement_with_slot",
+    "preendorsement",
+    "double_preendorsement_evidence",
+    "set_deposits_limit"
   )
 
   final case class Operations(
@@ -244,6 +247,12 @@ object TezosTypes {
   final case class EndorsementWithSlot(
       endorsement: EndorsementInternalObject,
       metadata: EndorsementMetadata,
+      blockOrder: Option[Int] = None
+  ) extends Operation
+
+  final case class Preendorsement(
+      level: BlockLevel,
+      metadata: PreendorsementMetadata,
       blockOrder: Option[Int] = None
   ) extends Operation
 
@@ -319,6 +328,8 @@ object TezosTypes {
   ) extends Operation
 
   final case class DoubleEndorsementEvidence(blockOrder: Option[Int] = None) extends Operation
+  final case class DoublePreendorsementEvidence(blockOrder: Option[Int] = None) extends Operation
+
   final case class DoubleBakingEvidence(blockOrder: Option[Int] = None) extends Operation
   final case class Proposals(
       source: Option[ContractId],
@@ -345,10 +356,26 @@ object TezosTypes {
       metadata: ResultMetadata[OperationResult.RegisterGlobalConstant]
   ) extends Operation
 
+  final case class SetDepositsLimit(
+      source: Option[ContractId],
+      fee: PositiveBigNumber,
+      counter: PositiveBigNumber,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      limit: Option[PositiveBigNumber],
+      blockOrder: Option[Int] = None,
+      metadata: ResultMetadata[OperationResult.SetDepositsLimit]
+  ) extends Operation
+
   //metadata definitions, both shared or specific to operation kind
   final case class EndorsementMetadata(
       slot: Option[Int],
-      slots: List[Int],
+      slots: Option[List[Int]],
+      delegate: PublicKeyHash,
+      balance_updates: List[OperationMetadata.BalanceUpdate]
+  )
+
+  final case class PreendorsementMetadata(
       delegate: PublicKeyHash,
       balance_updates: List[OperationMetadata.BalanceUpdate]
   )
@@ -484,6 +511,12 @@ object TezosTypes {
         consumed_gas: Option[BigNumber],
         storage_size: Option[BigNumber],
         global_address: Option[String]
+    )
+
+    final case class SetDepositsLimit(
+        status: String,
+        balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
+        consumed_gas: Option[BigNumber]
     )
 
   }
@@ -727,7 +760,8 @@ object TezosTypes {
   final case class BakingRights(
       level: BlockLevel,
       delegate: String,
-      priority: Int,
+      priority: Option[Int],
+      round: Option[Int],
       estimated_time: Option[ZonedDateTime],
       cycle: Option[Int],
       governancePeriod: Option[Int]

@@ -15,9 +15,9 @@ object JsonUtil {
   object CirceCommonDecoders {
     import io.circe.Decoder
 
-    /** Provides deconding to an Either value, without needing a discrimination "tag" in the json source*/
-    implicit def decodeUntaggedEither[A, B](
-        implicit leftDecoder: Decoder[A],
+    /** Provides deconding to an Either value, without needing a discrimination "tag" in the json source */
+    implicit def decodeUntaggedEither[A, B](implicit
+        leftDecoder: Decoder[A],
         rightDecoder: Decoder[B]
     ): Decoder[Either[A, B]] =
       leftDecoder.map(Left.apply) or rightDecoder.map(Right.apply)
@@ -91,7 +91,7 @@ object JsonUtil {
     result.toTry
   }
 
-  /** extractor object to read accountIds from a json string, based on the hash format*/
+  /** extractor object to read accountIds from a json string, based on the hash format */
   object AccountIds {
 
     /** regular expression matching a valid account hash as a json string */

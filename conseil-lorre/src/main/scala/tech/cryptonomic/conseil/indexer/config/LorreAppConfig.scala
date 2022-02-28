@@ -100,15 +100,14 @@ trait LorreAppConfig {
       platform <- loadPlatformConfiguration(platform.name, network)
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.streaming-client")
       fetching <- loadConfig[BatchFetchConfiguration](namespace = "lorre.batched-fetches")
-    } yield
-      CombinedConfiguration(
-        lorre,
-        platform,
-        nodeRequests,
-        streamingClient,
-        fetching,
-        VerboseOutput(verbose)
-      )
+    } yield CombinedConfiguration(
+      lorre,
+      platform,
+      nodeRequests,
+      streamingClient,
+      fetching,
+      VerboseOutput(verbose)
+    )
 
     //something went wrong
     loadedConf.left.foreach { failures =>
@@ -135,7 +134,8 @@ object LorreAppConfig {
 
   private[config] object Loaders extends PlatformConfigurationHint {
 
-    /*** Reads a specific platform configuration based on given 'platform' and 'network' */
+    /** * Reads a specific platform configuration based on given 'platform' and 'network'
+      */
     def loadPlatformConfiguration(
         platform: String,
         network: String,
@@ -191,10 +191,9 @@ object LorreAppConfig {
             .getConfig(namespace)
             .atPath(referenceEntryPath) //puts the config entry where expected by akka
             .withFallback(rootConfig) //adds default values, where not overriden
-            .ensuring(
-              endConfig =>
-                //verifies all expected entries are there
-                Try(endConfig.checkValid(rootConfig.getConfig(referenceEntryPath), referenceEntryPath)).isSuccess
+            .ensuring(endConfig =>
+              //verifies all expected entries are there
+              Try(endConfig.checkValid(rootConfig.getConfig(referenceEntryPath), referenceEntryPath)).isSuccess
             )
         ).toEither.left.map {
           //wraps the error into pureconfig's one

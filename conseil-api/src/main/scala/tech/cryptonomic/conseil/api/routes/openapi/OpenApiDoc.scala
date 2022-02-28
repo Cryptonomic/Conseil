@@ -97,38 +97,38 @@ object OpenApiDoc
       invalidDocs: Documentation
   ): List[DocumentedResponse] =
     response ++ List(
-          DocumentedResponse(
-            status = 400,
-            documentation = invalidDocs.getOrElse(""),
-            headers = DocumentedHeaders(List.empty),
-            content = Map(
-              "application/json" -> MediaType(schema = Some(Schema.Array(Left(Schema.simpleString), None, None, None)))
-            )
-          ),
-          DocumentedResponse(
-            status = 200,
-            documentation = invalidDocs.getOrElse(""),
-            headers = DocumentedHeaders(List.empty),
-            content = Map(
-              "application/json" -> MediaType(None),
-              "text/csv" -> MediaType(None),
-              "text/plain" -> MediaType(None)
-            )
-          )
+      DocumentedResponse(
+        status = 400,
+        documentation = invalidDocs.getOrElse(""),
+        headers = DocumentedHeaders(List.empty),
+        content = Map(
+          "application/json" -> MediaType(schema = Some(Schema.Array(Left(Schema.simpleString), None, None, None)))
         )
+      ),
+      DocumentedResponse(
+        status = 200,
+        documentation = invalidDocs.getOrElse(""),
+        headers = DocumentedHeaders(List.empty),
+        content = Map(
+          "application/json" -> MediaType(None),
+          "text/csv" -> MediaType(None),
+          "text/plain" -> MediaType(None)
+        )
+      )
+    )
 
   override def validatedAttributes[A](
       response: List[DocumentedResponse],
       invalidDocs: Documentation
   ): List[DocumentedResponse] =
     response :+ DocumentedResponse(
-          status = 400,
-          documentation = invalidDocs.getOrElse(""),
-          headers = DocumentedHeaders(List.empty),
-          content = Map(
-            "application/json" -> MediaType(schema = Some(Schema.Array(Left(Schema.simpleString), None, None, None)))
-          )
-        )
+      status = 400,
+      documentation = invalidDocs.getOrElse(""),
+      headers = DocumentedHeaders(List.empty),
+      content = Map(
+        "application/json" -> MediaType(schema = Some(Schema.Array(Left(Schema.simpleString), None, None, None)))
+      )
+    )
 
   /** Documented JSON schema for Any */
   implicit override lazy val anySchema: JsonSchema[Any] =
