@@ -113,10 +113,12 @@ object DataTypes {
   }
 
   /** Simple field without formatting */
-  case class SimpleField(field: String) extends Field
+  object Field {
+    case class SimpleField(field: String) extends Field
 
-  /** Formatted field with format description */
-  case class FormattedField(field: String, function: FormatType, format: String) extends Field
+    /** Formatted field with format description */
+    case class FormattedField(field: String, function: FormatType, format: String) extends Field
+  }
 
   object Query {
     val empty: Query = Query()

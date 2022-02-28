@@ -6,6 +6,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.AggregationType.A
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.FormatType.FormatType
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.Field._
 
 /**
   * Utility functions and members for common database operations.
