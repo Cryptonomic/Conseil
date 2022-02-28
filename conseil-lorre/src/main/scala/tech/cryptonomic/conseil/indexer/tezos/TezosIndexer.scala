@@ -268,14 +268,11 @@ class TezosIndexer private (
               .processBlocksPage(fetchingResults)
               .flatTap(_ =>
                 accountsProcessor.processTezosAccountsCheckpoint() >>
-                  (if (featureFlags.bakerFeaturesAreOn) bakersProcessor.processTezosBakersCheckpoint()
-                   else Future.successful(Done)) >>
-                  (if (featureFlags.bakerFeaturesAreOn)
-                     accountsProcessor.markBakerAccounts(extractProcessedHashes(fetchingResults))
-                   else Future.successful(Done)) >>
+                  bakersProcessor.processTezosBakersCheckpoint() >>
+                  accountsProcessor.markBakerAccounts(extractProcessedHashes(fetchingResults)) >>
                   (if (featureFlags.rightsProcessingIsOn)
-                     rightsProcessor.processBakingAndEndorsingRights(fetchingResults)
-                   else Future.successful(Done))
+                    rightsProcessor.processBakingAndEndorsingRights(fetchingResults)
+                  else Future.successful(Done))
               )
           }
           .runFold(0) { (processed, justDone) =>
