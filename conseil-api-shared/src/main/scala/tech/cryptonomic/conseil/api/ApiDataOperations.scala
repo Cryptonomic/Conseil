@@ -22,9 +22,9 @@ object ApiDataOperations {
   /** Sanitizes aggregation format so query is safe from SQL injection */
   def sanitizeFields(fields: List[Field]): List[Field] =
     fields.map {
-      case SimpleField(field) => SimpleField(sanitizeForSql(field))
-      case FormattedField(field, function, format) =>
-        FormattedField(sanitizeForSql(field), function, sanitizeDatePartAggregation(format))
+      case Field.SimpleField(field) => Field.SimpleField(sanitizeForSql(field))
+      case Field.FormattedField(field, function, format) =>
+        Field.FormattedField(sanitizeForSql(field), function, sanitizeDatePartAggregation(format))
     }
 }
 
