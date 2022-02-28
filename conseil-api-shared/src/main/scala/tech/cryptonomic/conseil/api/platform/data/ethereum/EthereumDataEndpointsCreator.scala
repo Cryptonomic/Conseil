@@ -20,8 +20,8 @@ trait EthereumDataEndpointsCreator extends ApiDataEndpoints with EthereumFilterF
 
   private def common(x: String) =
     infallibleEndpoint.get
+      // .securityIn(auth.apiKey(header[Option[String]]("apiKey")))
       .in(createPath(x))
-      .in(header[Option[String]]("apiKey"))
       .errorOut(statusCode(StatusCode.NotFound))
 
   /** V2 Blocks endpoint definition */

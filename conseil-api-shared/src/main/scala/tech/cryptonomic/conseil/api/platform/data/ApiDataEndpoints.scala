@@ -18,6 +18,7 @@ private[data] trait ApiDataEndpoints {
   /** V2 Query endpoint definition */
   def queryEndpoint(platform: String) =
     commonPath(platform).post
+      // .in(jsonBody[ApiQuery])
       .out(jsonBody[QueryResponseWithOutput])
 
   /** Common method for compatibility queries */

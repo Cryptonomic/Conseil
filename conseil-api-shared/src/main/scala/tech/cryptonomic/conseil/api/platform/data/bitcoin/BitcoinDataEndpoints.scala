@@ -17,6 +17,12 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with BitcoinFilterFromQueryS
   private def root: EndpointInput[String] =
     "v2" / "data" / btcPlatform / query[String]("network")
 
+  private def common =
+    infallibleEndpoint.get
+      // .securityIn(auth.apiKey(header[Option[String]]("apiKey")))
+      .in(root)
+      .errorOut(statusCode(StatusCode.NotFound))
+
   // lazy val btcEndpoints: List[Endpoint[Unit, _, _, _, Any]] = List(
   lazy val btcEndpoints = List(
     bitcoinQueryEndpoint,
@@ -35,75 +41,57 @@ trait BitcoinDataEndpoints extends ApiDataEndpoints with BitcoinFilterFromQueryS
 
   /** V2 Blocks endpoint definition */
   def bitcoinBlocksEndpoint =
-    infallibleEndpoint.get
-      .in(root / "blocks" / bitcoinQsFilter)
-      .in(header[Option[String]]("apiKey"))
+    common
+      .in("blocks" / bitcoinQsFilter)
       .out(compatibilityQuery[List[QueryResponse]]("blocks"))
-      .errorOut(statusCode(StatusCode.NotFound))
 
   /** V2 Blocks head endpoint definition */
   def bitcoinBlocksHeadEndpoint =
-    infallibleEndpoint.get
-      .in(root / "blocks" / "head")
-      .in(header[Option[String]]("apiKey"))
+    common
+      .in("blocks" / "head")
       .out(compatibilityQuery[QueryResponse]("blocks head"))
-      .errorOut(statusCode(StatusCode.NotFound))
 
   /** V2 Blocks by hash endpoint definition */
   def bitcoinBlockByHashEndpoint =
-    infallibleEndpoint.get
-      .in(root / "blocks" / query[String]("hash"))
-      .in(header[Option[String]]("apiKey"))
+    common
+      .in("blocks" / query[String]("hash"))
       .out(compatibilityQuery[QueryResponse]("block by hash"))
-      .errorOut(statusCode(StatusCode.NotFound))
 
   /** V2 Transactions endpoint definition */
   def bitcoinTransactionsEndpoint =
-    infallibleEndpoint.get
-      .in(root / "transactions" / bitcoinQsFilter)
-      .in(header[Option[String]]("apiKey"))
+    common
+      .in("transactions" / bitcoinQsFilter)
       .out(compatibilityQuery[List[QueryResponse]]("transactions"))
-      .errorOut(statusCode(StatusCode.NotFound))
 
   /** V2 Transaction by id endpoint definition */
   def bitcoinTransactionByIdEndpoint =
-    infallibleEndpoint.get
-      .in(root / "transactions" / query[String]("id"))
-      .in(header[Option[String]]("apiKey"))
+    common
+      .in("transactions" / query[String]("id"))
       .out(compatibilityQuery[QueryResponse]("transaction by id"))
-      .errorOut(statusCode(StatusCode.NotFound))
 
   /** V2 Inputs for transactions endpoint definition */
   def bitcoinInputsEndpoint =
-    infallibleEndpoint.get
-      .in(root / "inputs" / bitcoinQsFilter)
-      .in(header[Option[String]]("apiKey"))
+    common
+      .in("inputs" / bitcoinQsFilter)
       .out(compatibilityQuery[List[QueryResponse]]("inputs for transactions"))
-      .errorOut(statusCode(StatusCode.NotFound))
 
   /** V2 Outputs for transactions endpoint definition */
   def bitcoinOutputsEndpoint =
-    infallibleEndpoint.get
-      .in(root / "outputs" / bitcoinQsFilter)
-      .in(header[Option[String]]("apiKey"))
+    common
+      .in("outputs" / bitcoinQsFilter)
       .out(compatibilityQuery[List[QueryResponse]]("outputs for transactions"))
-      .errorOut(statusCode(StatusCode.NotFound))
 
   /** V2 Accounts endpoint definition */
   def bitcoinAccountsEndpoint =
-    infallibleEndpoint.get
-      .in(root / "accounts" / bitcoinQsFilter)
-      .in(header[Option[String]]("apiKey"))
+    common
+      .in("accounts" / bitcoinQsFilter)
       .out(compatibilityQuery[List[QueryResponse]]("accounts"))
-      .errorOut(statusCode(StatusCode.NotFound))
 
   /** V2 Accounts by address endpoint definition */
   def bitcoinAccountByAddressEndpoint =
-    infallibleEndpoint.get
-      .in(root / "accounts" / query[String]("address"))
-      .in(header[Option[String]]("apiKey"))
+    common
+      .in("accounts" / query[String]("address"))
       .out(compatibilityQuery[QueryResponse]("account by address"))
-      .errorOut(statusCode(StatusCode.NotFound))
 
   private def createTags(entity: String): List[String] = List(s"Bitcoin $entity")
 
