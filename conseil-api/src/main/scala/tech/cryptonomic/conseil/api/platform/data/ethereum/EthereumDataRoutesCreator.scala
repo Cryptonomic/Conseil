@@ -74,130 +74,161 @@ trait EthereumDataRoutesCreator extends EthereumDataEndpoints with ApiDataRoutes
   // }
 
   /** V2 Route implementation for blocks endpoint */
-  private val blocksRoute =
-    ethereumBlocksEndpoint.serverLogic[IO] { case (network, _, element) =>
-      platformNetworkValidation(network)(
-        ((filter: EthereumFilter) => operations.fetchBlocks(filter.toQuery.withLimitCap(maxQueryResultSize)))(element)
-          .map(Some.apply)
-      ).map(_.toRight(()))
-    }
+  private lazy val blocksRoute =
+    ethereumBlocksEndpoint
+      // .serverSecurityLogicPure(apiKey => apiKey.filter(_ == "apiKey").toRight(()))
+      .serverLogic[IO] { case (network, element) =>
+        platformNetworkValidation(network)(
+          ((filter: EthereumFilter) => operations.fetchBlocks(filter.toQuery.withLimitCap(maxQueryResultSize)))(element)
+            .map(Some.apply)
+        ).map(_.toRight(()))
+      }
 
   /** V2 Route implementation for blocks head endpoint */
   private lazy val blocksHeadRoute =
-    ethereumBlocksHeadEndpoint.serverLogic[IO] { case (network, _) =>
-      platformNetworkValidation(network)(operations.fetchBlocksHead()).map(_.toRight(()))
-    }
+    ethereumBlocksHeadEndpoint
+      // .serverSecurityLogicPure(apiKey => apiKey.filter(_ == "apiKey").toRight(()))
+      .serverLogic[IO] { network =>
+        platformNetworkValidation(network)(operations.fetchBlocksHead()).map(_.toRight(()))
+      }
 
   /** V2 Route implementation for blocks by hash endpoint */
   private val blockByHashRoute =
-    ethereumBlockByHashEndpoint.serverLogic[IO] { case (network, _, element) =>
-      platformNetworkValidation(network)(
-        ((hash: String) => operations.fetchBlockByHash(EthereumBlockHash(hash)))(
-          element
-        )
-      ).map(_.toRight(()))
-    }
+    ethereumBlockByHashEndpoint
+      // .serverSecurityLogicPure(apiKey => apiKey.filter(_ == "apiKey").toRight(()))
+      .serverLogic[IO] { case (network, element) =>
+        platformNetworkValidation(network)(
+          ((hash: String) => operations.fetchBlockByHash(EthereumBlockHash(hash)))(
+            element
+          )
+        ).map(_.toRight(()))
+      }
 
   /** V2 Route implementation for transactions endpoint */
   private val transactionsRoute =
-    ethereumTransactionsEndpoint.serverLogic[IO] { case (network, _, element) =>
-      platformNetworkValidation(network)(
-        ((filter: EthereumFilter) => operations.fetchTransactions(filter.toQuery.withLimitCap(maxQueryResultSize)))(
-          element
-        ).map(Some.apply)
-      ).map(_.toRight(()))
-    }
+    ethereumTransactionsEndpoint
+      // .serverSecurityLogicPure(apiKey => apiKey.filter(_ == "apiKey").toRight(()))
+      .serverLogic[IO] { case (network, element) =>
+        platformNetworkValidation(network)(
+          ((filter: EthereumFilter) => operations.fetchTransactions(filter.toQuery.withLimitCap(maxQueryResultSize)))(
+            element
+          ).map(Some.apply)
+        ).map(_.toRight(()))
+      }
 
   /** V2 Route implementation for transaction by id endpoint */
   private val transactionByIdRoute =
-    ethereumTransactionByHashEndpoint.serverLogic[IO] { case (network, _, hash) =>
-      platformNetworkValidation(network)(operations.fetchTransactionByHash(hash)).map(_.toRight(()))
-    }
+    ethereumTransactionByHashEndpoint
+      // .serverSecurityLogicPure(apiKey => apiKey.filter(_ == "apiKey").toRight(()))
+      .serverLogic[IO] { case (network, hash) =>
+        platformNetworkValidation(network)(operations.fetchTransactionByHash(hash)).map(_.toRight(()))
+      }
 
   /** V2 Route implementation for logs endpoint */
   private val logsRoute =
-    ethereumLogsEndpoint.serverLogic[IO] { case (network, _, element) =>
-      platformNetworkValidation(network)(
-        ((filter: EthereumFilter) => operations.fetchLogs(filter.toQuery.withLimitCap(maxQueryResultSize)))(element)
-          .map(Some.apply)
-      ).map(_.toRight(()))
-    }
+    ethereumLogsEndpoint
+      // .serverSecurityLogicPure(apiKey => apiKey.filter(_ == "apiKey").toRight(()))
+      .serverLogic[IO] { case (network, element) =>
+        platformNetworkValidation(network)(
+          ((filter: EthereumFilter) => operations.fetchLogs(filter.toQuery.withLimitCap(maxQueryResultSize)))(element)
+            .map(Some.apply)
+        ).map(_.toRight(()))
+      }
 
   /** V2 Route implementation for receipts endpoint */
   private val receiptsRoute =
-    ethereumReceiptsEndpoint.serverLogic[IO] { case (network, _, element) =>
-      platformNetworkValidation(network)(
-        ((filter: EthereumFilter) => operations.fetchReceipts(filter.toQuery.withLimitCap(maxQueryResultSize)))(
-          element
-        ).map(Some.apply)
-      ).map(_.toRight(()))
-    }
+    ethereumReceiptsEndpoint
+      // .serverSecurityLogicPure(apiKey => apiKey.filter(_ == "apiKey").toRight(()))
+      .serverLogic[IO] { case (network, element) =>
+        platformNetworkValidation(network)(
+          ((filter: EthereumFilter) => operations.fetchReceipts(filter.toQuery.withLimitCap(maxQueryResultSize)))(
+            element
+          ).map(Some.apply)
+        ).map(_.toRight(()))
+      }
 
   /** V2 Route implementation for contracts endpoint */
   private val contractsRoute =
-    ethereumContractsEndpoint.serverLogic[IO] { case (network, _, element) =>
-      platformNetworkValidation(network)(
-        ((filter: EthereumFilter) => operations.fetchContracts(filter.toQuery.withLimitCap(maxQueryResultSize)))(
-          element
-        ).map(Some.apply)
-      ).map(_.toRight(()))
-    }
+    ethereumContractsEndpoint
+      // .serverSecurityLogicPure(apiKey => apiKey.filter(_ == "apiKey").toRight(()))
+      .serverLogic[IO] { case (network, element) =>
+        platformNetworkValidation(network)(
+          ((filter: EthereumFilter) => operations.fetchContracts(filter.toQuery.withLimitCap(maxQueryResultSize)))(
+            element
+          ).map(Some.apply)
+        ).map(_.toRight(()))
+      }
 
   /** V2 Route implementation for tokens endpoint */
   private val tokensRoute =
-    ethereumTokensEndpoint.serverLogic[IO] { case (network, _, element) =>
-      platformNetworkValidation(network)(
-        ((filter: EthereumFilter) => operations.fetchTokens(filter.toQuery.withLimitCap(maxQueryResultSize)))(
-          element
-        ).map(Some.apply)
-      ).map(_.toRight(()))
-    }
+    ethereumTokensEndpoint
+      // .serverSecurityLogicPure(apiKey => apiKey.filter(_ == "apiKey").toRight(()))
+      .serverLogic[IO] { case (network, element) =>
+        platformNetworkValidation(network)(
+          ((filter: EthereumFilter) => operations.fetchTokens(filter.toQuery.withLimitCap(maxQueryResultSize)))(
+            element
+          ).map(Some.apply)
+        ).map(_.toRight(()))
+      }
 
   /** V2 Route implementation for token transfers endpoint */
   private val tokenTransfersRoute =
-    ethereumTokenTransfersEndpoint.serverLogic[IO] { case (network, _, element) =>
-      platformNetworkValidation(network)(
-        ((filter: EthereumFilter) => operations.fetchTokenTransfers(filter.toQuery.withLimitCap(maxQueryResultSize)))(
-          element
-        ).map(Some.apply)
-      ).map(_.toRight(()))
-    }
+    ethereumTokenTransfersEndpoint
+      // .serverSecurityLogicPure(apiKey => apiKey.filter(_ == "apiKey").toRight(()))
+      .serverLogic[IO] { case (network, element) =>
+        platformNetworkValidation(network)(
+          ((filter: EthereumFilter) => operations.fetchTokenTransfers(filter.toQuery.withLimitCap(maxQueryResultSize)))(
+            element
+          ).map(Some.apply)
+        ).map(_.toRight(()))
+      }
 
   /** V2 Route implementation for tokens history endpoint */
   private val tokensHistoryRoute =
-    ethereumTokensHistoryEndpoint.serverLogic[IO] { case (network, _, element) =>
-      platformNetworkValidation(network)(
-        ((filter: EthereumFilter) => operations.fetchTokensHistory(filter.toQuery.withLimitCap(maxQueryResultSize)))(
-          element
-        ).map(Some.apply)
-      ).map(_.toRight(()))
-    }
+    ethereumTokensHistoryEndpoint
+      // .serverSecurityLogicPure(apiKey => apiKey.filter(_ == "apiKey").toRight(()))
+      .serverLogic[IO] { case (network, element) =>
+        platformNetworkValidation(network)(
+          ((filter: EthereumFilter) => operations.fetchTokensHistory(filter.toQuery.withLimitCap(maxQueryResultSize)))(
+            element
+          ).map(Some.apply)
+        ).map(_.toRight(()))
+      }
 
   /** V2 Route implementation for accounts endpoint */
   private val accountsRoute =
-    ethereumAccountsEndpoint.serverLogic[IO] { case (network, _, element) =>
-      platformNetworkValidation(network)(
-        ((filter: EthereumFilter) => operations.fetchAccounts(filter.toQuery.withLimitCap(maxQueryResultSize)))(
-          element
-        ).map(Some.apply)
-      ).map(_.toRight(()))
-    }
+    ethereumAccountsEndpoint
+      // .serverSecurityLogicPure(apiKey => apiKey.filter(_ == "apiKey").toRight(()))
+      .serverLogic[IO] { case (network, element) =>
+        platformNetworkValidation(network)(
+          ((filter: EthereumFilter) => operations.fetchAccounts(filter.toQuery.withLimitCap(maxQueryResultSize)))(
+            element
+          ).map(Some.apply)
+        ).map(_.toRight(()))
+      }
 
   /** V2 Route implementation for accounts by address endpoint */
   private val accountsByAddressRoute =
-    ethereumAccountByAddressEndpoint.serverLogic[IO] { case (network, _, address) =>
-      platformNetworkValidation(network)(operations.fetchAccountByAddress(address)).map(_.toRight(()))
-    }
+    ethereumAccountByAddressEndpoint
+      // .serverSecurityLogicPure(apiKey => apiKey.filter(_ == "apiKey").toRight(()))
+      .serverLogic[IO] { case (network, address) =>
+        platformNetworkValidation(network)(operations.fetchAccountByAddress(address)).map(_.toRight(()))
+      }
 
   /** V2 Route implementation for accounts history endpoint */
   private val accountsHistoryRoute =
-    ethereumAccountsHistoryEndpoint.serverLogic[IO] { case (network, _, element) =>
-      platformNetworkValidation(network)(
-        ((filter: EthereumFilter) => operations.fetchAccountsHistory(filter.toQuery.withLimitCap(maxQueryResultSize)))(
-          element
-        ).map(Some.apply)
-      ).map(_.toRight(()))
-    }
+    ethereumAccountsHistoryEndpoint
+      // .serverSecurityLogicPure(apiKey => apiKey.filter(_ == "apiKey").toRight(()))
+      .serverLogic[IO] { case (network, element) =>
+        platformNetworkValidation(network)(
+          (
+              (filter: EthereumFilter) =>
+                operations.fetchAccountsHistory(filter.toQuery.withLimitCap(maxQueryResultSize))
+          )(
+            element
+          ).map(Some.apply)
+        ).map(_.toRight(()))
+      }
 
   /**
     * Helper method, which validates the network and delegates the call for specific endpoint to the given method `f`.

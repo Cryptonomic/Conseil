@@ -64,32 +64,19 @@ case class TezosDataRoutes(
   )
 
   /** V2 Route implementation for query endpoint */
-  // override val postRoute: Route = tezosQueryEndpoint.implementedByAsync {
-  //   case (network, entity, apiQuery, _) =>
-  //     val path = EntityPath(entity, NetworkPath(network, platformPath))
+  // lazy val postRoute = tezosQueryEndpoint.serverLogic[IO] { case (entity, network) =>
+  //   val path = EntityPath(entity, NetworkPath(network, platformPath))
 
-  //     pathValidation(path) {
-  //       shouldHideForkEntries(entity)(
-  //         hideForkData =>
-  //           apiQuery
-  //             .validate(path, metadataService, metadataConfiguration)
-  //             .flatMap { validationResult =>
-  //               validationResult.map { validQuery =>
-  //                 operations
-  //                   .queryWithPredicates(
-  //                     platformPath.platform,
-  //                     entity,
-  //                     validQuery.withLimitCap(maxQueryResultSize),
-  //                     hideForkData
-  //                   )
-  //                   .map { queryResponses =>
-  //                     QueryResponseWithOutput(queryResponses, validQuery.output)
-  //                   }
-  //               }.left.map(Future.successful).bisequence
-  //             }
-  //             .map(Some(_))
+  //   pathValidation(path) {
+  //     shouldHideForkEntries(entity)(hideForkData =>
+  //       operations.queryWithPredicates(
+  //         platformPath.platform,
+  //         entity,
+  //         validQuery.withLimiCap(maxQueryResultSize),
+  //         hideForkData
   //       )
-  //     }
+  //     )
+  //   }.asRight(())
   // }
 
   /** will provide an async operation with the information if this entity needs checking for fork-invalidation */
@@ -110,18 +97,18 @@ case class TezosDataRoutes(
     )
 
   /** V2 Route implementation for blocks endpoint */
-  lazy val blocksRoute = tezosBlocksEndpoint.serverLogic[IO] { case (network: String, filter: TezosFilter, _) =>
-    routeFromQuery(network, "blocks", filter)(Option.apply)
-      .map(_.getOrElse(Nil).asRight)
-  }
+  lazy val blocksRoute = tezosBlocksEndpoint
+    // .serverSecurityLogicPure(_.filter(_ == "apiKey").toRight(()))
+    .serverLogic[IO] { case (network: String, filter: TezosFilter) =>
+      routeFromQuery(network, "blocks", filter)(Option.apply)
+        .map(_.getOrElse(Nil).asRight)
+    }
 
   /** V2 Route implementation for blocks head endpoint */
-  private val blocksHeadRoute = tezosBlocksHeadEndpoint.serverLogic[IO] { case (network, _) =>
+  private val blocksHeadRoute = tezosBlocksHeadEndpoint.serverLogic[IO] { network =>
     platformNetworkValidation(network)(operations.fetchLatestBlock()).map {
       case Some(value) => Right(value)
       case None => // FIXME: how to encluse it as [Left] properly
-        // throw new RuntimeException("oh noes, can't get the head of [BlocksRow]")
-        // IO.raiseError(new RuntimeException("oh noes"))
         Left(new RuntimeException("oh noes"))
     }
   }
