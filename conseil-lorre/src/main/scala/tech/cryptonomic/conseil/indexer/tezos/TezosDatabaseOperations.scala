@@ -2,7 +2,6 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import java.sql.Timestamp
 import java.time.{Instant, ZoneOffset}
-
 import cats.effect.Sync
 import cats.implicits._
 import scribe._
@@ -12,14 +11,8 @@ import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
-import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.Tables.{
-  AccountsRow,
-  GovernanceRow,
-  OperationsRow,
-  OriginatedAccountMapsRow,
-  RegisteredTokensRow
-}
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
+import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, GovernanceRow, OperationsRow, OriginatedAccountMapsRow, RegisteredTokensRow}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.ConfigUtil
@@ -35,7 +28,6 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.math
 import scala.util.{Failure, Success}
 import java.util.UUID
-
 import slick.dbio.DBIOAction
 import tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
 
@@ -997,7 +989,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
         assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
         val asOfTimestamp = Timestamp.from(asOf)
         query
-          .filter(levelColumn(_) >= fromLevel)
+          .filter(x => levelColumn(x) >= fromLevel && forkIdColumn(x) === Fork.mainForkId)
           .map(e => (invalidationTimeColumn(e), forkIdColumn(e)))
           .update(asOfTimestamp.some, forkId)
       }
