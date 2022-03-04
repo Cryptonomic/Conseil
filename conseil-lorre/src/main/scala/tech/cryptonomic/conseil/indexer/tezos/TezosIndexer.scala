@@ -122,7 +122,7 @@ class TezosIndexer private (
 
     val processing = for {
       maxLevel <- indexedData.fetchMaxLevel
-      reloadedAccountEvents <- Future.successful(Option.empty)
+      reloadedAccountEvents <- processFork(maxLevel)
       lastReloadedAccountEvents <- processLastForks(maxLevel, backtrackLevels, backtrackInterval, iteration)
 
       unhandled <- accountsResetHandler.applyUnhandledAccountsResets(
