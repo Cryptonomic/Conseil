@@ -123,6 +123,23 @@ private[tezos] class TezosNodeOperator(
     }
   }
 
+  def getPaginatedEntitiesForBlock2[Key, Entity](
+      entityLoad: (List[Key], TezosBlockHash) => Future[Map[Key, Entity]]
+  )(
+      keyIndex: List[(Key, TezosBlockHash)]
+  ): LazyPages[(TezosBlockHash, Map[Key, Entity])] = {
+    //collect by hash and paginate based on that
+    val reversedIndex =
+      keyIndex.groupBy { case (key, blockHash) => blockHash }
+        .mapValues(_.map(_._1))
+
+    reversedIndex.keysIterator.map { blockHash =>
+      val keys = reversedIndex.getOrElse(blockHash, List.empty)
+      entityLoad(keys, blockHash).map(blockHash -> _)
+    }
+  }
+
+
   /**
     * Fetches a specific account for a given block.
     * @param blockHash  Hash of given block
@@ -222,10 +239,10 @@ private[tezos] class TezosNodeOperator(
     *
     * @return               the pages of accounts wrapped in a [[Future]], indexed by AccountId
     */
-  val getPaginatedAccountsForBlock: Map[AccountId, TezosBlockHash] => LazyPages[
+  val getPaginatedAccountsForBlock: List[(AccountId, TezosBlockHash)] => LazyPages[
     (TezosBlockHash, Map[AccountId, Account])
   ] =
-    getPaginatedEntitiesForBlock(getAccountsForBlock)
+    getPaginatedEntitiesForBlock2(getAccountsForBlock)
 
   /**
     * Fetches the accounts identified by id
@@ -266,12 +283,14 @@ private[tezos] class TezosNodeOperator(
     * @param accountsBlocksIndex a map from unique id to the [latest] block reference
     * @return         Accounts with their corresponding block data
     */
-  def getAccountsForBlocks(accountsBlocksIndex: Map[AccountId, BlockReference]): PaginatedAccountResults = {
+  def getAccountsForBlocks(accountsBlocksIndex: List[(AccountId, BlockReference)]): PaginatedAccountResults = {
     import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
+
+    val blockReference = accountsBlocksIndex.map(xxx => xxx._2.hash -> xxx._2).toMap
 
     val reverseIndex =
       accountsBlocksIndex.groupBy { case (id, ref) => ref.hash }
-        .mapValues(_.keySet)
+        .mapValues(values => values.map(_._1).toSet)
         .toMap
 
     def notifyAnyLostIds(missing: Set[AccountId]) =
@@ -280,28 +299,20 @@ private[tezos] class TezosNodeOperator(
           s"The following account keys were not found querying the $network node: ${missing.map(_.value).mkString("\n", ",", "\n")}"
         )
 
-    //uses the index to collect together BlockAccounts matching the same block
-    def groupByLatestBlock(data: Map[AccountId, Account]): List[BlockTagged[Map[AccountId, Account]]] =
-      data.groupBy { case (id, _) =>
-        accountsBlocksIndex(id)
-      }.map { case (blockReference, accounts) =>
-        accounts.taggedWithBlock(blockReference)
-      }.toList
-
     //fetch accounts by requested ids and group them together with corresponding blocks
-    val pages = getPaginatedAccountsForBlock(accountsBlocksIndex.mapValues(_.hash)) map { futureMap =>
+    val pages = getPaginatedAccountsForBlock(accountsBlocksIndex.map(x => x._1 -> x._2.hash)) map { futureMap =>
       futureMap.andThen {
         case Success((hash, accountsMap)) =>
           val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
           notifyAnyLostIds(searchedFor -- accountsMap.keySet)
         case Failure(err) =>
-          val showSomeIds = accountsBlocksIndex.keys
+          val showSomeIds = accountsBlocksIndex.map(_._1)
             .take(30)
             .map(_.value)
             .mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
           logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err)
-      }.map { case (_, map) =>
-        groupByLatestBlock(map)
+      }.map { case (hash, accountsMap) =>
+        List(accountsMap.taggedWithBlock(blockReference(hash)))
       }
     }
 

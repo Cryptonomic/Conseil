@@ -177,26 +177,18 @@ private[tezos] class TezosIndexedDataOperations(
     * sorted by decreasing block-level
     * @return a database action that loads the list of relevant rows
     */
-  def getLatestAccountsFromCheckpoint(implicit ec: ExecutionContext): Future[Map[AccountId, BlockReference]] = {
-    /* Given a sorted sequence of checkpoint rows whose reference level is decreasing,
-     * collects them in a map, skipping keys already added
-     * This prevents duplicate entry keys and keeps the highest level referenced, using an in-memory algorithm
-     * We can think of optimizing this later, we're now optimizing on db queries
-     */
-    def keepLatestAccountIds(checkpoints: Seq[Tables.AccountsCheckpointRow]): Map[AccountId, BlockReference] =
-      checkpoints.foldLeft(Map.empty[AccountId, BlockReference]) { (collected, row) =>
-        val key = makeAccountId(row.accountId)
-        val time = row.asof.toInstant
-        if (collected.contains(key)) collected
-        else
-          collected + (key -> BlockReference(TezosBlockHash(row.blockId), row.blockLevel, Some(time), row.cycle, None))
-      }
+  def getLatestAccountsFromCheckpoint(implicit ec: ExecutionContext): Future[List[(AccountId, BlockReference)]] = {
 
     runQuery(
       Tables.AccountsCheckpoint
         .sortBy(_.blockLevel.desc)
         .result
-        .map(keepLatestAccountIds)
+        .map { rows => rows.map { row =>
+          val key = makeAccountId(row.accountId)
+          val time = row.asof.toInstant
+          (key -> BlockReference(TezosBlockHash(row.blockId), row.blockLevel, Some(time), row.cycle, None))
+        }.toList
+        }
     )
   }
 

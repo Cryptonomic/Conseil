@@ -58,7 +58,7 @@ class AccountsProcessor(
    *        (default = false)
    */
   private def process(
-      ids: Map[AccountId, BlockReference],
+      ids: List[(AccountId, BlockReference)],
       onlyProcessLatest: Boolean = false
   )(implicit
       ec: ExecutionContext
@@ -194,7 +194,7 @@ class AccountsProcessor(
     /** remove from the checkpoints any processed id */
     def cleanup = {
       //can fail with no real downsides
-      val processed = Some(ids.keySet)
+      val processed = Some(ids.map(_._1).toSet)
       logger.info(s"Cleaning ${ids.size} processed accounts from the checkpoint...")
       indexedData
         .runQuery(TezosDb.cleanAccountsCheckpoint(processed))
@@ -202,9 +202,9 @@ class AccountsProcessor(
     }
 
     //if needed, we get the stored levels and only keep updates that are more recent
-    def prunedUpdates(): Future[Map[AccountId, BlockReference]] =
+    def prunedUpdates(): Future[List[(AccountId, BlockReference)]] =
       if (onlyProcessLatest) {
-        indexedData.getLevelsForAccounts(ids.keySet).map { currentlyStored =>
+        indexedData.getLevelsForAccounts(ids.map(_._1).toSet).map { currentlyStored =>
           ids.filterNot { case (PublicKeyHash(accountId), BlockReference(_, updateLevel, _, _, _)) =>
             currentlyStored.exists { case (storedId, storedLevel) =>
               storedId == accountId && storedLevel > updateLevel
@@ -274,7 +274,7 @@ class AccountsProcessor(
 
     val toBeFetched = keepMostRecent(sorted)
 
-    process(toBeFetched)
+    process(sorted)
   }
 
   /** Fetches and stores all accounts from the latest blocks still in the checkpoint */
@@ -287,7 +287,7 @@ class AccountsProcessor(
         logger.info(
           s"I loaded all of ${checkpoints.size} checkpointed ids from the DB and will proceed to fetch updated accounts information from the chain"
         )
-        process(checkpoints, onlyProcessLatest = true).map(_ => Done)
+        process(checkpoints, onlyProcessLatest = false).map(_ => Done)
       } else {
         logger.info("No data to fetch from the accounts checkpoint")
         Future.successful(Done)
