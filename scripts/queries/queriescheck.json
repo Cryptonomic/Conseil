@@ -1,0 +1,32 @@
+[
+  {
+    "title": "Top accounts",
+    "variables": "",
+    "path": "/v2/data/tezos/#S.network##>/accounts",
+    "query": {
+      "fields": [
+        "account_id",
+        "balance"
+      ],
+      "predicates": [],
+      "orderBy": [
+        {
+          "field": "balance",
+          "direction": "desc"
+        }
+      ],
+      "aggregation": [],
+      "limit": 50,
+      "output": "json"
+    },
+    "check": {
+      "node": "/chains/main/blocks/#S.clevel#/context/contracts/#Q.account_id#/balance",
+      "compare": {
+        "op": "eq",
+        "field_1": "#N.nodeoutput##",
+        "field_2": "#Q.balance",
+        "error": "balance dont match #Q.account_id##, #Math.10 (Q.balance - N) / N ) * 100##"
+      }
+    }
+  }
+]
