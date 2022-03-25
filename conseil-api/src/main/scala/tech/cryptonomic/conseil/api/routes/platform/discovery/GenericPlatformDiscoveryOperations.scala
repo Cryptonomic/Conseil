@@ -17,7 +17,6 @@ import tech.cryptonomic.conseil.common.metadata._
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 import cats.effect.unsafe.implicits.global
-import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 
 /** Companion object providing apply method implementation */
 object GenericPlatformDiscoveryOperations {
