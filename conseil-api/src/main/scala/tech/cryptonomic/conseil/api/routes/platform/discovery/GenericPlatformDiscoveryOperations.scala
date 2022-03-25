@@ -8,12 +8,7 @@ import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.api.routes.platform.Sanitizer
 import tech.cryptonomic.conseil.api.sql.DefaultDatabaseOperations._
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
-  AttributesValidationError,
-  HighCardinalityAttribute,
-  InvalidAttributeDataType,
-  InvalidAttributeFilterLength
-}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{AttributesValidationError, HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.common.generic.chain.{DBIORunner, PlatformDiscoveryOperations}
@@ -21,8 +16,8 @@ import tech.cryptonomic.conseil.common.metadata._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
-
 import cats.effect.unsafe.implicits.global
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 
 /** Companion object providing apply method implementation */
 object GenericPlatformDiscoveryOperations {
@@ -54,15 +49,11 @@ class GenericPlatformDiscoveryOperations(
   /** Method for initializing values of the cache */
   def init(config: List[(Platform, Network)]): Future[Unit] = {
     val entities = preCacheEntities(config)
-
     val attributes = preCacheAttributes(config)
-
-    val attributeValues = preCacheAttributeValues(config)
 
     (
       entities flatMap caching.fillEntitiesCache,
-      attributes flatMap caching.fillAttributesCache,
-      attributeValues flatMap caching.fillAttributeValuesCache
+      attributes flatMap caching.fillAttributesCache
     ).tupled.void.unsafeToFuture
   }
 
@@ -156,10 +147,11 @@ class GenericPlatformDiscoveryOperations(
     * @param  xs list of platform-network pairs for which we want to fetch attribute values
     * @return database action with attribute values to be cached
     */
-  private def preCacheAttributeValues(xs: List[(Platform, Network)]): IO[AttributeValuesCache] =
+  def initAttributeValuesCache(xs: List[(Platform, Network)]): Future[AttributeValuesCache] = {
     xs.map { case (platform, network) =>
       IO.fromFuture(IO(dbRunners(platform.name, network.name).runQuery(preCacheAttributeValues(platform, network))))
     }.sequence.map(_.reduce(_ ++ _))
+  }.unsafeToFuture()
 
   /** Pre-caching attribute values from slick for specific platform
     *

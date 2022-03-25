@@ -232,6 +232,11 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
         case Failure(exception) => logger.error("Pre-caching attributes failed", exception)
         case Success(_) => logger.info("Pre-caching attributes successful!")
       }
+
+      cachedDiscoveryOperations.initAttributeValuesCache(visibleNetworks).onComplete {
+        case Failure(exception) => logger.error("Pre-caching attribute values failed", exception)
+        case Success(_) => logger.info("Pre-caching attribute values successful!")
+      }
     } else {
       throw NoNetworkEnabledError(
         """|Pre-caching can't be done, because there is no enabled block-chain defined.
