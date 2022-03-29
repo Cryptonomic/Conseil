@@ -58,6 +58,8 @@ class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupp
     ExceptionHandler { case e: Throwable =>
       val response = HttpResponse(InternalServerError)
 
+      logger.info(s"Request with CorrelationId $correlationId faled with 500, current request map: ${requestInfoMap.get.unsafeRunSync()}" )
+      
       requestMapModify(
         modify = _.filterNot(_._1 == correlationId)
       ) { values =>
