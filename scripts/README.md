@@ -4,13 +4,21 @@
 ## Usage
 
 ```sh
+source querycheck.fish
 check -k 'hooman' -n 'ithacanet' -h 'http://127.0.0.1:1338' -N 'http://127.0.0.1:8732' -f queries/queriescheck.json -i 0
 ```
 
-##### Example Query 
+| Command Line Option | Description       |
+|---------------------|-------------------|
+| -k                  | Conseil Api Key   |
+| -n                  | Tezos Network     |
+| -h                  | Conseil Ip & Port |
+| -N                  | Tezos Api & Port  |
+| -f                  | JSON Query file using DSL |
+| -i                  | Index of Query to run |
 
-queries/querycheck.json
 
+##### Example Query File 
 
 ```json
 [
@@ -47,5 +55,4 @@ queries/querycheck.json
   }
 ]
 ```
-
 
