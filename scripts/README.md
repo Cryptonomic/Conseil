@@ -113,8 +113,8 @@ Each QueryObject in the array above needs to be defined as follows
 |type                            | Type of check to perform  **compare** (for comparison)                         |
 |relation                        |**1:N** : for 1 query to conseil we query the node N times|
 |op                               | Type of op to perform e.g. **eq** (for equality)                               |
-|field_1                          | Definition of Field_1 in **DSL**                               |
-|field_2                          | Definition of Field_2 in **DSL**                             |
+|field_1                          | Definition of Field_1 in (***Code Block***)                               |
+|field_2                          | Definition of Field_2 in (***Code Block***)                             |
 |error                            | Message To Display if Test Fails     ***(Allows Code Insert)***                            |
 |ok                               | Message To Display if Test succeeds    ***(Allows Code Insert)***                            |
 
@@ -123,20 +123,27 @@ Each QueryObject in the array above needs to be defined as follows
 
 ### Code Insert
 
-Code written Conseil Testing DSL can be inserted in between plain text
-string of the fields mentioned above . simply by wrapping the Code
-between **\#**  and  **\#\#**
+Code block(s) written Conseil Testing DSL can be inserted in between a 
+string of the relevant field mentioned above , by wrapping the Code between
+<mark>**\#**</mark>  and  <mark>**\#\#**</mark>. Furthermore, multiple code Inserts can exist within the same
+field separated by string content.
+
 ```console
-#code goes here## 
+#Code Block## 
 ```
 
-
-
-```json
-{"path": "/v2/data/tezos/#S.network##/accounts"}
-```
-
-### Language
+> e.g.
+> ```json
+> {"path": "/v2/data/tezos/#S.network##/accounts"}
+> ```
+> 
+> gets translated into 
+> 
+> ```json
+> {"path": "/v2/data/tezos/ithacanet/accounts"}
+> ```
+>if the script was run with ***ithacanet*** as the network argument
+### Code Block
 
 #### S
 
