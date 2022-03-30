@@ -1,6 +1,15 @@
 
 # Conseil Testing DSL
 
+## requirements
+The interpreter is written for fish shell and will work on Mac OS and Linux.
+
+- <mark>fish</mark>
+- <mark>jq</mark>
+- <mark>gsed</mark>
+- <mark>curl</mark>
+
+
 ## Usage
 
 ```sh
@@ -13,12 +22,12 @@ check -k 'hooman' -n 'ithacanet' -h 'http://127.0.0.1:1338' -N 'http://127.0.0.1
 | -k                  | Conseil API Key   |
 | -n                  | Tezos Network     |
 | -h                  | Conseil IP & Port |
-| -N                  | Tezos Api & Port  |
+| -N                  | Tezos node & Port |
 | -f                  | Path to custom JSON file using the DSL |
-| -i                  | Index of Query to run |
+| -i                  | Index of query to run |
 
 
-#### Example Query File 
+##### Example JSON Query File 
 
 ```json
 [
@@ -59,43 +68,89 @@ check -k 'hooman' -n 'ithacanet' -h 'http://127.0.0.1:1338' -N 'http://127.0.0.1
 
 #### Query File Format
 
-The Query file is created in JSON format, and has the following format
+The Query file is created in JSON format, and is an array
+carrying the following format
 
 ```
-[ QueryObeject1 , QueryObject2, .... QueryObjectN ]
+[ 
+  QueryObject1,
+  QueryObject2, 
+  ...         
+  QueryObjectN
+]
+
 ```
 
-Each QueryObject in the array needs to be defined as follows 
+Each QueryObject in the array above needs to be defined as follows 
 
 
-
-| Field                           | Description                     |
-|---------------------------------|---------------------------------|
-|title                            |                                 |
-|path                             |                                 |
-|query                            |                                 |
-|**check**                            |                                 |
-
-
-###### check :
+##### QueryObject
 
 
 | Field                           | Description                     |
 |---------------------------------|---------------------------------|
-|node                            |                                 |
-|**operation**                       |                                 |
+|title                            | Tile of the Query               |
+|path                             | A Conseil POST path ***(Allows Code Insert)***            |
+|query                            | Conseil Query for the Path                                |
+|**check**                        | an Array of Check objects  *[check1 , check2, ...]*             |
 
 
-###### operation :
+
+###### **check** object 
 
 
 | Field                           | Description                     |
 |---------------------------------|---------------------------------|
-|type                            |                                 |
-|relation                        |                                 |
-|op                               |                                 |
-|field_1                          |                                 |
-|field_2                          |                                 |
-|error                            |                                 |
-|ok                               |                                 |
+|node                            | RPC path of node to test against   ***(Allows Code Insert)*** |
+|**operation**                   | The object defining our test                             |
+
+
+###### operation object 
+
+
+| Field                           | Description                     |
+|---------------------------------|---------------------------------|
+|type                            | Type of check to perform  **compare** (for comparison)                         |
+|relation                        |**1:N** : for 1 query to conseil we query the node N times|
+|op                               | Type of op to perform e.g. **eq** (for equality)                               |
+|field_1                          | Definition of Field_1 in **DSL**                               |
+|field_2                          | Definition of Field_2 in **DSL**                             |
+|error                            | Message To Display if Test Fails     ***(Allows Code Insert)***                            |
+|ok                               | Message To Display if Test succeeds    ***(Allows Code Insert)***                            |
+
+
+## DSL
+
+### Code Insert
+
+Code written Conseil Testing DSL can be inserted in between plain text
+string of the fields mentioned above . simply by wrapping the Code
+between **\#**  and  **\#\#**
+```console
+#code goes here## 
+```
+
+
+
+```json
+{"path": "/v2/data/tezos/#S.network##/accounts"}
+```
+
+### Language
+
+#### S
+
+#### Q
+
+#### N
+
+#### Math
+
+##### Precision
+
+##### Defining and using variables
+
+
+###### Math..
+
 
