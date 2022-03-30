@@ -8,23 +8,22 @@ source querycheck.fish
 check -k 'hooman' -n 'ithacanet' -h 'http://127.0.0.1:1338' -N 'http://127.0.0.1:8732' -f queries/queriescheck.json -i 0
 ```
 
-| Command Line Option | Description       |
+| Option              | Description       |
 |---------------------|-------------------|
-| -k                  | Conseil Api Key   |
+| -k                  | Conseil API Key   |
 | -n                  | Tezos Network     |
-| -h                  | Conseil Ip & Port |
+| -h                  | Conseil IP & Port |
 | -N                  | Tezos Api & Port  |
-| -f                  | JSON Query file using DSL |
+| -f                  | Path to custom JSON file using the DSL |
 | -i                  | Index of Query to run |
 
 
-##### Example Query File 
+#### Example Query File 
 
 ```json
 [
   {
     "title": "Top accounts",
-    "variables": "",
     "path": "/v2/data/tezos/#S.network##/accounts",
     "query": {
       "fields": ["account_id", "balance"],
@@ -54,5 +53,49 @@ check -k 'hooman' -n 'ithacanet' -h 'http://127.0.0.1:1338' -N 'http://127.0.0.1
       }    ]
   }
 ]
+
 ```
+
+
+#### Query File Format
+
+The Query file is created in JSON format, and has the following format
+
+```
+[ QueryObeject1 , QueryObject2, .... QueryObjectN ]
+```
+
+Each QueryObject in the array needs to be defined as follows 
+
+
+
+| Field                           | Description                     |
+|---------------------------------|---------------------------------|
+|title                            |                                 |
+|path                             |                                 |
+|query                            |                                 |
+|**check**                            |                                 |
+
+
+###### check :
+
+
+| Field                           | Description                     |
+|---------------------------------|---------------------------------|
+|node                            |                                 |
+|**operation**                       |                                 |
+
+
+###### operation :
+
+
+| Field                           | Description                     |
+|---------------------------------|---------------------------------|
+|type                            |                                 |
+|relation                        |                                 |
+|op                               |                                 |
+|field_1                          |                                 |
+|field_2                          |                                 |
+|error                            |                                 |
+|ok                               |                                 |
 
