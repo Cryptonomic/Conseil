@@ -306,7 +306,7 @@ imported into its scope from the previous field containing a *MathBlock* . For e
 	"field_1" : "Math.2 a = 1, a",
 	"field_2" : "Math.. a"
 
-Here since, `field_1` is processed before `field_2` when using `Math..`
+Since `field_1` is processed before `field_2` when using `Math..`
 `field_2 ` inherits `a` or any other variables defined in `field_1`
 
 ### Order of processing of Code/Insert fields
