@@ -252,7 +252,7 @@ identifiers are available
 > 
 >
 > Since we are using **1:N** as a relation , the language will assume 
-> that the request has to be made to node for each Array member in
+> that the request has to be made to node for each array member in
 > Conseil's reponse. 
 >
 > `N.field` would produce
