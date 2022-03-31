@@ -143,13 +143,113 @@ field separated by string content.
 > {"path": "/v2/data/tezos/ithacanet/accounts"}
 > ```
 >if the script was run with ***ithacanet*** as the network argument
+
 ### Code Block
+A Code Block may start with any of the following Identifiers
+ - S
+ - Q
+ - N
+ - Math
 
 #### S
+Identifier **S** stands for system query. The following system variable are
+available 
+
+| System Identifier      | Description                           |
+|------------------------|------------------------------------------|
+|    S.network           |    The network command line argument value  |
+|    S.clevel            |    The block level Conseil's head is at the time of the query|
+
 
 #### Q
 
+Identifier **Q** stands for Conseil query. The following Conseil Query
+variable are available 
+
+| System Identifier      | Description                           |
+|------------------------|------------------------------------------|
+|    Q.out               |    Output Conseil JSON response as is  |
+|    Q.*                 |    here * represents the field to use from the returned Query Object|
+
+> E.g. 
+>
+> Conseil response: 
+>
+> ```json
+> [
+>   {
+>     "account_id": "tz1KhnTgwoRRALBX6vRHRnydDGSBFsWtcJxc",
+>     "balance": 4998930345068662
+>   },
+>   {
+>     "account_id": "tz1foxFdz2ieSj8P9YxKYBTEqYbgFXXEeiQY",
+>     "balance": 4992349998899399
+>   }
+> ]
+> ```
+>
+> Q.out will return the response as is 
+> ```json
+> [
+>   {
+>     "account_id": "tz1KhnTgwoRRALBX6vRHRnydDGSBFsWtcJxc",
+>     "balance": 4998930345068662
+>   },
+>   {
+>     "account_id": "tz1foxFdz2ieSj8P9YxKYBTEqYbgFXXEeiQY",
+>     "balance": 4992349998899399
+>   }
+> ]
+> ```
+>
+>
+> Since we are using **1:N** as a relation , the language will assume 
+> that the response from Conseil is an array with **N** entries which have 
+> to be checked by making **N** calls to the node. And hence maps the
+> Field Key over the array
+>
+>
+> Q.account_id would produce
+>	
+>      tz1KhnTgwoRRALBX6vRHRnydDGSBFsWtcJxc
+>      tz1foxFdz2ieSj8P9YxKYBTEqYbgFXXEeiQY
+
 #### N
+
+Identifier **N** stands for Tezos Node query. The following Tezos Node Query
+variable are available 
+
+| System Identifier      | Description                           |
+|------------------------|------------------------------------------|
+|    N.out               |    Output Node's JSON response as is  |
+|    N.*                 |    here * represents the field to use from the returned Node Object|
+
+> E.g. 
+>
+> Node response: 
+>
+> ```json
+>   {
+>     "field": "value",
+>   }
+> ```
+>
+> N.out will return the response as is 
+>
+> ```json
+>   {
+>     "field": "value",
+>   }
+> ```
+>
+>
+> Since we are using **1:N** as a relation , the language will assume 
+> that the request has to be made to node for each Array member in
+> Conseil's reponse >
+>
+> N.field would produce
+>	
+>      value
 
 #### Math
 
