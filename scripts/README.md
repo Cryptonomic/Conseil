@@ -8,6 +8,7 @@ The interpreter is written for fish shell and will work on Mac OS and Linux.
 - <mark>jq</mark>
 - <mark>gsed</mark>
 - <mark>curl</mark>
+- <mark>bc (*installed by default on most linux systems*)</mark>
 
 
 ## Usage
@@ -91,21 +92,21 @@ Each QueryObject in the array above needs to be defined as follows
 |---------------------------------|---------------------------------|
 |title                            | Tile of the Query               |
 |path                             | A Conseil POST path ***(Allows Code Insert)***            |
-|query                            | Conseil Query for the Path                                |
-|**check**                        | an Array of Check objects  *[check1 , check2, ...]*             |
+|query                            | Conseil Query for the Path Above                               |
+|**check**                        | an Array of CheckObjects  *[CheckObject1 , CheckObject2, ...]*             |
 
 
 
-###### **check** object 
+###### [CheckObject] 
 
 
 | Field                           | Description                     |
 |---------------------------------|---------------------------------|
 |node                            | RPC path of node to test against   ***(Allows Code Insert)*** |
-|**operation**                   | The object defining our test                             |
+|**operation**                   | The OperationObject defining our test                             |
 
 
-###### operation object 
+###### OperationObject 
 
 
 | Field                           | Description                     |
@@ -152,7 +153,7 @@ A Code Block may start with any of the following Identifiers
  - Math
 
 #### S
-Identifier **S** stands for system query. The following system variable are
+Identifier **S** stands for system query. The following system identifiers are
 available 
 
 | System Identifier      | Description                           |
@@ -164,9 +165,9 @@ available
 #### Q
 
 Identifier **Q** stands for Conseil query. The following Conseil Query
-variable are available 
+identifiers are available 
 
-| System Identifier      | Description                           |
+| Query Identifier      | Description                           |
 |------------------------|------------------------------------------|
 |    Q.out               |    Output Conseil JSON response as is  |
 |    Q.*                 |    here * represents the field to use from the returned Query Object|
@@ -217,9 +218,9 @@ variable are available
 #### N
 
 Identifier **N** stands for Tezos Node query. The following Tezos Node Query
-variable are available 
+identifiers are available 
 
-| System Identifier      | Description                           |
+| Node Identifier      | Description                           |
 |------------------------|------------------------------------------|
 |    N.out               |    Output Node's JSON response as is  |
 |    N.*                 |    here * represents the field to use from the returned Node Object|
@@ -227,37 +228,78 @@ variable are available
 > E.g. 
 >
 > Node response: 
->
-> ```json
->   {
->     "field": "value",
->   }
-> ```
->
+> 
+>  ```json
+>    {
+>      "field": "value",
+>      "child" : {
+> 	      "field": "childValue"
+>       }
+>    }
+>  ```
+> 
 > N.out will return the response as is 
->
-> ```json
->   {
->     "field": "value",
->   }
-> ```
->
+> 
+>  ```json
+>    {
+>      "field": "value",
+>      "child" : {
+> 	      "field": "childValue"
+>       }
+>    }
+>  ```
+> 
 >
 > Since we are using **1:N** as a relation , the language will assume 
 > that the request has to be made to node for each Array member in
-> Conseil's reponse >
+> Conseil's reponse. 
 >
-> N.field would produce
+> `N.field` would produce
 >	
 >      value
+> `N.child.field` would produce
+>	
+>      childValue
 
 #### Math
 
-##### Precision
+
+|  Math Identifier      | Description                           |
+|------------------------|------------------------------------------|
+|    Math.precision   *MathBlock*       | Where precision is a natural number, `Math.18` means output in 18 decimal places   |
+|    Math..           *MathBlock*       | Inherit the *MathBlock* State Space from the previous field |
+
+
+##### MathBlock
+
+The MathBlock contains a series of statements separated by <mark>,</mark>
+
+     Statement1, Statement2, ... , StatementN
+
+
+The MathBlock code is first scanned for any S,N or Q identifiers, and
+the identifiers are replaced with the queried  values and finally fed to
+bc [ *link to bc man page* ](https://man.archlinux.org/man/bc.1.en)
+and all standard math operations and functions from bc are available. 
 
 ##### Defining and using variables
 
 
+    Examples
+    
+    Math.2 a = 1 , b = 2 , a + b
+
+    Math.18 a = N.out , b = Q.balance , a - b
+
+    Math.3  a = 1 , a 
+
+
+The last statement must end with a variable name or a math operation whose output
+is to be used in the Code insert or the Code field
+
 ###### Math..
 
+
+
+## TODO
 
