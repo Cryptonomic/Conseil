@@ -189,7 +189,7 @@ identifiers are available
 > ]
 > ```
 >
-> Q.out will return the response as is 
+> `Q.out` will return the response as is 
 > ```json
 > [
 >   {
@@ -210,7 +210,7 @@ identifiers are available
 > check over the returned Conseil array array
 >
 >
-> Q.account_id would map the check over 
+> `Q.account_id ` would map the check over 
 >	
 >      tz1KhnTgwoRRALBX6vRHRnydDGSBFsWtcJxc
 >      tz1foxFdz2ieSj8P9YxKYBTEqYbgFXXEeiQY
