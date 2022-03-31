@@ -249,6 +249,7 @@ private[tezos] object TezosDatabaseConversions {
           convertBallot orElse
           convertProposals orElse
           convertRegisterGlobalConstant orElse
+          convertSetDepositsLimit orElse
           convertUnhandledOperations)(from)
     }
 

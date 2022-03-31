@@ -8,12 +8,7 @@ import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.api.routes.platform.Sanitizer
 import tech.cryptonomic.conseil.api.sql.DefaultDatabaseOperations._
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
-  AttributesValidationError,
-  HighCardinalityAttribute,
-  InvalidAttributeDataType,
-  InvalidAttributeFilterLength
-}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{AttributesValidationError, HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.common.generic.chain.{DBIORunner, PlatformDiscoveryOperations}
@@ -21,8 +16,8 @@ import tech.cryptonomic.conseil.common.metadata._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
-
 import cats.effect.unsafe.implicits.global
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 
 /** Companion object providing apply method implementation */
 object GenericPlatformDiscoveryOperations {
@@ -45,7 +40,7 @@ class GenericPlatformDiscoveryOperations(
     cacheTTL: FiniteDuration,
     highCardinalityLimit: Int
 )(implicit executionContext: ExecutionContext)
-    extends PlatformDiscoveryOperations {
+    extends PlatformDiscoveryOperations with ConseilLogSupport {
 
   import MetadataCaching._
   import cats.effect._
@@ -54,15 +49,11 @@ class GenericPlatformDiscoveryOperations(
   /** Method for initializing values of the cache */
   def init(config: List[(Platform, Network)]): Future[Unit] = {
     val entities = preCacheEntities(config)
-
     val attributes = preCacheAttributes(config)
-
-    val attributeValues = preCacheAttributeValues(config)
 
     (
       entities flatMap caching.fillEntitiesCache,
-      attributes flatMap caching.fillAttributesCache,
-      attributeValues flatMap caching.fillAttributeValuesCache
+      attributes flatMap caching.fillAttributesCache
     ).tupled.void.unsafeToFuture
   }
 
@@ -156,10 +147,11 @@ class GenericPlatformDiscoveryOperations(
     * @param  xs list of platform-network pairs for which we want to fetch attribute values
     * @return database action with attribute values to be cached
     */
-  private def preCacheAttributeValues(xs: List[(Platform, Network)]): IO[AttributeValuesCache] =
+  def initAttributeValuesCache(xs: List[(Platform, Network)]): Future[AttributeValuesCache] = {
     xs.map { case (platform, network) =>
       IO.fromFuture(IO(dbRunners(platform.name, network.name).runQuery(preCacheAttributeValues(platform, network))))
     }.sequence.map(_.reduce(_ ++ _))
+  }.unsafeToFuture()
 
   /** Pre-caching attribute values from slick for specific platform
     *
@@ -170,8 +162,10 @@ class GenericPlatformDiscoveryOperations(
     DBIO.sequence {
       cacheOverrides.getAttributesToCache.collect {
         case (schema, network.name, table, column) if schema == platform.name =>
+          logger.info(s"Precaching attribute values $platform $network")
           selectDistinct(platform.name, table, column).map { values =>
             val radixTree = RadixTree(values.map(x => x.toLowerCase -> x): _*)
+            logger.info(s"Precaching attribute values finished $platform $network")
             AttributeValuesCacheKey(platform.name, network.name, table, column) -> CacheEntry(now, radixTree)
           }
       }
@@ -190,6 +184,7 @@ class GenericPlatformDiscoveryOperations(
         if (!cacheExpired(last)) {
           IO.pure(ent)
         } else {
+          logger.info(s"GE Cache expired $networkPath")
           (for {
             _ <- caching.putEntities(key, ent)
             updatedEntities <- IO.fromFuture(
@@ -334,6 +329,7 @@ class GenericPlatformDiscoveryOperations(
         case Some(CacheEntry(last, radixTree)) if !cacheExpired(last) =>
           IO.pure(radixTree.filterPrefix(attributeFilter.toLowerCase).values.take(maxResultLength).toList)
         case Some(CacheEntry(_, oldRadixTree)) =>
+          logger.info(s"Attribute values cache expired $platform $network $tableName $columnName $attributeFilter")
           (for {
             _ <- caching.putAttributeValues(
               AttributeValuesCacheKey(platform, network, tableName, columnName),
@@ -345,6 +341,7 @@ class GenericPlatformDiscoveryOperations(
               AttributeValuesCacheKey(platform, network, tableName, columnName),
               radixTree
             )
+            _ = logger.info(s"Attribute values cache updated $platform $network $tableName $columnName $attributeFilter")
           } yield ()).unsafeRunAndForget()
           IO.pure(oldRadixTree.filterPrefix(attributeFilter).values.take(maxResultLength).toList)
         case None =>
@@ -393,6 +390,7 @@ class GenericPlatformDiscoveryOperations(
               if (!cacheExpired(last)) {
                 IO.pure(attributes)
               } else {
+                logger.info(s"GTA Cache expired $entityPath")
                 (for {
                   _ <- caching.putAttributes(key, attributes)
                   updatedAttributes <- IO.fromFuture(IO(getUpdatedAttributes(entityPath, attributes)))
@@ -405,6 +403,7 @@ class GenericPlatformDiscoveryOperations(
           .unsafeToFuture()
       } else {
         // if caching is not finished cardinality should be set to None
+        logger.info(s"GTA Caching did not finish $entityPath")
         getTableAttributesWithoutUpdatingCache(entityPath).map(_.map(_.map(_.copy(cardinality = None))))
       }
     }.unsafeToFuture().flatten
@@ -419,13 +418,15 @@ class GenericPlatformDiscoveryOperations(
     * @param  entityPath path of the table from which we extract attributes
     * @return list of attributes as a Future
     */
-  override def getTableAttributesWithoutUpdatingCache(entityPath: EntityPath): Future[Option[List[Attribute]]] =
+  override def getTableAttributesWithoutUpdatingCache(entityPath: EntityPath): Future[Option[List[Attribute]]] = {
+    logger.info(s"Getting attributes cache without updating $entityPath")
     caching
       .getAttributes(AttributesCacheKey(entityPath.up.up.platform, entityPath.up.network, entityPath.entity))
       .map { attrOpt =>
         attrOpt.map(_.value)
       }
       .unsafeToFuture()
+  }
 
   /** Runs query and attributes with updated counts */
   private def getUpdatedAttributes(entityPath: EntityPath, columns: List[Attribute]): Future[List[Attribute]] =

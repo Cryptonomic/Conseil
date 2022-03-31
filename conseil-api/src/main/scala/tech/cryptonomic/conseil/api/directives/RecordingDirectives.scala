@@ -22,11 +22,11 @@ class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupp
 
   private def requestMapModify[A](
       modify: RequestMap => RequestMap
-  )(useValues: RequestValues => A)(implicit correlationId: UUID) =
+  )(useValues: Option[RequestValues] => A)(implicit correlationId: UUID) =
     for {
       map <- requestInfoMap.get
       _ <- requestInfoMap.update(_ => modify(map))
-    } yield useValues(map(correlationId))
+    } yield  useValues(map.get(correlationId))
 
   /** Directive adding recorded values to the MDC */
   def recordResponseValues(ip: RemoteAddress, stringEntity: String)(implicit correlationId: UUID): Directive[Unit] =
@@ -46,7 +46,7 @@ class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupp
         requestMapModify(
           modify = _.filterNot(_._1 == correlationId)
         ) { values =>
-          values.logResponse(resp)
+          values.map(_.logResponse(resp))
         }.unsafeRunAndForget()
         resp
       }
@@ -58,10 +58,12 @@ class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupp
     ExceptionHandler { case e: Throwable =>
       val response = HttpResponse(InternalServerError)
 
+      logger.info(s"Request with CorrelationId $correlationId failed with 500, current request map: ${requestInfoMap.get.unsafeRunSync()}" )
+
       requestMapModify(
         modify = _.filterNot(_._1 == correlationId)
       ) { values =>
-        values.logResponse(response, Some(e))
+        values.map(_.logResponse(response, Some(e)))
       }.unsafeRunAndForget()
       complete(response)
     }
@@ -70,10 +72,12 @@ class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupp
   def timeoutHandler(route: => Route)(implicit correlationId: UUID): Route =
     withRequestTimeoutResponse { _ =>
       val response = HttpResponse(StatusCodes.ServiceUnavailable, entity = HttpEntity("Request timeout"))
+      logger.info(s"Request with CorrelationId $correlationId failed with 503, current request map: ${requestInfoMap.get.unsafeRunSync()}" )
+
       requestMapModify(
         modify = _.filterNot(_._1 == correlationId)
       ) { values =>
-        values.logResponse(response)
+        values.map(_.logResponse(response))
       }.unsafeRunAndForget()
       response
     }(route)

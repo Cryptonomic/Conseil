@@ -5,6 +5,7 @@ import cats.effect.{Concurrent, Ref}
 import com.rklaehn.radixtree.RadixTree
 import tech.cryptonomic.conseil.common.cache.MetadataCaching._
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
+import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 
 /** Companion object providing useful types related with MetadataCaching */
 object MetadataCaching {
@@ -66,7 +67,7 @@ class MetadataCaching[F[_]: Monad](
     attributesCache: Ref[F, AttributesCache],
     entitiesCache: Ref[F, EntitiesCache],
     attributeValuesCache: Ref[F, AttributeValuesCache]
-) {
+) extends ConseilLogSupport {
 
   import cats.implicits._
 
@@ -101,8 +102,10 @@ class MetadataCaching[F[_]: Monad](
     getFromCache(attributeValuesCache)(key)
 
   /** Inserts entities into cache */
-  def putEntities(key: EntitiesCacheKey, entities: List[Entity]): F[Boolean] =
+  def putEntities(key: EntitiesCacheKey, entities: List[Entity]): F[Boolean] = {
+    logger.info(s"PE putting entities into cache $key $entities")
     putIntoCache(key, entities)(entitiesCache)
+  }
 
   /** Inserts all entities into cache */
   def putAllEntities: EntitiesCache => F[Unit] = updateVar(entitiesCache)
