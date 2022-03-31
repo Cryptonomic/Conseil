@@ -268,7 +268,7 @@ identifiers are available
 |  Math Identifier      | Description                           |
 |------------------------|------------------------------------------|
 |    Math.precision   *MathBlock*       | Where precision is a natural number, `Math.18` means output in 18 decimal places   |
-|    Math..           *MathBlock*       | Inherit the *MathBlock* State Space from the previous field |
+|    Math..           *MathBlock*       | Inherit the *MathBlock* scope from the previous field |
 
 
 ##### MathBlock
