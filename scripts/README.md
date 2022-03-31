@@ -34,6 +34,7 @@ check -k 'hooman' -n 'ithacanet' -h 'http://127.0.0.1:1338' -N 'http://127.0.0.1
 [
   {
     "title": "Top accounts",
+    "variables": "",
     "path": "/v2/data/tezos/#S.network##/accounts",
     "query": {
       "fields": ["account_id", "balance"],
@@ -52,20 +53,19 @@ check -k 'hooman' -n 'ithacanet' -h 'http://127.0.0.1:1338' -N 'http://127.0.0.1
       {
         "node": "/chains/main/blocks/#S.clevel##/context/contracts/#Q.account_id##/balance",
         "operation": {
-	  "type": "compare",
+          "type": "compare",
           "relation": "1:N",
           "op": "eq",
           "field_1": "N.out",
           "field_2": "Q.balance",
-          "error": "balance dont match #Q.account_id##, #Math.10 (Q.balance - N.out) / N.out  * 100##",
-	  "ok" : " ... ok #Math.3 a = Q.balance , a / 77##"
+          "error": "The balance does not  match for #Q.account_id##, percentage difference #Math.10 (Q.balance - N.out) / N.out  * 100##%",
+          "ok": "The Balances returned by Conseil and the Tezos Node Match"
         }
-      }    ]
+      }
+    ]
   }
 ]
-
 ```
-
 
 #### Query File Format
 
@@ -319,4 +319,12 @@ Here since, `field_1` is processed before `field_2` when using `Math..`
 	
 
 ## TODO
+
+This is only a ***proof of concept***. Naturally writing an interpreter in any
+shell scripting language is not advisable , because of the performance
+hit. 
+
+A large part of the performance hit comes for the use of ***for loops*** to
+process the code , moving these for loops from fish into jq might achieve a
+drastic performance boost.
 
