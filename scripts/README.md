@@ -295,11 +295,28 @@ and all standard math operations and functions from bc are available.
 
 
 The last statement must end with a variable name or a math operation whose output
-is to be used in the Code insert or the Code field
+is to be used in a Code insert or field_1/field_2
 
 ###### Math..
 
+Code Block starting with Math.. Has all the variable definitions
+imported into its scope . For example 
 
+	"field_1" : "Math.2 a = 1, a",
+	"field_2" : "Math.. a"
+
+Here since, `field_1` is processed before `field_2` when using `Math..`
+`field_2 ` inherits `a` or any other variables defined in `field_1`
+
+### Order of processing of Code/Insert fields
+ 
+ 1. **.path** 
+ 2. **.check.node** 
+ 3. **.check.operation.field_1** 
+ 4. **.check.operation.field_2**
+ 5. **.check.operation.ok** *or* **.check.operation.error**
+
+	
 
 ## TODO
 
