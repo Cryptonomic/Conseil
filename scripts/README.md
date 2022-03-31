@@ -206,11 +206,11 @@ identifiers are available
 >
 > Since we are using **1:N** as a relation , the language will assume 
 > that the response from Conseil is an array with **N** entries which have 
-> to be checked by making **N** calls to the node. And hence maps the
-> Field Key over the array
+> to be checked by making **N** calls to the node. And hence,  maps the
+> check over the returned Conseil array array
 >
 >
-> Q.account_id would produce
+> Q.account_id would map the check over 
 >	
 >      tz1KhnTgwoRRALBX6vRHRnydDGSBFsWtcJxc
 >      tz1foxFdz2ieSj8P9YxKYBTEqYbgFXXEeiQY
