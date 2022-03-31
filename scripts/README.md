@@ -4,10 +4,11 @@
 ## requirements
 The interpreter is written for fish shell and will work on Mac OS and Linux.
 
-- <mark>fish</mark>
-- <mark>jq</mark>
-- <mark>gsed</mark>
-- <mark>curl</mark>
+- fish
+- jq
+- gsed
+- curl
+- pastel
 - <mark>bc (*installed by default on most linux systems*)</mark>
 
 
