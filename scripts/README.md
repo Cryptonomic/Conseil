@@ -1,7 +1,7 @@
 
 # Conseil Testing DSL
 
-## requirements
+## Requirements
 The interpreter is written for fish shell and will work on Mac OS and Linux.
 
 - fish
