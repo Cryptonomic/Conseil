@@ -10,8 +10,8 @@ function tezos-test
                 set -gx apikey $value
             case h host
                 set -gx host $value
-	    case N node
-	        set -gx node $value
+            case N node
+                set -gx node $value
         end
 
     end
@@ -44,7 +44,7 @@ function remove-double-qoute
 end
 
 function get-head-level
-	get (block_head) | jq '.level'
+    get (block_head) | jq '.level'
 end
 
 function get
@@ -53,73 +53,73 @@ function get
 end
 
 function post
-curl -s -H 'Content-Type: application/json' -H  'apiKey: hooman' \
-    -X POST $argv[1] \
-    -d  $argv[2]
+    curl -s -H 'Content-Type: application/json' -H 'apiKey: hooman' \
+        -X POST $argv[1] \
+        -d $argv[2]
 end
 function error
-		pastel paint "#ffffff" --on "red" $argv[1]
+    pastel paint "#ffffff" --on red $argv[1]
 end
 
 function highlight
-	 pastel paint "green" --on "yellow"  $argv[1]
+    pastel paint green --on yellow $argv[1]
 end
 
 function highlight2
-	 pastel paint "yellow" --on "grey"  $argv[1]
+    pastel paint yellow --on grey $argv[1]
 end
 function ok
-		pastel paint "white" --on "green"  $argv[1]
+    pastel paint white --on green $argv[1]
 end
-function test_accounts 
-	set block_level (get-head-level)
-	set top_accounts (query $argv)
-	set count (echo $top_accounts | jq '. | length')
-	set idx 0 
-	## breakpoint
-	 
-	read -l -P "Query $title ...." confirm
-	echo $query | jq '.'
-        read -l -P "...." confirm
-	while test $idx -lt $count
-	set this_account (echo $top_accounts | jq ".[$idx] | .account_id") 
-	set this_balance (echo $top_accounts | jq ".[$idx] | .balance") 
-	set node_result (node (spendable-account-balance-at-block (remove-double-qoute $this_account) $block_level))
-	set node_account_balance (remove-double-qoute $node_result)
-	echo "account: $this_account, conseil_balance: $this_balance, node_balance: $node_account_balance "
-	if test $this_balance -ne $node_account_balance
-		echo "Balance don't match between node and conseil for account $this_account"
-		set diff (math $this_balance - $node_account_balance)
-		set percent (math $diff / $node_account_balance x 100) 
-		error "difference of $percent%"
-else 
+function test_accounts
+    set block_level (get-head-level)
+    set top_accounts (query $argv)
+    set count (echo $top_accounts | jq '. | length')
+    set idx 0
+    ## breakpoint
 
-		ok "OK"
-	end
-	set idx (math $idx + 1)
-end
+    read -l -P "Query $title ...." confirm
+    echo $query | jq '.'
+    read -l -P "...." confirm
+    while test $idx -lt $count
+        set this_account (echo $top_accounts | jq ".[$idx] | .account_id")
+        set this_balance (echo $top_accounts | jq ".[$idx] | .balance")
+        set node_result (node (spendable-account-balance-at-block (remove-double-qoute $this_account) $block_level))
+        set node_account_balance (remove-double-qoute $node_result)
+        echo "account: $this_account, conseil_balance: $this_balance, node_balance: $node_account_balance "
+        if test $this_balance -ne $node_account_balance
+            echo "Balance don't match between node and conseil for account $this_account"
+            set diff (math $this_balance - $node_account_balance)
+            set percent (math $diff / $node_account_balance x 100)
+            error "difference of $percent%"
+        else
+
+            ok OK
+        end
+        set idx (math $idx + 1)
+    end
 
 end
 
 function spendable-account-balance-at-block
-	string join '/' 'chains' 'main' 'blocks' $argv[2] 'context' 'contracts' $argv[1] 'balance'
+    string join / chains main blocks $argv[2] context contracts $argv[1] balance
 end
 function account-balance-at-block-2
-	switch $network
-		case 'mainnet'
-			set balance 'balance'
-		case 'ithacanet'
-		    set balance 'full_balance'
-	end
+    switch $network
+        case mainnet
+            set balance balance
+        case ithacanet
+            set balance full_balance
+    end
     set variable $value
-	string join '/' 'chains' 'main' 'blocks' $argv[2] 'context' 'delegates' $argv[1] $balance
+    string join / chains main blocks $argv[2] context delegates $argv[1] $balance
 end
 
 function node
-   curl -s (string join '' $node '/' $argv[1])
+    curl -s (string join '' $node '/' $argv[1])
 end
 
-function query 
+function query
 
     set -l qfile "queries/queries.json"
     set -gx query (jq -c ".[$argv[1]] | .query" $qfile)
@@ -130,9 +130,9 @@ function query
 
 end
 
-    function process_path
-        remove-double-qoute (echo "$argv[1]" | sed -E "s/<network>/$network/")
-    end
+function process_path
+    remove-double-qoute (echo "$argv[1]" | sed -E "s/<network>/$network/")
+end
 function test-post-paths
     function process_path
         remove-double-qoute (echo "$argv[1]" | sed -E "s/<network>/$network/")
@@ -143,12 +143,12 @@ function test-post-paths
     set -l query_path (process_path (jq '.[1] | .path' $qfile))
     set -gx full_path (string join '' $host $query_path)
     function post
-       curl -H 'Content-Type: application/json' -H  'apiKey: hooman' \
+        curl -H 'Content-Type: application/json' -H 'apiKey: hooman' \
             -X POST $full_path \
-	    -d  $query
+            -d $query
     end
     echo "path $query_path \n full path : $full_path"
-    post > query_test_1.json
+    post >query_test_1.json
     jq '.' query_test_1.json
 
 end
@@ -161,8 +161,8 @@ function test-get-path
     get $Path >$file
     set char_count (wc -c $file | awk '{print $1}')
     set json_length (jq '. | length' $file)
-    highlight  (string join '' "Get " ": " $Path)
-    echo "" 
+    highlight (string join '' "Get " ": " $Path)
+    echo ""
     highlight2 (string join '' "Network " ": " $network)
     echo ""
     ok "CONSEIL RESULT: "
