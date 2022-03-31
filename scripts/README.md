@@ -300,7 +300,7 @@ is to be used in a Code insert or field_1/field_2
 ###### Math..
 
 Code Block starting with Math.. Has all the variable definitions
-imported into its scope from the previous containing a *MathBlock* . For example 
+imported into its scope from the previous field containing a *MathBlock* . For example 
 
 	"field_1" : "Math.2 a = 1, a",
 	"field_2" : "Math.. a"
