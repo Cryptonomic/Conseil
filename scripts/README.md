@@ -158,7 +158,7 @@ available
 
 | System Identifier      | Description                           |
 |------------------------|------------------------------------------|
-|    S.network           |    The network command line argument value  |
+|    S.network           |    The network command line argument's value  |
 |    S.clevel            |    The block level Conseil's head is at the time of the query|
 
 
