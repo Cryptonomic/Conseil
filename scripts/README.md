@@ -238,7 +238,7 @@ identifiers are available
 >    }
 >  ```
 > 
-> N.out will return the response as is 
+> `N.out` will return the response as is 
 > 
 >  ```json
 >    {
