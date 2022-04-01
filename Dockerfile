@@ -24,7 +24,7 @@ COPY --chown=builduser:builduser ./conseil-lorre/src /src/conseil-lorre/src
 COPY --chown=builduser:builduser ./build.sbt /src
 COPY --chown=builduser:builduser ./publishing.sbt /src
 WORKDIR /src
-RUN sbt clean assembly -J-Xss32m
+RUN sbt clean assembly -J-Xss32m -J-Xmx2G
 
 FROM openjdk:13-alpine
 RUN apk add --upgrade apk-tools busybox musl-utils

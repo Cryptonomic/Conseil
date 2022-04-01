@@ -100,7 +100,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
           implicit val correlationId: UUID = UUID.randomUUID()
           handleExceptions(loggingExceptionHandler) {
             extractClientIP { ip =>
-              extractStrictEntity(10.seconds) { ent =>
+              extractStrictEntity(20.seconds) { ent =>
                 recordResponseValues(ip, ent.data.utf8String)(correlationId) {
                   timeoutHandler {
                     concat(
@@ -231,6 +231,11 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
       cachedDiscoveryOperations.initAttributesCache(visibleNetworks).onComplete {
         case Failure(exception) => logger.error("Pre-caching attributes failed", exception)
         case Success(_) => logger.info("Pre-caching attributes successful!")
+      }
+
+      cachedDiscoveryOperations.initAttributeValuesCache(visibleNetworks).onComplete {
+        case Failure(exception) => logger.error("Pre-caching attribute values failed", exception)
+        case Success(_) => logger.info("Pre-caching attribute values successful!")
       }
     } else {
       throw NoNetworkEnabledError(
