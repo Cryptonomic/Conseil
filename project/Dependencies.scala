@@ -26,7 +26,7 @@ object Dependencies {
     val monix = "3.4.0"
 
     val cats = "2.6.1"
-    val catsEffect = "3.2.9"
+    val catsEffect = "3.3.9"
 
     val mouse = "0.25"
     val monocle = "2.0.0"
