@@ -34,7 +34,7 @@ class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupp
       (for {
         requestMap <- requestInfoMap.get
         value = RequestValues.fromHttpRequestAndIp(request, ip, stringEntity)
-        filteredMap = requestMap.filter { case (_, values) => values.startTime - System.nanoTime() < 5.minutes.toNanos }
+        filteredMap = requestMap.filter { case (_, values) => System.nanoTime() - values.startTime < 5.minutes.toNanos }
         _ <- requestInfoMap.update(_ => filteredMap.updated(correlationId, value))
       } yield ()).unsafeRunSync()
 
