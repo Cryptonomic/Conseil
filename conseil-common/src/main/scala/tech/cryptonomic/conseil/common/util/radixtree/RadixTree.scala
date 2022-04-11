@@ -70,7 +70,7 @@ final class RadixTree[K, V](val prefix: K, private[radixtree] val children: Arra
   def entries(implicit K: Key[K]): Iterable[(K, V)] = new AbstractIterable[(K, V)] {
     override def foreach[U](f: ((K, V)) => U) = foreachEntry(K.empty, f)
 
-    override def iterator: Iterator[(K, V)] = Iterator.
+    override def iterator: Iterator[(K, V)] = ???
   }
 
   def values(implicit K: Key[K]): Iterable[V] = new AbstractIterable[V] {
