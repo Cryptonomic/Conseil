@@ -4,7 +4,7 @@ import Commands._
 
 name := "Conseil"
 
-ThisBuild / scalaVersion := "2.12.10"
+ThisBuild / scalaVersion := "2.12.12"
 ThisBuild / parallelExecution in Test := false
 
 ThisBuild / scapegoatVersion := "1.3.8"
