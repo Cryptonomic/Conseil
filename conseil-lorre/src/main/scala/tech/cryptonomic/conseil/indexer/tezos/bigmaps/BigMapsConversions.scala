@@ -39,7 +39,7 @@ object BigMapsConversions extends ConseilLogSupport {
       import michelson.JsonToMichelson.toMichelsonScript
       import michelson.parser.JsonParser._
       //needed to call the michelson conversion
-      implicit lazy val _: Logger = logger
+      implicit lazy val lg: Logger = logger
 
       def convert(from: BlockBigMapDiff) = from.get match {
         case BlockTagged(ref, (_, _, BigMapAlloc(_, Decimal(id), key_type, value_type))) =>
@@ -75,7 +75,7 @@ object BigMapsConversions extends ConseilLogSupport {
       import michelson.JsonToMichelson.toMichelsonScript
       import michelson.parser.JsonParser._
       //needed to call the michelson conversion
-      implicit lazy val _: Logger = logger
+      implicit lazy val lg: Logger = logger
 
       def convert(from: BlockBigMapDiff) = from.get match {
         case BlockTagged(ref, (_, opGroupHash, BigMapUpdate(_, key, keyHash, Decimal(id), value))) =>

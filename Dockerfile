@@ -1,4 +1,4 @@
-FROM openjdk:8-stretch
+FROM openjdk:19-buster
 RUN apt-get update && apt-get install -y apt-transport-https libpq5 ca-certificates && \
     sed -i 's/mozilla\/DST_Root_CA_X3.crt/!mozilla\/DST_Root_CA_X3.crt/' /etc/ca-certificates.conf && \
     update-ca-certificates && \
@@ -26,7 +26,7 @@ COPY --chown=builduser:builduser ./publishing.sbt /src
 WORKDIR /src
 RUN sbt clean assembly -J-Xss32m -J-Xmx2G
 
-FROM openjdk:13-alpine
+FROM openjdk:19-alpine
 RUN apk add --upgrade apk-tools busybox musl-utils
 RUN apk --no-cache add ca-certificates
 RUN apk add netcat-openbsd

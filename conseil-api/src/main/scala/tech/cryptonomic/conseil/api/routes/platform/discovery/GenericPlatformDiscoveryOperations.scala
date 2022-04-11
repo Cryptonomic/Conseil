@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.discovery
 
 import cats.effect.IO
-import com.rklaehn.radixtree.RadixTree
 import slick.dbio.{DBIO, DBIOAction}
 import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
 import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
@@ -18,6 +17,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 import cats.effect.unsafe.implicits.global
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
+import tech.cryptonomic.conseil.common.util.radixtree.RadixTree
 
 /** Companion object providing apply method implementation */
 object GenericPlatformDiscoveryOperations {

@@ -4,13 +4,15 @@ object Dependencies {
 
   private object Versions {
     val typesafeConfig = "1.4.1"
-    val pureConfig = "0.10.2"
+    val pureConfig = "0.17.1"
     val scopt = "4.0.1"
 
     val akka = "2.6.17"
     val akkaHttp = "10.2.7"
     val akkaHttpJson = "1.38.2"
     val akkaHttpCors = "1.1.2"
+
+    val algebra = "2.7.0"
 
     val scribe = "3.1.3"
 
@@ -33,10 +35,9 @@ object Dependencies {
     val circe = "0.14.1"
     val http4s = "0.23.6"
 
-    val silencer = "1.6.0"
+    val silencer = "1.7.8"
     val kantanCsv = "0.6.0"
     val apacheCommonText = "1.7"
-    val radixTree = "0.5.1"
 
     val scalaTest = "3.2.9"
     val scalaTestScalaCheck = "3.2.9.0"
@@ -51,7 +52,7 @@ object Dependencies {
     val jna = "5.10.0"
 
     val chimney = "0.6.1"
-    val bitcoin = "0.9.18-SNAPSHOT"
+    val bitcoin = "0.22"
     val scrypto = "2.1.8"
     val scorex = "0.1.7"
   }
@@ -161,8 +162,6 @@ object Dependencies {
 
   private val apacheCommonsText = Seq("org.apache.commons" % "commons-text" % Versions.apacheCommonText)
 
-  private val radixTree = Seq("com.rklaehn" %% "radixtree" % Versions.radixTree)
-
   private val jna = Seq(
     "com.muquit.libsodiumjna" % "libsodium-jna" % Versions.libsodiumJna exclude ("org.slf4j", "slf4j-log4j12") exclude ("org.slf4j", "slf4j-api"),
     "net.java.dev.jna"        % "jna"           % Versions.jna //see https://github.com/muquit/libsodium-jna/#update-your-projects-pomxml
@@ -176,6 +175,8 @@ object Dependencies {
     "org.scorexfoundation" %% "scrypto"     % Versions.scrypto,
     "org.scorexfoundation" %% "scorex-util" % Versions.scorex
   )
+
+  private val algebra = Seq("org.typelevel" %% "algebra" % "2.7.0")
 
   val conseilCommonInclude: Seq[ModuleID] =
     concat(
@@ -191,7 +192,6 @@ object Dependencies {
       cats,
       mouse,
       http4s,
-      radixTree,
       jna,
       chimney,
       silencer,
@@ -204,7 +204,8 @@ object Dependencies {
       diffX,
       apacheCommonsText,
       bitcoin,
-      scorex
+      scorex,
+      algebra
     )
 
   val conseilCommonTestKitInclude: Seq[ModuleID] =

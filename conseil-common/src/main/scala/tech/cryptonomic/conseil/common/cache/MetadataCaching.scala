@@ -2,10 +2,10 @@ package tech.cryptonomic.conseil.common.cache
 
 import cats.Monad
 import cats.effect.{Concurrent, Ref}
-import com.rklaehn.radixtree.RadixTree
 import tech.cryptonomic.conseil.common.cache.MetadataCaching._
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
+import tech.cryptonomic.conseil.common.util.radixtree.RadixTree
 
 /** Companion object providing useful types related with MetadataCaching */
 object MetadataCaching {
@@ -92,7 +92,7 @@ class MetadataCaching[F[_]: Monad](
 
   /** Reads all attributes from cache for given seq of keys */
   def getAllAttributesByKeys: Set[AttributesCacheKey] => F[AttributesCache] =
-    keys => attributesCache.get.map(_.filterKeys(keys))
+    keys => attributesCache.get.map(_.filterKeys(keys).toMap)
 
   /** Reads all entities from cache */
   def getAllEntities: F[EntitiesCache] = entitiesCache.get

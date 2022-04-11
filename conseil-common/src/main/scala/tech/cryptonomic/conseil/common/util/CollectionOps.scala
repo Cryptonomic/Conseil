@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.common.util
 
-import scala.collection.TraversableLike
+import scala.collection.IterableOps
 import cats.instances.option._
 import cats.syntax.applicative._
 import cats.syntax.apply._
@@ -20,7 +20,7 @@ object CollectionOps {
       pairs.map { case (k, vs) =>
         vs
       }
-    }
+    }.toMap
 
   /** allows grouping by key as an extension method */
   implicit class KeyedSeq[K, V](seq: Seq[(K, V)]) {
@@ -34,17 +34,17 @@ object CollectionOps {
     */
   implicit class SeqCounter[T](seq: Seq[T]) {
     def countValues(): Map[T, Int] =
-      seq.groupBy(identity).mapValues(_.size)
+      seq.groupBy(identity).mapValues(_.size).toMap
   }
 
   /**
     * allows to apply a function on collection boundaries, if they're available
     */
-  def applyOnBounds[T, R, Coll[A] <: TraversableLike[A, _]](list: Coll[T])(function: (T, T) => R): Option[R] =
+  def applyOnBounds[T, R, Coll[A] <: IterableOps[A, Iterable, _]](list: Coll[T])(function: (T, T) => R): Option[R] =
     function.pure[Option].ap2(list.headOption, list.lastOption)
 
   /** allows operating on collecition boundaries as an extension method */
-  implicit class BoundedAppication[T, R, Coll[A] <: TraversableLike[A, _]](list: Coll[T]) {
+  implicit class BoundedAppication[T, R, Coll[A] <: IterableOps[A, Iterable, _]](list: Coll[T]) {
     def onBounds(f: (T, T) => R): Option[R] = applyOnBounds(list)(f)
   }
 

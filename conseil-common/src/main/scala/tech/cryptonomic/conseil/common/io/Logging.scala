@@ -39,7 +39,7 @@ object Logging {
           .fold(
             failures => {
               error("I can't load the logging configuration from path")
-              failures.toList.foreach(fail => error(s"${fail.description} ${fail.location.getOrElse("")}"))
+              failures.toList.foreach(fail => error(s"${fail.description} ${fail.origin.getOrElse("")}"))
             },
             configure
           )
@@ -49,7 +49,7 @@ object Logging {
           .fold(
             failures => {
               error("I can't load the logging configuration")
-              failures.toList.foreach(fail => error(s"${fail.description} ${fail.location.getOrElse("")}"))
+              failures.toList.foreach(fail => error(s"${fail.description} ${fail.origin.getOrElse("")}"))
             },
             configure
           )

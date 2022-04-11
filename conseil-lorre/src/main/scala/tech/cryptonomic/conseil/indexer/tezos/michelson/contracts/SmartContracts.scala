@@ -83,7 +83,7 @@ object SmartContracts {
             nextKeyword -> updated
           }
 
-      collected.mapValues(_.mkString_(" "))
+      collected.view.mapValues(_.mkString_(" ")).toMap
     }
   }
 

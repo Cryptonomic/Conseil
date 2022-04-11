@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import cats.instances.future._
 import cats.syntax.applicative._
+import scribe.Logger
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
@@ -247,7 +248,7 @@ private[tezos] class TezosNodeOperator(
       fetch[AccountId, Option[Account], Future, List, Throwable].run(accountIds)
 
     def parseMichelsonScripts: Account => Account = {
-      implicit lazy val _ = logger
+      implicit lazy val lg: Logger = logger
       val scriptAlter = whenAccountCode.modify(toMichelsonScript[MichelsonSchema])
       val storageAlter = whenAccountStorage.modify(toMichelsonScript[MichelsonInstruction])
 
@@ -289,7 +290,7 @@ private[tezos] class TezosNodeOperator(
       }.toList
 
     //fetch accounts by requested ids and group them together with corresponding blocks
-    val pages = getPaginatedAccountsForBlock(accountsBlocksIndex.mapValues(_.hash)) map { futureMap =>
+    val pages = getPaginatedAccountsForBlock(accountsBlocksIndex.view.mapValues(_.hash).toMap) map { futureMap =>
       futureMap.andThen {
         case Success((hash, accountsMap)) =>
           val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
@@ -478,7 +479,7 @@ private[tezos] class TezosNodeOperator(
       }.toList
 
     //fetch delegates by requested pkh and group them together with corresponding blocks
-    val pages = getPaginatedDelegatesForBlock(keysBlocksIndex.mapValues(_.hash)) map { futureMap =>
+    val pages = getPaginatedDelegatesForBlock(keysBlocksIndex.view.mapValues(_.hash).toMap) map { futureMap =>
       futureMap.andThen {
         case Success((hash, delegatesMap)) =>
           val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
@@ -683,7 +684,7 @@ private[tezos] class TezosNodeOperator(
       fetchMerge(currentQuorumFetcher, currentProposalFetcher)(CurrentVotes.apply)
 
     def parseMichelsonScripts: Block => Block = {
-      implicit lazy val _ = logger
+      implicit lazy val lg: Logger = logger
       val copyParametersToMicheline = (t: Transaction) => t.copy(parameters_micheline = t.parameters)
       val copyInternalParametersToMicheline = (t: InternalOperationResults.Transaction) =>
         t.copy(parameters_micheline = t.parameters)

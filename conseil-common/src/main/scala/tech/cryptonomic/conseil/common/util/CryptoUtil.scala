@@ -1,7 +1,11 @@
 package tech.cryptonomic.conseil.common.util
 
-import fr.acinq.bitcoin.Base58Check
+import fr.acinq.bitcoin.{Base58, Base58Check}
 import scorex.util.encode.{Base16 => Hex}
+
+import scala.collection.JavaConverters._
+import fr.acinq.bitcoin.scalacompat.Crypto._
+import scodec.bits._
 
 import scala.util.Try
 import scala.util.Failure
@@ -39,7 +43,7 @@ object CryptoUtil {
     */
   def base58CheckEncode(payload: Seq[Byte], prefix: String): Try[String] =
     getBase58BytesForPrefix(prefix).map { prefix =>
-      Base58Check.encode(prefix, payload)
+      Base58Check.encode(prefix.toArray, payload.toArray)
     }
 
   /** Base58Check decodes a given binary payload using a given prefix.
@@ -50,8 +54,10 @@ object CryptoUtil {
   def base58CheckDecode(s: String, prefix: String): Try[Seq[Byte]] =
     getBase58BytesForPrefix(prefix).map { prefix =>
       val charsToSlice = prefix.length
-      val (first, rest) = Base58Check.decode(s)
-      val decodedBytes = first :: rest.toList
+      val decodeResult = Base58Check.decode(s)
+      val first = decodeResult.getFirst.toByte
+      val rest = decodeResult.getSecond.toList
+      val decodedBytes = first :: rest
       decodedBytes.drop(charsToSlice)
     }
 

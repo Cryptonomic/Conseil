@@ -122,7 +122,7 @@ class AccountsProcessor(
         activatedAccounts <- indexedData.findActivatedAccountIds
         updatedTaggedAccounts = updateTaggedAccountsWithIsActivated(
           taggedAccounts,
-          activatedOperations.mapValues(_.toSet),
+          activatedOperations.mapValues(_.toSet).toMap,
           activatedAccounts.map(PublicKeyHash(_)).toSet
         )
         inactiveBakerAccounts <- getInactiveBakersWithTaggedAccounts(updatedTaggedAccounts)
@@ -177,7 +177,7 @@ class AccountsProcessor(
             if (account.manager.exists(activatedViaAccountIds | activatedViaOperations)) {
               account.copy(isActivated = Some(true))
             } else account
-          }
+          }.toMap
         )
       }
 

@@ -325,7 +325,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
   private def collectMapsByContract(ids: List[Option[(String, BigMapsRow)]]): Map[ContractId, List[BigMapsRow]] =
     ids.flattenOption.groupBy { case (contractId, row) =>
       ContractId(contractId)
-    }.mapValues(values => values.map(_._2))
+    }.view.mapValues(values => values.map(_._2)).toMap
 
   /* For each entry, tries to pass the values to the TNS object to initialize the map ids properly */
   private def setOnTNS(maps: Map[ContractId, List[BigMapsRow]])(implicit tnsContracts: TNSContract) =
@@ -362,10 +362,10 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
           op.destination -> (op.parameters_micheline.orElse(op.parameters), op.metadata.operation_result.big_map_diff)
         case Right(op) =>
           op.destination -> (op.parameters_micheline.orElse(op.parameters), op.result.big_map_diff)
-      }.toMap.mapValues { case (optionalParams, optionalDiffs) =>
+      }.toMap.view.mapValues { case (optionalParams, optionalDiffs) =>
         optionalParams -> keepLatestUpdateFormat(optionalDiffs.toList.flatten)
 
-      }
+      }.toMap
 
       if (logger.includes(Level.Debug)) {
         val showTransactions =

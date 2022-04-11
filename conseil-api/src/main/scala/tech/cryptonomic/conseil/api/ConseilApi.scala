@@ -180,7 +180,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
         new DatabaseRunner {
           override lazy val dbReadHandle = db
         }
-      )
+      ).toMap
 
     lazy val cachedDiscoveryOperations: GenericPlatformDiscoveryOperations =
       new GenericPlatformDiscoveryOperations(
