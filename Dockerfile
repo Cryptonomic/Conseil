@@ -1,4 +1,4 @@
-FROM openjdk:19-buster
+FROM openjdk:17-buster
 RUN apt-get update && apt-get install -y apt-transport-https libpq5 ca-certificates && \
     sed -i 's/mozilla\/DST_Root_CA_X3.crt/!mozilla\/DST_Root_CA_X3.crt/' /etc/ca-certificates.conf && \
     update-ca-certificates && \
@@ -8,7 +8,9 @@ RUN apt-get update && apt-get install -y apt-transport-https libpq5 ca-certifica
     apt-get update && \
     apt-get install -y sbt
 RUN adduser --disabled-password --gecos '' builduser && su builduser
-USER builduser
+RUN mkdir -p /src/target
+RUN chmod 777 /src/target
+
 COPY --chown=builduser:builduser ./docker /src/docker
 COPY --chown=builduser:builduser ./project/build.properties /src/project/
 COPY --chown=builduser:builduser ./project/plugins.sbt /src/project/
@@ -23,10 +25,12 @@ COPY --chown=builduser:builduser ./conseil-api/src /src/conseil-api/src
 COPY --chown=builduser:builduser ./conseil-lorre/src /src/conseil-lorre/src
 COPY --chown=builduser:builduser ./build.sbt /src
 COPY --chown=builduser:builduser ./publishing.sbt /src
+RUN chown -R builduser:builduser /src
+USER builduser
 WORKDIR /src
-RUN sbt clean assembly -J-Xss32m -J-Xmx2G
+RUN sbt clean assembly -J-Xss64m -J-Xmx4G -J-Djava.security.policy
 
-FROM openjdk:19-alpine
+FROM openjdk:17-alpine
 RUN apk add --upgrade apk-tools busybox musl-utils
 RUN apk --no-cache add ca-certificates
 RUN apk add netcat-openbsd
