@@ -28,7 +28,7 @@ COPY --chown=builduser:builduser ./publishing.sbt /src
 RUN chown -R builduser:builduser /src
 USER builduser
 WORKDIR /src
-RUN sbt clean assembly -J-Xss64m -J-Xmx4G -J-Djava.security.policy
+RUN sbt clean assembly -J-Xss32m -J-Xmx2G 
 
 FROM openjdk:17-alpine
 RUN apk add --upgrade apk-tools busybox musl-utils
