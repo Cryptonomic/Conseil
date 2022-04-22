@@ -8,7 +8,9 @@ RUN apt-get update && apt-get install -y apt-transport-https libpq5 ca-certifica
     apt-get update && \
     apt-get install -y sbt
 RUN adduser --disabled-password --gecos '' builduser && su builduser
-USER builduser
+RUN mkdir -p /src/target
+RUN chmod 777 /src/target
+
 COPY --chown=builduser:builduser ./docker /src/docker
 COPY --chown=builduser:builduser ./project/build.properties /src/project/
 COPY --chown=builduser:builduser ./project/plugins.sbt /src/project/
@@ -23,6 +25,8 @@ COPY --chown=builduser:builduser ./conseil-api/src /src/conseil-api/src
 COPY --chown=builduser:builduser ./conseil-lorre/src /src/conseil-lorre/src
 COPY --chown=builduser:builduser ./build.sbt /src
 COPY --chown=builduser:builduser ./publishing.sbt /src
+RUN chown -R builduser:builduser /src
+USER builduser
 WORKDIR /src
 RUN sbt clean assembly -J-Xss32m -J-Xmx2G
 
