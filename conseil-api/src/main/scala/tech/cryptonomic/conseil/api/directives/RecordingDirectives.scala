@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.api.directives
 
 import java.util.UUID
-
 import akka.http.scaladsl.model.StatusCodes.InternalServerError
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
@@ -10,8 +9,9 @@ import akka.http.scaladsl.server.{Directive, ExceptionHandler, Route}
 import cats.effect.{Async, IO, Ref}
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import org.slf4j.MDC
-
 import cats.effect.unsafe.implicits.global
+
+import scala.concurrent.duration.DurationInt
 
 /** Utility class for recording responses */
 class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupport {
@@ -34,7 +34,8 @@ class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupp
       (for {
         requestMap <- requestInfoMap.get
         value = RequestValues.fromHttpRequestAndIp(request, ip, stringEntity)
-        _ <- requestInfoMap.update(_ => requestMap.updated(correlationId, value))
+        filteredMap = requestMap.filter { case (_, values) => System.nanoTime() - values.startTime < 5.minutes.toNanos }
+        _ <- requestInfoMap.update(_ => filteredMap.updated(correlationId, value))
       } yield ()).unsafeRunSync()
 
       requestMapModify(map =>
