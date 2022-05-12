@@ -48,7 +48,7 @@ object TezosGovernanceOperations extends ConseilLogSupport {
     * @param nay how many nays
     * @param pass how many passes
     */
-  case class VoteRollsCounts(yay: Int, nay: Int, pass: Int)
+  case class VoteRollsCounts(yay: Long, nay: Long, pass: Long)
 
   object VoteRollsCounts {
 
@@ -324,8 +324,8 @@ object TezosGovernanceOperations extends ConseilLogSupport {
 
   /* Will scan the ballots to count all rolls associated with each vote outcome */
   private def countRolls(listings: List[Voting.BakerRolls], ballots: List[Voting.Ballot]): VoteRollsCounts = {
-    val (yays, nays, passes) = ballots.foldLeft((0, 0, 0)) { case ((yays, nays, passes), votingBallot) =>
-      val rolls = listings.find(_.pkh == votingBallot.pkh).fold(0)(_.rolls)
+    val (yays, nays, passes) = ballots.foldLeft((0L, 0L, 0L)) { case ((yays, nays, passes), votingBallot) =>
+      val rolls = listings.find(_.pkh == votingBallot.pkh).fold(0L)(_.rolls)
       votingBallot.ballot match {
         case Voting.Vote("yay") => (yays + rolls, nays, passes)
         case Voting.Vote("nay") => (yays, nays + rolls, passes)
@@ -371,7 +371,7 @@ object TezosGovernanceOperations extends ConseilLogSupport {
       blocks: Set[Block]
   )(implicit ec: ExecutionContext): DBIO[Option[VoteRollsCounts]] = {
     //adapting database-level formats to the domain-level ones
-    def downCastToInt(bd: BigDecimal) = Try(bd.toIntExact).toOption
+    def downCastToLong(bd: BigDecimal) = Try(bd.toLongExact).toOption
     //should be the level we reached, before the current processing batch
     val previousBatchHighLevel = blocks.map(_.data.header.level).min - 1
 
@@ -380,9 +380,9 @@ object TezosGovernanceOperations extends ConseilLogSupport {
       .map(govRows =>
         govRows.headOption.flatMap(stats =>
           (
-            stats.yayRolls.flatMap(downCastToInt),
-            stats.nayRolls.flatMap(downCastToInt),
-            stats.passRolls.flatMap(downCastToInt)
+            stats.yayRolls,
+            stats.nayRolls,
+            stats.passRolls
           ).mapN(VoteRollsCounts.apply)
         )
       )

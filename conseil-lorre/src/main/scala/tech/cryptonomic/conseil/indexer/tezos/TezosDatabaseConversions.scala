@@ -727,14 +727,14 @@ private[tezos] object TezosDatabaseConversions {
       balances
         .get(from)
         .flatMap { case (BlockTagged(BlockReference(blockHash, blockLevel, _, cycle, period), tag), updates) =>
-          updates.map { case OperationMetadata.BalanceUpdate(kind, change, category, contract, delegate, level) =>
+          updates.map { case OperationMetadata.BalanceUpdate(kind, change, category, contract, delegate, level, _) =>
             Tables.BalanceUpdatesRow(
               id = 0,
               source = tag.show,
               sourceHash = hashing.get(from),
               kind = kind,
               accountId = contract.map(_.id).orElse(delegate.map(_.value)).getOrElse("N/A"),
-              change = BigDecimal(change),
+              change = extractBigDecimal(change).get,
               level = level,
               category = category,
               blockId = blockHash.value,
@@ -766,7 +766,7 @@ private[tezos] object TezosDatabaseConversions {
               .withFieldConst(_.fee, InvalidPositiveDecimal("Discarded"))
               .withFieldConst(_.gas_limit, InvalidPositiveDecimal("Discarded"))
               .withFieldConst(_.storage_limit, InvalidPositiveDecimal("Discarded"))
-              .withFieldConst(_.metadata, ResultMetadata[OperationResult.Reveal](reveal.result, List.empty, None))
+              .withFieldConst(_.metadata, ResultMetadata[OperationResult.Reveal](reveal.result, None, None))
               .transform
           case transaction: InternalOperationResults.Transaction =>
             transaction
@@ -779,7 +779,7 @@ private[tezos] object TezosDatabaseConversions {
                 _.metadata,
                 ResultMetadata[OperationResult.Transaction](
                   transaction.result,
-                  transaction.result.balance_updates.getOrElse(List.empty),
+                  transaction.result.balance_updates,
                   None
                 )
               )
@@ -796,7 +796,7 @@ private[tezos] object TezosDatabaseConversions {
                 _.metadata,
                 ResultMetadata[OperationResult.Origination](
                   origination.result,
-                  origination.result.balance_updates.getOrElse(List.empty),
+                  origination.result.balance_updates,
                   None
                 )
               )
@@ -811,7 +811,7 @@ private[tezos] object TezosDatabaseConversions {
               .withFieldConst(_.storage_limit, InvalidPositiveDecimal("Discarded"))
               .withFieldConst(
                 _.metadata,
-                ResultMetadata[OperationResult.Delegation](delegation.result, List.empty, None)
+                ResultMetadata[OperationResult.Delegation](delegation.result, None, None)
               )
               .transform
         }

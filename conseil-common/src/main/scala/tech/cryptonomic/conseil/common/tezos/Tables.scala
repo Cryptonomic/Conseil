@@ -742,7 +742,7 @@ trait Tables {
     *  @param frozenBalance Database column frozen_balance SqlType(numeric), Default(None)
     *  @param stakingBalance Database column staking_balance SqlType(numeric), Default(None)
     *  @param delegatedBalance Database column delegated_balance SqlType(numeric), Default(None)
-    *  @param rolls Database column rolls SqlType(int4), Default(0)
+    *  @param rolls Database column rolls SqlType(int8), Default(0)
     *  @param deactivated Database column deactivated SqlType(bool)
     *  @param gracePeriod Database column grace_period SqlType(int4)
     *  @param blockLevel Database column block_level SqlType(int8), Default(-1)
@@ -758,7 +758,7 @@ trait Tables {
       frozenBalance: Option[scala.math.BigDecimal] = None,
       stakingBalance: Option[scala.math.BigDecimal] = None,
       delegatedBalance: Option[scala.math.BigDecimal] = None,
-      rolls: Int = 0,
+      rolls: Long = 0L,
       deactivated: Boolean,
       gracePeriod: Int,
       blockLevel: Long = -1L,
@@ -772,9 +772,9 @@ trait Tables {
   implicit def GetResultBakersRow(implicit
       e0: GR[String],
       e1: GR[Option[scala.math.BigDecimal]],
-      e2: GR[Int],
+      e2: GR[Long],
       e3: GR[Boolean],
-      e4: GR[Long],
+      e4: GR[Int],
       e5: GR[Option[Int]],
       e6: GR[Option[java.sql.Timestamp]]
   ): GR[BakersRow] = GR { prs =>
@@ -787,7 +787,7 @@ trait Tables {
         <<?[scala.math.BigDecimal],
         <<?[scala.math.BigDecimal],
         <<?[scala.math.BigDecimal],
-        <<[Int],
+        <<[Long],
         <<[Boolean],
         <<[Int],
         <<[Long],
@@ -867,8 +867,8 @@ trait Tables {
     val delegatedBalance: Rep[Option[scala.math.BigDecimal]] =
       column[Option[scala.math.BigDecimal]]("delegated_balance", O.Default(None))
 
-    /** Database column rolls SqlType(int4), Default(0) */
-    val rolls: Rep[Int] = column[Int]("rolls", O.Default(0))
+    /** Database column rolls SqlType(int8), Default(0) */
+    val rolls: Rep[Long] = column[Long]("rolls", O.Default(0L))
 
     /** Database column deactivated SqlType(bool) */
     val deactivated: Rep[Boolean] = column[Boolean]("deactivated")
@@ -972,7 +972,7 @@ trait Tables {
     *  @param frozenBalance Database column frozen_balance SqlType(numeric), Default(None)
     *  @param stakingBalance Database column staking_balance SqlType(numeric), Default(None)
     *  @param delegatedBalance Database column delegated_balance SqlType(numeric), Default(None)
-    *  @param rolls Database column rolls SqlType(int4), Default(0)
+    *  @param rolls Database column rolls SqlType(int8), Default(0)
     *  @param deactivated Database column deactivated SqlType(bool)
     *  @param gracePeriod Database column grace_period SqlType(int4)
     *  @param blockLevel Database column block_level SqlType(int8), Default(-1)
@@ -989,7 +989,7 @@ trait Tables {
       frozenBalance: Option[scala.math.BigDecimal] = None,
       stakingBalance: Option[scala.math.BigDecimal] = None,
       delegatedBalance: Option[scala.math.BigDecimal] = None,
-      rolls: Int = 0,
+      rolls: Long = 0L,
       deactivated: Boolean,
       gracePeriod: Int,
       blockLevel: Long = -1L,
@@ -1004,9 +1004,9 @@ trait Tables {
   implicit def GetResultBakersHistoryRow(implicit
       e0: GR[String],
       e1: GR[Option[scala.math.BigDecimal]],
-      e2: GR[Int],
+      e2: GR[Long],
       e3: GR[Boolean],
-      e4: GR[Long],
+      e4: GR[Int],
       e5: GR[Option[Int]],
       e6: GR[java.sql.Timestamp],
       e7: GR[Option[java.sql.Timestamp]]
@@ -1020,7 +1020,7 @@ trait Tables {
         <<?[scala.math.BigDecimal],
         <<?[scala.math.BigDecimal],
         <<?[scala.math.BigDecimal],
-        <<[Int],
+        <<[Long],
         <<[Boolean],
         <<[Int],
         <<[Long],
@@ -1106,8 +1106,8 @@ trait Tables {
     val delegatedBalance: Rep[Option[scala.math.BigDecimal]] =
       column[Option[scala.math.BigDecimal]]("delegated_balance", O.Default(None))
 
-    /** Database column rolls SqlType(int4), Default(0) */
-    val rolls: Rep[Int] = column[Int]("rolls", O.Default(0))
+    /** Database column rolls SqlType(int8), Default(0) */
+    val rolls: Rep[Long] = column[Long]("rolls", O.Default(0L))
 
     /** Database column deactivated SqlType(bool) */
     val deactivated: Rep[Boolean] = column[Boolean]("deactivated")
@@ -2386,19 +2386,19 @@ trait Tables {
     *  @param level Database column level SqlType(int8), Default(None)
     *  @param blockHash Database column block_hash SqlType(varchar)
     *  @param proposalHash Database column proposal_hash SqlType(varchar)
-    *  @param yayCount Database column yay_count SqlType(int4), Default(None)
-    *  @param nayCount Database column nay_count SqlType(int4), Default(None)
-    *  @param passCount Database column pass_count SqlType(int4), Default(None)
-    *  @param yayRolls Database column yay_rolls SqlType(numeric), Default(None)
-    *  @param nayRolls Database column nay_rolls SqlType(numeric), Default(None)
-    *  @param passRolls Database column pass_rolls SqlType(numeric), Default(None)
-    *  @param totalRolls Database column total_rolls SqlType(numeric), Default(None)
-    *  @param blockYayCount Database column block_yay_count SqlType(int4), Default(None)
-    *  @param blockNayCount Database column block_nay_count SqlType(int4), Default(None)
-    *  @param blockPassCount Database column block_pass_count SqlType(int4), Default(None)
-    *  @param blockYayRolls Database column block_yay_rolls SqlType(numeric), Default(None)
-    *  @param blockNayRolls Database column block_nay_rolls SqlType(numeric), Default(None)
-    *  @param blockPassRolls Database column block_pass_rolls SqlType(numeric), Default(None)
+    *  @param yayCount Database column yay_count SqlType(int8), Default(None)
+    *  @param nayCount Database column nay_count SqlType(int8), Default(None)
+    *  @param passCount Database column pass_count SqlType(int8), Default(None)
+    *  @param yayRolls Database column yay_rolls SqlType(int8), Default(None)
+    *  @param nayRolls Database column nay_rolls SqlType(int8), Default(None)
+    *  @param passRolls Database column pass_rolls SqlType(int8), Default(None)
+    *  @param totalRolls Database column total_rolls SqlType(int8), Default(None)
+    *  @param blockYayCount Database column block_yay_count SqlType(int8), Default(None)
+    *  @param blockNayCount Database column block_nay_count SqlType(int8), Default(None)
+    *  @param blockPassCount Database column block_pass_count SqlType(int8), Default(None)
+    *  @param blockYayRolls Database column block_yay_rolls SqlType(int8), Default(None)
+    *  @param blockNayRolls Database column block_nay_rolls SqlType(int8), Default(None)
+    *  @param blockPassRolls Database column block_pass_rolls SqlType(int8), Default(None)
     *  @param invalidatedAsof Database column invalidated_asof SqlType(timestamp), Default(None)
     *  @param forkId Database column fork_id SqlType(varchar)
     */
@@ -2409,19 +2409,19 @@ trait Tables {
       level: Option[Long] = None,
       blockHash: String,
       proposalHash: String,
-      yayCount: Option[Int] = None,
-      nayCount: Option[Int] = None,
-      passCount: Option[Int] = None,
-      yayRolls: Option[scala.math.BigDecimal] = None,
-      nayRolls: Option[scala.math.BigDecimal] = None,
-      passRolls: Option[scala.math.BigDecimal] = None,
-      totalRolls: Option[scala.math.BigDecimal] = None,
-      blockYayCount: Option[Int] = None,
-      blockNayCount: Option[Int] = None,
-      blockPassCount: Option[Int] = None,
-      blockYayRolls: Option[scala.math.BigDecimal] = None,
-      blockNayRolls: Option[scala.math.BigDecimal] = None,
-      blockPassRolls: Option[scala.math.BigDecimal] = None,
+      yayCount: Option[Long] = None,
+      nayCount: Option[Long] = None,
+      passCount: Option[Long] = None,
+      yayRolls: Option[Long] = None,
+      nayRolls: Option[Long] = None,
+      passRolls: Option[Long] = None,
+      totalRolls: Option[Long] = None,
+      blockYayCount: Option[Long] = None,
+      blockNayCount: Option[Long] = None,
+      blockPassCount: Option[Long] = None,
+      blockYayRolls: Option[Long] = None,
+      blockNayRolls: Option[Long] = None,
+      blockPassRolls: Option[Long] = None,
       invalidatedAsof: Option[java.sql.Timestamp] = None,
       forkId: String
   )
@@ -2432,8 +2432,7 @@ trait Tables {
       e1: GR[String],
       e2: GR[Option[Int]],
       e3: GR[Option[Long]],
-      e4: GR[Option[scala.math.BigDecimal]],
-      e5: GR[Option[java.sql.Timestamp]]
+      e4: GR[Option[java.sql.Timestamp]]
   ): GR[GovernanceRow] = GR { prs =>
     import prs._
     GovernanceRow.tupled(
@@ -2444,19 +2443,19 @@ trait Tables {
         <<?[Long],
         <<[String],
         <<[String],
-        <<?[Int],
-        <<?[Int],
-        <<?[Int],
-        <<?[scala.math.BigDecimal],
-        <<?[scala.math.BigDecimal],
-        <<?[scala.math.BigDecimal],
-        <<?[scala.math.BigDecimal],
-        <<?[Int],
-        <<?[Int],
-        <<?[Int],
-        <<?[scala.math.BigDecimal],
-        <<?[scala.math.BigDecimal],
-        <<?[scala.math.BigDecimal],
+        <<?[Long],
+        <<?[Long],
+        <<?[Long],
+        <<?[Long],
+        <<?[Long],
+        <<?[Long],
+        <<?[Long],
+        <<?[Long],
+        <<?[Long],
+        <<?[Long],
+        <<?[Long],
+        <<?[Long],
+        <<?[Long],
         <<?[java.sql.Timestamp],
         <<[String]
       )
@@ -2566,51 +2565,44 @@ trait Tables {
     /** Database column proposal_hash SqlType(varchar) */
     val proposalHash: Rep[String] = column[String]("proposal_hash")
 
-    /** Database column yay_count SqlType(int4), Default(None) */
-    val yayCount: Rep[Option[Int]] = column[Option[Int]]("yay_count", O.Default(None))
+    /** Database column yay_count SqlType(int8), Default(None) */
+    val yayCount: Rep[Option[Long]] = column[Option[Long]]("yay_count", O.Default(None))
 
-    /** Database column nay_count SqlType(int4), Default(None) */
-    val nayCount: Rep[Option[Int]] = column[Option[Int]]("nay_count", O.Default(None))
+    /** Database column nay_count SqlType(int8), Default(None) */
+    val nayCount: Rep[Option[Long]] = column[Option[Long]]("nay_count", O.Default(None))
 
-    /** Database column pass_count SqlType(int4), Default(None) */
-    val passCount: Rep[Option[Int]] = column[Option[Int]]("pass_count", O.Default(None))
+    /** Database column pass_count SqlType(int8), Default(None) */
+    val passCount: Rep[Option[Long]] = column[Option[Long]]("pass_count", O.Default(None))
 
-    /** Database column yay_rolls SqlType(numeric), Default(None) */
-    val yayRolls: Rep[Option[scala.math.BigDecimal]] =
-      column[Option[scala.math.BigDecimal]]("yay_rolls", O.Default(None))
+    /** Database column yay_rolls SqlType(int8), Default(None) */
+    val yayRolls: Rep[Option[Long]] = column[Option[Long]]("yay_rolls", O.Default(None))
 
-    /** Database column nay_rolls SqlType(numeric), Default(None) */
-    val nayRolls: Rep[Option[scala.math.BigDecimal]] =
-      column[Option[scala.math.BigDecimal]]("nay_rolls", O.Default(None))
+    /** Database column nay_rolls SqlType(int8), Default(None) */
+    val nayRolls: Rep[Option[Long]] = column[Option[Long]]("nay_rolls", O.Default(None))
 
-    /** Database column pass_rolls SqlType(numeric), Default(None) */
-    val passRolls: Rep[Option[scala.math.BigDecimal]] =
-      column[Option[scala.math.BigDecimal]]("pass_rolls", O.Default(None))
+    /** Database column pass_rolls SqlType(int8), Default(None) */
+    val passRolls: Rep[Option[Long]] = column[Option[Long]]("pass_rolls", O.Default(None))
 
-    /** Database column total_rolls SqlType(numeric), Default(None) */
-    val totalRolls: Rep[Option[scala.math.BigDecimal]] =
-      column[Option[scala.math.BigDecimal]]("total_rolls", O.Default(None))
+    /** Database column total_rolls SqlType(int8), Default(None) */
+    val totalRolls: Rep[Option[Long]] = column[Option[Long]]("total_rolls", O.Default(None))
 
-    /** Database column block_yay_count SqlType(int4), Default(None) */
-    val blockYayCount: Rep[Option[Int]] = column[Option[Int]]("block_yay_count", O.Default(None))
+    /** Database column block_yay_count SqlType(int8), Default(None) */
+    val blockYayCount: Rep[Option[Long]] = column[Option[Long]]("block_yay_count", O.Default(None))
 
-    /** Database column block_nay_count SqlType(int4), Default(None) */
-    val blockNayCount: Rep[Option[Int]] = column[Option[Int]]("block_nay_count", O.Default(None))
+    /** Database column block_nay_count SqlType(int8), Default(None) */
+    val blockNayCount: Rep[Option[Long]] = column[Option[Long]]("block_nay_count", O.Default(None))
 
-    /** Database column block_pass_count SqlType(int4), Default(None) */
-    val blockPassCount: Rep[Option[Int]] = column[Option[Int]]("block_pass_count", O.Default(None))
+    /** Database column block_pass_count SqlType(int8), Default(None) */
+    val blockPassCount: Rep[Option[Long]] = column[Option[Long]]("block_pass_count", O.Default(None))
 
-    /** Database column block_yay_rolls SqlType(numeric), Default(None) */
-    val blockYayRolls: Rep[Option[scala.math.BigDecimal]] =
-      column[Option[scala.math.BigDecimal]]("block_yay_rolls", O.Default(None))
+    /** Database column block_yay_rolls SqlType(int8), Default(None) */
+    val blockYayRolls: Rep[Option[Long]] = column[Option[Long]]("block_yay_rolls", O.Default(None))
 
-    /** Database column block_nay_rolls SqlType(numeric), Default(None) */
-    val blockNayRolls: Rep[Option[scala.math.BigDecimal]] =
-      column[Option[scala.math.BigDecimal]]("block_nay_rolls", O.Default(None))
+    /** Database column block_nay_rolls SqlType(int8), Default(None) */
+    val blockNayRolls: Rep[Option[Long]] = column[Option[Long]]("block_nay_rolls", O.Default(None))
 
-    /** Database column block_pass_rolls SqlType(numeric), Default(None) */
-    val blockPassRolls: Rep[Option[scala.math.BigDecimal]] =
-      column[Option[scala.math.BigDecimal]]("block_pass_rolls", O.Default(None))
+    /** Database column block_pass_rolls SqlType(int8), Default(None) */
+    val blockPassRolls: Rep[Option[Long]] = column[Option[Long]]("block_pass_rolls", O.Default(None))
 
     /** Database column invalidated_asof SqlType(timestamp), Default(None) */
     val invalidatedAsof: Rep[Option[java.sql.Timestamp]] =
