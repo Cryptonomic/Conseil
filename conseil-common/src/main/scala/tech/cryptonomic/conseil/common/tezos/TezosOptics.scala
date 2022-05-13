@@ -225,6 +225,9 @@ object TezosOptics {
               case i: InternalOperationResults.Delegation =>
                 index += 1
                 i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.TxRollupOrigination =>
+                index += 1
+                i.copy(blockOrder = Some(index))
             }
           }
           operation.copy(metadata = operation.metadata.copy(internal_operation_results = internalOpResult))
@@ -243,6 +246,9 @@ object TezosOptics {
                 index += 1
                 i.copy(blockOrder = Some(index))
               case i: InternalOperationResults.Delegation =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.TxRollupOrigination =>
                 index += 1
                 i.copy(blockOrder = Some(index))
             }
@@ -265,6 +271,9 @@ object TezosOptics {
               case i: InternalOperationResults.Delegation =>
                 index += 1
                 i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.TxRollupOrigination =>
+                index += 1
+                i.copy(blockOrder = Some(index))
             }
           }
           operation.copy(metadata = operation.metadata.copy(internal_operation_results = internalOpResult))
@@ -285,10 +294,59 @@ object TezosOptics {
               case i: InternalOperationResults.Delegation =>
                 index += 1
                 i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.TxRollupOrigination =>
+                index += 1
+                i.copy(blockOrder = Some(index))
             }
           }
           operation.copy(metadata = operation.metadata.copy(internal_operation_results = internalOpResult))
         case x: TxRollupOrigination =>
+          index += 1
+          val operation = x.copy(blockOrder = Some(index))
+          val internalOpResult = operation.metadata.internal_operation_results.map { operationResults =>
+            operationResults.map {
+              case i: InternalOperationResults.Reveal =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Transaction =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Origination =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Delegation =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.TxRollupOrigination =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+            }
+          }
+          operation.copy(metadata = operation.metadata.copy(internal_operation_results = internalOpResult))
+        case x: TxRollupSubmitBatch =>
+          index += 1
+          val operation = x.copy(blockOrder = Some(index))
+          val internalOpResult = operation.metadata.internal_operation_results.map { operationResults =>
+            operationResults.map {
+              case i: InternalOperationResults.Reveal =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Transaction =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Origination =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Delegation =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.TxRollupOrigination =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+            }
+          }
+          operation.copy(metadata = operation.metadata.copy(internal_operation_results = internalOpResult))
+        case x: TxRollupCommit =>
           index += 1
           val operation = x.copy(blockOrder = Some(index))
           val internalOpResult = operation.metadata.internal_operation_results.map { operationResults =>

@@ -325,7 +325,7 @@ object TezosGovernanceOperations extends ConseilLogSupport {
   /* Will scan the ballots to count all rolls associated with each vote outcome */
   private def countRolls(listings: List[Voting.BakerRolls], ballots: List[Voting.Ballot]): VoteRollsCounts = {
     val (yays, nays, passes) = ballots.foldLeft((0L, 0L, 0L)) { case ((yays, nays, passes), votingBallot) =>
-      val rolls = listings.find(_.pkh == votingBallot.pkh).fold(0L)(_.rolls)
+      val rolls = listings.find(_.pkh == votingBallot.pkh).fold(0L)(x => x.rolls.orElse(x.voting_power).get)
       votingBallot.ballot match {
         case Voting.Vote("yay") => (yays + rolls, nays, passes)
         case Voting.Vote("nay") => (yays, nays + rolls, passes)

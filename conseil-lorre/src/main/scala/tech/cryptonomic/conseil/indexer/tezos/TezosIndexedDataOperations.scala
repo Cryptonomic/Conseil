@@ -121,7 +121,7 @@ private[tezos] class TezosIndexedDataOperations(
           .filter(_.blockId === hash.value)
           .filter(_.invalidatedAsof.isEmpty)
           .result
-          .map(hash -> _.map(baker => BakerRolls(PublicKeyHash(baker.pkh), baker.rolls)).toList)
+          .map(hash -> _.map(baker => BakerRolls(PublicKeyHash(baker.pkh), Some(baker.rolls), None)).toList)
       }
     })
 

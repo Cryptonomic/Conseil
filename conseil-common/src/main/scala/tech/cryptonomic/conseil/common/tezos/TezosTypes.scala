@@ -227,7 +227,9 @@ object TezosTypes {
     "preendorsement",
     "double_preendorsement_evidence",
     "set_deposits_limit",
-    "tx_rollup_origination"
+    "tx_rollup_origination",
+    "tx_rollup_submit_batch",
+    "tx_rollup_commit"
   )
 
   final case class Operations(
@@ -325,6 +327,35 @@ object TezosTypes {
       storage_limit: PositiveBigNumber,
       metadata: ResultMetadata[OperationResult.Origination],
       blockOrder: Option[Int] = None,
+  ) extends Operation
+
+  final case class TxRollupSubmitBatch(
+    counter: PositiveBigNumber,
+    fee: PositiveBigNumber,
+    source: PublicKeyHash,
+    gas_limit: PositiveBigNumber,
+    storage_limit: PositiveBigNumber,
+    rollup: PublicKeyHash,
+    metadata: ResultMetadata[OperationResult.Origination],
+    blockOrder: Option[Int] = None,
+  ) extends Operation
+
+//  "kind": "tx_rollup_commit",
+//  "source": "tz1gqDrJYH8rTkdG3gCLTtRA1d7UZDjYFNRY",
+//  "fee": "699",
+//  "counter": "182215",
+//  "gas_limit": "3795",
+//  "storage_limit": "0",
+//  "rollup": "txr1Nbn66mC1yYHBkfD3ink45XVJso6QJZeHe",
+  final case class TxRollupCommit(
+    counter: PositiveBigNumber,
+    fee: PositiveBigNumber,
+    source: PublicKeyHash,
+    gas_limit: PositiveBigNumber,
+    storage_limit: PositiveBigNumber,
+    rollup: PublicKeyHash,
+    metadata: ResultMetadata[OperationResult.Origination],
+    blockOrder: Option[Int] = None,
   ) extends Operation
 
   final case class Delegation(
@@ -743,7 +774,7 @@ object TezosTypes {
 
     final case class Vote(value: String) extends AnyVal
     final case class Proposal(protocols: List[(ProtocolId, ProposalSupporters)], block: Block)
-    final case class BakerRolls(pkh: PublicKeyHash, rolls: Long)
+    final case class BakerRolls(pkh: PublicKeyHash, rolls: Option[Long], voting_power: Option[Long])
     final case class Ballot(pkh: PublicKeyHash, ballot: Vote)
     final case class BallotCounts(yay: Long, nay: Long, pass: Long)
   }
