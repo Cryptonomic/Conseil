@@ -326,36 +326,29 @@ object TezosTypes {
       gas_limit: PositiveBigNumber,
       storage_limit: PositiveBigNumber,
       metadata: ResultMetadata[OperationResult.Origination],
-      blockOrder: Option[Int] = None,
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class TxRollupSubmitBatch(
-    counter: PositiveBigNumber,
-    fee: PositiveBigNumber,
-    source: PublicKeyHash,
-    gas_limit: PositiveBigNumber,
-    storage_limit: PositiveBigNumber,
-    rollup: PublicKeyHash,
-    metadata: ResultMetadata[OperationResult.Origination],
-    blockOrder: Option[Int] = None,
+      counter: PositiveBigNumber,
+      fee: PositiveBigNumber,
+      source: PublicKeyHash,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      rollup: PublicKeyHash,
+      metadata: ResultMetadata[OperationResult.Origination],
+      blockOrder: Option[Int] = None
   ) extends Operation
 
-//  "kind": "tx_rollup_commit",
-//  "source": "tz1gqDrJYH8rTkdG3gCLTtRA1d7UZDjYFNRY",
-//  "fee": "699",
-//  "counter": "182215",
-//  "gas_limit": "3795",
-//  "storage_limit": "0",
-//  "rollup": "txr1Nbn66mC1yYHBkfD3ink45XVJso6QJZeHe",
   final case class TxRollupCommit(
-    counter: PositiveBigNumber,
-    fee: PositiveBigNumber,
-    source: PublicKeyHash,
-    gas_limit: PositiveBigNumber,
-    storage_limit: PositiveBigNumber,
-    rollup: PublicKeyHash,
-    metadata: ResultMetadata[OperationResult.Origination],
-    blockOrder: Option[Int] = None,
+      counter: PositiveBigNumber,
+      fee: PositiveBigNumber,
+      source: PublicKeyHash,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      rollup: PublicKeyHash,
+      metadata: ResultMetadata[OperationResult.Origination],
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class Delegation(
@@ -492,7 +485,6 @@ object TezosTypes {
         blockOrder: Option[Int] = None
     ) extends InternalOperationResult
 
-
   }
 
   //generic metadata, used whenever balance updates are the only thing inside
@@ -551,7 +543,7 @@ object TezosTypes {
     )
 
     final case class TxRollupOrigination(
-        balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
+        balance_updates: Option[List[OperationMetadata.BalanceUpdate]]
     )
 
     final case class Delegation(

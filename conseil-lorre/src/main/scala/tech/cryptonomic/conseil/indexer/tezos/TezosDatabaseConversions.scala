@@ -685,6 +685,9 @@ private[tezos] object TezosDatabaseConversions {
       case DoubleEndorsementEvidence(_) => "double_endorsement_evidence"
       case DoublePreendorsementEvidence(_) => "double_preendorsement_evidence"
       case DoubleBakingEvidence(_) => "double_baking_evidence"
+      case _: TxRollupOrigination => "tx_rollup_origination"
+      case _: TxRollupSubmitBatch => "tx_rollup_submit_batch"
+      case _: TxRollupCommit => "tx_rollup_commit"
       case _ => ""
     }
     val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))

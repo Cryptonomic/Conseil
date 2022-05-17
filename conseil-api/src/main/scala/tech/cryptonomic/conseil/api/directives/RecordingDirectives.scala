@@ -26,7 +26,7 @@ class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupp
     for {
       map <- requestInfoMap.get
       _ <- requestInfoMap.update(_ => modify(map))
-    } yield  useValues(map.get(correlationId))
+    } yield useValues(map.get(correlationId))
 
   /** Directive adding recorded values to the MDC */
   def recordResponseValues(ip: RemoteAddress, stringEntity: String)(implicit correlationId: UUID): Directive[Unit] =
