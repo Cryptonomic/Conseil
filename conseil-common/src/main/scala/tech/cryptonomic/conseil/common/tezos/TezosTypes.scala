@@ -578,7 +578,7 @@ object TezosTypes {
         contract: Option[ContractId],
         delegate: Option[PublicKeyHash],
         level: Option[BlockLevel],
-        origin: String
+        origin: Option[String]
     )
   }
 
