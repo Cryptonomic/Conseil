@@ -229,7 +229,8 @@ object TezosTypes {
     "set_deposits_limit",
     "tx_rollup_origination",
     "tx_rollup_submit_batch",
-    "tx_rollup_commit"
+    "tx_rollup_commit",
+    "tx_rollup_finalize_commitment"
   )
 
   final case class Operations(
@@ -349,6 +350,17 @@ object TezosTypes {
       rollup: PublicKeyHash,
       metadata: ResultMetadata[OperationResult.Origination],
       blockOrder: Option[Int] = None
+  ) extends Operation
+
+  final case class TxRollupFinalizeCommitment(
+    counter: PositiveBigNumber,
+    fee: PositiveBigNumber,
+    source: PublicKeyHash,
+    gas_limit: PositiveBigNumber,
+    storage_limit: PositiveBigNumber,
+    rollup: PublicKeyHash,
+    metadata: ResultMetadata[OperationResult.Origination],
+    blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class Delegation(
