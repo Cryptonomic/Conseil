@@ -299,12 +299,38 @@ object TezosOptics {
       * @return a Map holding for each group both external and internal operations' results
       */
     def extractOperationsAlongWithInternalResults(
-        block: Block
+        block: Block,
+        knownAddresses: Option[List[Tables.KnownAddressesRow]]
     ): Map[OperationsGroup, (List[Operation], List[InternalOperationResults.InternalOperationResult])] =
       block.operationGroups.map { group =>
         val updatedGroup = addIndexesToOperationGroup(group)
 
-        val internal = updatedGroup.contents.flatMap { op =>
+        val internal = updatedGroup.contents.filter{ ff =>
+          knownAddresses match {
+            case Some(ka) =>
+              val addresses = ka.map(_.address)
+              ff match {
+                case Endorsement(level, metadata, blockOrder) => false
+                case EndorsementWithSlot(endorsement, metadata, blockOrder) => false
+                case Preendorsement(level, metadata, blockOrder) => false
+                case SeedNonceRevelation(level, nonce, metadata, blockOrder) => false
+                case ActivateAccount(pkh, secret, metadata, blockOrder) => addresses.contains(pkh.value)
+                case Reveal(counter, fee, gas_limit, storage_limit, public_key, source, metadata, blockOrder) => addresses.contains(public_key.value) || addresses.contains(source.value)
+                case Transaction(counter, amount, fee, gas_limit, storage_limit, source, destination, parameters, parameters_micheline, metadata, blockOrder) => addresses.contains(source.value) || addresses.contains(destination.id)
+                case Origination(counter, fee, source, balance, gas_limit, storage_limit, manager_pubkey, delegatable, delegate, spendable, script, metadata, blockOrder) => addresses.contains(source.value) || addresses.contains(delegate.getOrElse(PublicKeyHash("")).value)
+                case Delegation(counter, source, fee, gas_limit, storage_limit, delegate, metadata, blockOrder) => addresses.contains(source.value) || addresses.contains(delegate.getOrElse(PublicKeyHash("")).value)
+                case DoubleEndorsementEvidence(blockOrder) => false
+                case DoublePreendorsementEvidence(blockOrder) => false
+                case DoubleBakingEvidence(blockOrder) => false
+                case Proposals(source, period, proposals, blockOrder) => addresses.contains(source.getOrElse(ContractId("")).id)
+                case Ballot(ballot, proposal, source, period, blockOrder) => addresses.contains(source.getOrElse(ContractId("")).id)
+                case RegisterGlobalConstant(source, fee, counter, gas_limit, storage_limit, value, blockOrder, metadata) => addresses.contains(source.getOrElse(ContractId("")).id)
+                case SetDepositsLimit(source, fee, counter, gas_limit, storage_limit, limit, blockOrder, metadata) => addresses.contains(source.getOrElse(ContractId("")).id)
+              }
+            case None => true
+          }
+
+        }.flatMap { op =>
           op match {
             case r: Reveal => r.metadata.internal_operation_results.toList.flatten
             case t: Transaction => t.metadata.internal_operation_results.toList.flatten

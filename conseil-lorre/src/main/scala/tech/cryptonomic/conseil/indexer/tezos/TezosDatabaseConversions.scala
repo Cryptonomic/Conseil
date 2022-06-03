@@ -823,32 +823,34 @@ private[tezos] object TezosDatabaseConversions {
     * To correctly create the relation on the db, we must first store the operations, get
     * each generated id, and pass it to the associated balance-updates
     */
-  implicit val blockToOperationTablesData = new Conversion[List, Block, OperationTablesData] {
+  implicit val blockToOperationTablesData = new Conversion[List, (Block, Option[List[Tables.KnownAddressesRow]]), OperationTablesData] {
     import OperationBalances._
     import SymbolSourceLabels.Show._
     import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 
-    override def convert(from: Block) =
+    override def convert(from: (Block, Option[List[Tables.KnownAddressesRow]])) = {
+      val (block, knownAddresses) = from
       TezosOptics.Blocks
-        .extractOperationsAlongWithInternalResults(from)
+        .extractOperationsAlongWithInternalResults(block, knownAddresses)
         .flatMap { case (group, (operations, internalResults)) =>
           val mainOperationData = operations.map(op =>
-            (from, group.hash, op).convertTo[Tables.OperationsRow] ->
+            (block, group.hash, op).convertTo[Tables.OperationsRow] ->
               BlockTagged
-                .fromBlockData(from.data, op)
+                .fromBlockData(block.data, op)
                 .convertToA[List, Tables.BalanceUpdatesRow]
           )
           val internalOperationData = internalResults.map { case oop =>
             val op = oop.convertTo[Operation]
-            (from, group.hash, op)
+            (block, group.hash, op)
               .convertTo[Tables.OperationsRow]
               .copy(internal = true, nonce = Some(oop.nonce.toString)) -> BlockTagged
-              .fromBlockData(from.data, op)
+              .fromBlockData(block.data, op)
               .convertToA[List, Tables.BalanceUpdatesRow]
           }
           mainOperationData ++ internalOperationData
         }
         .toList
+    }
 
   }
 

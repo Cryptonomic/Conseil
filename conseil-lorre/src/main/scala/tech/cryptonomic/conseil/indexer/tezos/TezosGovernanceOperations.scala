@@ -373,7 +373,7 @@ object TezosGovernanceOperations extends ConseilLogSupport {
     //adapting database-level formats to the domain-level ones
     def downCastToInt(bd: BigDecimal) = Try(bd.toIntExact).toOption
     //should be the level we reached, before the current processing batch
-    val previousBatchHighLevel = blocks.map(_.data.header.level).min - 1
+    val previousBatchHighLevel = Try(blocks.map(_.data.header.level).min.toLong).toOption.getOrElse(1L) - 1
 
     TezosDatabaseOperations
       .getGovernanceForLevel(previousBatchHighLevel)
