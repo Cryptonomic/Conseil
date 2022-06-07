@@ -147,10 +147,10 @@ class GenericPlatformDiscoveryOperations(
     * @param  xs list of platform-network pairs for which we want to fetch attribute values
     * @return database action with attribute values to be cached
     */
-  def initAttributeValuesCache(xs: List[(Platform, Network)]): Future[AttributeValuesCache] = {
+  def initAttributeValuesCache(xs: List[(Platform, Network)]): Future[Boolean] = {
     xs.map { case (platform, network) =>
       IO.fromFuture(IO(dbRunners(platform.name, network.name).runQuery(preCacheAttributeValues(platform, network))))
-    }.sequence.map(_.reduce(_ ++ _))
+    }.sequence.map(_.reduce(_ ++ _)).flatMap(caching.fillAttributeValuesCache)
   }.unsafeToFuture()
 
   /** Pre-caching attribute values from slick for specific platform
