@@ -98,6 +98,7 @@ class AccountsProcessor(
         (taggedList, taggedBakersKeys)
       } else (taggedList, List.empty)
     }
+
     /** Starting from accounts grouped by block, and the correspoding delegates,
       * we compute extra information and store everything in the database.
       * All of this is done on a "page" of those values, which represents a chunk

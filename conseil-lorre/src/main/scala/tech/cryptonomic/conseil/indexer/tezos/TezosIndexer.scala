@@ -271,8 +271,8 @@ class TezosIndexer private (
                   bakersProcessor.processTezosBakersCheckpoint() >>
                   accountsProcessor.markBakerAccounts(extractProcessedHashes(fetchingResults)) >>
                   (if (featureFlags.rightsProcessingIsOn)
-                    rightsProcessor.processBakingAndEndorsingRights(fetchingResults)
-                  else Future.successful(Done))
+                     rightsProcessor.processBakingAndEndorsingRights(fetchingResults)
+                   else Future.successful(Done))
               )
           }
           .runFold(0) { (processed, justDone) =>

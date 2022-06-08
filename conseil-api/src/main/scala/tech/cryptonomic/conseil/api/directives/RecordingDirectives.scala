@@ -26,7 +26,7 @@ class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupp
     for {
       map <- requestInfoMap.get
       _ <- requestInfoMap.update(_ => modify(map))
-    } yield  useValues(map.get(correlationId))
+    } yield useValues(map.get(correlationId))
 
   /** Directive adding recorded values to the MDC */
   def recordResponseValues(ip: RemoteAddress, stringEntity: String)(implicit correlationId: UUID): Directive[Unit] =
@@ -59,7 +59,9 @@ class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupp
     ExceptionHandler { case e: Throwable =>
       val response = HttpResponse(InternalServerError)
 
-      logger.info(s"Request with CorrelationId $correlationId failed with 500, current request map: ${requestInfoMap.get.unsafeRunSync()}" )
+      logger.info(
+        s"Request with CorrelationId $correlationId failed with 500, current request map: ${requestInfoMap.get.unsafeRunSync()}"
+      )
 
       requestMapModify(
         modify = _.filterNot(_._1 == correlationId)
@@ -73,7 +75,9 @@ class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupp
   def timeoutHandler(route: => Route)(implicit correlationId: UUID): Route =
     withRequestTimeoutResponse { _ =>
       val response = HttpResponse(StatusCodes.ServiceUnavailable, entity = HttpEntity("Request timeout"))
-      logger.info(s"Request with CorrelationId $correlationId failed with 503, current request map: ${requestInfoMap.get.unsafeRunSync()}" )
+      logger.info(
+        s"Request with CorrelationId $correlationId failed with 503, current request map: ${requestInfoMap.get.unsafeRunSync()}"
+      )
 
       requestMapModify(
         modify = _.filterNot(_._1 == correlationId)

@@ -8,7 +8,12 @@ import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.api.routes.platform.Sanitizer
 import tech.cryptonomic.conseil.api.sql.DefaultDatabaseOperations._
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{AttributesValidationError, HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
+  AttributesValidationError,
+  HighCardinalityAttribute,
+  InvalidAttributeDataType,
+  InvalidAttributeFilterLength
+}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.common.generic.chain.{DBIORunner, PlatformDiscoveryOperations}
@@ -40,7 +45,8 @@ class GenericPlatformDiscoveryOperations(
     cacheTTL: FiniteDuration,
     highCardinalityLimit: Int
 )(implicit executionContext: ExecutionContext)
-    extends PlatformDiscoveryOperations with ConseilLogSupport {
+    extends PlatformDiscoveryOperations
+    with ConseilLogSupport {
 
   import MetadataCaching._
   import cats.effect._
@@ -341,7 +347,9 @@ class GenericPlatformDiscoveryOperations(
               AttributeValuesCacheKey(platform, network, tableName, columnName),
               radixTree
             )
-            _ = logger.info(s"Attribute values cache updated $platform $network $tableName $columnName $attributeFilter")
+            _ = logger.info(
+              s"Attribute values cache updated $platform $network $tableName $columnName $attributeFilter"
+            )
           } yield ()).unsafeRunAndForget()
           IO.pure(oldRadixTree.filterPrefix(attributeFilter).values.take(maxResultLength).toList)
         case None =>
