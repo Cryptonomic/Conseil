@@ -6,10 +6,17 @@ source fetch.fish
 function 1:N
     set numberOfRecords (length $conseilQueryResult)
     set op (echo $currentCheck | jq -c '.operation.op' | remove-double-qoutes)
+    set silenceOk (echo $currentCheck | jq -c ".operation.silenceOk" | remove-double-qoutes)
     for i in (stepLength $conseilQueryResult)
         set -gx selectedQueryObject (echo $conseilQueryResult | jqIdx $i)
         set nodePath (interpretAST $parsedNodePath | remove-double-qoutes)
+
+
+	if [ $silenceOk = "false" ]
+
         echo $nodePath
+	end
+
         set -gx nodeResult (node $nodePath)
         #breakpoint
         switch $op
@@ -24,16 +31,21 @@ function eq
     set field2 (echo $currentCheck | jq -c ".operation.field_2" | remove-double-qoutes)
     set error (echo $currentCheck | jq -c ".operation.error" | remove-double-qoutes)
     set ok (echo $currentCheck | jq -c ".operation.ok" | remove-double-qoutes)
+    set silenceOk (echo $currentCheck | jq -c ".operation.silenceOk" | remove-double-qoutes)
     set field1Val (interpretAST (scan-line "#$field1##") | remove-double-qoutes)
     set field2Val (interpretAST (scan-line "#$field2##") | remove-double-qoutes)
     set errorVal (interpretAST (scan-line $error) | remove-double-qoutes)
     #breakpoint
-    echo "$field1Val == $field2Val ?"
     set eq (expr $field1Val = $field2Val)
     if test $eq -eq 1
 
         set okVal (interpretAST (scan-line $ok) | remove-double-qoutes)
+
+	if [ $silenceOk = "false" ]
+
+	echo "$field1Val == $field2Val ?"
         ok $okVal
+	end
 	#breakpoint
     else
 
