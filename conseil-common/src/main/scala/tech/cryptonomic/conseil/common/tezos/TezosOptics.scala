@@ -369,6 +369,9 @@ object TezosOptics {
             }
           }
           operation.copy(metadata = operation.metadata.copy(internal_operation_results = internalOpResult))
+        case x: TxRollupFinalizeCommitment =>
+          index += 1
+          x.copy(blockOrder = Some(index))
       }
 
       group.copy(contents = contents)
