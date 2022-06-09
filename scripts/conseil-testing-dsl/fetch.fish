@@ -19,6 +19,8 @@ function get
     end
 
 
+    echo curl -s --request GET --header (string join '' 'apiKey' ':' ' ' $FapiKey) \
+        --url (string join '' $FHOST $FPATH) >> curl.md
 
     curl -s --request GET --header (string join '' 'apiKey' ':' ' ' $FapiKey) \
         --url (string join '' $FHOST $FPATH)
@@ -51,6 +53,11 @@ function post
     end
 
 
+
+    echo curl -s -H 'Content-Type: application/json' -H (string join '' 'apiKey' ':' ' ' 'hooman') \
+    -X POST (string join ''  $FHOST $FPATH)  -d "$FQUERY" >> curl.md
+    #echo $postcommand
+     
     curl -s -H 'Content-Type: application/json' -H (string join '' 'apiKey' ':' ' ' 'hooman') \
         -X POST (string join ''  $FHOST $FPATH) \
         -d "$FQUERY"
