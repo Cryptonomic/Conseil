@@ -102,8 +102,18 @@ object TezosTypes {
       voting_period_kind: Option[VotingPeriod.Kind],
       voting_period_info: Option[VotingPeriodInfo],
       level: Option[BlockHeaderMetadataLevel],
-      level_info: Option[BlockHeaderMetadataLevelInfo]
+      level_info: Option[BlockHeaderMetadataLevelInfo],
+      implicit_operations_results: Option[List[ImplicitOperationResults]]
   ) extends BlockMetadata
+
+  final case class ImplicitOperationResults(
+      kind: String,
+      storage: Option[Micheline],
+      balance_updates: List[OperationMetadata.BalanceUpdate],
+      consumed_gas: PositiveBigNumber,
+      consumed_miligas: PositiveBigNumber,
+      storage_size: PositiveBigNumber
+  )
 
   final case class BlockHeaderMetadataLevel(
       level: BlockLevel,
