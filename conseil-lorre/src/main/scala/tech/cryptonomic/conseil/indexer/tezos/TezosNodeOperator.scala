@@ -722,7 +722,7 @@ private[tezos] class TezosNodeOperator(
         id <- balanceUpdate.contract.map(_.id).toList ::: balanceUpdate.delegate.map(_.value).toList
       } yield makeAccountId(id)
 
-    def extractAccountIds2(blockData: BlockData): List[AccountId] =
+    def extractAccountIdsFromImplicitOpResults(blockData: BlockData): List[AccountId] =
       for {
         blockHeaderMetadata <- discardGenesis(blockData.metadata).toList
         id <- blockHeaderMetadata.implicit_operations_results.toList.flatten.flatMap(_.balance_updates.flatMap(_.contract.toList))
@@ -751,7 +751,7 @@ private[tezos] class TezosNodeOperator(
       fetchedBlocksData.map { case (offset, md) =>
         val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
         val votes = proposalsMap.getOrElse(md.hash, CurrentVotes.empty)
-        (parseMichelsonScripts(Block(md, ops, votes)), (accs ::: extractAccountIds(md) ::: extractAccountIds2(md)).distinct)
+        (parseMichelsonScripts(Block(md, ops, votes)), (accs ::: extractAccountIds(md) ::: extractAccountIdsFromImplicitOpResults(md)).distinct)
       }
     }
   }
