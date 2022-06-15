@@ -226,7 +226,11 @@ object TezosTypes {
     "endorsement_with_slot",
     "preendorsement",
     "double_preendorsement_evidence",
-    "set_deposits_limit"
+    "set_deposits_limit",
+    "tx_rollup_origination",
+    "tx_rollup_submit_batch",
+    "tx_rollup_commit",
+    "tx_rollup_finalize_commitment"
   )
 
   final case class Operations(
@@ -316,6 +320,49 @@ object TezosTypes {
       blockOrder: Option[Int] = None
   ) extends Operation
 
+  final case class TxRollupOrigination(
+      counter: PositiveBigNumber,
+      fee: PositiveBigNumber,
+      source: PublicKeyHash,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      metadata: ResultMetadata[OperationResult.Origination],
+      blockOrder: Option[Int] = None
+  ) extends Operation
+
+  final case class TxRollupSubmitBatch(
+      counter: PositiveBigNumber,
+      fee: PositiveBigNumber,
+      source: PublicKeyHash,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      rollup: PublicKeyHash,
+      metadata: ResultMetadata[OperationResult.Origination],
+      blockOrder: Option[Int] = None
+  ) extends Operation
+
+  final case class TxRollupCommit(
+      counter: PositiveBigNumber,
+      fee: PositiveBigNumber,
+      source: PublicKeyHash,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      rollup: PublicKeyHash,
+      metadata: ResultMetadata[OperationResult.Origination],
+      blockOrder: Option[Int] = None
+  ) extends Operation
+
+  final case class TxRollupFinalizeCommitment(
+    counter: PositiveBigNumber,
+    fee: PositiveBigNumber,
+    source: PublicKeyHash,
+    gas_limit: PositiveBigNumber,
+    storage_limit: PositiveBigNumber,
+    rollup: PublicKeyHash,
+    metadata: ResultMetadata[OperationResult.Origination],
+    blockOrder: Option[Int] = None
+  ) extends Operation
+
   final case class Delegation(
       counter: PositiveBigNumber,
       source: PublicKeyHash,
@@ -372,18 +419,18 @@ object TezosTypes {
       slot: Option[Int],
       slots: Option[List[Int]],
       delegate: PublicKeyHash,
-      balance_updates: List[OperationMetadata.BalanceUpdate]
+      balance_updates: Option[List[OperationMetadata.BalanceUpdate]]
   )
 
   final case class PreendorsementMetadata(
       delegate: PublicKeyHash,
-      balance_updates: List[OperationMetadata.BalanceUpdate]
+      balance_updates: Option[List[OperationMetadata.BalanceUpdate]]
   )
 
   //for now we ignore internal results, as it gets funny as sitting naked on a wasps' nest
   final case class ResultMetadata[RESULT](
       operation_result: RESULT,
-      balance_updates: List[OperationMetadata.BalanceUpdate],
+      balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
       internal_operation_results: Option[List[InternalOperationResults.InternalOperationResult]] = None
   )
 
@@ -442,11 +489,19 @@ object TezosTypes {
         blockOrder: Option[Int] = None
     ) extends InternalOperationResult
 
+    case class TxRollupOrigination(
+        kind: String,
+        consumed_gas: Option[BigNumber],
+        nonce: Int,
+        originated_rollup: PublicKeyHash,
+        blockOrder: Option[Int] = None
+    ) extends InternalOperationResult
+
   }
 
   //generic metadata, used whenever balance updates are the only thing inside
   final case class BalanceUpdatesMetadata(
-      balance_updates: List[OperationMetadata.BalanceUpdate]
+      balance_updates: Option[List[OperationMetadata.BalanceUpdate]]
   )
 
   /** defines common result structures, following the json-schema definitions */
@@ -499,6 +554,10 @@ object TezosTypes {
         errors: Option[List[Error]]
     )
 
+    final case class TxRollupOrigination(
+        balance_updates: Option[List[OperationMetadata.BalanceUpdate]]
+    )
+
     final case class Delegation(
         status: String,
         consumed_gas: Option[BigNumber],
@@ -526,11 +585,12 @@ object TezosTypes {
     //we're currently making no difference between contract or freezer updates
     final case class BalanceUpdate(
         kind: String,
-        change: Long,
+        change: BigNumber,
         category: Option[String],
         contract: Option[ContractId],
         delegate: Option[PublicKeyHash],
-        level: Option[BlockLevel]
+        level: Option[BlockLevel],
+        origin: Option[String]
     )
   }
 
@@ -638,7 +698,7 @@ object TezosTypes {
   ) {
 
     /** Compute rolls based on staked balance */
-    def rolls: Option[Int] = Baking.computeRollsFromStakes(staking_balance)
+    def rolls: Option[Long] = Baking.computeRollsFromStakes(staking_balance)
 
   }
 
@@ -718,9 +778,9 @@ object TezosTypes {
 
     final case class Vote(value: String) extends AnyVal
     final case class Proposal(protocols: List[(ProtocolId, ProposalSupporters)], block: Block)
-    final case class BakerRolls(pkh: PublicKeyHash, rolls: Int)
+    final case class BakerRolls(pkh: PublicKeyHash, rolls: Option[Long], voting_power: Option[Long])
     final case class Ballot(pkh: PublicKeyHash, ballot: Vote)
-    final case class BallotCounts(yay: Int, nay: Int, pass: Int)
+    final case class BallotCounts(yay: Long, nay: Long, pass: Long)
   }
 
   /** Utilities related to the baking process */
@@ -731,10 +791,10 @@ object TezosTypes {
       loadConfig[TezosConfiguration](namespace = "platforms").fold(_ => BigDecimal.decimal(8000), _.bakerRollsSize)
 
     /** Starting from the staking balance, infers number of rolls for a given baker. */
-    def computeRollsFromStakes(stakingBalance: PositiveBigNumber): Option[Int] =
+    def computeRollsFromStakes(stakingBalance: PositiveBigNumber): Option[Long] =
       stakingBalance match {
         case PositiveDecimal(value) =>
-          Some((value quot (BakerRollsSize * BigDecimal(1e6))).toIntExact) // taking scale of mutez into account
+          Some((value quot (BakerRollsSize * BigDecimal(1e6))).toLongExact) // taking scale of mutez into account
         case InvalidPositiveDecimal(jsonString) =>
           None
       }

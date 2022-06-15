@@ -36,24 +36,24 @@ object OperationBalances {
     Getter[BlockTagged[OP], Map[BlockTagged[Label], List[BalanceUpdate]]] { case b: BlockTagged[OP] =>
       b.content match {
         case e: EndorsementWithSlot =>
-          Map(b.updateContent(OPERATION_SOURCE) -> e.metadata.balance_updates)
+          Map(b.updateContent(OPERATION_SOURCE) -> e.metadata.balance_updates.toList.flatten)
         case e: Endorsement =>
-          Map(b.updateContent(OPERATION_SOURCE) -> e.metadata.balance_updates)
+          Map(b.updateContent(OPERATION_SOURCE) -> e.metadata.balance_updates.toList.flatten)
         case nr: SeedNonceRevelation =>
-          Map(b.updateContent(OPERATION_SOURCE) -> nr.metadata.balance_updates)
+          Map(b.updateContent(OPERATION_SOURCE) -> nr.metadata.balance_updates.toList.flatten)
         case aa: ActivateAccount =>
-          Map(b.updateContent(OPERATION_SOURCE) -> aa.metadata.balance_updates)
+          Map(b.updateContent(OPERATION_SOURCE) -> aa.metadata.balance_updates.toList.flatten)
         case r: Reveal =>
-          Map(b.updateContent(OPERATION_SOURCE) -> r.metadata.balance_updates)
+          Map(b.updateContent(OPERATION_SOURCE) -> r.metadata.balance_updates.toList.flatten)
         case t: Transaction =>
           Map(
-            b.updateContent(OPERATION_SOURCE) -> t.metadata.balance_updates,
+            b.updateContent(OPERATION_SOURCE) -> t.metadata.balance_updates.toList.flatten,
             b.updateContent(OPERATION_RESULT_SOURCE) -> t.metadata.operation_result.balance_updates
               .getOrElse(List.empty)
           )
         case o: Origination =>
           Map(
-            b.updateContent(OPERATION_SOURCE) -> o.metadata.balance_updates,
+            b.updateContent(OPERATION_SOURCE) -> o.metadata.balance_updates.toList.flatten,
             b.updateContent(OPERATION_RESULT_SOURCE) -> o.metadata.operation_result.balance_updates
               .getOrElse(List.empty)
           )
