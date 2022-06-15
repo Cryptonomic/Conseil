@@ -37,7 +37,6 @@ class BlocksProcessor(
 )(implicit tns: TNSContract)
     extends ConseilLogSupport {
 
-  println(knownAddresses)
   /* will store a single page of block results */
   private[tezos] def processBlocksPage(results: nodeOperator.BlockFetchingResults)(implicit
       ec: ExecutionContext
@@ -57,13 +56,8 @@ class BlocksProcessor(
         case Some(value) =>
           results.map { case (block, accountIds) =>
             val ids = accountIds.toSet.intersect(value.map(x => TezosTypes.PublicKeyHash(x.address)).toSet)
-            println(accountIds.toSet)
-            println(value.map(x => TezosTypes.PublicKeyHash(x.address)).toSet)
-            println(ids)
-            if(ids.nonEmpty)
-             Some(block -> accountIds.taggedWithBlockData(block.data))
-            else None
-          }.filter(_.isDefined).map(_.get).unzip
+             block -> accountIds.taggedWithBlockData(block.data)
+          }.unzip
         case None =>
           results.map { case (block, accountIds) =>
             block -> accountIds.taggedWithBlockData(block.data)
