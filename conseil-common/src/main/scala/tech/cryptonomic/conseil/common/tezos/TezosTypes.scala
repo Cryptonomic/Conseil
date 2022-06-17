@@ -230,7 +230,8 @@ object TezosTypes {
     "tx_rollup_origination",
     "tx_rollup_submit_batch",
     "tx_rollup_commit",
-    "tx_rollup_finalize_commitment"
+    "tx_rollup_finalize_commitment",
+    "tx_rollup_dispatch_tickets"
   )
 
   final case class Operations(
@@ -359,6 +360,17 @@ object TezosTypes {
     gas_limit: PositiveBigNumber,
     storage_limit: PositiveBigNumber,
     rollup: PublicKeyHash,
+    metadata: ResultMetadata[OperationResult.Origination],
+    blockOrder: Option[Int] = None
+  ) extends Operation
+
+  final case class TxRollupDispatchTickets(
+    counter: PositiveBigNumber,
+    fee: PositiveBigNumber,
+    source: PublicKeyHash,
+    gas_limit: PositiveBigNumber,
+    storage_limit: PositiveBigNumber,
+    tx_rollup: PublicKeyHash,
     metadata: ResultMetadata[OperationResult.Origination],
     blockOrder: Option[Int] = None
   ) extends Operation
