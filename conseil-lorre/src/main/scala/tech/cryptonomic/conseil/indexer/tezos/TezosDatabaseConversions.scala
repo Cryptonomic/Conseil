@@ -689,6 +689,7 @@ private[tezos] object TezosDatabaseConversions {
       case _: TxRollupSubmitBatch => "tx_rollup_submit_batch"
       case _: TxRollupCommit => "tx_rollup_commit"
       case _: TxRollupFinalizeCommitment => "tx_rollup_finalize_commitment"
+      case _: TxRollupDispatchTickets => "tx_rollup_dispatch_ticket"
       case _ => ""
     }
     val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
