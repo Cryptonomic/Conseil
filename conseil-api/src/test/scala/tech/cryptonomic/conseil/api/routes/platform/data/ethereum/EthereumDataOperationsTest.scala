@@ -22,133 +22,174 @@ class EthereumDataOperationsTest
     with EthereumDataOperationsTest.Fixtures {
 
   "EthereumDataOperations" should {
-      val sut = new EthereumDataOperations("ethereum", dbConfig) {
-        override lazy val dbReadHandle = dbHandler
+    val sut = new EthereumDataOperations("ethereum", dbConfig) {
+      override lazy val dbReadHandle = dbHandler
+    }
+
+    "return proper number of blocks, while fetching all blocks" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+
+      whenReady(sut.fetchBlocks(Query.empty)) { result =>
+        result.value.size shouldBe 3
       }
+    }
 
-      "return proper number of blocks, while fetching all blocks" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+    "return proper head block" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchBlocks(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
+      whenReady(sut.fetchBlocksHead()) { result =>
+        result.value should contain key "hash"
+        result.value("hash") shouldBe Some("hash3")
       }
+    }
 
-      "return proper head block" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+    "return proper block by hash" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchBlocksHead()) { result =>
-          result.value should contain key "hash"
-          result.value("hash") shouldBe Some("hash3")
-        }
+      whenReady(sut.fetchBlockByHash(EthereumBlockHash("hash2"))) { result =>
+        result.value should contain key "hash"
+        result.value("hash") shouldBe Some("hash2")
       }
+    }
 
-      "return proper block by hash" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+    "return proper number of transactions, while fetching all transactions" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchBlockByHash(EthereumBlockHash("hash2"))) { result =>
-          result.value should contain key "hash"
-          result.value("hash") shouldBe Some("hash2")
-        }
+      whenReady(sut.fetchTransactions(Query.empty)) { result =>
+        result.value.size shouldBe 3
       }
+    }
 
-      "return proper number of transactions, while fetching all transactions" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+    "return proper transaction by hash" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchTransactions(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
+      whenReady(sut.fetchTransactionByHash("hash1")) { result =>
+        result.value should contain key "hash"
+        result.value("hash") shouldBe Some("hash1")
       }
+    }
 
-      "return proper transaction by hash" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+    "return proper logs, while fetching all logs" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Logs ++= logs).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchTransactionByHash("hash1")) { result =>
-          result.value should contain key "hash"
-          result.value("hash") shouldBe Some("hash1")
-        }
+      whenReady(sut.fetchLogs(Query.empty)) { result =>
+        result.value.size shouldBe 3
       }
+    }
 
-      "return proper logs, while fetching all logs" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Logs ++= logs).isReadyWithin(5.seconds) shouldBe true
+    "return proper receipts, while fetching all receipts" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Receipts ++= receipts).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchLogs(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
+      whenReady(sut.fetchReceipts(Query.empty)) { result =>
+        result.value.size shouldBe 3
       }
+    }
 
-      "return proper receipts, while fetching all receipts" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Receipts ++= receipts).isReadyWithin(5.seconds) shouldBe true
+    "return proper token transfers, while fetching all token transfers" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchReceipts(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
+      whenReady(sut.fetchTokenTransfers(Query.empty)) { result =>
+        result.value.size shouldBe 3
       }
+    }
 
-      "return proper token transfers, while fetching all token transfers" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
+    "return proper token balances, while fetching all token balances" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.TokensHistory ++= tokenBalances).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchTokenTransfers(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
+      whenReady(sut.fetchTokensHistory(Query.empty)) { result =>
+        result.value.size shouldBe 3
       }
+    }
 
-      "return proper token balances, while fetching all token balances" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.TokenTransfers ++= tokenTransfers).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.TokensHistory ++= tokenBalances).isReadyWithin(5.seconds) shouldBe true
+    "return proper number of accounts, while fetching all of accounts" in {
+      // given
+      dbHandler.run(Tables.Accounts ++= accounts).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchTokensHistory(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
+      whenReady(sut.fetchAccounts(Query.empty)) { result =>
+        result.value.size shouldBe 3
       }
+    }
 
-      "return proper number of accounts, while fetching all of accounts" in {
-        // given
-        dbHandler.run(Tables.Accounts ++= accounts).isReadyWithin(5.seconds) shouldBe true
+    "return proper account by address" in {
+      // given
+      dbHandler.run(Tables.Accounts ++= accounts).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchAccounts(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
+      whenReady(sut.fetchAccountByAddress("0x3")) { result =>
+        result.value should (contain key "token_standard" and contain value account3.tokenStandard)
+        result.value should (contain key "balance" and contain value Some(convertAndScale(account3.balance, 2)))
+
+        // Since we are getting data for QueryResponse in generic way,
+        // we are accessing Java API which returns java data types.
+        // We need to convert and adjust scale for what we are receiving from Slick,
+        // because ScalaTest uses `==`, instead od `compareTo` for this type.
+        def convertAndScale(v: BigDecimal, s: Int): java.math.BigDecimal = v.bigDecimal.setScale(s)
       }
+    }
 
-      "return proper account by address" in {
-        // given
-        dbHandler.run(Tables.Accounts ++= accounts).isReadyWithin(5.seconds) shouldBe true
+    "correctly use query on temporal tokens_history" in {
 
-        whenReady(sut.fetchAccountByAddress("0x3")) { result =>
-          result.value should (contain key "token_standard" and contain value account3.tokenStandard)
-          result.value should (contain key "balance" and contain value Some(convertAndScale(account3.balance, 2)))
+      val tokensHistoryRow = TokensHistoryRow(
+        tokenAddress = "0x1",
+        blockHash = "0x1",
+        blockLevel = 1,
+        transactionHash = "0x1",
+        accountAddress = "0x0",
+        value = BigDecimal("1.0"),
+        asof = new Timestamp(1)
+      )
 
-          // Since we are getting data for QueryResponse in generic way,
-          // we are accessing Java API which returns java data types.
-          // We need to convert and adjust scale for what we are receiving from Slick,
-          // because ScalaTest uses `==`, instead od `compareTo` for this type.
-          def convertAndScale(v: BigDecimal, s: Int): java.math.BigDecimal = v.bigDecimal.setScale(s)
-        }
-      }
+      val populateAndTest = for {
+        _ <- Tables.TokensHistory += tokensHistoryRow
+        found <- sut.selectWithPredicates(
+          "ethereum",
+          table = Tables.TokensHistory.baseTableRow.tableName,
+          columns = List(SimpleField("account_address"), SimpleField("block_level"), SimpleField("asof")),
+          predicates = List.empty,
+          ordering = List(),
+          aggregation = List.empty,
+          temporalPartition = Some("account_address"),
+          snapshot = Some(Snapshot("asof", new Timestamp(1))),
+          outputType = OutputType.json,
+          limit = 10
+        )
+      } yield found
 
-      "correctly use query on temporal tokens_history" in {
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-        val tokensHistoryRow = TokensHistoryRow(
+      result shouldBe List(
+        Map(
+          "account_address" -> Some("0x0"),
+          "block_level" -> Some(1),
+          "asof" -> Some(new Timestamp(1)),
+          "r" -> Some(1)
+        )
+      )
+
+    }
+
+    "get the balance of a token at a specific timestamp there there are multiple entities for given account" in {
+      val tokensHistoryRows = List(
+        TokensHistoryRow(
           tokenAddress = "0x1",
           blockHash = "0x1",
           blockLevel = 1,
@@ -156,311 +197,270 @@ class EthereumDataOperationsTest
           accountAddress = "0x0",
           value = BigDecimal("1.0"),
           asof = new Timestamp(1)
+        ),
+        TokensHistoryRow(
+          tokenAddress = "0x1",
+          blockHash = "0x2",
+          blockLevel = 2,
+          transactionHash = "0x1",
+          accountAddress = "0x0",
+          value = BigDecimal("2.0"),
+          asof = new Timestamp(2)
+        ),
+        TokensHistoryRow(
+          tokenAddress = "0x1",
+          blockHash = "0x3",
+          blockLevel = 3,
+          transactionHash = "0x1",
+          accountAddress = "0x0",
+          value = BigDecimal("3.0"),
+          asof = new Timestamp(3)
         )
+      )
 
-        val populateAndTest = for {
-          _ <- Tables.TokensHistory += tokensHistoryRow
-          found <- sut.selectWithPredicates(
-            "ethereum",
-            table = Tables.TokensHistory.baseTableRow.tableName,
-            columns = List(SimpleField("account_address"), SimpleField("block_level"), SimpleField("asof")),
-            predicates = List.empty,
-            ordering = List(),
-            aggregation = List.empty,
-            temporalPartition = Some("account_address"),
-            snapshot = Some(Snapshot("asof", new Timestamp(1))),
-            outputType = OutputType.json,
-            limit = 10
-          )
-        } yield found
-
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
-
-        result shouldBe List(
-          Map(
-            "account_address" -> Some("0x0"),
-            "block_level" -> Some(1),
-            "asof" -> Some(new Timestamp(1)),
-            "r" -> Some(1)
-          )
+      val populateAndTest = for {
+        _ <- Tables.TokensHistory ++= tokensHistoryRows
+        found <- sut.selectWithPredicates(
+          "ethereum",
+          table = Tables.TokensHistory.baseTableRow.tableName,
+          columns = List(SimpleField("account_address"), SimpleField("block_level"), SimpleField("asof")),
+          predicates = List.empty,
+          ordering = List(),
+          aggregation = List.empty,
+          temporalPartition = Some("account_address"),
+          snapshot = Some(Snapshot("asof", new Timestamp(2))),
+          outputType = OutputType.json,
+          limit = 10
         )
+      } yield found
 
-      }
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-      "get the balance of a token at a specific timestamp there there are multiple entities for given account" in {
-        val tokensHistoryRows = List(
-          TokensHistoryRow(
-            tokenAddress = "0x1",
-            blockHash = "0x1",
-            blockLevel = 1,
-            transactionHash = "0x1",
-            accountAddress = "0x0",
-            value = BigDecimal("1.0"),
-            asof = new Timestamp(1)
-          ),
-          TokensHistoryRow(
-            tokenAddress = "0x1",
-            blockHash = "0x2",
-            blockLevel = 2,
-            transactionHash = "0x1",
-            accountAddress = "0x0",
-            value = BigDecimal("2.0"),
-            asof = new Timestamp(2)
-          ),
-          TokensHistoryRow(
-            tokenAddress = "0x1",
-            blockHash = "0x3",
-            blockLevel = 3,
-            transactionHash = "0x1",
-            accountAddress = "0x0",
-            value = BigDecimal("3.0"),
-            asof = new Timestamp(3)
-          )
+      result shouldBe List(
+        Map(
+          "account_address" -> Some("0x0"),
+          "block_level" -> Some(2),
+          "asof" -> Some(new Timestamp(2)),
+          "r" -> Some(1)
         )
+      )
+    }
 
-        val populateAndTest = for {
-          _ <- Tables.TokensHistory ++= tokensHistoryRows
-          found <- sut.selectWithPredicates(
-            "ethereum",
-            table = Tables.TokensHistory.baseTableRow.tableName,
-            columns = List(SimpleField("account_address"), SimpleField("block_level"), SimpleField("asof")),
-            predicates = List.empty,
-            ordering = List(),
-            aggregation = List.empty,
-            temporalPartition = Some("account_address"),
-            snapshot = Some(Snapshot("asof", new Timestamp(2))),
-            outputType = OutputType.json,
-            limit = 10
-          )
-        } yield found
-
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
-
-        result shouldBe List(
-          Map(
-            "account_address" -> Some("0x0"),
-            "block_level" -> Some(2),
-            "asof" -> Some(new Timestamp(2)),
-            "r" -> Some(1)
-          )
+    "get the token balance of an account at a specific timestamp" in {
+      val tokensHistoryRows = List(
+        TokensHistoryRow(
+          tokenAddress = "0x1",
+          blockHash = "0x1",
+          blockLevel = 1,
+          transactionHash = "0x1",
+          accountAddress = "0x1",
+          value = BigDecimal("1.0"),
+          asof = new Timestamp(1)
+        ),
+        TokensHistoryRow(
+          tokenAddress = "0x1",
+          blockHash = "0x2",
+          blockLevel = 2,
+          transactionHash = "0x1",
+          accountAddress = "0x2",
+          value = BigDecimal("2.0"),
+          asof = new Timestamp(2)
+        ),
+        TokensHistoryRow(
+          tokenAddress = "0x1",
+          blockHash = "0x3",
+          blockLevel = 3,
+          transactionHash = "0x1",
+          accountAddress = "0x3",
+          value = BigDecimal("3.0"),
+          asof = new Timestamp(3)
         )
-      }
+      )
 
-      "get the token balance of an account at a specific timestamp" in {
-        val tokensHistoryRows = List(
-          TokensHistoryRow(
-            tokenAddress = "0x1",
-            blockHash = "0x1",
-            blockLevel = 1,
-            transactionHash = "0x1",
-            accountAddress = "0x1",
-            value = BigDecimal("1.0"),
-            asof = new Timestamp(1)
-          ),
-          TokensHistoryRow(
-            tokenAddress = "0x1",
-            blockHash = "0x2",
-            blockLevel = 2,
-            transactionHash = "0x1",
-            accountAddress = "0x2",
-            value = BigDecimal("2.0"),
-            asof = new Timestamp(2)
-          ),
-          TokensHistoryRow(
-            tokenAddress = "0x1",
-            blockHash = "0x3",
-            blockLevel = 3,
-            transactionHash = "0x1",
-            accountAddress = "0x3",
-            value = BigDecimal("3.0"),
-            asof = new Timestamp(3)
-          )
+      val populateAndTest = for {
+        _ <- Tables.TokensHistory ++= tokensHistoryRows
+        found <- sut.selectWithPredicates(
+          "ethereum",
+          table = Tables.TokensHistory.baseTableRow.tableName,
+          columns = List(SimpleField("account_address"), SimpleField("block_level"), SimpleField("asof")),
+          predicates = List.empty,
+          ordering = List(),
+          aggregation = List.empty,
+          temporalPartition = Some("account_address"),
+          snapshot = Some(Snapshot("asof", new Timestamp(2))),
+          outputType = OutputType.json,
+          limit = 10
         )
+      } yield found
 
-        val populateAndTest = for {
-          _ <- Tables.TokensHistory ++= tokensHistoryRows
-          found <- sut.selectWithPredicates(
-            "ethereum",
-            table = Tables.TokensHistory.baseTableRow.tableName,
-            columns = List(SimpleField("account_address"), SimpleField("block_level"), SimpleField("asof")),
-            predicates = List.empty,
-            ordering = List(),
-            aggregation = List.empty,
-            temporalPartition = Some("account_address"),
-            snapshot = Some(Snapshot("asof", new Timestamp(2))),
-            outputType = OutputType.json,
-            limit = 10
-          )
-        } yield found
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
-
-        result shouldBe List(
-          Map(
-            "account_address" -> Some("0x1"),
-            "block_level" -> Some(1),
-            "asof" -> Some(new Timestamp(1)),
-            "r" -> Some(1)
-          ),
-          Map(
-            "account_address" -> Some("0x2"),
-            "block_level" -> Some(2),
-            "asof" -> Some(new Timestamp(2)),
-            "r" -> Some(1)
-          )
+      result shouldBe List(
+        Map(
+          "account_address" -> Some("0x1"),
+          "block_level" -> Some(1),
+          "asof" -> Some(new Timestamp(1)),
+          "r" -> Some(1)
+        ),
+        Map(
+          "account_address" -> Some("0x2"),
+          "block_level" -> Some(2),
+          "asof" -> Some(new Timestamp(2)),
+          "r" -> Some(1)
         )
-      }
+      )
+    }
 
-      "correctly use query on temporal accounts_history" in {
+    "correctly use query on temporal accounts_history" in {
 
-        val accountsHistoryRow = AccountsHistoryRow(
+      val accountsHistoryRow = AccountsHistoryRow(
+        address = "0x1",
+        blockHash = "0x1",
+        blockLevel = 1,
+        balance = BigDecimal("1.0"),
+        asof = new Timestamp(1)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.AccountsHistory += accountsHistoryRow
+        found <- sut.selectWithPredicates(
+          "ethereum",
+          table = Tables.AccountsHistory.baseTableRow.tableName,
+          columns = List(SimpleField("address"), SimpleField("block_level"), SimpleField("asof")),
+          predicates = List.empty,
+          ordering = List(),
+          aggregation = List.empty,
+          temporalPartition = Some("address"),
+          snapshot = Some(Snapshot("asof", new Timestamp(1))),
+          outputType = OutputType.json,
+          limit = 10
+        )
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map(
+          "address" -> Some("0x1"),
+          "block_level" -> Some(1),
+          "asof" -> Some(new Timestamp(1)),
+          "r" -> Some(1)
+        )
+      )
+    }
+
+    "get the balance of an account at a specific timestamp there there are multiple entities for given account" in {
+      val accountsHistoryRows = List(
+        AccountsHistoryRow(
           address = "0x1",
           blockHash = "0x1",
           blockLevel = 1,
           balance = BigDecimal("1.0"),
           asof = new Timestamp(1)
+        ),
+        AccountsHistoryRow(
+          address = "0x1",
+          blockHash = "0x2",
+          blockLevel = 2,
+          balance = BigDecimal("2.0"),
+          asof = new Timestamp(2)
+        ),
+        AccountsHistoryRow(
+          address = "0x1",
+          blockHash = "0x3",
+          blockLevel = 3,
+          balance = BigDecimal("3.0"),
+          asof = new Timestamp(3)
         )
+      )
 
-        val populateAndTest = for {
-          _ <- Tables.AccountsHistory += accountsHistoryRow
-          found <- sut.selectWithPredicates(
-            "ethereum",
-            table = Tables.AccountsHistory.baseTableRow.tableName,
-            columns = List(SimpleField("address"), SimpleField("block_level"), SimpleField("asof")),
-            predicates = List.empty,
-            ordering = List(),
-            aggregation = List.empty,
-            temporalPartition = Some("address"),
-            snapshot = Some(Snapshot("asof", new Timestamp(1))),
-            outputType = OutputType.json,
-            limit = 10
-          )
-        } yield found
-
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
-
-        result shouldBe List(
-          Map(
-            "address" -> Some("0x1"),
-            "block_level" -> Some(1),
-            "asof" -> Some(new Timestamp(1)),
-            "r" -> Some(1)
-          )
+      val populateAndTest = for {
+        _ <- Tables.AccountsHistory ++= accountsHistoryRows
+        found <- sut.selectWithPredicates(
+          "ethereum",
+          table = Tables.AccountsHistory.baseTableRow.tableName,
+          columns = List(SimpleField("address"), SimpleField("block_level"), SimpleField("asof")),
+          predicates = List.empty,
+          ordering = List(),
+          aggregation = List.empty,
+          temporalPartition = Some("address"),
+          snapshot = Some(Snapshot("asof", new Timestamp(2))),
+          outputType = OutputType.json,
+          limit = 10
         )
-      }
+      } yield found
 
-      "get the balance of an account at a specific timestamp there there are multiple entities for given account" in {
-        val accountsHistoryRows = List(
-          AccountsHistoryRow(
-            address = "0x1",
-            blockHash = "0x1",
-            blockLevel = 1,
-            balance = BigDecimal("1.0"),
-            asof = new Timestamp(1)
-          ),
-          AccountsHistoryRow(
-            address = "0x1",
-            blockHash = "0x2",
-            blockLevel = 2,
-            balance = BigDecimal("2.0"),
-            asof = new Timestamp(2)
-          ),
-          AccountsHistoryRow(
-            address = "0x1",
-            blockHash = "0x3",
-            blockLevel = 3,
-            balance = BigDecimal("3.0"),
-            asof = new Timestamp(3)
-          )
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map(
+          "address" -> Some("0x1"),
+          "block_level" -> Some(2),
+          "asof" -> Some(new Timestamp(2)),
+          "r" -> Some(1)
         )
-
-        val populateAndTest = for {
-          _ <- Tables.AccountsHistory ++= accountsHistoryRows
-          found <- sut.selectWithPredicates(
-            "ethereum",
-            table = Tables.AccountsHistory.baseTableRow.tableName,
-            columns = List(SimpleField("address"), SimpleField("block_level"), SimpleField("asof")),
-            predicates = List.empty,
-            ordering = List(),
-            aggregation = List.empty,
-            temporalPartition = Some("address"),
-            snapshot = Some(Snapshot("asof", new Timestamp(2))),
-            outputType = OutputType.json,
-            limit = 10
-          )
-        } yield found
-
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
-
-        result shouldBe List(
-          Map(
-            "address" -> Some("0x1"),
-            "block_level" -> Some(2),
-            "asof" -> Some(new Timestamp(2)),
-            "r" -> Some(1)
-          )
-        )
-      }
-
-      "get the accounts balance of an account at a specific timestamp" in {
-        val accountsHistoryRows = List(
-          AccountsHistoryRow(
-            address = "0x1",
-            blockHash = "0x1",
-            blockLevel = 1,
-            balance = BigDecimal("1.0"),
-            asof = new Timestamp(1)
-          ),
-          AccountsHistoryRow(
-            address = "0x2",
-            blockHash = "0x2",
-            blockLevel = 2,
-            balance = BigDecimal("2.0"),
-            asof = new Timestamp(2)
-          ),
-          AccountsHistoryRow(
-            address = "0x1",
-            blockHash = "0x3",
-            blockLevel = 3,
-            balance = BigDecimal("3.0"),
-            asof = new Timestamp(3)
-          )
-        )
-
-        val populateAndTest = for {
-          _ <- Tables.AccountsHistory ++= accountsHistoryRows
-          found <- sut.selectWithPredicates(
-            "ethereum",
-            table = Tables.AccountsHistory.baseTableRow.tableName,
-            columns = List(SimpleField("address"), SimpleField("block_level"), SimpleField("asof")),
-            predicates = List.empty,
-            ordering = List(),
-            aggregation = List.empty,
-            temporalPartition = Some("address"),
-            snapshot = Some(Snapshot("asof", new Timestamp(2))),
-            outputType = OutputType.json,
-            limit = 10
-          )
-        } yield found
-
-        val result = dbHandler.run(populateAndTest.transactionally).futureValue
-
-        result shouldBe List(
-          Map(
-            "address" -> Some("0x1"),
-            "block_level" -> Some(1),
-            "asof" -> Some(new Timestamp(1)),
-            "r" -> Some(1)
-          ),
-          Map(
-            "address" -> Some("0x2"),
-            "block_level" -> Some(2),
-            "asof" -> Some(new Timestamp(2)),
-            "r" -> Some(1)
-          )
-        )
-      }
+      )
     }
+
+    "get the accounts balance of an account at a specific timestamp" in {
+      val accountsHistoryRows = List(
+        AccountsHistoryRow(
+          address = "0x1",
+          blockHash = "0x1",
+          blockLevel = 1,
+          balance = BigDecimal("1.0"),
+          asof = new Timestamp(1)
+        ),
+        AccountsHistoryRow(
+          address = "0x2",
+          blockHash = "0x2",
+          blockLevel = 2,
+          balance = BigDecimal("2.0"),
+          asof = new Timestamp(2)
+        ),
+        AccountsHistoryRow(
+          address = "0x1",
+          blockHash = "0x3",
+          blockLevel = 3,
+          balance = BigDecimal("3.0"),
+          asof = new Timestamp(3)
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.AccountsHistory ++= accountsHistoryRows
+        found <- sut.selectWithPredicates(
+          "ethereum",
+          table = Tables.AccountsHistory.baseTableRow.tableName,
+          columns = List(SimpleField("address"), SimpleField("block_level"), SimpleField("asof")),
+          predicates = List.empty,
+          ordering = List(),
+          aggregation = List.empty,
+          temporalPartition = Some("address"),
+          snapshot = Some(Snapshot("asof", new Timestamp(2))),
+          outputType = OutputType.json,
+          limit = 10
+        )
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map(
+          "address" -> Some("0x1"),
+          "block_level" -> Some(1),
+          "asof" -> Some(new Timestamp(1)),
+          "r" -> Some(1)
+        ),
+        Map(
+          "address" -> Some("0x2"),
+          "block_level" -> Some(2),
+          "asof" -> Some(new Timestamp(2)),
+          "r" -> Some(1)
+        )
+      )
+    }
+  }
 }
 object EthereumDataOperationsTest {
   trait Fixtures {

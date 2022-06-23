@@ -45,238 +45,238 @@ class RetryTest extends AnyFlatSpec with Matchers with MockFactory with ScalaFut
   }
 
   "Future" should "return value if block succeeds without retry" in {
-      val bar = stub[Bar]
-      val maxRetry = Some(1)
-      val foo: StubFunction1[Int, Int] = bar.inc _
+    val bar = stub[Bar]
+    val maxRetry = Some(1)
+    val foo: StubFunction1[Int, Int] = bar.inc _
 
-      (foo).when(1).returns(2).once
+    foo.when(1).returns(2).once
 
-      val f: Future[Int] = retry[Int](maxRetry)(foo(1))
-      assertResult(2)(f.futureValue)
+    val f: Future[Int] = retry[Int](maxRetry)(foo(1))
+    assertResult(2)(f.futureValue)
 
-    }
+  }
 
   it should "return value if block succeeds with retry" in {
-      val bar = stub[Bar]
-      val maxRetry = Some(1)
-      val foo: StubFunction1[Int, Int] = bar.inc _
+    val bar = stub[Bar]
+    val maxRetry = Some(1)
+    val foo: StubFunction1[Int, Int] = bar.inc _
 
-      inSequence(
-        Seq(
-          (foo).when(1).throws(new RuntimeException).once,
-          (foo).when(1).returns(2).once
-        )
+    inSequence(
+      Seq(
+        foo.when(1).throws(new RuntimeException).once,
+        foo.when(1).returns(2).once
       )
+    )
 
-      val f: Future[Int] = retry[Int](maxRetry)(foo(1))
-      assertResult(2)(f.futureValue)
+    val f: Future[Int] = retry[Int](maxRetry)(foo(1))
+    assertResult(2)(f.futureValue)
 
-    }
+  }
 
   it should "throw TooManyRetriesException (with cause) if block fails and no retry is allowed" in {
-      val bar = stub[Bar]
-      val maxRetry = Some(0)
-      val foo: StubFunction1[Int, Int] = bar.inc _
+    val bar = stub[Bar]
+    val maxRetry = Some(0)
+    val foo: StubFunction1[Int, Int] = bar.inc _
 
-      (foo).when(1).throws(new IllegalStateException).once
+    foo.when(1).throws(new IllegalStateException).once
 
-      val f: Future[Int] = retry[Int](maxRetry)(foo(1))
+    val f: Future[Int] = retry[Int](maxRetry)(foo(1))
 
-      val caught = f.failed.futureValue
-      caught shouldBe a[TooManyRetriesException]
-      caught.getCause shouldBe a[IllegalStateException]
+    val caught = f.failed.futureValue
+    caught shouldBe a[TooManyRetriesException]
+    caught.getCause shouldBe a[IllegalStateException]
 
-    }
+  }
 
   it should "throw TooManyRetriesException (with cause) if all retries are used up" in {
-      val bar = stub[Bar]
-      val maxRetry = Some(1)
-      val foo: StubFunction1[Int, Int] = bar.inc _
+    val bar = stub[Bar]
+    val maxRetry = Some(1)
+    val foo: StubFunction1[Int, Int] = bar.inc _
 
-      (foo).when(1).throws(new IllegalStateException)
+    foo.when(1).throws(new IllegalStateException)
 
-      val f: Future[Int] = retry[Int](maxRetry)(foo(1))
+    val f: Future[Int] = retry[Int](maxRetry)(foo(1))
 
-      val caught = f.failed.futureValue
-      caught shouldBe a[TooManyRetriesException]
-      caught.getCause shouldBe a[IllegalStateException]
-    }
+    val caught = f.failed.futureValue
+    caught shouldBe a[TooManyRetriesException]
+    caught.getCause shouldBe a[IllegalStateException]
+  }
 
   "Number of Attempts" should "execute block exactly once if first attempt passes" in {
-      val bar = stub[Bar]
-      val maxRetry = Some(1)
-      val foo: StubFunction1[Int, Int] = bar.inc _
+    val bar = stub[Bar]
+    val maxRetry = Some(1)
+    val foo: StubFunction1[Int, Int] = bar.inc _
 
-      (foo).when(1).returns(2)
+    foo.when(1).returns(2)
 
-      val f: Future[Int] = retry[Int](maxRetry)(foo(1))
+    val f: Future[Int] = retry[Int](maxRetry)(foo(1))
 
-      // Do not use callback as it is non-blocking,
-      // any exception thrown results in test pass.
-      // Instead, block till future completes.
-      f.isReadyWithin(waitAtMost)
+    // Do not use callback as it is non-blocking,
+    // any exception thrown results in test pass.
+    // Instead, block till future completes.
+    f.isReadyWithin(waitAtMost)
 
-      (foo).verify(1).once
+    foo.verify(1).once
 
-    }
+  }
 
   it should "execute block 2 times if first attempt fails" in {
-      val bar = stub[Bar]
-      val maxRetry = Some(1)
-      val foo: StubFunction1[Int, Int] = bar.inc _
+    val bar = stub[Bar]
+    val maxRetry = Some(1)
+    val foo: StubFunction1[Int, Int] = bar.inc _
 
-      inSequence(
-        Seq(
-          (foo).when(1).throws(new RuntimeException).once,
-          (foo).when(1).returns(2).once
-        )
+    inSequence(
+      Seq(
+        foo.when(1).throws(new RuntimeException).once,
+        foo.when(1).returns(2).once
       )
+    )
 
-      val f: Future[Int] = retry[Int](maxRetry)(foo(1))
-      f.isReadyWithin(waitAtMost)
+    val f: Future[Int] = retry[Int](maxRetry)(foo(1))
+    f.isReadyWithin(waitAtMost)
 
-      (foo).verify(1).repeated(maxRetry.get + 1)
-    }
+    foo.verify(1).repeated(maxRetry.get + 1)
+  }
 
   it should "execute block 3 times if earlier attempts fail" in {
-      val bar = stub[Bar]
-      val maxRetry = Some(2)
-      val foo: StubFunction1[Int, Int] = bar.inc _
+    val bar = stub[Bar]
+    val maxRetry = Some(2)
+    val foo: StubFunction1[Int, Int] = bar.inc _
 
-      inSequence(
-        Seq(
-          (foo).when(1).throws(new RuntimeException).twice,
-          (foo).when(1).returns(2).once
-        )
+    inSequence(
+      Seq(
+        foo.when(1).throws(new RuntimeException).twice,
+        foo.when(1).returns(2).once
       )
+    )
 
-      val f: Future[Int] = retry[Int](maxRetry)(foo(1))
+    val f: Future[Int] = retry[Int](maxRetry)(foo(1))
 
-      f.isReadyWithin(waitAtMost)
-      (foo).verify(1).repeated(maxRetry.get + 1)
-    }
+    f.isReadyWithin(waitAtMost)
+    foo.verify(1).repeated(maxRetry.get + 1)
+  }
 
   it should "execute block exactly once if max #retries is zero" in {
-      val bar = stub[Bar]
-      val maxRetry = Some(0)
-      val foo: StubFunction1[Int, Int] = bar.inc _
+    val bar = stub[Bar]
+    val maxRetry = Some(0)
+    val foo: StubFunction1[Int, Int] = bar.inc _
 
-      inSequence(
-        Seq(
-          (foo).when(1).throws(new RuntimeException),
-          (foo).when(1).returns(2)
-        )
+    inSequence(
+      Seq(
+        foo.when(1).throws(new RuntimeException),
+        foo.when(1).returns(2)
       )
+    )
 
-      val f: Future[Int] = retry[Int](maxRetry)(foo(1))
+    val f: Future[Int] = retry[Int](maxRetry)(foo(1))
 
-      f.failed.isReadyWithin(waitAtMost)
-      (foo).verify(1).noMoreThanOnce
+    f.failed.isReadyWithin(waitAtMost)
+    foo.verify(1).noMoreThanOnce
 
-    }
+  }
   it should "be unlimited if max #retries is none" in {
-      val bar = stub[Bar]
-      val maxRetry = None
-      val foo: StubFunction1[Int, Int] = bar.inc _
+    val bar = stub[Bar]
+    val maxRetry = None
+    val foo: StubFunction1[Int, Int] = bar.inc _
 
-      inSequence(
-        Seq(
-          (foo).when(1).throws(new RuntimeException).repeated(3),
-          (foo).when(1).returns(2)
-        )
+    inSequence(
+      Seq(
+        foo.when(1).throws(new RuntimeException).repeated(3),
+        foo.when(1).returns(2)
       )
+    )
 
-      val f: Future[Int] = retry[Int](maxRetry)(foo(1))
+    val f: Future[Int] = retry[Int](maxRetry)(foo(1))
 
-      f.isReadyWithin(waitAtMost)
-      (foo).verify(1).repeated(4)
+    f.isReadyWithin(waitAtMost)
+    foo.verify(1).repeated(4)
 
-    }
+  }
 
   "Deadline" should "not be exceeded by retries" in {
-      val bar = stub[Bar]
-      val maxRetry = None
-      val foo: StubFunction1[Int, Int] = bar.incWithDelay _
+    val bar = stub[Bar]
+    val maxRetry = None
+    val foo: StubFunction1[Int, Int] = bar.incWithDelay _
 
-      def deadline: Option[Deadline] = Option(400 millisecond fromNow)
+    def deadline: Option[Deadline] = Option(400 millisecond fromNow)
 
-      (foo).when(1).throws(new RuntimeException)
+    foo.when(1).throws(new RuntimeException)
 
-      val f: Future[Int] = retry[Int](maxRetry, deadline, noBackoff())(foo(1))
+    val f: Future[Int] = retry[Int](maxRetry, deadline, noBackoff())(foo(1))
 
-      f.failed.isReadyWithin(waitAtMost)
+    f.failed.isReadyWithin(waitAtMost)
 
-      (foo).verify(1).repeated(3 to 4).times
+    foo.verify(1).repeated(3 to 4).times
 
-    }
+  }
   it should "throw DeadlineExceededException (with cause) if exceeded" in {
-      val bar = stub[Bar]
-      val maxRetry = None
-      val foo: StubFunction1[Int, Int] = bar.inc _
+    val bar = stub[Bar]
+    val maxRetry = None
+    val foo: StubFunction1[Int, Int] = bar.inc _
 
-      def deadline: Option[Deadline] = Option(50 millisecond fromNow)
+    def deadline: Option[Deadline] = Option(50 millisecond fromNow)
 
-      (foo).when(1).throws(new IllegalStateException)
+    foo.when(1).throws(new IllegalStateException)
 
-      val f: Future[Int] = retry[Int](maxRetry, deadline)(foo(1))
+    val f: Future[Int] = retry[Int](maxRetry, deadline)(foo(1))
 
-      val caught = f.failed.futureValue
+    val caught = f.failed.futureValue
 
-      caught shouldBe a[DeadlineExceededException]
-      caught.getCause shouldBe a[IllegalStateException]
-    }
+    caught shouldBe a[DeadlineExceededException]
+    caught.getCause shouldBe a[IllegalStateException]
+  }
 
   "Give Up On Selected Exceptions" should "not retry if selected exception is seen in 1st attempt" in {
-      val bar = stub[Bar]
-      val maxRetry = Some(10)
-      val foo: StubFunction1[Int, Int] = bar.inc _
+    val bar = stub[Bar]
+    val maxRetry = Some(10)
+    val foo: StubFunction1[Int, Int] = bar.inc _
 
-      (foo).when(1).throws(new IllegalArgumentException)
+    foo.when(1).throws(new IllegalArgumentException)
 
-      val f: Future[Int] = retry[Int](
-        maxRetry,
-        giveUpOnThrowable = giveUpOnIllegalArgumentException
-      )(foo(1))
+    val f: Future[Int] = retry[Int](
+      maxRetry,
+      giveUpOnThrowable = giveUpOnIllegalArgumentException
+    )(foo(1))
 
-      f.failed.isReadyWithin(waitAtMost)
-      (foo).verify(1).once
-    }
+    f.failed.isReadyWithin(waitAtMost)
+    foo.verify(1).once
+  }
 
   it should "retry until selected exception is seen" in {
-      val bar = stub[Bar]
-      val maxRetry = Some(10)
-      val foo: StubFunction1[Int, Int] = bar.inc _
+    val bar = stub[Bar]
+    val maxRetry = Some(10)
+    val foo: StubFunction1[Int, Int] = bar.inc _
 
-      inSequence(
-        Seq(
-          (foo).when(1).throws(new IllegalStateException).once,
-          (foo).when(1).throws(new IllegalArgumentException).once
-        )
+    inSequence(
+      Seq(
+        foo.when(1).throws(new IllegalStateException).once,
+        foo.when(1).throws(new IllegalArgumentException).once
       )
+    )
 
-      val f: Future[Int] = retry[Int](
-        maxRetry,
-        giveUpOnThrowable = giveUpOnIllegalArgumentException
-      )(foo(1))
+    val f: Future[Int] = retry[Int](
+      maxRetry,
+      giveUpOnThrowable = giveUpOnIllegalArgumentException
+    )(foo(1))
 
-      f.failed.isReadyWithin(waitAtMost)
+    f.failed.isReadyWithin(waitAtMost)
 
-      (foo).verify(1).twice
-    }
+    foo.verify(1).twice
+  }
 
   it should "retry normally if selected exception is never seen" in {
-      val bar = stub[Bar]
-      val maxRetry = Some(2)
-      val foo: StubFunction1[Int, Int] = bar.inc _
+    val bar = stub[Bar]
+    val maxRetry = Some(2)
+    val foo: StubFunction1[Int, Int] = bar.inc _
 
-      (foo).when(1).throws(new IllegalStateException)
+    foo.when(1).throws(new IllegalStateException)
 
-      val f: Future[Int] = retry[Int](
-        maxRetry,
-        giveUpOnThrowable = giveUpOnIllegalArgumentException
-      )(foo(1))
+    val f: Future[Int] = retry[Int](
+      maxRetry,
+      giveUpOnThrowable = giveUpOnIllegalArgumentException
+    )(foo(1))
 
-      f.failed.isReadyWithin(waitAtMost)
-      (foo).verify(1).repeated(3)
-    }
+    f.failed.isReadyWithin(waitAtMost)
+    foo.verify(1).repeated(3)
+  }
 }

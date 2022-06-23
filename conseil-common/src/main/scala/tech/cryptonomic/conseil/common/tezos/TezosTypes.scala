@@ -222,26 +222,63 @@ object TezosTypes {
 
   /** The set of operations kinds */
   val knownOperationKinds = Set(
-    "seed_nonce_revelation",
-    "delegation",
-    "transaction",
-    "activate_account",
-    "origination",
-    "reveal",
-    "double_endorsement_evidence",
-    "double_baking_evidence",
     "endorsement",
+    "preendorsement",
+    "seed_nonce_revelation",
+    "double_endorsement_evidence",
+    "double_preendorsement_evidence",
+    "double_baking_evidence",
+    "activate_account",
     "proposals",
     "ballot",
-    "endorsement_with_slot",
+    "reveal",
+    "transaction",
+    "origination",
+    "delegation",
+    "set_deposits_limit",
+    "failing_noop",
+    "register_global_constant",
+    "tx_rollup_origination",
+    "tx_rollup_submit_batch",
+    "tx_rollup_commit",
+    "tx_rollup_return_bond",
+    "tx_rollup_finalize_commitment",
+    "tx_rollup_remove_commitment",
+    "tx_rollup_rejection",
+    "tx_rollup_dispatch_tickets",
+    "transfer_ticket",
+    "sc_rollup_originate",
+    "sc_rollup_add_messages",
+    "sc_rollup_cement",
+    "sc_rollup_publish",
+    "seed_nonce_revelation",
+    "endorsement",
     "preendorsement",
     "double_preendorsement_evidence",
+    "double_endorsement_evidence",
+    "double_baking_evidence",
+    "activate_account",
+    "proposals",
+    "ballot",
+    "reveal",
+    "transaction",
+    "origination",
+    "delegation",
+    "register_global_constant",
     "set_deposits_limit",
     "tx_rollup_origination",
     "tx_rollup_submit_batch",
     "tx_rollup_commit",
+    "tx_rollup_return_bond",
     "tx_rollup_finalize_commitment",
-    "tx_rollup_dispatch_tickets"
+    "tx_rollup_remove_commitment",
+    "tx_rollup_rejection",
+    "transfer_ticket",
+    "tx_rollup_dispatch_tickets",
+    "sc_rollup_originate",
+    "sc_rollup_add_messages",
+    "sc_rollup_cement",
+    "sc_rollup_publish"
   )
 
   final case class Operations(
@@ -364,25 +401,25 @@ object TezosTypes {
   ) extends Operation
 
   final case class TxRollupFinalizeCommitment(
-    counter: PositiveBigNumber,
-    fee: PositiveBigNumber,
-    source: PublicKeyHash,
-    gas_limit: PositiveBigNumber,
-    storage_limit: PositiveBigNumber,
-    rollup: PublicKeyHash,
-    metadata: ResultMetadata[OperationResult.Origination],
-    blockOrder: Option[Int] = None
+      counter: PositiveBigNumber,
+      fee: PositiveBigNumber,
+      source: PublicKeyHash,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      rollup: PublicKeyHash,
+      metadata: ResultMetadata[OperationResult.Origination],
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class TxRollupDispatchTickets(
-    counter: PositiveBigNumber,
-    fee: PositiveBigNumber,
-    source: PublicKeyHash,
-    gas_limit: PositiveBigNumber,
-    storage_limit: PositiveBigNumber,
-    tx_rollup: PublicKeyHash,
-    metadata: ResultMetadata[OperationResult.Origination],
-    blockOrder: Option[Int] = None
+      counter: PositiveBigNumber,
+      fee: PositiveBigNumber,
+      source: PublicKeyHash,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      tx_rollup: PublicKeyHash,
+      metadata: ResultMetadata[OperationResult.Origination],
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class Delegation(
@@ -434,6 +471,11 @@ object TezosTypes {
       limit: Option[PositiveBigNumber],
       blockOrder: Option[Int] = None,
       metadata: ResultMetadata[OperationResult.SetDepositsLimit]
+  ) extends Operation
+
+  final case class DefaultOperation(
+      kind: String,
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   //metadata definitions, both shared or specific to operation kind

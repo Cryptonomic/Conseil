@@ -490,30 +490,35 @@ trait OperationsJsonData {
         slot = None,
         slots = Some(List(29, 27, 20, 17)),
         delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
-        balance_updates = List(
-          BalanceUpdate(
-            kind = "contract",
-            contract = Some(ContractId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
-            change = -256000000,
-            category = None,
-            delegate = None,
-            level = None
-          ),
-          BalanceUpdate(
-            kind = "freezer",
-            category = Some("deposits"),
-            delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
-            change = 256000000,
-            contract = None,
-            level = Some(1424)
-          ),
-          BalanceUpdate(
-            kind = "freezer",
-            category = Some("rewards"),
-            delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
-            change = 4000000,
-            contract = None,
-            level = Some(1424)
+        balance_updates = Some(
+          List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
+              change = Decimal(-256000000),
+              category = None,
+              delegate = None,
+              level = None,
+              origin = None
+            ),
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("deposits"),
+              delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
+              change = Decimal(256000000),
+              contract = None,
+              level = Some(1424),
+              origin = None
+            ),
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("rewards"),
+              delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
+              change = Decimal(4000000),
+              contract = None,
+              level = Some(1424),
+              origin = None
+            )
           )
         )
       )
@@ -542,14 +547,17 @@ trait OperationsJsonData {
       level = 199360,
       nonce = Nonce("4ddd711e76cf8c71671688aff7ce9ff67bf24bc16be31cd5dbbdd267456745e0"),
       metadata = BalanceUpdatesMetadata(
-        balance_updates = List(
-          BalanceUpdate(
-            kind = "freezer",
-            category = Some("rewards"),
-            delegate = Some(PublicKeyHash("tz1aWXP237BLwNHJcCD4b3DutCevhqq2T1Z9")),
-            level = Some(1557),
-            change = 125000,
-            contract = None
+        balance_updates = Some(
+          List(
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("rewards"),
+              delegate = Some(PublicKeyHash("tz1aWXP237BLwNHJcCD4b3DutCevhqq2T1Z9")),
+              level = Some(1557),
+              change = Decimal(125000),
+              contract = None,
+              origin = None
+            )
           )
         )
       )
@@ -576,14 +584,17 @@ trait OperationsJsonData {
       pkh = PublicKeyHash("tz1ieofA4fCLAnSgYbE9ZgDhdTuet34qGZWw"),
       secret = Secret("026a9a6b7ea07238dab3e4322d93a6abe8da278a"),
       metadata = BalanceUpdatesMetadata(
-        balance_updates = List(
-          BalanceUpdate(
-            kind = "contract",
-            contract = Some(ContractId("tz1ieofA4fCLAnSgYbE9ZgDhdTuet34qGZWw")),
-            change = 13448692695L,
-            category = None,
-            delegate = None,
-            level = None
+        balance_updates = Some(
+          List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("tz1ieofA4fCLAnSgYbE9ZgDhdTuet34qGZWw")),
+              change = Decimal(13448692695L),
+              category = None,
+              delegate = None,
+              level = None,
+              origin = None
+            )
           )
         )
       )
@@ -641,22 +652,26 @@ trait OperationsJsonData {
       storage_limit = PositiveDecimal(257),
       public_key = PublicKey("edpktxRxk9r61tjEZCt5a2hY2MWC3gzECGL7FXS1K6WXGG28hTFdFz"),
       metadata = ResultMetadata[OperationResult.Reveal](
-        balance_updates = List(
-          BalanceUpdate(
-            kind = "contract",
-            contract = Some(ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq")),
-            change = -10000L,
-            category = None,
-            delegate = None,
-            level = None
-          ),
-          BalanceUpdate(
-            kind = "freezer",
-            category = Some("fees"),
-            delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
-            level = Some(1561),
-            change = 10000L,
-            contract = None
+        balance_updates = Some(
+          List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq")),
+              change = Decimal(-10000L),
+              category = None,
+              delegate = None,
+              level = None,
+              origin = None
+            ),
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("fees"),
+              delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
+              level = Some(1561),
+              change = Decimal(10000L),
+              contract = None,
+              origin = None
+            )
           )
         ),
         operation_result = OperationResult.Reveal(
@@ -702,7 +717,7 @@ trait OperationsJsonData {
         storage_size = Some(Decimal(69)),
         errors = None
       ),
-      balance_updates = List(),
+      balance_updates = Some(List.empty),
       internal_operation_results = Some(
         List(
           InternalOperationResults.Transaction(
@@ -720,19 +735,21 @@ trait OperationsJsonData {
                 List(
                   BalanceUpdate(
                     kind = "contract",
-                    change = -1000,
+                    change = Decimal(-1000),
                     category = None,
                     contract = Some(ContractId("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH")),
                     delegate = None,
-                    level = None
+                    level = None,
+                    origin = None
                   ),
                   BalanceUpdate(
                     kind = "contract",
-                    change = 1000,
+                    change = Decimal(1000),
                     category = None,
                     contract = Some(ContractId("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN")),
                     delegate = None,
-                    level = None
+                    level = None,
+                    origin = None
                   )
                 )
               ),
@@ -858,22 +875,26 @@ trait OperationsJsonData {
       storage_limit = PositiveDecimal(0),
       public_key = PublicKey("edpkuuNeGwDGBBGNdp7eEDUnb3tJKfhyxoo9A8GkDbdHEaPYYG8MJj"),
       metadata = ResultMetadata(
-        balance_updates = List(
-          BalanceUpdate(
-            kind = "contract",
-            contract = Some(ContractId("tz1VXaVvVyLfZNWCcpHpKNSg61TEJVZtNJKf")),
-            change = -1300L,
-            category = None,
-            delegate = None,
-            level = None
-          ),
-          BalanceUpdate(
-            kind = "freezer",
-            category = Some("fees"),
-            delegate = Some(PublicKeyHash("tz1Ke2h7sDdakHJQh8WX4Z372du1KChsksyU")),
-            level = Some(1567),
-            change = 1300L,
-            contract = None
+        balance_updates = Some(
+          List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("tz1VXaVvVyLfZNWCcpHpKNSg61TEJVZtNJKf")),
+              change = Decimal(-1300L),
+              category = None,
+              delegate = None,
+              level = None,
+              origin = None
+            ),
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("fees"),
+              delegate = Some(PublicKeyHash("tz1Ke2h7sDdakHJQh8WX4Z372du1KChsksyU")),
+              level = Some(1567),
+              change = Decimal(1300L),
+              contract = None,
+              origin = None
+            )
           )
         ),
         operation_result = OperationResult.Reveal(
@@ -938,22 +959,26 @@ trait OperationsJsonData {
       parameters = Some(Left(Parameters(Micheline("""{"string":"world"}"""), Some("default")))),
       parameters_micheline = None,
       metadata = ResultMetadata(
-        balance_updates = List(
-          BalanceUpdate(
-            kind = "contract",
-            contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-            change = -1416L,
-            category = None,
-            delegate = None,
-            level = None
-          ),
-          BalanceUpdate(
-            kind = "freezer",
-            category = Some("fees"),
-            delegate = Some(PublicKeyHash("tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u")),
-            level = Some(1583),
-            change = 1416L,
-            contract = None
+        balance_updates = Some(
+          List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+              change = Decimal(-1416L),
+              category = None,
+              delegate = None,
+              level = None,
+              origin = None
+            ),
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("fees"),
+              delegate = Some(PublicKeyHash("tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u")),
+              level = Some(1583),
+              change = Decimal(1416L),
+              contract = None,
+              origin = None
+            )
           )
         ),
         operation_result = OperationResult.Transaction(
@@ -1022,22 +1047,26 @@ trait OperationsJsonData {
       parameters = Some(Right(Micheline("""{"string":"world"}"""))),
       parameters_micheline = None,
       metadata = ResultMetadata(
-        balance_updates = List(
-          BalanceUpdate(
-            kind = "contract",
-            contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-            change = -1416L,
-            category = None,
-            delegate = None,
-            level = None
-          ),
-          BalanceUpdate(
-            kind = "freezer",
-            category = Some("fees"),
-            delegate = Some(PublicKeyHash("tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u")),
-            level = Some(1583),
-            change = 1416L,
-            contract = None
+        balance_updates = Some(
+          List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+              change = Decimal(-1416L),
+              category = None,
+              delegate = None,
+              level = None,
+              origin = None
+            ),
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("fees"),
+              delegate = Some(PublicKeyHash("tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u")),
+              level = Some(1583),
+              change = Decimal(1416L),
+              contract = None,
+              origin = None
+            )
           )
         ),
         operation_result = OperationResult.Transaction(
@@ -1131,22 +1160,26 @@ trait OperationsJsonData {
       delegate = None,
       script = Some(expectedScript),
       metadata = ResultMetadata(
-        balance_updates = List(
-          BalanceUpdate(
-            kind = "contract",
-            contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-            change = -1441L,
-            category = None,
-            delegate = None,
-            level = None
-          ),
-          BalanceUpdate(
-            kind = "freezer",
-            category = Some("fees"),
-            delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
-            level = Some(1583),
-            change = 1441L,
-            contract = None
+        balance_updates = Some(
+          List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+              change = Decimal(-1441L),
+              category = None,
+              delegate = None,
+              level = None,
+              origin = None
+            ),
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("fees"),
+              delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
+              level = Some(1583),
+              change = Decimal(1441L),
+              contract = None,
+              origin = None
+            )
           )
         ),
         operation_result = OperationResult.Origination(
@@ -1157,34 +1190,38 @@ trait OperationsJsonData {
               BalanceUpdate(
                 kind = "contract",
                 contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-                change = -46000L,
+                change = Decimal(-46000L),
                 category = None,
                 delegate = None,
-                level = None
+                level = None,
+                origin = None
               ),
               BalanceUpdate(
                 kind = "contract",
                 contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-                change = -257000L,
+                change = Decimal(-257000L),
                 category = None,
                 delegate = None,
-                level = None
+                level = None,
+                origin = None
               ),
               BalanceUpdate(
                 kind = "contract",
                 contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-                change = -1000000L,
+                change = Decimal(-1000000L),
                 category = None,
                 delegate = None,
-                level = None
+                level = None,
+                origin = None
               ),
               BalanceUpdate(
                 kind = "contract",
                 contract = Some(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4")),
-                change = 1000000L,
+                change = Decimal(1000000L),
                 category = None,
                 delegate = None,
-                level = None
+                level = None,
+                origin = None
               )
             )
           ),
@@ -1300,22 +1337,26 @@ trait OperationsJsonData {
       storage_limit = PositiveDecimal(0),
       delegate = Some(PublicKeyHash("tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u")),
       metadata = ResultMetadata(
-        balance_updates = List(
-          BalanceUpdate(
-            kind = "contract",
-            contract = Some(ContractId("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9")),
-            change = -1400L,
-            category = None,
-            delegate = None,
-            level = None
-          ),
-          BalanceUpdate(
-            kind = "freezer",
-            category = Some("fees"),
-            delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
-            level = Some(1612),
-            change = 1400L,
-            contract = None
+        balance_updates = Some(
+          List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9")),
+              change = Decimal(-1400L),
+              category = None,
+              delegate = None,
+              level = None,
+              origin = None
+            ),
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("fees"),
+              delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
+              level = Some(1612),
+              change = Decimal(1400),
+              contract = None,
+              origin = None
+            )
           )
         ),
         operation_result = OperationResult.Delegation(

@@ -12,140 +12,140 @@ class TNSContractsTest extends ConseilSpec {
 
   "The TNS Contract operations for a known configured contract" should {
 
-      "read a valid lookup map reference if a transaction is passed with valid data" in {
-        //given
+    "read a valid lookup map reference if a transaction is passed with valid data" in {
+      //given
 
-        //register the tns
-        val sut = new TNSContract.ConfiguredContract(tnsContractId)
-        //set the proper map ids
-        sut.setMapIds(tnsContractId, lookupId, reverseLookupId)
+      //register the tns
+      val sut = new TNSContract.ConfiguredContract(tnsContractId)
+      //set the proper map ids
+      sut.setMapIds(tnsContractId, lookupId, reverseLookupId)
 
-        //when
-        val lookupReferenceResults = sut.readLookupMapReference(Left(ValidTransactionData.transaction)).value
+      //when
+      val lookupReferenceResults = sut.readLookupMapReference(Left(ValidTransactionData.transaction)).value
 
-        lookupReferenceResults shouldMatchTo (
-          LookupMapReference(
-            contractId = tnsContractId,
-            lookupName = TNSContract.Name("me want tacos"),
-            resolver = makeAccountId("tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m"),
-            mapId = TNSContract.BigMapId(lookupId),
-            mapKeyHash = ScriptId("exprvT4zX5M2nUKv2msyEeRTQx6zYoMh6rpnpWeDJhEranRRt8Hea9")
-          )
+      lookupReferenceResults shouldMatchTo (
+        LookupMapReference(
+          contractId = tnsContractId,
+          lookupName = TNSContract.Name("me want tacos"),
+          resolver = makeAccountId("tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m"),
+          mapId = TNSContract.BigMapId(lookupId),
+          mapKeyHash = ScriptId("exprvT4zX5M2nUKv2msyEeRTQx6zYoMh6rpnpWeDJhEranRRt8Hea9")
         )
-      }
+      )
+    }
 
-      "fail to read a valid lookup map reference if a transaction is passed with invalid map ids" in {
-        //given
+    "fail to read a valid lookup map reference if a transaction is passed with invalid map ids" in {
+      //given
 
-        //register the tns
-        val sut = new TNSContract.ConfiguredContract(tnsContractId)
-        //set the differing map ids
-        sut.setMapIds(tnsContractId, lookupId + 1, reverseLookupId)
+      //register the tns
+      val sut = new TNSContract.ConfiguredContract(tnsContractId)
+      //set the differing map ids
+      sut.setMapIds(tnsContractId, lookupId + 1, reverseLookupId)
 
-        //when
-        val lookupReferenceResults = sut.readLookupMapReference(Left(ValidTransactionData.transaction))
+      //when
+      val lookupReferenceResults = sut.readLookupMapReference(Left(ValidTransactionData.transaction))
 
-        lookupReferenceResults shouldBe empty
+      lookupReferenceResults shouldBe empty
 
-      }
+    }
 
-      "fail to read a valid lookup map reference if a transaction is passed with the wrong destination contract" in {
-        //given
+    "fail to read a valid lookup map reference if a transaction is passed with the wrong destination contract" in {
+      //given
 
-        val transaction = ValidTransactionData.transaction.copy(destination = ContractId("not me"))
+      val transaction = ValidTransactionData.transaction.copy(destination = ContractId("not me"))
 
-        //register the tns
-        val sut = new TNSContract.ConfiguredContract(tnsContractId)
-        //set the proper map ids
-        sut.setMapIds(tnsContractId, lookupId, reverseLookupId)
+      //register the tns
+      val sut = new TNSContract.ConfiguredContract(tnsContractId)
+      //set the proper map ids
+      sut.setMapIds(tnsContractId, lookupId, reverseLookupId)
 
-        //when
-        val lookupReferenceResults = sut.readLookupMapReference(Left(transaction))
+      //when
+      val lookupReferenceResults = sut.readLookupMapReference(Left(transaction))
 
-        lookupReferenceResults shouldBe empty
+      lookupReferenceResults shouldBe empty
 
-      }
+    }
 
-      "fail to read a valid lookup map reference if a transaction is passed with non-compliant parameters" in {
-        //given
-        val parameters = Parameters(
-          Micheline("""Pair 6000 "me want chili""""),
-          entrypoint = Some("registerName")
+    "fail to read a valid lookup map reference if a transaction is passed with non-compliant parameters" in {
+      //given
+      val parameters = Parameters(
+        Micheline("""Pair 6000 "me want chili""""),
+        entrypoint = Some("registerName")
+      )
+
+      val transaction = ValidTransactionData.transaction.copy(parameters = Some(Left(parameters)))
+
+      //register the tns
+      val sut = new TNSContract.ConfiguredContract(tnsContractId)
+      //set the proper map ids
+      sut.setMapIds(tnsContractId, lookupId, reverseLookupId)
+
+      //when
+      val lookupReferenceResults = sut.readLookupMapReference(Left(transaction))
+
+      lookupReferenceResults shouldBe empty
+
+    }
+
+    "fail to read a valid lookup map reference if a transaction is passed with no entrypoint for parameters" in {
+      //given
+      val parameters = ValidTransactionData.parameters.copy(entrypoint = None)
+
+      val transaction = ValidTransactionData.transaction.copy(parameters = Some(Left(parameters)))
+
+      //register the tns
+      val sut = new TNSContract.ConfiguredContract(tnsContractId)
+      //set the proper map ids
+      sut.setMapIds(tnsContractId, lookupId, reverseLookupId)
+
+      //when
+      val lookupReferenceResults = sut.readLookupMapReference(Left(transaction))
+
+      lookupReferenceResults shouldBe empty
+
+    }
+
+    "read a valid lookup map content if called with valid data" in {
+      //given
+
+      //register the tns, no check on the registered map ids is necessary
+      val sut = new TNSContract.ConfiguredContract(tnsContractId)
+
+      //when
+      val lookupContentResult =
+        sut.readLookupMapContent(tnsContractId, ValidTransactionData.reverseLookupMapContent).value
+
+      lookupContentResult shouldMatchTo (
+        TNSContract.NameRecord(
+          name = "me want tacos",
+          updated = "False",
+          resolver = "tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m",
+          registeredAt = "2020-03-31T03:37:11Z",
+          registrationPeriod = "6000",
+          owner = "tz1aTPZXhAmKmisY2iRe6dEhxwe7Db3cPoVc"
         )
+      )
 
-        val transaction = ValidTransactionData.transaction.copy(parameters = Some(Left(parameters)))
+    }
 
-        //register the tns
-        val sut = new TNSContract.ConfiguredContract(tnsContractId)
-        //set the proper map ids
-        sut.setMapIds(tnsContractId, lookupId, reverseLookupId)
+    "fail to read a valid lookup map content if called with the wrong contract reference" in {
+      //given
 
-        //when
-        val lookupReferenceResults = sut.readLookupMapReference(Left(transaction))
+      //register the tns, no check on the registered map ids is necessary
+      val sut = new TNSContract.ConfiguredContract(tnsContractId)
 
-        lookupReferenceResults shouldBe empty
+      //when
+      val lookupContentResult =
+        sut.readLookupMapContent(ContractId("not here"), ValidTransactionData.reverseLookupMapContent)
 
-      }
+      lookupContentResult shouldBe empty
 
-      "fail to read a valid lookup map reference if a transaction is passed with no entrypoint for parameters" in {
-        //given
-        val parameters = ValidTransactionData.parameters.copy(entrypoint = None)
+    }
 
-        val transaction = ValidTransactionData.transaction.copy(parameters = Some(Left(parameters)))
-
-        //register the tns
-        val sut = new TNSContract.ConfiguredContract(tnsContractId)
-        //set the proper map ids
-        sut.setMapIds(tnsContractId, lookupId, reverseLookupId)
-
-        //when
-        val lookupReferenceResults = sut.readLookupMapReference(Left(transaction))
-
-        lookupReferenceResults shouldBe empty
-
-      }
-
-      "read a valid lookup map content if called with valid data" in {
-        //given
-
-        //register the tns, no check on the registered map ids is necessary
-        val sut = new TNSContract.ConfiguredContract(tnsContractId)
-
-        //when
-        val lookupContentResult =
-          sut.readLookupMapContent(tnsContractId, ValidTransactionData.reverseLookupMapContent).value
-
-        lookupContentResult shouldMatchTo(
-          TNSContract.NameRecord(
-            name = "me want tacos",
-            updated = "False",
-            resolver = "tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m",
-            registeredAt = "2020-03-31T03:37:11Z",
-            registrationPeriod = "6000",
-            owner = "tz1aTPZXhAmKmisY2iRe6dEhxwe7Db3cPoVc"
-          )
-        )
-
-      }
-
-      "fail to read a valid lookup map content if called with the wrong contract reference" in {
-        //given
-
-        //register the tns, no check on the registered map ids is necessary
-        val sut = new TNSContract.ConfiguredContract(tnsContractId)
-
-        //when
-        val lookupContentResult =
-          sut.readLookupMapContent(ContractId("not here"), ValidTransactionData.reverseLookupMapContent)
-
-        lookupContentResult shouldBe empty
-
-      }
-
-      "fail to read a valid lookup map content if called with a non compliant micheline content" in {
-        //given
-        val content =
-          """{
+    "fail to read a valid lookup map content if called with a non compliant micheline content" in {
+      //given
+      val content =
+        """{
             |  "prim": "Pair",
             |  "args": [
             |    {
@@ -157,29 +157,29 @@ class TNSContractsTest extends ConseilSpec {
             |  ]
             |}""".stripMargin
 
-        //register the tns, no check on the registered map ids is necessary
-        val sut = new TNSContract.ConfiguredContract(tnsContractId)
+      //register the tns, no check on the registered map ids is necessary
+      val sut = new TNSContract.ConfiguredContract(tnsContractId)
 
-        //when
-        val lookupContentResult =
-          sut.readLookupMapContent(tnsContractId, content)
+      //when
+      val lookupContentResult =
+        sut.readLookupMapContent(tnsContractId, content)
 
-        lookupContentResult shouldBe empty
+      lookupContentResult shouldBe empty
 
-      }
-
-      "return negative results if using the fallback contract" in {
-        val sut = TNSContract.noContract
-
-        sut.isKnownRegistrar(tnsContractId) shouldBe false
-
-        val referenceResult = sut.readLookupMapReference(Left(ValidTransactionData.transaction))
-        referenceResult shouldBe empty
-
-        val contentResult = sut.readLookupMapContent(tnsContractId, ValidTransactionData.reverseLookupMapContent)
-        contentResult shouldBe empty
-      }
     }
+
+    "return negative results if using the fallback contract" in {
+      val sut = TNSContract.noContract
+
+      sut.isKnownRegistrar(tnsContractId) shouldBe false
+
+      val referenceResult = sut.readLookupMapReference(Left(ValidTransactionData.transaction))
+      referenceResult shouldBe empty
+
+      val contentResult = sut.readLookupMapContent(tnsContractId, ValidTransactionData.reverseLookupMapContent)
+      contentResult shouldBe empty
+    }
+  }
 
   //values sampled from a real carthage use-case
   private val tnsContractId = ContractId("KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux")
@@ -227,7 +227,7 @@ class TNSContractsTest extends ConseilSpec {
       destination = tnsContractId,
       parameters = Some(Left(parameters)),
       parameters_micheline = None,
-      metadata = ResultMetadata(transactionResult, List.empty, None)
+      metadata = ResultMetadata(transactionResult, None, None)
     )
 
     val reverseLookupMapContent =

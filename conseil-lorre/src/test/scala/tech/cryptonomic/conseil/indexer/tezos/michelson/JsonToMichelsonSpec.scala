@@ -8,8 +8,8 @@ import tech.cryptonomic.conseil.common.testkit.LoggingTestSupport
 class JsonToMichelsonSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
 
   it should "convert json to michelson format" in {
-      val json =
-        """
+    val json =
+      """
         |[
         |  {
         |    "prim": "parameter",
@@ -435,8 +435,8 @@ class JsonToMichelsonSpec extends AnyFlatSpec with Matchers with LoggingTestSupp
         |  }
         |]""".stripMargin
 
-      val result =
-        """parameter key_hash;
+    val result =
+      """parameter key_hash;
         |storage (pair key_hash timestamp);
         |code { DUP ;
         |       DIP { CDR } ;
@@ -491,12 +491,12 @@ class JsonToMichelsonSpec extends AnyFlatSpec with Matchers with LoggingTestSupp
         |            PAIR } ;
         |       DIP { DROP ; DROP } }""".stripMargin
 
-      JsonToMichelson.convert[MichelsonSchema](json) should equal(Right(result))
-    }
+    JsonToMichelson.convert[MichelsonSchema](json) should equal(Right(result))
+  }
 
-    it should "convert MichelsonSchema with views" in {
-      val json =
-        """
+  it should "convert MichelsonSchema with views" in {
+    val json =
+      """
           |[
           |   {
           |      "prim":"parameter",
@@ -1592,8 +1592,8 @@ class JsonToMichelsonSpec extends AnyFlatSpec with Matchers with LoggingTestSupp
           |]
           |""".stripMargin
 
-      val result =
-        """
+    val result =
+      """
           |parameter (or (address %setArchetype) (pair %add (nat %id) (pair %add (address %mintingValidator) (nat %imaxBalanceAllowed))));
           |   storage (pair (address %admin) (pair (option %archetype address) (big_map %archetypeLedger nat (pair (address %archValidator) (nat %maxBalanceAllowed)))));
           |   code { { { DUP ; CAR ; DIP { CDR } } } ;
@@ -1676,7 +1676,9 @@ class JsonToMichelsonSpec extends AnyFlatSpec with Matchers with LoggingTestSupp
           |   { "getValidator" ; nat ; address ; { { { DUP ; CAR ; DIP { CDR } } } ; DIP { CDR ; CDR } ; UNIT ; DIG 2 ; DUP ; DUG 3 ; DIG 2 ; DUP ; DUG 3 ; GET ; IF_NONE { PUSH string "NotFound" ; FAILWITH } {} ; CAR ; SWAP ; DROP ; DIP { DROP 2 } } } }
           |""".stripMargin
 
-      JsonToMichelson.convert[MichelsonSchema](json).map(_.filterNot(_.isWhitespace)) should equal(Right(result.filterNot(_.isWhitespace)))
-    }
+    JsonToMichelson.convert[MichelsonSchema](json).map(_.filterNot(_.isWhitespace)) should equal(
+      Right(result.filterNot(_.isWhitespace))
+    )
+  }
 
 }

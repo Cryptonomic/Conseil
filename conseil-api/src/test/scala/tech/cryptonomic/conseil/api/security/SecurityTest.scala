@@ -11,26 +11,26 @@ class SecurityTest extends ConseilSpec with ScalatestRouteTest {
 
   "The SecurityApi" should {
 
-      "valid itself" in {
-        SecurityApi(Set.empty, None).isValid shouldBe false
-        SecurityApi(Set.empty, Some(false)).isValid shouldBe false
+    "valid itself" in {
+      SecurityApi(Set.empty, None).isValid shouldBe false
+      SecurityApi(Set.empty, Some(false)).isValid shouldBe false
 
-        SecurityApi(Set("some-key"), Some(false)).isValid shouldBe true
-        SecurityApi(Set("some-key"), None).isValid shouldBe true
-        SecurityApi(Set.empty, Some(true)).isValid shouldBe true
-        SecurityApi(Set("some-key"), Some(true)).isValid shouldBe true
-      }
-
-      "validate a given key" in {
-        SecurityApi(Set("some-key"), None).validateApiKey(Some("some-key")).futureValue shouldBe true
-        SecurityApi(Set("some-key"), Some(true)).validateApiKey(Some("some-key")).futureValue shouldBe true
-
-        SecurityApi(Set.empty, None).validateApiKey(Some("some-key")).futureValue shouldBe false
-        SecurityApi(Set.empty, Some(true)).validateApiKey(Some("some-key")).futureValue shouldBe false
-
-        SecurityApi(Set.empty, None).validateApiKey(None).futureValue shouldBe false
-        SecurityApi(Set.empty, Some(true)).validateApiKey(None).futureValue shouldBe true
-      }
-
+      SecurityApi(Set("some-key"), Some(false)).isValid shouldBe true
+      SecurityApi(Set("some-key"), None).isValid shouldBe true
+      SecurityApi(Set.empty, Some(true)).isValid shouldBe true
+      SecurityApi(Set("some-key"), Some(true)).isValid shouldBe true
     }
+
+    "validate a given key" in {
+      SecurityApi(Set("some-key"), None).validateApiKey(Some("some-key")).futureValue shouldBe true
+      SecurityApi(Set("some-key"), Some(true)).validateApiKey(Some("some-key")).futureValue shouldBe true
+
+      SecurityApi(Set.empty, None).validateApiKey(Some("some-key")).futureValue shouldBe false
+      SecurityApi(Set.empty, Some(true)).validateApiKey(Some("some-key")).futureValue shouldBe false
+
+      SecurityApi(Set.empty, None).validateApiKey(None).futureValue shouldBe false
+      SecurityApi(Set.empty, Some(true)).validateApiKey(None).futureValue shouldBe true
+    }
+
+  }
 }

@@ -395,6 +395,9 @@ object TezosOptics {
         case x: TxRollupFinalizeCommitment =>
           index += 1
           x.copy(blockOrder = Some(index))
+        case x: DefaultOperation =>
+          index += 1
+          x.copy(blockOrder = Some(index))
       }
 
       group.copy(contents = contents)

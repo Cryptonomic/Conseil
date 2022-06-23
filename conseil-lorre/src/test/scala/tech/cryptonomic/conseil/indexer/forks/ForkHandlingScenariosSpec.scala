@@ -20,8 +20,8 @@ import tech.cryptonomic.conseil.common.testkit.LoggingTestSupport
 class ForkHandlingScenariosSpec extends AnyFlatSpec with Checkers with Matchers with LoggingTestSupport {
 
   "The forks scenarios" should "simulate multiple fork changes" in {
-      check(ForkHandlingScenariosSpec.property())
-    }
+    check(ForkHandlingScenariosSpec.property())
+  }
 
 }
 
@@ -52,7 +52,6 @@ class ForkHandlingScenariosSpec extends AnyFlatSpec with Checkers with Matchers 
   * In all these pieces we use a very simple interface to the local indexed state (i.e. the DB) and the remote node.
   * We only care to retrieve block ids (block hashes) for any given level  requested, and ignore any other detail related
   * to the blocks themselves, which are not relevant to the fork handling process.
-  *
   */
 object ForkHandlingScenariosSpec extends Commands {
 
@@ -157,12 +156,11 @@ object ForkHandlingScenariosSpec extends Commands {
    * with a fixed number of blocks
    */
   override def genInitialState: Gen[State] =
-    branchSelector.map(
-      branch =>
-        SimulationState(
-          currentlyOnBranch = branch.id,
-          indexedChain = branch.blocks.take(initialBlocks)
-        )
+    branchSelector.map(branch =>
+      SimulationState(
+        currentlyOnBranch = branch.id,
+        indexedChain = branch.blocks.take(initialBlocks)
+      )
     )
 
   /* At each step a new command will be run on the system and will update the State.
@@ -255,11 +253,10 @@ object ForkHandlingScenariosSpec extends Commands {
   private def makeCommonBaseLine(ofLength: Int, fromBranches: List[ChainBranch]): List[ChainBranch] = {
     assume(fromBranches.nonEmpty, "The spec cannot align different branches' baseline if no branch is given")
     val baseline = fromBranches.head.blocks.take(ofLength)
-    fromBranches.map(
-      branch =>
-        branch.copy(
-          blocks = baseline #::: branch.blocks.drop(ofLength)
-        )
+    fromBranches.map(branch =>
+      branch.copy(
+        blocks = baseline #::: branch.blocks.drop(ofLength)
+      )
     )
   }
 
