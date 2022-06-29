@@ -779,7 +779,7 @@ ALTER TABLE ONLY tezos.accounts
     ADD CONSTRAINT accounts_block_id_fkey
     FOREIGN KEY (block_id, fork_id)
     REFERENCES tezos.blocks(hash, fork_id)
-    DEFERRABLE INITIALLY IMMEDIATE;
+    DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -790,7 +790,7 @@ ALTER TABLE ONLY tezos.operation_groups
     ADD CONSTRAINT block
     FOREIGN KEY (block_id, fork_id)
     REFERENCES tezos.blocks(hash, fork_id)
-    DEFERRABLE INITIALLY IMMEDIATE;
+    DEFERRABLE INITIALLY DEFERRED;
 
 --
 -- Name: delegates delegates_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
@@ -800,7 +800,7 @@ ALTER TABLE ONLY tezos.bakers
     ADD CONSTRAINT bakers_block_id_fkey
     FOREIGN KEY (block_id, fork_id)
     REFERENCES tezos.blocks(hash, fork_id)
-    DEFERRABLE INITIALLY IMMEDIATE;
+    DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -812,7 +812,7 @@ ALTER TABLE ONLY tezos.baking_rights
     FOREIGN KEY (block_hash, fork_id)
     REFERENCES tezos.blocks(hash, fork_id)
     NOT VALID
-    DEFERRABLE INITIALLY IMMEDIATE;
+    DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -824,7 +824,7 @@ ALTER TABLE ONLY tezos.endorsing_rights
     FOREIGN KEY (block_hash, fork_id)
     REFERENCES tezos.blocks(hash, fork_id)
     NOT VALID
-    DEFERRABLE INITIALLY IMMEDIATE;
+    DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -835,7 +835,7 @@ ALTER TABLE ONLY tezos.operations
     ADD CONSTRAINT fk_blockhashes
     FOREIGN KEY (block_hash, fork_id)
     REFERENCES tezos.blocks(hash, fork_id)
-    DEFERRABLE INITIALLY IMMEDIATE;
+    DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -846,7 +846,7 @@ ALTER TABLE ONLY tezos.operations
     ADD CONSTRAINT fk_opgroups
     FOREIGN KEY (operation_group_hash, block_hash, fork_id)
     REFERENCES tezos.operation_groups(hash, block_id, fork_id)
-    DEFERRABLE INITIALLY IMMEDIATE;
+    DEFERRABLE INITIALLY DEFERRED;
 
 --
 -- PostgreSQL database dump complete
