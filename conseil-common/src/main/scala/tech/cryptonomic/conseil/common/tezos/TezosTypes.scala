@@ -111,7 +111,7 @@ object TezosTypes {
       storage: Option[Micheline],
       balance_updates: List[OperationMetadata.BalanceUpdate],
       consumed_gas: PositiveBigNumber,
-      consumed_miligas: PositiveBigNumber,
+      consumed_milligas: PositiveBigNumber,
       storage_size: PositiveBigNumber
   )
 
