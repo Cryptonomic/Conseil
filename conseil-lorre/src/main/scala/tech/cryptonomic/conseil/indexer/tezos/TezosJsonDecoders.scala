@@ -1,6 +1,8 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
 import com.github.ghik.silencer.silent
+import io.circe.Decoder.Result
+import io.circe.HCursor
 import tech.cryptonomic.conseil.common.tezos.TezosTypes
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.JsonUtil.CirceCommonDecoders.decodeUntaggedEither
@@ -290,7 +292,13 @@ private[tezos] object TezosJsonDecoders {
       implicit val internalTxRollupOrigination: Decoder[InternalOperationResults.TxRollupOrigination] =
         deriveConfiguredDecoder
       implicit val tezosTypesParametersDecoder: Decoder[TezosTypes.Parameters] = deriveConfiguredDecoder
-      implicit val operationDecoder: Decoder[Operation] = deriveConfiguredDecoder
+      implicit val operationDecoder: Decoder[Operation] = new Decoder[Operation] {
+        override def apply(c: HCursor): Result[Operation] = {
+          implicit val defaultOperationDecoder: Decoder[DefaultOperation] = deriveConfiguredDecoder
+          implicit val basicDecoder: Decoder[Operation] = deriveConfiguredDecoder
+          basicDecoder.widen.or(defaultOperationDecoder.widen)(c)
+        }
+      }
       implicit val operationsDecoder: Decoder[Operations] = deriveConfiguredDecoder
       implicit val endorsementDecoder: Decoder[EndorsementInternalObject] = deriveConfiguredDecoder
       implicit val operationGroupDecoder: Decoder[OperationsGroup] = deriveConfiguredDecoder

@@ -43,29 +43,29 @@ class PlatformsTest extends ConseilSpec {
   private val networkBitcoin = PlatformDiscoveryTypes.Network("testnet", "Testnet", "bitcoin", "testnet")
 
   "Platforms.PlatformsConfiguration" should {
-      "return enabled platforms, by default" in {
-        config.getPlatforms() should contain only platformTezos
-      }
-
-      "return allow to ask for disabled platforms" in {
-        config.getPlatforms(enabled = false) should contain only platformBitcoin
-      }
-
-      "return networks for enabled platforms and specific name, by default" in {
-        config.getNetworks("tezos") should contain only networkTezos
-      }
-
-      "return allow to ask for networks, for disabled platforms and specific name" in {
-        config.getNetworks("tezos", enabled = false) shouldBe empty
-        config.getNetworks("bitcoin", enabled = false) should contain only networkBitcoin
-      }
-
-      "return configs for enabled platforms" in {
-        config.getDbConfig("tezos", "mainnet") shouldBe dbCfg
-      }
-
-      "return databases for enabled platforms" in {
-        config.getDatabases().keys.toList should contain theSameElementsAs List(("tezos", "mainnet"))
-      }
+    "return enabled platforms, by default" in {
+      config.getPlatforms() should contain only platformTezos
     }
+
+    "return allow to ask for disabled platforms" in {
+      config.getPlatforms(enabled = false) should contain only platformBitcoin
+    }
+
+    "return networks for enabled platforms and specific name, by default" in {
+      config.getNetworks("tezos") should contain only networkTezos
+    }
+
+    "return allow to ask for networks, for disabled platforms and specific name" in {
+      config.getNetworks("tezos", enabled = false) shouldBe empty
+      config.getNetworks("bitcoin", enabled = false) should contain only networkBitcoin
+    }
+
+    "return configs for enabled platforms" in {
+      config.getDbConfig("tezos", "mainnet") shouldBe dbCfg
+    }
+
+    "return databases for enabled platforms" in {
+      config.getDatabases().keys.toList should contain theSameElementsAs List(("tezos", "mainnet"))
+    }
+  }
 }

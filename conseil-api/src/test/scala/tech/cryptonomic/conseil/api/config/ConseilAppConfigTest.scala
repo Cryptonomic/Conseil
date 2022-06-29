@@ -13,10 +13,10 @@ import scala.language.postfixOps
 class ConseilAppConfigTest extends ConseilSpec {
 
   "ConseilAppConfig" should {
-      "extract the correct configuration list for Tezos platform's networks using default readers" in {
-        import Platforms._
+    "extract the correct configuration list for Tezos platform's networks using default readers" in {
+      import Platforms._
 
-        val cfg = ConfigFactory.parseString("""
+      val cfg = ConfigFactory.parseString("""
                                             |platforms: [
                                             |  {
                                             |    name: "tezos"
@@ -66,39 +66,39 @@ class ConseilAppConfigTest extends ConseilSpec {
                                             |]
         """.stripMargin)
 
-        val typedConfig = pureconfig.loadConfig[PlatformsConfiguration](conf = cfg)
+      val typedConfig = pureconfig.loadConfig[PlatformsConfiguration](conf = cfg)
 
-        typedConfig.right.value.platforms should contain only (
-          TezosConfiguration(
-            "alphanet",
-            enabled = true,
-            TezosNodeConfiguration("localhost", 8732, "http", "tezos/alphanet/"),
-            BigDecimal.decimal(8000),
-            cfg.getConfigList("platforms").get(0).getConfig("db"),
-            None
+      typedConfig.right.value.platforms should contain only (
+        TezosConfiguration(
+          "alphanet",
+          enabled = true,
+          TezosNodeConfiguration("localhost", 8732, "http", "tezos/alphanet/"),
+          BigDecimal.decimal(8000),
+          cfg.getConfigList("platforms").get(0).getConfig("db"),
+          None
+        ),
+        TezosConfiguration(
+          "alphanet-staging",
+          enabled = false,
+          TezosNodeConfiguration(
+            "nautilus.cryptonomic.tech",
+            8732,
+            "https",
+            "tezos/alphanet-staging/",
+            traceCalls = true
           ),
-          TezosConfiguration(
-            "alphanet-staging",
-            enabled = false,
-            TezosNodeConfiguration(
-              "nautilus.cryptonomic.tech",
-              8732,
-              "https",
-              "tezos/alphanet-staging/",
-              traceCalls = true
-            ),
-            BigDecimal.decimal(8000),
-            cfg.getConfigList("platforms").get(1).getConfig("db"),
-            None
-          )
+          BigDecimal.decimal(8000),
+          cfg.getConfigList("platforms").get(1).getConfig("db"),
+          None
         )
+      )
 
-      }
+    }
 
-      "extract a configuration list that includes a unknown platforms" in {
-        import Platforms._
+    "extract a configuration list that includes a unknown platforms" in {
+      import Platforms._
 
-        val cfg = ConfigFactory.parseString("""
+      val cfg = ConfigFactory.parseString("""
                                               |platforms: [
                                               |  {
                                               |    name: "tezos"
@@ -146,21 +146,21 @@ class ConseilAppConfigTest extends ConseilSpec {
                                               |]
         """.stripMargin)
 
-        val typedConfig = pureconfig.loadConfig[PlatformsConfiguration](conf = cfg)
-        typedConfig.left.value.toList should have size 1
-        typedConfig.left.value.toList.head shouldBe an[ConvertFailure]
-      }
+      val typedConfig = pureconfig.loadConfig[PlatformsConfiguration](conf = cfg)
+      typedConfig.left.value.toList should have size 1
+      typedConfig.left.value.toList.head shouldBe an[ConvertFailure]
+    }
 
-      "extract None, when configuration for Nautilus Cloud does not exist" in {
-        val config = ConfigFactory.parseString("")
-        val typedConfig =
-          pureconfig.loadConfig[Option[NautilusCloudConfiguration]](conf = config, namespace = "nautilus-cloud")
+    "extract None, when configuration for Nautilus Cloud does not exist" in {
+      val config = ConfigFactory.parseString("")
+      val typedConfig =
+        pureconfig.loadConfig[Option[NautilusCloudConfiguration]](conf = config, namespace = "nautilus-cloud")
 
-        typedConfig.value shouldBe empty
-      }
+      typedConfig.value shouldBe empty
+    }
 
-      "extract Some, when configuration for Nautilus Cloud exists" in {
-        val config = ConfigFactory.parseString("""
+    "extract Some, when configuration for Nautilus Cloud exists" in {
+      val config = ConfigFactory.parseString("""
             |nautilus-cloud {
             |  enabled: true
             |  host: "http://localhost"
@@ -171,19 +171,19 @@ class ConseilAppConfigTest extends ConseilSpec {
             |  interval: 30 seconds
             |}
             |""".stripMargin)
-        val typedConfig =
-          pureconfig.loadConfig[Option[NautilusCloudConfiguration]](conf = config, namespace = "nautilus-cloud")
+      val typedConfig =
+        pureconfig.loadConfig[Option[NautilusCloudConfiguration]](conf = config, namespace = "nautilus-cloud")
 
-        typedConfig.right.value.value shouldBe NautilusCloudConfiguration(
-          true,
-          "http://localhost",
-          1234,
-          "apiKeys/dev",
-          "exampleApiKeyDev",
-          10 seconds,
-          30 seconds
-        )
-      }
+      typedConfig.right.value.value shouldBe NautilusCloudConfiguration(
+        true,
+        "http://localhost",
+        1234,
+        "apiKeys/dev",
+        "exampleApiKeyDev",
+        10 seconds,
+        30 seconds
+      )
     }
+  }
 
 }

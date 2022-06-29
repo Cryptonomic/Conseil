@@ -52,8 +52,8 @@ object ForkHandlingScenariosFixtures {
   class MockSearch(var chain: PartialChain) extends SearchBlockId[TestEffect, TestBlockId] {
 
     override def searchForLevel(level: Long): Either[Throwable, TestBlockId] =
-      chain.collectFirst {
-        case (`level`, block) => block
+      chain.collectFirst { case (`level`, block) =>
+        block
       }.toRight(new NoSuchElementException(s"No element on the chain for level $level"))
 
   }

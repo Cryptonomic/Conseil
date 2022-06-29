@@ -24,64 +24,64 @@ class BitcoinOperationsTest extends ConseilSpec with MockFactory {
    */
 
   "Bitcoin operations" should {
-      "run indexer for the newest blocks" in new BitcoinOperationsStubs {
-        // test if method runs indexer with the correct range of the blocks
-        val bitcoinOperationsStub = new BitcoinOperationsMock {
-          override def loadBlocksWithTransactions(range: Range.Inclusive) = {
-            range shouldBe (6 to 10)
-            Stream.empty
-          }
+    "run indexer for the newest blocks" in new BitcoinOperationsStubs {
+      // test if method runs indexer with the correct range of the blocks
+      val bitcoinOperationsStub = new BitcoinOperationsMock {
+        override def loadBlocksWithTransactions(range: Range.Inclusive) = {
+          range shouldBe (6 to 10)
+          Stream.empty
         }
-        // check if the method gets the latest block at the beginning
-        (bitcoinPersistenceMock.getLatestIndexedBlock _) expects ()
-        (txMock.transact[Option[Tables.BlocksRow]] _) expects (*) returning (IO(Some(blockRow)))
-
-        // mock Bitcoin client calls
-        (bitcoinClientMock.getBlockChainInfo _) expects () returning (Stream(BlockchainInfo("mainnet", 10)).covary[IO])
-
-        // run
-        bitcoinOperationsStub.loadBlocks(Newest, None).compile.drain.unsafeRunSync()
       }
+      // check if the method gets the latest block at the beginning
+      (bitcoinPersistenceMock.getLatestIndexedBlock _) expects ()
+      (txMock.transact[Option[Tables.BlocksRow]] _) expects * returning (IO(Some(blockRow)))
 
-      "run indexer for the all blocks" in new BitcoinOperationsStubs {
-        // test if method runs indexer with the correct range of the blocks
-        val bitcoinOperationsStub = new BitcoinOperationsMock {
-          override def loadBlocksWithTransactions(range: Range.Inclusive) = {
-            range shouldBe (1 to 10)
-            Stream.empty
-          }
-        }
-        // check if the method gets the latest block at the beginning
-        (bitcoinPersistenceMock.getLatestIndexedBlock _) expects ()
-        (txMock.transact[Option[Tables.BlocksRow]] _) expects (*) returning (IO(None))
+      // mock Bitcoin client calls
+      (bitcoinClientMock.getBlockChainInfo _) expects () returning (Stream(BlockchainInfo("mainnet", 10)).covary[IO])
 
-        // mock Bitcoin client calls
-        (bitcoinClientMock.getBlockChainInfo _) expects () returning (Stream(BlockchainInfo("mainnet", 10)).covary[IO])
-
-        // run
-        bitcoinOperationsStub.loadBlocks(Everything, None).compile.drain.unsafeRunSync()
-      }
-
-      "run indexer for the custom blocks range" in new BitcoinOperationsStubs {
-        // test if method runs indexer with the correct range of the blocks
-        val bitcoinOperationsStub = new BitcoinOperationsMock {
-          override def loadBlocksWithTransactions(range: Range.Inclusive) = {
-            range shouldBe (7 to 10)
-            Stream.empty
-          }
-        }
-
-        // check if the method gets the latest block at the beginning
-        (bitcoinPersistenceMock.getLatestIndexedBlock _) expects ()
-        (txMock.transact[Option[Tables.BlocksRow]] _) expects (*) returning (IO(Some(blockRow.copy(level = 3))))
-
-        // mock Bitcoin client calls
-        (bitcoinClientMock.getBlockChainInfo _) expects () returning (Stream(BlockchainInfo("mainnet", 10)).covary[IO])
-
-        // run
-        bitcoinOperationsStub.loadBlocks(Custom(3), None).compile.drain.unsafeRunSync()
-      }
+      // run
+      bitcoinOperationsStub.loadBlocks(Newest, None).compile.drain.unsafeRunSync()
     }
+
+    "run indexer for the all blocks" in new BitcoinOperationsStubs {
+      // test if method runs indexer with the correct range of the blocks
+      val bitcoinOperationsStub = new BitcoinOperationsMock {
+        override def loadBlocksWithTransactions(range: Range.Inclusive) = {
+          range shouldBe (1 to 10)
+          Stream.empty
+        }
+      }
+      // check if the method gets the latest block at the beginning
+      (bitcoinPersistenceMock.getLatestIndexedBlock _) expects ()
+      (txMock.transact[Option[Tables.BlocksRow]] _) expects * returning (IO(None))
+
+      // mock Bitcoin client calls
+      (bitcoinClientMock.getBlockChainInfo _) expects () returning (Stream(BlockchainInfo("mainnet", 10)).covary[IO])
+
+      // run
+      bitcoinOperationsStub.loadBlocks(Everything, None).compile.drain.unsafeRunSync()
+    }
+
+    "run indexer for the custom blocks range" in new BitcoinOperationsStubs {
+      // test if method runs indexer with the correct range of the blocks
+      val bitcoinOperationsStub = new BitcoinOperationsMock {
+        override def loadBlocksWithTransactions(range: Range.Inclusive) = {
+          range shouldBe (7 to 10)
+          Stream.empty
+        }
+      }
+
+      // check if the method gets the latest block at the beginning
+      (bitcoinPersistenceMock.getLatestIndexedBlock _) expects ()
+      (txMock.transact[Option[Tables.BlocksRow]] _) expects * returning (IO(Some(blockRow.copy(level = 3))))
+
+      // mock Bitcoin client calls
+      (bitcoinClientMock.getBlockChainInfo _) expects () returning (Stream(BlockchainInfo("mainnet", 10)).covary[IO])
+
+      // run
+      bitcoinOperationsStub.loadBlocks(Custom(3), None).compile.drain.unsafeRunSync()
+    }
+  }
 
   /**
     * Stubs that can help to provide tests for the [[BitcoinOperations]].
