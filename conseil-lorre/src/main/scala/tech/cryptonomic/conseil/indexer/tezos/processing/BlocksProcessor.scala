@@ -55,8 +55,8 @@ class BlocksProcessor(
       knownAddresses match {
         case Some(value) =>
           results.map { case (block, accountIds) =>
-            val ids = accountIds.toSet.intersect(value.map(x => TezosTypes.PublicKeyHash(x.address)).toSet)
-             block -> accountIds.taggedWithBlockData(block.data)
+            val ids = accountIds.toSet.intersect(value.map(x => TezosTypes.PublicKeyHash(x.address)).toSet).toList
+             block -> ids.taggedWithBlockData(block.data)
           }.unzip
         case None =>
           results.map { case (block, accountIds) =>
