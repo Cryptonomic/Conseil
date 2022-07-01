@@ -69,6 +69,7 @@ class TezosDataRoutesTest
             "alphanet",
             enabled = true,
             TezosNodeConfiguration("tezos-host", 123, "https://"),
+            BigDecimal.decimal(8000),
             dbCfg,
             None
           )
@@ -83,80 +84,80 @@ class TezosDataRoutesTest
 
   "Query protocol" should {
 
-      "return a correct response with OK status code with POST" in {
+    "return a correct response with OK status code with POST" in {
 
-        val postRequest = HttpRequest(
-          HttpMethods.POST,
-          uri = "/v2/data/tezos/alphanet/accounts",
-          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
-        )
+      val postRequest = HttpRequest(
+        HttpMethods.POST,
+        uri = "/v2/data/tezos/alphanet/accounts",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+      )
 
-        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
-          val resp = entityAs[String]
-          resp should matchJson(jsonStringResponse)
-          status shouldBe StatusCodes.OK
-        }
-      }
-
-      "return 404 NotFound status code for request for the unsupported platform with POST" in {
-
-        val postRequest = HttpRequest(
-          HttpMethods.POST,
-          uri = "/v2/data/notSupportedPlatform/alphanet/accounts",
-          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
-        )
-        postRequest ~> addHeader("apiKey", "hooman") ~> Route.seal(routes.postRoute) ~> check {
-          status shouldBe StatusCodes.NotFound
-        }
-      }
-
-      "return 404 NotFound status code for request for the unsupported network with POST" in {
-
-        val postRequest = HttpRequest(
-          HttpMethods.POST,
-          uri = "/v2/data/tezos/notSupportedNetwork/accounts",
-          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
-        )
-        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
-          status shouldBe StatusCodes.NotFound
-        }
-      }
-
-      "return a correct response with OK status code with GET" in {
-        val getRequest = HttpRequest(
-          HttpMethods.GET,
-          uri = "/v2/data/tezos/alphanet/accounts"
-        )
-
-        getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
-          val resp = entityAs[String]
-          resp should matchJson(jsonStringResponse)
-          status shouldBe StatusCodes.OK
-        }
-      }
-
-      "not handle request for the unsupported platform with GET" in {
-        // Due to the fact that platforms are hardcoded in path (not dynamic),
-        // request won't be handled for unsupported platforms and pushed down to the default rejection handler.
-        val getRequest = HttpRequest(
-          HttpMethods.GET,
-          uri = "/v2/data/notSupportedPlatform/alphanet/accounts"
-        )
-        getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
-          handled shouldBe false
-        }
-      }
-
-      "return 404 NotFound status code for request for the unsupported network with GET" in {
-        val getRequest = HttpRequest(
-          HttpMethods.GET,
-          uri = "/v2/data/tezos/notSupportedNetwork/accounts"
-        )
-        getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
-          status shouldBe StatusCodes.NotFound
-        }
+      postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
+        val resp = entityAs[String]
+        resp should matchJson(jsonStringResponse)
+        status shouldBe StatusCodes.OK
       }
     }
+
+    "return 404 NotFound status code for request for the unsupported platform with POST" in {
+
+      val postRequest = HttpRequest(
+        HttpMethods.POST,
+        uri = "/v2/data/notSupportedPlatform/alphanet/accounts",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+      )
+      postRequest ~> addHeader("apiKey", "hooman") ~> Route.seal(routes.postRoute) ~> check {
+        status shouldBe StatusCodes.NotFound
+      }
+    }
+
+    "return 404 NotFound status code for request for the unsupported network with POST" in {
+
+      val postRequest = HttpRequest(
+        HttpMethods.POST,
+        uri = "/v2/data/tezos/notSupportedNetwork/accounts",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+      )
+      postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
+        status shouldBe StatusCodes.NotFound
+      }
+    }
+
+    "return a correct response with OK status code with GET" in {
+      val getRequest = HttpRequest(
+        HttpMethods.GET,
+        uri = "/v2/data/tezos/alphanet/accounts"
+      )
+
+      getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
+        val resp = entityAs[String]
+        resp should matchJson(jsonStringResponse)
+        status shouldBe StatusCodes.OK
+      }
+    }
+
+    "not handle request for the unsupported platform with GET" in {
+      // Due to the fact that platforms are hardcoded in path (not dynamic),
+      // request won't be handled for unsupported platforms and pushed down to the default rejection handler.
+      val getRequest = HttpRequest(
+        HttpMethods.GET,
+        uri = "/v2/data/notSupportedPlatform/alphanet/accounts"
+      )
+      getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
+        handled shouldBe false
+      }
+    }
+
+    "return 404 NotFound status code for request for the unsupported network with GET" in {
+      val getRequest = HttpRequest(
+        HttpMethods.GET,
+        uri = "/v2/data/tezos/notSupportedNetwork/accounts"
+      )
+      getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
+        status shouldBe StatusCodes.NotFound
+      }
+    }
+  }
 }
 
 object TezosDataRoutesTest {

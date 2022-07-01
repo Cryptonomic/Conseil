@@ -3,8 +3,8 @@ package tech.cryptonomic.conseil.api.routes.platform.discovery
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import endpoints.akkahttp
-import endpoints.algebra.Documentation
+import endpoints4s.akkahttp
+import endpoints4s.algebra.Documentation
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.api.metadata.MetadataService
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.AttributesValidationError
@@ -31,19 +31,18 @@ class PlatformDiscovery(metadataService: MetadataService)
   private lazy val platformsRoute = platformsEndpoint.implementedBy(_ => metadataService.getPlatforms)
 
   /** Metadata route implementation for networks endpoint */
-  private lazy val networksRoute = networksEndpoint.implementedBy {
-    case (platform, _) => metadataService.getNetworks(PlatformPath(platform))
+  private lazy val networksRoute = networksEndpoint.implementedBy { case (platform, _) =>
+    metadataService.getNetworks(PlatformPath(platform))
   }
 
   /** Metadata route implementation for entities endpoint */
-  private lazy val entitiesRoute = entitiesEndpoint.implementedByAsync {
-    case (platform, network, _) => metadataService.getCurrentEntities(NetworkPath(network, PlatformPath(platform)))
+  private lazy val entitiesRoute = entitiesEndpoint.implementedByAsync { case (platform, network, _) =>
+    metadataService.getCurrentEntities(NetworkPath(network, PlatformPath(platform)))
   }
 
   /** Metadata route implementation for attributes endpoint */
-  private lazy val attributesRoute = attributesEndpoint.implementedByAsync {
-    case ((platform, network, entity), _) =>
-      metadataService.getCurrentTableAttributes(EntityPath(entity, NetworkPath(network, PlatformPath(platform))))
+  private lazy val attributesRoute = attributesEndpoint.implementedByAsync { case ((platform, network, entity), _) =>
+    metadataService.getCurrentTableAttributes(EntityPath(entity, NetworkPath(network, PlatformPath(platform))))
   }
 
   /** Metadata route implementation for attributes values endpoint */

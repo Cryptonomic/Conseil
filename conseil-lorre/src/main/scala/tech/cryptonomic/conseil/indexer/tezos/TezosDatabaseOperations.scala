@@ -2,8 +2,7 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import java.sql.Timestamp
 import java.time.{Instant, ZoneOffset}
-
-import cats.effect.Async
+import cats.effect.Sync
 import cats.implicits._
 import scribe._
 import slick.jdbc.PostgresProfile.api._
@@ -12,15 +11,8 @@ import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
-import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.Tables.{
-  AccountsRow,
-  GovernanceRow,
-  NftsRow,
-  OperationsRow,
-  OriginatedAccountMapsRow,
-  RegisteredTokensRow
-}
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
+import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, GovernanceRow, OperationsRow, OriginatedAccountMapsRow, RegisteredTokensRow}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.ConfigUtil
@@ -35,15 +27,9 @@ import scala.collection.immutable.Queue
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math
 import scala.util.{Failure, Success}
-import java.{util => ju}
-
+import java.util.UUID
 import slick.dbio.DBIOAction
 import tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
-
-import scala.io.Source
-import tech.cryptonomic.conseil.common
-import tech.cryptonomic.conseil.common.tezos
-import tech.cryptonomic.conseil.indexer.tezos.Tzip16MetadataJsonDecoders.Tzip16Metadata
 
 /**
   * Functions for writing Tezos data to a database.
@@ -125,8 +111,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     //straightforward Database IO Actions waiting to be just run
     val saveBlocksAction = Tables.Blocks ++= blocks.map(_.convertTo[BlocksRow])
     val saveBlocksBalanceUpdatesAction = Tables.BalanceUpdates ++= blocks.flatMap { block =>
-            block.data.convertToA[List, BalanceUpdatesRow]
-          }
+      block.data.convertToA[List, BalanceUpdatesRow]
+    }
 
     val saveGroupsAction = Tables.OperationGroups ++= blocks.flatMap(_.convertToA[List, OperationGroupsRow])
 
@@ -138,8 +124,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     val saveBalanceUpdatesForOperationId = Kleisli[DBIO, ((String, Int), List[BalanceUpdatesRow]), Option[Int]] {
       case ((operationGroupHash, operationRowId), balanceRows) =>
         Tables.BalanceUpdates ++= balanceRows.map(
-              _.copy(operationGroupHash = Some(operationGroupHash), sourceId = Some(operationRowId))
-            )
+          _.copy(operationGroupHash = Some(operationGroupHash), sourceId = Some(operationRowId))
+        )
     }
 
     /* Compose the kleisli functions to get a single "action function"
@@ -207,9 +193,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     )
 
     operationSequence
-      .traverse[DBIO, Unit](
-        op => op(blocks)
-      )
+      .traverse[DBIO, Unit](op => op(blocks))
       .void
   }
 
@@ -295,8 +279,9 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       case Some(pks) =>
         for {
           total <- tableTotal
-          marked = if (total > pks.size) applySelection(tableQuery, pks)
-          else tableQuery
+          marked =
+            if (total > pks.size) applySelection(tableQuery, pks)
+            else tableQuery
           deleted <- marked.delete
         } yield deleted
       case None =>
@@ -319,8 +304,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       timestamp: Instant,
       cycle: Option[Int],
       selectors: Set[AccountIdPattern] = Set(".*")
-  )(
-      implicit ec: ExecutionContext
+  )(implicit
+      ec: ExecutionContext
   ): DBIO[Option[Int]] = {
 
     /* as taken almost literally from this S.O. suggestion
@@ -345,23 +330,21 @@ object TezosDatabaseOperations extends ConseilLogSupport {
 
     //for each pattern, create a query and then union them all
     val regexQueries = selectors
-      .map(
-        sel =>
-          Tables.Accounts
-            .filter(_.accountId ~ sel)
-            .map(_.accountId)
-            .distinct
+      .map(sel =>
+        Tables.Accounts
+          .filter(_.accountId ~ sel)
+          .map(_.accountId)
+          .distinct
       )
       .reduce(_ union _)
 
     regexQueries.distinct.result
-      .flatMap(
-        ids =>
-          writeAccountsCheckpoint(
-            List(
-              (hash, level, Some(timestamp), cycle, None, ids.map(makeAccountId).toList)
-            )
+      .flatMap(ids =>
+        writeAccountsCheckpoint(
+          List(
+            (hash, level, Some(timestamp), cycle, None, ids.map(makeAccountId).toList)
           )
+        )
       )
   }
 
@@ -458,32 +441,22 @@ object TezosDatabaseOperations extends ConseilLogSupport {
   val berLogger = Logger("RightsFetcher")
 
   /**
-    * Updates timestamps in the baking_rights table
+    * Updates in the baking_rights table
     * @param bakingRights baking rights to be updated
     */
-  def updateBakingRightsTimestamp(bakingRights: List[BakingRights]): DBIO[List[Int]] =
-    DBIO.sequence {
-      bakingRights.map { upd =>
-        Tables.BakingRights
-          .filter(er => er.delegate === upd.delegate && er.blockLevel === upd.level)
-          .map(_.estimatedTime)
-          .update(upd.estimated_time.map(datetime => Timestamp.from(datetime.toInstant)))
-      }
-    }
+  def updateBakingRights(bakingRights: List[BakingRights]): DBIO[Option[Int]] = {
+    import CustomProfileExtension.api._
+    Tables.BakingRights.insertOrUpdateAll(bakingRights.map(_.convertTo[Tables.BakingRightsRow]))
+  }
 
   /**
     * Updates timestamps in the endorsing_rights table
     * @param endorsingRights endorsing rights to be updated
     */
-  def updateEndorsingRightsTimestamp(endorsingRights: List[EndorsingRights]): DBIO[List[Int]] =
-    DBIO.sequence {
-      endorsingRights.map { upd =>
-        Tables.EndorsingRights
-          .filter(er => er.delegate === upd.delegate && er.blockLevel === upd.level)
-          .map(_.estimatedTime)
-          .update(upd.estimated_time.map(datetime => Timestamp.from(datetime.toInstant)))
-      }
-    }
+  def updateEndorsingRights(endorsingRights: List[EndorsingRights]): DBIO[Option[Int]] = {
+    import CustomProfileExtension.api._
+    Tables.EndorsingRights.insertOrUpdateAll(endorsingRights.flatMap(_.convertToA[List, Tables.EndorsingRightsRow]))
+  }
 
   /**
     * Writes baking rights to the database
@@ -577,7 +550,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     logger.info("Writing accounts and delegate checkpoints to the DB...")
 
     //we tuple because we want transactionality guarantees and we need all insert-counts to get returned
-    Async[DBIO]
+    Sync[DBIO]
       .tuple3(
         writeAccounts(accounts.map(_._1)),
         writeAccountsHistory(accounts),
@@ -609,14 +582,13 @@ object TezosDatabaseOperations extends ConseilLogSupport {
 
     logger.info("Writing bakers to DB and copying contracts to bakers table...")
 
-    val (rows, historyRows) = bakers.flatMap {
-      case BlockTagged(blockReference, bakersMap) =>
-        bakersMap
-          .map(_.taggedWithBlock(blockReference).convertTo[Tables.BakersRow])
-          .map { row =>
-            val history = (row, blockReference.timestamp).convertTo[Tables.BakersHistoryRow]
-            row -> history
-          }
+    val (rows, historyRows) = bakers.flatMap { case BlockTagged(blockReference, bakersMap) =>
+      bakersMap
+        .map(_.taggedWithBlock(blockReference).convertTo[Tables.BakersRow])
+        .map { row =>
+          val history = (row, blockReference.timestamp).convertTo[Tables.BakersHistoryRow]
+          row -> history
+        }
     }.unzip
 
     (keepMostRecent andThen Tables.Bakers.insertOrUpdateAll)(rows).flatMap { res =>
@@ -632,8 +604,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     Tables.Operations
       .filter(op => op.kind === "ballot" && op.cycle === cycle && op.invalidatedAsof.isEmpty)
       .groupBy(_.ballot)
-      .map {
-        case (vote, ops) => vote -> ops.length
+      .map { case (vote, ops) =>
+        vote -> ops.length
       }
       .result
       .map { res =>
@@ -654,8 +626,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     Tables.Operations
       .filter(op => op.kind === "ballot" && op.blockLevel === level && op.invalidatedAsof.isEmpty)
       .groupBy(_.ballot)
-      .map {
-        case (vote, ops) => vote -> ops.length
+      .map { case (vote, ops) =>
+        vote -> ops.length
       }
       .result
       .map { res =>
@@ -695,8 +667,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     DBIOAction
       .sequence(
         updateAccountsWithBakers(blockHashes) ::
-            updateAccountsHistoryWithBakers(blockHashes) ::
-            Nil
+          updateAccountsHistoryWithBakers(blockHashes) ::
+          Nil
       )
       .transactionally
 
@@ -715,9 +687,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
         .map { case (accounts, bakers) => accounts.accountId }
 
     Tables.AccountsHistory
-      .filter(
-        account => (account.accountId in bakersIds) && (account.blockId inSet blockHashes.map(_.value))
-      )
+      .filter(account => (account.accountId in bakersIds) && (account.blockId inSet blockHashes.map(_.value)))
       .map(account => (account.isBaker, account.isActiveBaker))
       .update((true, Some(true)))
   }
@@ -767,16 +737,15 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       val baseSelection = Tables.Operations
         .filter(op => op.invalidatedAsof.isEmpty && op.timestamp >= lowBound)
 
-      baseSelection.groupBy(_.kind).map {
-        case (kind, subQuery) =>
-          (
-            kind,
-            subQuery.map(_.fee.getOrElse(zeroBD)).avg,
-            subQuery.map(_.fee.getOrElse(zeroBD)).stdDevPop,
-            subQuery.map(_.timestamp).max,
-            subQuery.map(_.cycle).max,
-            subQuery.map(_.blockLevel).max
-          )
+      baseSelection.groupBy(_.kind).map { case (kind, subQuery) =>
+        (
+          kind,
+          subQuery.map(_.fee.getOrElse(zeroBD)).avg,
+          subQuery.map(_.fee.getOrElse(zeroBD)).stdDevPop,
+          subQuery.map(_.timestamp).max,
+          subQuery.map(_.cycle).max,
+          subQuery.map(_.blockLevel).max
+        )
       }
     }
 
@@ -790,8 +759,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       * @param asOf     when the computation is to be considered, by default uses the time of invocation
       * @return         the average fees for each given operation kind, if it exists
       */
-    def calculateAverage(daysPast: Long, asOf: Instant = Instant.now())(
-        implicit ec: ExecutionContext
+    def calculateAverage(daysPast: Long, asOf: Instant = Instant.now())(implicit
+        ec: ExecutionContext
     ): DBIO[Seq[AverageFees]] = {
 
       /* We need to limit the past timestamps for this computation to a reasonable value.
@@ -813,19 +782,18 @@ object TezosDatabaseOperations extends ConseilLogSupport {
 
       //here we assume all the values are present, as we used defaults for any of them, or know they exists for certain
       feesStatsQuery(timestampLowerBound).result.map { rows =>
-        rows.map {
-          case (kind, Some(mean), Some(stddev), Some(ts), cycle, Some(level)) =>
-            val mu = math.ceil(mean.toDouble).toInt
-            val sigma = math.ceil(stddev.toDouble).toInt
-            AverageFees(
-              low = math.max(mu - sigma, 0),
-              medium = mu,
-              high = mu + sigma,
-              timestamp = ts,
-              kind = kind,
-              cycle = cycle,
-              level = level
-            )
+        rows.map { case (kind, Some(mean), Some(stddev), Some(ts), cycle, Some(level)) =>
+          val mu = math.ceil(mean.toDouble).toInt
+          val sigma = math.ceil(stddev.toDouble).toInt
+          AverageFees(
+            low = math.max(mu - sigma, 0),
+            medium = mu,
+            high = mu + sigma,
+            timestamp = ts,
+            kind = kind,
+            cycle = cycle,
+            level = level
+          )
         }
       }
 
@@ -859,6 +827,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
   def readRegisteredTokensJsonFile(network: String): Option[List[RegisteredToken]] = {
     import io.circe.parser.decode
     import RegisteredTokensFetcher.decoder
+    import java.io.{BufferedReader, InputStreamReader}
+    import scala.io.Source
 
     val file = getClass.getResource(s"/tezos/registered_tokens/$network.json")
     val content = Source.fromFile(file.toURI).getLines.mkString
@@ -885,8 +855,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     }
 
   /** Cleans and inserts registered tokens into db */
-  def initRegisteredTokensTable(db: Database, list: List[RegisteredToken])(
-      implicit ec: ExecutionContext
+  def initRegisteredTokensTable(db: Database, list: List[RegisteredToken])(implicit
+      ec: ExecutionContext
   ): Future[Unit] = {
     import io.scalaland.chimney.dsl._
 
@@ -930,7 +900,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       indexedHeadLevel: BlockLevel,
       detectionTime: Instant
   ): DBIO[String] = {
-    val forkId = ju.UUID.randomUUID().toString
+    val forkId = UUID.randomUUID().toString
     val ts = new Timestamp(detectionTime.getEpochSecond())
     Tables.Forks.returning(
       Tables.Forks.map(_.forkId)
@@ -988,7 +958,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
         assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
         val asOfTimestamp = Timestamp.from(asOf)
         query
-          .filter(levelColumn(_) >= fromLevel)
+          .filter(x => levelColumn(x) >= fromLevel && forkIdColumn(x) === Fork.mainForkId)
           .map(e => (invalidationTimeColumn(e), forkIdColumn(e)))
           .update(asOfTimestamp.some, forkId)
       }
@@ -1007,6 +977,13 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     lazy val tokenBalances = EntityTableInvalidator(TokenBalances)(_.blockLevel, _.invalidatedAsof, _.forkId)
     lazy val governance = EntityTableInvalidator(Governance)(_.level.ifNull(-1L), _.invalidatedAsof, _.forkId)
     lazy val fees = EntityTableInvalidator(Fees)(_.level.ifNull(-1L), _.invalidatedAsof, _.forkId)
+    lazy val bigMaps = EntityTableInvalidator(BigMaps)(_.blockLevel.ifNull(-1L), _.invalidatedAsof, _.forkId)
+    lazy val bigMapContents =
+      EntityTableInvalidator(BigMapContents)(_.blockLevel.ifNull(-1L), _.invalidatedAsof, _.forkId)
+    lazy val bigMapContentsHistory =
+      EntityTableInvalidator(BigMapContentsHistory)(_.blockLevel.ifNull(-1L), _.invalidatedAsof, _.forkId)
+    lazy val originatedAccountMaps =
+      EntityTableInvalidator(OriginatedAccountMaps)(_.blockLevel.ifNull(-1L), _.invalidatedAsof, _.forkId)
 
     /** Deletes entries for the registry of processed chain events.
       * Due to a fork, those events will need be processed again over the new fork

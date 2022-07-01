@@ -69,11 +69,11 @@ object JsonLogging {
         line = record.line,
         thread = record.thread.getName,
         `@timestamp` = timestamp,
-        mdc = MDC.map.map {
-          case (key, function) => key -> function().toString
+        mdc = MDC.map.map { case (key, function) =>
+          key -> function().toString
         },
-        data = record.data.map {
-          case (key, function) => key -> function().toString
+        data = record.data.map { case (key, function) =>
+          key -> function().toString
         }
       )
 

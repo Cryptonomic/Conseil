@@ -33,8 +33,8 @@ trait EnableCORSDirectives extends RespondWithDirectives {
 
   lazy val enableCORS =
     respondWithHeader(`Access-Control-Allow-Origin`.`*`) &
-        respondWithHeader(`Access-Control-Allow-Methods`(allowedCorsVerbs)) &
-        respondWithHeader(`Access-Control-Allow-Headers`(allowedCorsHeaders)) &
-        respondWithHeader(`Access-Control-Allow-Credentials`(true))
+      respondWithHeader(`Access-Control-Allow-Methods`(allowedCorsVerbs)) &
+      respondWithHeader(`Access-Control-Allow-Headers`(allowedCorsHeaders)) &
+      respondWithHeader(`Access-Control-Allow-Credentials`(true))
 
 }

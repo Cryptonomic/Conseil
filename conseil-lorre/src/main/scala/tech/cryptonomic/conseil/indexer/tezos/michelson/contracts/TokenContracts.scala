@@ -67,9 +67,8 @@ class TokenContracts(private val registry: Set[TokenContracts.TokenToolbox]) {
     * @param id the id of the map used to store tokens
     */
   def setMapId(token: ContractId, id: BigDecimal): Unit =
-    registry.find(_.id == token).foreach {
-      case TokenToolbox(_, syncMapId) =>
-        syncMapId.put(BigMapId(id))
+    registry.find(_.id == token).foreach { case TokenToolbox(_, syncMapId) =>
+      syncMapId.put(BigMapId(id))
     }
 }
 
@@ -150,13 +149,13 @@ object TokenContracts extends ConseilLogSupport {
     */
   def fromConfig(knownTokens: List[(ContractId, String)]): TokenContracts = {
     val showTokens =
-      knownTokens.map {
-        case (cid, std) => cid.id -> std
+      knownTokens.map { case (cid, std) =>
+        cid.id -> std
       }.mkString(", ")
     logger.info(s"Creating a token registry from the following values: $showTokens")
 
-    val tokens = knownTokens.flatMap {
-      case (cid, std) => newToolbox(cid, std)
+    val tokens = knownTokens.flatMap { case (cid, std) =>
+      newToolbox(cid, std)
     }
 
     val showRegistered = tokens.map(_.id.id).mkString(", ")
@@ -211,16 +210,12 @@ object TokenContracts extends ConseilLogSupport {
         val id = (MichelineOps.decodeLedgerAccount _).tupled(
           ledgerEntry.drop(ledgerEntryBinaryPrefix.size).splitAt(8)
         )
-        id.failed.foreach(
-          err => logger.error("I failed to match a big map key as a proper account address", err)
-        )
+        id.failed.foreach(err => logger.error("I failed to match a big map key as a proper account address", err))
         id.toOption
       case packedAddress if packedAddress.startsWith("0") =>
         //this is directly the packed addres
         val id = CryptoUtil.readAddress(packedAddress).map(makeAccountId)
-        id.failed.foreach(
-          err => logger.error("I failed to match a big map key as a proper account address", err)
-        )
+        id.failed.foreach(err => logger.error("I failed to match a big map key as a proper account address", err))
         id.toOption
     }
   }
@@ -247,19 +242,16 @@ object TokenContracts extends ConseilLogSupport {
       def parseAccountsFromParameters(paramCode: Micheline): Option[Map[String, AccountId]] = {
         val parsed = JsonParser.parse[MichelsonInstruction](paramCode.expression)
 
-        parsed.left.foreach(
-          err =>
-            logger.error(
-              s"""Failed to parse michelson expression for StakerDao receiver in parameters.
+        parsed.left.foreach(err =>
+          logger.error(
+            s"""Failed to parse michelson expression for StakerDao receiver in parameters.
                 | Code was: ${paramCode.expression}
                 | Error is ${err.getMessage}""".stripMargin,
-              err
-            )
+            err
+          )
         )
 
-        parsed.foreach(
-          michelson => logger.debug(s"I parsed a staker dao parameters value as $michelson")
-        )
+        parsed.foreach(michelson => logger.debug(s"I parsed a staker dao parameters value as $michelson"))
 
         /* Custom match to the contract call structure for a stakerdao transfer
          * the contract has many entrypoints, the one that we're interested in is
@@ -269,21 +261,23 @@ object TokenContracts extends ConseilLogSupport {
         for {
           (senderBytes, receiverBytes) <- parsed.toOption.collect {
             case MichelsonSingleInstruction(
-                "Right",
-                MichelsonType(
-                  "Left",
+                  "Right",
                   MichelsonType(
                     "Left",
                     MichelsonType(
-                      "Right",
+                      "Left",
                       MichelsonType(
-                        "Pair",
-                        MichelsonBytesConstant(from) ::
-                            MichelsonType(
-                              "Pair",
-                              MichelsonBytesConstant(to) :: _,
-                              _
-                            ) :: _,
+                        "Right",
+                        MichelsonType(
+                          "Pair",
+                          MichelsonBytesConstant(from) ::
+                          MichelsonType(
+                            "Pair",
+                            MichelsonBytesConstant(to) :: _,
+                            _
+                          ) :: _,
+                          _
+                        ) :: _,
                         _
                       ) :: _,
                       _
@@ -291,17 +285,14 @@ object TokenContracts extends ConseilLogSupport {
                     _
                   ) :: _,
                   _
-                ) :: _,
-                _
                 ) =>
               (from, to)
           }
           (senderId, receiverId) <- (Codecs.decodeBigMapKey(senderBytes), Codecs.decodeBigMapKey(receiverBytes)).tupled
-        } yield
-          Map(
-            senderBytes -> senderId,
-            receiverBytes -> receiverId
-          )
+        } yield Map(
+          senderBytes -> senderId,
+          receiverBytes -> receiverId
+        )
 
       }
 
@@ -309,8 +300,8 @@ object TokenContracts extends ConseilLogSupport {
 
     /* extracts a bytes value as a string if it corresponds to the micheline argument */
     def parseBytes(code: Micheline): Option[String] =
-      JsonParser.parse[MichelsonInstruction](code.expression).toOption.collect {
-        case MichelsonBytesConstant(bytes) => bytes
+      JsonParser.parse[MichelsonInstruction](code.expression).toOption.collect { case MichelsonBytesConstant(bytes) =>
+        bytes
       }
 
     def decodeLedgerAccount(hexLength: String, hexAccount: String): Try[AccountId] =
@@ -334,19 +325,16 @@ object TokenContracts extends ConseilLogSupport {
 
       val parsed = JsonParser.parse[MichelsonInstruction](mapCode.expression)
 
-      parsed.left.foreach(
-        err =>
-          logger.error(
-            s"""Failed to parse michelson expression for token balance extraction.
+      parsed.left.foreach(err =>
+        logger.error(
+          s"""Failed to parse michelson expression for token balance extraction.
               | Code was: ${mapCode.expression}
               | Error is ${err.getMessage}""".stripMargin,
-            err
-          )
+          err
+        )
       )
 
-      parsed.foreach(
-        michelson => logger.debug(s"I parsed a token contract diff value as $michelson")
-      )
+      parsed.foreach(michelson => logger.debug(s"I parsed a token contract diff value as $michelson"))
 
       parsed.toOption.collect {
         case MichelsonIntConstant(balance) =>
@@ -390,19 +378,16 @@ object TokenContracts extends ConseilLogSupport {
     ): Option[String] = {
       val parsed = JsonParser.parse[MichelsonInstruction](paramCode.expression)
 
-      parsed.left.foreach(
-        err =>
-          logger.error(
-            s"""Failed to parse michelson expression for tzip-16 receiver in parameters.
+      parsed.left.foreach(err =>
+        logger.error(
+          s"""Failed to parse michelson expression for tzip-16 receiver in parameters.
                | Code was: ${paramCode.expression}
                | Error is ${err.getMessage}""".stripMargin,
-            err
-          )
+          err
+        )
       )
 
-      parsed.foreach(
-        michelson => logger.debug(s"I parsed a tzip-16 parameters value as $michelson")
-      )
+      parsed.foreach(michelson => logger.debug(s"I parsed a tzip-16 parameters value as $michelson"))
 
       val extractedLocation = locationType match {
         case Some("ipfs") =>
@@ -420,9 +405,8 @@ object TokenContracts extends ConseilLogSupport {
 
       for {
         pth <- path.orElse(extractedLocation)
-        metadataUrl <- parsed.toOption.flatMap(_.getAtPath(pth)).collect {
-          case MichelsonBytesConstant(mu) =>
-            mu
+        metadataUrl <- parsed.toOption.flatMap(_.getAtPath(pth)).collect { case MichelsonBytesConstant(mu) =>
+          mu
         }
       } yield proceduralDecode(metadataUrl)
     }

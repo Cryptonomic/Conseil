@@ -1,6 +1,8 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
 import com.github.ghik.silencer.silent
+import io.circe.Decoder.Result
+import io.circe.HCursor
 import tech.cryptonomic.conseil.common.tezos.TezosTypes
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.JsonUtil.CirceCommonDecoders.decodeUntaggedEither
@@ -158,6 +160,7 @@ private[tezos] object TezosJsonDecoders {
       implicit val metadataLevelDecoder: Decoder[BlockHeaderMetadataLevel] = deriveConfiguredDecoder
       val blockMetadataDecoder: Decoder[BlockHeaderMetadata] = deriveConfiguredDecoder
       implicit val votingPeriodInfoDecoder: Decoder[VotingPeriodInfo] = deriveConfiguredDecoder
+      implicit val implicitOperationResultsDecoder: Decoder[ImplicitOperationResults] = deriveConfiguredDecoder
       implicit val votingPeriodObjectDecoder: Decoder[VotingPeriodObject] = deriveConfiguredDecoder
       implicit val blockHeaderMetadataLevelInfoDecoder: Decoder[BlockHeaderMetadataLevelInfo] = deriveConfiguredDecoder
       implicit val metadataDecoder: Decoder[BlockMetadata] = blockMetadataDecoder.widen or genesisMetadataDecoder.widen
@@ -171,13 +174,13 @@ private[tezos] object TezosJsonDecoders {
       /* try decoding a number */
       implicit private val bignumDecoder: Decoder[Decimal] =
         Decoder.decodeString
-          .emapTry(jsonString => scala.util.Try(BigDecimal(jsonString)))
+          .emapTry(jsonString => Try(BigDecimal(jsonString)))
           .map(Decimal)
 
       /* try decoding a positive number */
       implicit private val positiveBignumDecoder: Decoder[PositiveDecimal] =
         Decoder.decodeString
-          .emapTry(jsonString => scala.util.Try(BigDecimal(jsonString)))
+          .emapTry(jsonString => Try(BigDecimal(jsonString)))
           .ensure(_ >= 0, "The passed-in json string is not a non-negative number")
           .map(PositiveDecimal)
 
@@ -252,17 +255,29 @@ private[tezos] object TezosJsonDecoders {
       //derive all the remaining decoders, sorted to preserve dependencies
       implicit val balanceUpdateDecoder: Decoder[OperationMetadata.BalanceUpdate] = deriveConfiguredDecoder
       implicit val endorsementMetadataDecoder: Decoder[EndorsementMetadata] = deriveConfiguredDecoder
+      implicit val preendorsementMetadataDecoder: Decoder[PreendorsementMetadata] = deriveConfiguredDecoder
       implicit val balanceUpdatesMetadataDecoder: Decoder[BalanceUpdatesMetadata] = deriveConfiguredDecoder
       implicit val revealResultDecoder: Decoder[OperationResult.Reveal] = deriveConfiguredDecoder
       implicit val transactionResultDecoder: Decoder[OperationResult.Transaction] = deriveConfiguredDecoder
       implicit val originationResultDecoder: Decoder[OperationResult.Origination] = deriveConfiguredDecoder
       implicit val delegationResultDecoder: Decoder[OperationResult.Delegation] = deriveConfiguredDecoder
+      implicit val registerGlobalConstantResultDecoder: Decoder[OperationResult.RegisterGlobalConstant] =
+        deriveConfiguredDecoder
+      implicit val setDepositsLimitResultDecoder: Decoder[OperationResult.SetDepositsLimit] = deriveConfiguredDecoder
       implicit val revealMetadataDecoder: Decoder[ResultMetadata[OperationResult.Reveal]] = deriveConfiguredDecoder
       implicit val transactionMetadataDecoder: Decoder[ResultMetadata[OperationResult.Transaction]] =
         deriveConfiguredDecoder
       implicit val originationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Origination]] =
         deriveConfiguredDecoder
       implicit val delegationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Delegation]] =
+        deriveConfiguredDecoder
+      implicit val registerGlobalConstantMetadataDecoder: Decoder[
+        ResultMetadata[OperationResult.RegisterGlobalConstant]
+      ] =
+        deriveConfiguredDecoder
+      implicit val setDepositsLimitMetadataDecoder: Decoder[
+        ResultMetadata[OperationResult.SetDepositsLimit]
+      ] =
         deriveConfiguredDecoder
       implicit val internalOperationResultDecoder: Decoder[InternalOperationResults.InternalOperationResult] =
         deriveConfiguredDecoder
@@ -274,8 +289,16 @@ private[tezos] object TezosJsonDecoders {
         deriveConfiguredDecoder
       implicit val internalDelegationResultDecoder: Decoder[InternalOperationResults.Delegation] =
         deriveConfiguredDecoder
+      implicit val internalTxRollupOrigination: Decoder[InternalOperationResults.TxRollupOrigination] =
+        deriveConfiguredDecoder
       implicit val tezosTypesParametersDecoder: Decoder[TezosTypes.Parameters] = deriveConfiguredDecoder
-      implicit val operationDecoder: Decoder[Operation] = deriveConfiguredDecoder
+      implicit val operationDecoder: Decoder[Operation] = new Decoder[Operation] {
+        override def apply(c: HCursor): Result[Operation] = {
+          implicit val defaultOperationDecoder: Decoder[DefaultOperation] = deriveConfiguredDecoder
+          implicit val basicDecoder: Decoder[Operation] = deriveConfiguredDecoder
+          basicDecoder.widen.or(defaultOperationDecoder.widen)(c)
+        }
+      }
       implicit val operationsDecoder: Decoder[Operations] = deriveConfiguredDecoder
       implicit val endorsementDecoder: Decoder[EndorsementInternalObject] = deriveConfiguredDecoder
       implicit val operationGroupDecoder: Decoder[OperationsGroup] = deriveConfiguredDecoder

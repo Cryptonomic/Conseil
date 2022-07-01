@@ -1,10 +1,8 @@
 package tech.cryptonomic.conseil.common.ethereum.rpc
 
-import cats.effect.{Concurrent, Resource}
+import cats.effect.{Async, Concurrent, IO, Resource}
 import fs2.{Pipe, Stream}
 import io.circe.generic.auto._
-import org.http4s.circe.CirceEntityDecoder._
-import org.http4s.circe.CirceEntityEncoder._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.ethereum.domain.{
   Account,
@@ -19,6 +17,7 @@ import tech.cryptonomic.conseil.common.ethereum.rpc.EthereumRpcCommands._
 import tech.cryptonomic.conseil.common.ethereum.rpc.json.{Block, Log, Transaction, TransactionReceipt}
 import tech.cryptonomic.conseil.common.ethereum.Utils
 import tech.cryptonomic.conseil.common.rpc.RpcClient.RpcException
+
 import java.sql.Timestamp
 import java.time.Instant
 
@@ -42,7 +41,7 @@ import tech.cryptonomic.conseil.common.ethereum.Tables.RegisteredTokensRow
   *   val res0: List[Block] = List(block1, block2)
   * }}}
   */
-class EthereumClient[F[_]: Concurrent](
+class EthereumClient[F[_]: Async](
     client: RpcClient[F]
 ) extends ConseilLogSupport {
 
@@ -51,6 +50,8 @@ class EthereumClient[F[_]: Concurrent](
   /**
     * Get the number of most recent block.
     */
+  import org.http4s.circe.CirceEntityCodec._
+
   def getMostRecentBlockNumber: Stream[F, String] =
     Stream(EthBlockNumber.request)
       .through(client.stream[EthBlockNumber.Params.type, String](batchSize = 1))
@@ -66,7 +67,6 @@ class EthereumClient[F[_]: Concurrent](
 
   /**
     * Get Block by hash.
-    *
     */
   def getBlockByHash(hash: String): Stream[F, Block] =
     Stream(EthGetBlockByHash.request(hash = hash))
@@ -108,14 +108,13 @@ class EthereumClient[F[_]: Concurrent](
           Stream
             .emit(EthGetCode.request(receipt.contractAddress.get, receipt.blockNumber))
             .through(client.stream[EthGetCode.Params, Bytecode](batchSize))
-            .map(
-              bytecode =>
-                Contract(
-                  address = receipt.contractAddress.get,
-                  blockHash = receipt.blockHash,
-                  blockNumber = receipt.blockNumber,
-                  bytecode = bytecode
-                )
+            .map(bytecode =>
+              Contract(
+                address = receipt.contractAddress.get,
+                blockHash = receipt.blockHash,
+                blockNumber = receipt.blockNumber,
+                bytecode = bytecode
+              )
             )
         }
 
@@ -162,28 +161,26 @@ class EthereumClient[F[_]: Concurrent](
               .handleErrorWith {
                 // if balanceOf is not implemented by contract return 0x0
                 case ex =>
-                  Stream.emit("0x0").evalTap(_ => Concurrent[F].delay(logger.error(ex)))
+                  Stream.emit("0x0").evalTap(_ => Concurrent[F].delay(IO(logger.error(ex))))
               }
               .map(balance => (address, balance))
           }
-          .map {
-            case (address, balance) =>
-              TokenBalance(
-                accountAddress = address,
-                blockHash = tokenTransfer.blockHash,
-                blockNumber = tokenTransfer.blockNumber,
-                transactionHash = tokenTransfer.transactionHash,
-                tokenAddress = tokenTransfer.tokenAddress,
-                value = Utils.hexStringToBigDecimal(balance),
-                asof = Timestamp.from(Instant.ofEpochSecond(Integer.decode(block.timestamp).toLong))
-              )
+          .map { case (address, balance) =>
+            TokenBalance(
+              accountAddress = address,
+              blockHash = tokenTransfer.blockHash,
+              blockNumber = tokenTransfer.blockNumber,
+              transactionHash = tokenTransfer.transactionHash,
+              tokenAddress = tokenTransfer.tokenAddress,
+              value = Utils.hexStringToBigDecimal(balance),
+              asof = Timestamp.from(Instant.ofEpochSecond(Integer.decode(block.timestamp).toLong))
+            )
           }
 
       }
 
   /**
     * Get account balance at given block number from transaction
-    *
     */
   def getAccountBalance(block: Block): Pipe[F, Transaction, Account] =
     stream =>
@@ -197,21 +194,19 @@ class EthereumClient[F[_]: Concurrent](
               .through(client.stream[EthGetBalance.Params, String](batchSize = 1))
               .map(balance => (address, balance))
           }
-          .map {
-            case (address, balance) =>
-              Account(
-                address,
-                transaction.blockHash,
-                transaction.blockNumber,
-                timestamp = block.timestamp,
-                Utils.hexStringToBigDecimal(balance)
-              )
+          .map { case (address, balance) =>
+            Account(
+              address,
+              transaction.blockHash,
+              transaction.blockNumber,
+              timestamp = block.timestamp,
+              Utils.hexStringToBigDecimal(balance)
+            )
           }
       }
 
   /**
     * Get contract account balance at given block number from transaction
-    *
     */
   def getContractBalance(block: Block): Pipe[F, Contract, Account] =
     stream =>
@@ -239,7 +234,6 @@ class EthereumClient[F[_]: Concurrent](
 
   /**
     * Add token info for contract address implementing ERC20 or ERC721
-    *
     */
   def addTokenInfo: Pipe[F, Account, Account] =
     stream =>
@@ -251,14 +245,13 @@ class EthereumClient[F[_]: Concurrent](
             .through(client.stream[EthCall.Params, String](batchSize = 1))
             .chunkN(4)
             .map(_.toList)
-            .collect {
-              case name :: symbol :: decimals :: totalSupply :: Nil =>
-                token.copy(
-                  name = Some(Utils.hexToString(name)),
-                  symbol = Some(Utils.hexToString(symbol)),
-                  decimals = Utils.hexToInt(decimals),
-                  totalSupply = Some(Utils.hexStringToBigDecimal(totalSupply))
-                )
+            .collect { case name :: symbol :: decimals :: totalSupply :: Nil =>
+              token.copy(
+                name = Some(Utils.hexToString(name)),
+                symbol = Some(Utils.hexToString(symbol)),
+                decimals = Utils.hexToInt(decimals),
+                totalSupply = Some(Utils.hexStringToBigDecimal(totalSupply))
+              )
             }
             .handleErrorWith {
               // if any of the methods is not defined on a contract do not add token data
@@ -277,6 +270,6 @@ object EthereumClient {
     *
     * @param client [[RpcClient]] to use with the EthereumClient JSON-RPC api.
     */
-  def resource[F[_]: Concurrent](client: RpcClient[F]): Resource[F, EthereumClient[F]] =
+  def resource[F[_]: Async](client: RpcClient[F]): Resource[F, EthereumClient[F]] =
     Resource.pure(new EthereumClient[F](client))
 }

@@ -121,7 +121,7 @@ private[tezos] class TezosIndexedDataOperations(
           .filter(_.blockId === hash.value)
           .filter(_.invalidatedAsof.isEmpty)
           .result
-          .map(hash -> _.map(baker => BakerRolls(PublicKeyHash(baker.pkh), baker.rolls)).toList)
+          .map(hash -> _.map(baker => BakerRolls(PublicKeyHash(baker.pkh), Some(baker.rolls), None)).toList)
       }
     })
 
@@ -161,12 +161,11 @@ private[tezos] class TezosIndexedDataOperations(
   ): Future[Seq[String]] =
     runQuery(
       Tables.Operations
-        .filter(
-          row =>
-            (row.kind inSet ofKind)
-              && (row.blockLevel >= fromLevel)
-              && (row.pkh.isDefined)
-              && row.invalidatedAsof.isEmpty
+        .filter(row =>
+          (row.kind inSet ofKind)
+          && (row.blockLevel >= fromLevel)
+          && (row.pkh.isDefined)
+          && row.invalidatedAsof.isEmpty
         )
         .sortBy(_.blockLevel.asc)
         .map(_.pkh.get) //this is allowed only because we filtered by non-empty pkh

@@ -90,19 +90,19 @@ CREATE TABLE tezos.governance (
     level bigint,
     block_hash character varying NOT NULL,
     proposal_hash character varying NOT NULL,
-    yay_count integer,
-    nay_count integer,
-    pass_count integer,
-    yay_rolls numeric,
-    nay_rolls numeric,
-    pass_rolls numeric,
-    total_rolls numeric,
-    block_yay_count integer,
-    block_nay_count integer,
-    block_pass_count integer,
-    block_yay_rolls numeric,
-    block_nay_rolls numeric,
-    block_pass_rolls numeric,
+    yay_count bigint,
+    nay_count bigint,
+    pass_count bigint,
+    yay_rolls bigint,
+    nay_rolls bigint,
+    pass_rolls bigint,
+    total_rolls bigint,
+    block_yay_count bigint,
+    block_nay_count bigint,
+    block_pass_count bigint,
+    block_yay_rolls bigint,
+    block_nay_rolls bigint,
+    block_pass_rolls bigint,
     invalidated_asof timestamp,
     fork_id character varying NOT NULL,
     PRIMARY KEY (block_hash, proposal_hash, voting_period_kind, fork_id)
@@ -354,7 +354,7 @@ CREATE TABLE tezos.bakers (
     frozen_balance numeric,
     staking_balance numeric,
     delegated_balance numeric,
-    rolls integer DEFAULT 0 NOT NULL,
+    rolls bigint DEFAULT 0 NOT NULL,
     deactivated boolean NOT NULL,
     grace_period integer NOT NULL,
     block_level bigint DEFAULT '-1'::integer NOT NULL,
@@ -376,7 +376,7 @@ CREATE TABLE tezos.bakers_history (
     frozen_balance numeric,
     staking_balance numeric,
     delegated_balance numeric,
-    rolls integer DEFAULT 0 NOT NULL,
+    rolls bigint DEFAULT 0 NOT NULL,
     deactivated boolean NOT NULL,
     grace_period integer NOT NULL,
     block_level bigint DEFAULT '-1'::integer NOT NULL,
@@ -467,6 +467,7 @@ CREATE TABLE tezos.operations (
     delegate character varying,
     slots character varying,
     nonce character varying,
+    operation_order integer,
     pkh character varying,
     secret character varying,
     source character varying,
@@ -532,14 +533,18 @@ CREATE SEQUENCE tezos.operations_operation_id_seq
 ALTER SEQUENCE tezos.operations_operation_id_seq OWNED BY tezos.operations.operation_id;
 
 CREATE TABLE tezos.big_maps (
-    big_map_id numeric PRIMARY KEY,
+    big_map_id numeric,
     key_type character varying,
-    value_type character varying
+    value_type character varying,
+    fork_id character varying NOT NULL,
+    block_level bigint,
+    invalidated_asof timestamp,
+    PRIMARY KEY (big_map_id, fork_id)
 );
 
 CREATE TABLE tezos.big_map_contents (
     big_map_id numeric NOT NULL,
-    key character varying,
+    key character varying NOT NULL,
     key_hash character varying,
     operation_group_id character varying,
     value character varying,
@@ -548,7 +553,9 @@ CREATE TABLE tezos.big_map_contents (
     "timestamp" timestamp without time zone,
     cycle integer,
     period integer,
-    PRIMARY KEY (big_map_id, key)
+    fork_id character varying NOT NULL,
+    invalidated_asof timestamp,
+    PRIMARY KEY (big_map_id, key_hash, fork_id)
 );
 
 CREATE TABLE tezos.big_map_contents_history (
@@ -560,7 +567,9 @@ CREATE TABLE tezos.big_map_contents_history (
     block_level bigint,
     "timestamp" timestamp without time zone,
     cycle integer,
-    period integer
+    period integer,
+    fork_id character varying NOT NULL,
+    invalidated_asof timestamp
 );
 
 CREATE INDEX big_map_id_idx ON tezos.big_map_contents USING btree (big_map_id);
@@ -570,7 +579,10 @@ CREATE INDEX combined_big_map_operation_group_ids_idx ON tezos.big_map_contents 
 CREATE TABLE tezos.originated_account_maps (
     big_map_id numeric,
     account_id character varying,
-    PRIMARY KEY (big_map_id, account_id)
+    block_level bigint,
+    fork_id character varying NOT NULL,
+    invalidated_asof timestamp,
+    PRIMARY KEY (big_map_id, account_id, fork_id)
 );
 
 CREATE INDEX accounts_maps_idx ON tezos.originated_account_maps USING btree (account_id);
@@ -767,7 +779,7 @@ ALTER TABLE ONLY tezos.accounts
     ADD CONSTRAINT accounts_block_id_fkey
     FOREIGN KEY (block_id, fork_id)
     REFERENCES tezos.blocks(hash, fork_id)
-    DEFERRABLE INITIALLY IMMEDIATE;
+    DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -778,7 +790,7 @@ ALTER TABLE ONLY tezos.operation_groups
     ADD CONSTRAINT block
     FOREIGN KEY (block_id, fork_id)
     REFERENCES tezos.blocks(hash, fork_id)
-    DEFERRABLE INITIALLY IMMEDIATE;
+    DEFERRABLE INITIALLY DEFERRED;
 
 --
 -- Name: delegates delegates_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
@@ -788,7 +800,7 @@ ALTER TABLE ONLY tezos.bakers
     ADD CONSTRAINT bakers_block_id_fkey
     FOREIGN KEY (block_id, fork_id)
     REFERENCES tezos.blocks(hash, fork_id)
-    DEFERRABLE INITIALLY IMMEDIATE;
+    DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -800,7 +812,7 @@ ALTER TABLE ONLY tezos.baking_rights
     FOREIGN KEY (block_hash, fork_id)
     REFERENCES tezos.blocks(hash, fork_id)
     NOT VALID
-    DEFERRABLE INITIALLY IMMEDIATE;
+    DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -812,7 +824,7 @@ ALTER TABLE ONLY tezos.endorsing_rights
     FOREIGN KEY (block_hash, fork_id)
     REFERENCES tezos.blocks(hash, fork_id)
     NOT VALID
-    DEFERRABLE INITIALLY IMMEDIATE;
+    DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -823,7 +835,7 @@ ALTER TABLE ONLY tezos.operations
     ADD CONSTRAINT fk_blockhashes
     FOREIGN KEY (block_hash, fork_id)
     REFERENCES tezos.blocks(hash, fork_id)
-    DEFERRABLE INITIALLY IMMEDIATE;
+    DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -834,7 +846,7 @@ ALTER TABLE ONLY tezos.operations
     ADD CONSTRAINT fk_opgroups
     FOREIGN KEY (operation_group_hash, block_hash, fork_id)
     REFERENCES tezos.operation_groups(hash, block_id, fork_id)
-    DEFERRABLE INITIALLY IMMEDIATE;
+    DEFERRABLE INITIALLY DEFERRED;
 
 --
 -- PostgreSQL database dump complete

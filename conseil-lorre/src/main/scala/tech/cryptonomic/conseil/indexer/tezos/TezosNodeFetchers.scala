@@ -73,22 +73,52 @@ private[tezos] trait TezosBlocksDataFetchers {
     private def makeUrl = (offset: Offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
 
     //fetch a future stream of values
-    override val fetchData = {
-      Kleisli(
-        offsets => {
-          logger.info(s"""Fetching blocks for offsets ${offsets.min} to ${offsets.max}""")
-          node.runBatchedGetQuery(network, offsets, makeUrl, fetchConcurrency).onError {
-            case err =>
-              val showBounds = offsets.onBounds((first, last) => s"$first to $last").getOrElse("unspecified")
-              logger
-                .error(
-                  s"I encountered problems while fetching blocks data from $network, for offsets $showBounds from the $hashRef. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
+    override val fetchData =
+      Kleisli { offsets =>
+        logger.info(s"""Fetching blocks for offsets ${offsets.min} to ${offsets.max}""")
+        node.runBatchedGetQuery(network, offsets, makeUrl, fetchConcurrency).onError { case err =>
+          val showBounds = offsets.onBounds((first, last) => s"$first to $last").getOrElse("unspecified")
+          logger
+            .error(
+              s"I encountered problems while fetching blocks data from $network, for offsets $showBounds from the $hashRef. The error says ${err.getMessage}"
+            )
+            .pure[Future]
         }
-      )
+      }
+
+    // decode with `JsonDecoders`
+    override val decodeData = Kleisli { json =>
+      decodeLiftingTo[Future, Out](json)
+        .onError(
+          logErrorOnJsonDecoding(s"I fetched a block definition from tezos node that I'm unable to decode: $json")
+        )
     }
+
+  }
+
+  /** a fetcher of blocks range */
+  implicit def blocksRangeFetcher(headLevel: Long) = new FutureFetcher {
+    import TezosJsonDecoders.Circe.Blocks._
+
+    type Encoded = String
+    type In = Long
+    type Out = BlockData
+
+    private def makeUrl = (offset: Long) => s"blocks/${headLevel - offset}"
+
+    //fetch a future stream of values
+    override val fetchData =
+      Kleisli { offsets =>
+        logger.info(s"""Fetching blocks for range ${offsets.min} to ${offsets.max}""")
+        node.runBatchedGetQuery(network, offsets, makeUrl, fetchConcurrency).onError { case err =>
+          val showBounds = offsets.onBounds((first, last) => s"$first to $last").getOrElse("unspecified")
+          logger
+            .error(
+              s"I encountered problems while fetching blocks data from $network, for offsets $showBounds from the $headLevel. The error says ${err.getMessage}"
+            )
+            .pure[Future]
+        }
+      }
 
     // decode with `JsonDecoders`
     override val decodeData = Kleisli { json =>
@@ -119,31 +149,26 @@ private[tezos] trait TezosBlocksDataFetchers {
 
     private val makeUrl = (hash: TezosBlockHash) => s"blocks/${hash.value}/operations"
 
-    override val fetchData = {
-      Kleisli(
-        hashes => {
-          logger.info("Fetching operations")
-          node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
-            case err =>
-              logger
-                .error(
-                  s"I encountered problems while fetching operations from $network, for blocks ${hashes.map(_.value).mkString(", ")}. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
-        }
-      )
-    }
-
-    override val decodeData = Kleisli(
-      json =>
-        decodeLiftingTo[Future, List[Out]](adaptManagerPubkeyField(JsonString.sanitize(json)))
-          .map(_.flatten)
-          .onError(
-            logErrorOnJsonDecoding(
-              s"I fetched some operations json from tezos node that I'm unable to decode into operation groups: $json"
+    override val fetchData =
+      Kleisli { hashes =>
+        logger.info("Fetching operations")
+        node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError { case err =>
+          logger
+            .error(
+              s"I encountered problems while fetching operations from $network, for blocks ${hashes.map(_.value).mkString(", ")}. The error says ${err.getMessage}"
             )
+            .pure[Future]
+        }
+      }
+
+    override val decodeData = Kleisli(json =>
+      decodeLiftingTo[Future, List[Out]](adaptManagerPubkeyField(JsonString.sanitize(json)))
+        .map(_.flatten)
+        .onError(
+          logErrorOnJsonDecoding(
+            s"I fetched some operations json from tezos node that I'm unable to decode into operation groups: $json"
           )
+        )
     )
 
   }
@@ -168,20 +193,17 @@ private[tezos] trait TezosBlocksDataFetchers {
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
     override val fetchData: Kleisli[Future, List[BlockLevel], List[(BlockLevel, String)]] =
-      Kleisli(
-        levels => {
-          berLogger.info("Fetching future baking rights")
-          node.runBatchedGetQuery(network, levels, makeUrl, fetchConcurrency).onError {
-            case err =>
-              val showLevels = levels.mkString(", ")
-              berLogger
-                .error(
-                  s"I encountered problems while fetching future baking rights from $network, for levels $showLevels. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
+      Kleisli { levels =>
+        berLogger.info("Fetching future baking rights")
+        node.runBatchedGetQuery(network, levels, makeUrl, fetchConcurrency).onError { case err =>
+          val showLevels = levels.mkString(", ")
+          berLogger
+            .error(
+              s"I encountered problems while fetching future baking rights from $network, for levels $showLevels. The error says ${err.getMessage}"
+            )
+            .pure[Future]
         }
-      )
+      }
 
     /** an effectful function that decodes the json value to an output `Out` */
     override val decodeData: Kleisli[Future, String, List[BakingRights]] = Kleisli { json =>
@@ -217,20 +239,17 @@ private[tezos] trait TezosBlocksDataFetchers {
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
     override val fetchData: Kleisli[Future, List[BlockLevel], List[(BlockLevel, String)]] =
-      Kleisli(
-        levels => {
-          berLogger.info("Fetching future endorsing rights")
-          node.runBatchedGetQuery(network, levels, makeUrl, fetchConcurrency).onError {
-            case err =>
-              val showLevels = levels.mkString(", ")
-              berLogger
-                .error(
-                  s"I encountered problems while fetching future endorsing rights from $network, for levels $showLevels. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
+      Kleisli { levels =>
+        berLogger.info("Fetching future endorsing rights")
+        node.runBatchedGetQuery(network, levels, makeUrl, fetchConcurrency).onError { case err =>
+          val showLevels = levels.mkString(", ")
+          berLogger
+            .error(
+              s"I encountered problems while fetching future endorsing rights from $network, for levels $showLevels. The error says ${err.getMessage}"
+            )
+            .pure[Future]
         }
-      )
+      }
 
     /** an effectful function that decodes the json value to an output `Out` */
     override val decodeData: Kleisli[Future, String, List[EndorsingRights]] = Kleisli { json =>
@@ -268,21 +287,18 @@ private[tezos] trait TezosBlocksDataFetchers {
     override val fetchData: Kleisli[Future, List[In], List[
       (RightsFetchKey, String)
     ]] =
-      Kleisli(
-        fetchKeys => {
-          val hashes = fetchKeys.map(_.blockHash)
-          logger.info("Fetching baking rights")
-          node.runBatchedGetQuery(network, fetchKeys, makeUrl, fetchConcurrency).onError {
-            case err =>
-              val showHashes = hashes.map(_.value).mkString(", ")
-              logger
-                .error(
-                  s"I encountered problems while fetching baking rights from $network, for blocks $showHashes. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
+      Kleisli { fetchKeys =>
+        val hashes = fetchKeys.map(_.blockHash)
+        logger.info("Fetching baking rights")
+        node.runBatchedGetQuery(network, fetchKeys, makeUrl, fetchConcurrency).onError { case err =>
+          val showHashes = hashes.map(_.value).mkString(", ")
+          logger
+            .error(
+              s"I encountered problems while fetching baking rights from $network, for blocks $showHashes. The error says ${err.getMessage}"
+            )
+            .pure[Future]
         }
-      )
+      }
 
     /** an effectful function that decodes the json value to an output `Out` */
     override val decodeData: Kleisli[Future, String, List[BakingRights]] = Kleisli { json =>
@@ -320,21 +336,18 @@ private[tezos] trait TezosBlocksDataFetchers {
     override val fetchData: Kleisli[Future, List[In], List[
       (RightsFetchKey, String)
     ]] =
-      Kleisli(
-        fetchKeys => {
-          val hashes = fetchKeys.map(_.blockHash)
-          logger.info("Fetching endorsing rights")
-          node.runBatchedGetQuery(network, fetchKeys, makeUrl, fetchConcurrency).onError {
-            case err =>
-              val showHashes = hashes.map(_.value).mkString(", ")
-              logger
-                .error(
-                  s"I encountered problems while fetching endorsing rights from $network, for blocks $showHashes. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
+      Kleisli { fetchKeys =>
+        val hashes = fetchKeys.map(_.blockHash)
+        logger.info("Fetching endorsing rights")
+        node.runBatchedGetQuery(network, fetchKeys, makeUrl, fetchConcurrency).onError { case err =>
+          val showHashes = hashes.map(_.value).mkString(", ")
+          logger
+            .error(
+              s"I encountered problems while fetching endorsing rights from $network, for blocks $showHashes. The error says ${err.getMessage}"
+            )
+            .pure[Future]
         }
-      )
+      }
 
     /** an effectful function that decodes the json value to an output `Out` */
     override val decodeData: Kleisli[Future, String, List[EndorsingRights]] = Kleisli { json =>
@@ -368,30 +381,26 @@ private[tezos] trait TezosBlocksDataFetchers {
     private val makeUrl = (hash: TezosBlockHash) => s"blocks/${hash.value}/votes/current_quorum"
 
     override val fetchData =
-      Kleisli(
-        hashes => {
-          logger.info("Fetching current quorum")
-          node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
-            case err =>
-              val showHashes = hashes.map(_.value).mkString(", ")
-              logger
-                .error(
-                  s"I encountered problems while fetching quorums from $network, for blocks $showHashes. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
+      Kleisli { hashes =>
+        logger.info("Fetching current quorum")
+        node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError { case err =>
+          val showHashes = hashes.map(_.value).mkString(", ")
+          logger
+            .error(
+              s"I encountered problems while fetching quorums from $network, for blocks $showHashes. The error says ${err.getMessage}"
+            )
+            .pure[Future]
         }
-      )
+      }
 
-    override val decodeData = Kleisli(
-      json =>
-        decodeLiftingTo[Future, Out](json)
-          .onError(
-            logWarnOnJsonDecoding(s"I fetched current quorum json from tezos node that I'm unable to decode: $json")
-          )
-          .recover {
-            case NonFatal(_) => Option.empty
-          }
+    override val decodeData = Kleisli(json =>
+      decodeLiftingTo[Future, Out](json)
+        .onError(
+          logWarnOnJsonDecoding(s"I fetched current quorum json from tezos node that I'm unable to decode: $json")
+        )
+        .recover { case NonFatal(_) =>
+          Option.empty
+        }
     )
 
   }
@@ -407,32 +416,28 @@ private[tezos] trait TezosBlocksDataFetchers {
     private val makeUrl = (hash: TezosBlockHash) => s"blocks/${hash.value}/votes/current_proposal"
 
     override val fetchData =
-      Kleisli(
-        hashes => {
-          logger.info("Fetching current proposal")
-          node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
-            case err =>
-              val showHashes = hashes.map(_.value).mkString(", ")
-              logger
-                .error(
-                  s"I encountered problems while fetching current proposals from $network, for blocks $showHashes. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
-        }
-      )
-
-    override val decodeData = Kleisli(
-      json =>
-        decodeLiftingTo[Future, Out](json)
-          .onError(
-            logWarnOnJsonDecoding(
-              s"I fetched a proposal protocol json from tezos node that I'm unable to decode: $json"
+      Kleisli { hashes =>
+        logger.info("Fetching current proposal")
+        node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError { case err =>
+          val showHashes = hashes.map(_.value).mkString(", ")
+          logger
+            .error(
+              s"I encountered problems while fetching current proposals from $network, for blocks $showHashes. The error says ${err.getMessage}"
             )
+            .pure[Future]
+        }
+      }
+
+    override val decodeData = Kleisli(json =>
+      decodeLiftingTo[Future, Out](json)
+        .onError(
+          logWarnOnJsonDecoding(
+            s"I fetched a proposal protocol json from tezos node that I'm unable to decode: $json"
           )
-          .recover {
-            case NonFatal(_) => Option.empty
-          }
+        )
+        .recover { case NonFatal(_) =>
+          Option.empty
+        }
     )
 
   }
@@ -449,23 +454,20 @@ private[tezos] trait TezosBlocksDataFetchers {
     private val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/proposals"
 
     override val fetchData =
-      Kleisli(
-        blocks => {
-          val showLevels = blocks.head.data.header.level to blocks.last.data.header.level
-          logger.info(
-            s"Fetching all proposals protocols in levels $showLevels"
-          )
-          node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
-            case err =>
-              val showHashes = blocks.map(_.data.hash.value).mkString(", ")
-              logger
-                .error(
-                  s"I encountered problems while fetching proposals details from $network, for blocks $showHashes. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
+      Kleisli { blocks =>
+        val showLevels = blocks.head.data.header.level to blocks.last.data.header.level
+        logger.info(
+          s"Fetching all proposals protocols in levels $showLevels"
+        )
+        node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError { case err =>
+          val showHashes = blocks.map(_.data.hash.value).mkString(", ")
+          logger
+            .error(
+              s"I encountered problems while fetching proposals details from $network, for blocks $showHashes. The error says ${err.getMessage}"
+            )
+            .pure[Future]
         }
-      )
+      }
 
     override val decodeData = Kleisli { json =>
       decodeLiftingTo[Future, Out](json)
@@ -494,20 +496,17 @@ private[tezos] trait TezosBlocksDataFetchers {
     private val makeUrl = (blockHash: TezosBlockHash) => s"blocks/${blockHash.value}/votes/listings"
 
     override val fetchData =
-      Kleisli(
-        blocks => {
-          logger.info(s"Fetching bakers for ${blocks.size} blocks")
-          node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
-            case err =>
-              val showHashes = blocks.map(_.value).mkString(", ")
-              logger
-                .error(
-                  s"I encountered problems while fetching baker rolls from $network, for blocks $showHashes. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
+      Kleisli { blocks =>
+        logger.info(s"Fetching bakers for ${blocks.size} blocks")
+        node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError { case err =>
+          val showHashes = blocks.map(_.value).mkString(", ")
+          logger
+            .error(
+              s"I encountered problems while fetching baker rolls from $network, for blocks $showHashes. The error says ${err.getMessage}"
+            )
+            .pure[Future]
         }
-      )
+      }
 
     override val decodeData = Kleisli { json =>
       decodeLiftingTo[Future, Out](json)
@@ -536,20 +535,17 @@ private[tezos] trait TezosBlocksDataFetchers {
     private val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/ballot_list"
 
     override val fetchData =
-      Kleisli(
-        blocks => {
-          logger.info("Fetching ballots")
-          node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
-            case err =>
-              val showHashes = blocks.map(_.data.hash.value).mkString(", ")
-              logger
-                .error(
-                  s"I encountered problems while fetching ballot votes from $network, for blocks $showHashes. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
+      Kleisli { blocks =>
+        logger.info("Fetching ballots")
+        node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError { case err =>
+          val showHashes = blocks.map(_.data.hash.value).mkString(", ")
+          logger
+            .error(
+              s"I encountered problems while fetching ballot votes from $network, for blocks $showHashes. The error says ${err.getMessage}"
+            )
+            .pure[Future]
         }
-      )
+      }
 
     override val decodeData = Kleisli { json =>
       decodeLiftingTo[Future, Out](json)
@@ -578,21 +574,18 @@ private[tezos] trait TezosBlocksDataFetchers {
     private val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/ballots"
 
     override val fetchData =
-      Kleisli(
-        blocks => {
-          val showLevels = blocks.head.data.header.level to blocks.last.data.header.level
-          logger.info(s"Fetching ballot counts in levels $showLevels")
-          node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
-            case err =>
-              val showHashes = blocks.map(_.data.hash.value).mkString(", ")
-              logger
-                .error(
-                  s"I encountered problems while fetching ballot counts from $network, for blocks $showHashes. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
+      Kleisli { blocks =>
+        val showLevels = blocks.head.data.header.level to blocks.last.data.header.level
+        logger.info(s"Fetching ballot counts in levels $showLevels")
+        node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError { case err =>
+          val showHashes = blocks.map(_.data.hash.value).mkString(", ")
+          logger
+            .error(
+              s"I encountered problems while fetching ballot counts from $network, for blocks $showHashes. The error says ${err.getMessage}"
+            )
+            .pure[Future]
         }
-      )
+      }
 
     override val decodeData = Kleisli { json =>
       decodeLiftingTo[Future, Out](json)
@@ -659,20 +652,17 @@ trait AccountsDataFetchers {
 
     private val makeUrl = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.value}"
 
-    override val fetchData = Kleisli(
-      ids => {
-        logger.info(s"Fetching accounts for block ${referenceBlock.value}")
-        node.runBatchedGetQuery(network, ids, makeUrl, accountsFetchConcurrency).onError {
-          case err =>
-            val showAccounts = ids.map(_.value).mkString(", ")
-            logger
-              .error(
-                s"I encountered problems while fetching account data from $network, for ids $showAccounts. The error says ${err.getMessage}"
-              )
-              .pure[Future]
-        }
+    override val fetchData = Kleisli { ids =>
+      logger.info(s"Fetching accounts for block ${referenceBlock.value}")
+      node.runBatchedGetQuery(network, ids, makeUrl, accountsFetchConcurrency).onError { case err =>
+        val showAccounts = ids.map(_.value).mkString(", ")
+        logger
+          .error(
+            s"I encountered problems while fetching account data from $network, for ids $showAccounts. The error says ${err.getMessage}"
+          )
+          .pure[Future]
       }
-    )
+    }
 
     override def decodeData = Kleisli { json =>
       decodeLiftingTo[Future, Account](json)
@@ -694,20 +684,17 @@ trait AccountsDataFetchers {
 
     private val makeUrl = (pkh: PublicKeyHash) => s"blocks/${referenceBlock.value}/context/delegates/${pkh.value}"
 
-    override val fetchData = Kleisli(
-      keyHashes => {
-        logger.info(s"Fetching delegated contracts for block ${referenceBlock.value}")
-        node.runBatchedGetQuery(network, keyHashes, makeUrl, accountsFetchConcurrency).onError {
-          case err =>
-            val showHashes = keyHashes.map(_.value).mkString(", ")
-            logger
-              .error(
-                s"I encountered problems while fetching delegates data from $network, for pkhs $showHashes. The error says ${err.getMessage}"
-              )
-              .pure[Future]
-        }
+    override val fetchData = Kleisli { keyHashes =>
+      logger.info(s"Fetching delegated contracts for block ${referenceBlock.value}")
+      node.runBatchedGetQuery(network, keyHashes, makeUrl, accountsFetchConcurrency).onError { case err =>
+        val showHashes = keyHashes.map(_.value).mkString(", ")
+        logger
+          .error(
+            s"I encountered problems while fetching delegates data from $network, for pkhs $showHashes. The error says ${err.getMessage}"
+          )
+          .pure[Future]
       }
-    )
+    }
 
     override def decodeData = Kleisli { json =>
       decodeLiftingTo[Future, Delegate](json)
@@ -731,20 +718,17 @@ trait AccountsDataFetchers {
 
     private val makeUrl = (blockHash: TezosBlockHash) => s"blocks/${blockHash.value}/context/delegates?active"
 
-    override val fetchData = Kleisli(
-      blockHashes => {
-        logger.info("Fetching active delegates")
-        node.runBatchedGetQuery(network, blockHashes, makeUrl, accountsFetchConcurrency).onError {
-          case err =>
-            val showHashes = blockHashes.map(_.value).mkString(", ")
-            logger
-              .error(
-                s"I encountered problems while fetching active delegates data from $network, for pkhs $showHashes. The error says ${err.getMessage}"
-              )
-              .pure[Future]
-        }
+    override val fetchData = Kleisli { blockHashes =>
+      logger.info("Fetching active delegates")
+      node.runBatchedGetQuery(network, blockHashes, makeUrl, accountsFetchConcurrency).onError { case err =>
+        val showHashes = blockHashes.map(_.value).mkString(", ")
+        logger
+          .error(
+            s"I encountered problems while fetching active delegates data from $network, for pkhs $showHashes. The error says ${err.getMessage}"
+          )
+          .pure[Future]
       }
-    )
+    }
 
     override def decodeData = Kleisli { json =>
       decodeLiftingTo[Future, Out](json)

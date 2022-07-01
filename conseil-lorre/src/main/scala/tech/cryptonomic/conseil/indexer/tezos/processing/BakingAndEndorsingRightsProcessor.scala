@@ -20,7 +20,7 @@ import tech.cryptonomic.conseil.indexer.tezos.{
 import scala.concurrent.ExecutionContext
 import akka.stream.scaladsl.Source
 import akka.stream.scaladsl.Sink
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.Future
@@ -39,28 +39,26 @@ class BakingAndEndorsingRightsProcessor(
     indexedData: TezosIndexedDataOperations,
     db: Database,
     configuration: config.BakingAndEndorsingRights
-)(implicit mat: ActorMaterializer) {
+)(implicit mat: Materializer) {
 
   private[tezos] def processBakingAndEndorsingRights(
       fetchingResults: nodeOperator.BlockFetchingResults
-  )(
-      implicit ec: ExecutionContext
+  )(implicit
+      ec: ExecutionContext
   ): Future[Unit] = {
     import cats.implicits._
 
-    val blockHashesWithCycleAndGovernancePeriod = fetchingResults.map {
-      case (Block(data, _, _), _) => {
-        data.metadata match {
-          case TezosTypes.GenesisMetadata =>
-            RightsFetchKey(data.hash, None, None)
-          case BlockHeaderMetadata(_, _, _, _, _, voting_period_info, level, level_info) =>
-            RightsFetchKey(
-              data.hash,
-              level.map(_.cycle).orElse(level_info.map(_.cycle)),
-              level.map(_.voting_period).orElse(voting_period_info.map(_.voting_period.index))
-            )
+    val blockHashesWithCycleAndGovernancePeriod = fetchingResults.map { case (Block(data, _, _), _) =>
+      data.metadata match {
+        case TezosTypes.GenesisMetadata =>
+          RightsFetchKey(data.hash, None, None)
+        case BlockHeaderMetadata(_, _, _, _, _, voting_period_info, level, level_info, _) =>
+          RightsFetchKey(
+            data.hash,
+            level.map(_.cycle).orElse(level_info.map(_.cycle)),
+            level.map(_.voting_period).orElse(voting_period_info.map(_.voting_period.index))
+          )
 
-        }
       }
     }
 
@@ -79,12 +77,11 @@ class BakingAndEndorsingRightsProcessor(
       fetchingResults: nodeOperator.BlockFetchingResults
   ): Map[RightsFetchKey, List[EndorsingRights]] = {
 
-    val endorsementsForBlock = fetchingResults.map {
-      case (Block(data, operations, _), _) =>
-        data.hash -> operations.flatMap(_.contents.collect {
-              case e: EndorsementWithSlot => e
-              case e: Endorsement => e
-            })
+    val endorsementsForBlock = fetchingResults.map { case (Block(data, operations, _), _) =>
+      data.hash -> operations.flatMap(_.contents.collect {
+        case e: EndorsementWithSlot => e
+        case e: Endorsement => e
+      })
     }.toMap.withDefaultValue(List.empty)
 
     endorsingRights.map {
@@ -151,7 +148,7 @@ class BakingAndEndorsingRightsProcessor(
   }
 
   /** Updates timestamps in the baking/endorsing rights tables */
-  private[tezos] def updateRightsTimestamps()(implicit ec: ExecutionContext): Future[Unit] = {
+  private[tezos] def updateRights()(implicit ec: ExecutionContext): Future[Unit] = {
     val logger = ConseilLogger("RightsUpdater")
     import cats.implicits._
     val blockHead = nodeOperator.getBareBlockHead()
@@ -162,16 +159,15 @@ class BakingAndEndorsingRightsProcessor(
       val br = nodeOperator.getBatchBakingRightsByLevels(blockLevelsToUpdate).flatMap { bakingRightsResult =>
         val brResults = bakingRightsResult.values.flatten
         logger.info(s"Got ${brResults.size} baking rights")
-        db.run(TezosDb.updateBakingRightsTimestamp(brResults.toList))
+        db.run(TezosDb.updateBakingRights(brResults.toList))
       }
       val er = nodeOperator.getBatchEndorsingRightsByLevel(blockLevelsToUpdate).flatMap { endorsingRightsResult =>
         val erResults = endorsingRightsResult.values.flatten
         logger.info(s"Got ${erResults.size} endorsing rights")
-        db.run(TezosDb.updateEndorsingRightsTimestamp(erResults.toList))
+        db.run(TezosDb.updateEndorsingRights(erResults.toList))
       }
-      (br, er).mapN {
-        case (bb, ee) =>
-          logger.info(s"Updated ${bb.sum} baking rights and ${ee.sum} endorsing rights rows")
+      (br, er).mapN { case (bb, ee) =>
+        logger.info(s"Updated $bb baking rights and $ee endorsing rights rows")
       }
     }
   }

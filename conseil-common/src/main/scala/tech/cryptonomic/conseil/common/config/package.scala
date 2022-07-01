@@ -28,10 +28,10 @@ package object config extends ConseilLogSupport {
       def tabs(n: Int): String = " " * ((identLevel + n) * identSize)
       def descriptionWithLocation(failure: ConfigReaderFailure, ident: Int): String = {
         val failureLines = failure.description.split("\n")
-        (failure.location.fold(s"${tabs(ident)}- ${failureLines.head}")(
-          f => s"${tabs(ident)}- ${f.description} ${failureLines.head}"
+        (failure.location.fold(s"${tabs(ident)}- ${failureLines.head}")(f =>
+          s"${tabs(ident)}- ${f.description} ${failureLines.head}"
         ) ::
-            failureLines.tail.map(l => s"${tabs(ident + 1)}$l").toList).mkString("\n")
+          failureLines.tail.map(l => s"${tabs(ident + 1)}$l").toList).mkString("\n")
       }
 
       val linesBuffer = mutable.Buffer.empty[String]
@@ -47,12 +47,11 @@ package object config extends ConseilLogSupport {
         linesBuffer += ""
       }
 
-      failuresByPath.foreach {
-        case (p, failures) =>
-          linesBuffer += (tabs(0) + (if (p.isEmpty) s"at the root:" else s"at '$p':"))
-          failures.foreach { failure =>
-            linesBuffer += descriptionWithLocation(failure, 1)
-          }
+      failuresByPath.foreach { case (p, failures) =>
+        linesBuffer += (tabs(0) + (if (p.isEmpty) s"at the root:" else s"at '$p':"))
+        failures.foreach { failure =>
+          linesBuffer += descriptionWithLocation(failure, 1)
+        }
       }
       linesBuffer.mkString(System.lineSeparator())
     }

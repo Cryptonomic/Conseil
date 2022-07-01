@@ -21,16 +21,13 @@ abstract class RegressionSuite {
     val key = Try(
       ConfigFactory.load().getStringList("conseil.security.api-keys.keys").get(0)
     )
-    key.failed.foreach(
-      e => println(s" ${e.getMessage} No apiKey found in configuration, I can't test conseil api without")
+    key.failed.foreach(e =>
+      println(s" ${e.getMessage} No apiKey found in configuration, I can't test conseil api without")
     )
     key.get
   }
 
   object Setup {
-    implicit val ioShift = IO.contextShift(scala.concurrent.ExecutionContext.global)
-    val timer = IO.timer(scala.concurrent.ExecutionContext.global)
-
     /* We might wanna start with only 10k blocks */
     private def runLorre(platform: String, network: String) =
       Process(
@@ -53,7 +50,7 @@ abstract class RegressionSuite {
         _ <- if (syncNetwork.nonEmpty) syncData(syncPlatform, syncNetwork.get) else IO(0)
         proc <- IO(runApi.run())
         _ <- IO(println("waiting for conseil to start"))
-        _ <- timer.sleep(30.seconds)
+        _ <- IO.sleep(30.seconds)
       } yield proc
 
     val conseilProcess = Resource.make(startConseil) { conseil =>

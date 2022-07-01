@@ -1,8 +1,8 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.ethereum
 
 import akka.http.scaladsl.server.Route
-import endpoints.akkahttp.server.Endpoints
-import endpoints.algebra.Documentation
+import endpoints4s.akkahttp.server.Endpoints
+import endpoints4s.algebra.Documentation
 
 import tech.cryptonomic.conseil.api.routes.validation.Validation.QueryValidating
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiValidation.defaultValidated

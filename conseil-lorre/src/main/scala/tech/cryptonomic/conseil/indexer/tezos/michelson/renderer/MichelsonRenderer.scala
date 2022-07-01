@@ -11,16 +11,15 @@ object MichelsonRenderer {
 
       // instructions
       case MichelsonSingleInstruction(
-          name,
-          List(sequence1: MichelsonInstructionSequence, sequence2: MichelsonInstructionSequence),
-          _
-          ) => {
+            name,
+            List(sequence1: MichelsonInstructionSequence, sequence2: MichelsonInstructionSequence),
+            _
+          ) =>
         val indent = " " * (name.length + 1)
         val embeddedIndent = indent + " " * 2
 
         s"""$name { ${sequence1.instructions.render(embeddedIndent)} }
            |$indent{ ${sequence2.instructions.render(embeddedIndent)} }""".stripMargin
-      }
       case MichelsonSingleInstruction(name, Nil, Nil) => name
       case MichelsonSingleInstruction(name, args, annotations) =>
         s"$name ${(annotations ++ args.map(_.render())).mkString(" ")}"
@@ -39,10 +38,14 @@ object MichelsonRenderer {
       case MichelsonCode(instructions) => instructions.render(indent = 7)
 
       // schema
-      case MichelsonSchema(MichelsonEmptyExpression, MichelsonEmptyExpression, MichelsonCode(Nil)) => ""
-      case MichelsonSchema(parameter, storage, code) => s"""parameter ${parameter.render()};
-                                                           |storage ${storage.render()};
-                                                           |code { ${code.render()} }""".stripMargin
+      case MichelsonSchema(MichelsonEmptyExpression, MichelsonEmptyExpression, MichelsonCode(Nil), Nil) => ""
+      case MichelsonSchema(parameter, storage, code, view) =>
+        val views = view.map(_.render()).mkString(" ;\n")
+        val viewsRender = if (views.nonEmpty) s"\nviews { $views }" else ""
+        s"""parameter ${parameter.render()};
+            |storage ${storage.render()};
+            |code { ${code.render()} }""".stripMargin ++ viewsRender
+
     }
   }
 

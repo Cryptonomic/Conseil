@@ -8,28 +8,22 @@ import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.settings.ConnectionPoolSettings
+import akka.stream.Attributes
 import akka.stream.Attributes.LogLevels
 import akka.stream.scaladsl.{Flow, Source}
-import akka.stream.{ActorMaterializer, Attributes}
 import cats.data.Kleisli
 import scribe.Level
 import tech.cryptonomic.conseil.common.config.Platforms.TezosConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 import tech.cryptonomic.conseil.common.io.Logging.{ConseilLogSupport, ConseilLogger}
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{InternalOperationResults, _}
 import tech.cryptonomic.conseil.common.util.JsonUtil.JsonString
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
-import tech.cryptonomic.conseil.indexer.config.{
-  BatchFetchConfiguration,
-  HttpStreamingConfiguration,
-  NetworkCallsConfiguration
-}
+import tech.cryptonomic.conseil.indexer.config.{HttpStreamingConfiguration, NetworkCallsConfiguration}
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Try}
-import cats.instances._
 import cats.implicits._
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.OperationsRow
@@ -42,7 +36,7 @@ object Tzip16MetadataJsonDecoders {
 
   /** Representation of Metadata compient with TZIP-16 format
     * MOre info on the fields can be found here: https://tzip.tezosagora.org/proposal/tzip-16/
-    * */
+    */
   case class Tzip16Metadata(
       name: String,
       description: String,
@@ -88,7 +82,9 @@ class Tzip16MetadataOperator(
   ): Future[
     List[((Tables.RegisteredTokensRow, Tables.BigMapContentsRow, MetadataUrl), Option[(MetadataUrl, Tzip16Metadata)])]
   ] =
-    fetch[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, MetadataUrl), Option[(MetadataUrl, Tzip16Metadata)], Future, List, Throwable]
+    fetch[(Tables.RegisteredTokensRow, Tables.BigMapContentsRow, MetadataUrl), Option[
+      (MetadataUrl, Tzip16Metadata)
+    ], Future, List, Throwable]
       .run(addresses)
 
   implicit val metadataFetcherRegisteredTokensRow: FutureFetcher {
@@ -114,25 +110,21 @@ class Tzip16MetadataOperator(
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
     override val fetchData =
-      Kleisli(
-        fetchKeys => {
-          val hashes = fetchKeys
-          logger.info("Fetching tzip metadata")
-          node.runBatchedGetQuery(fetchKeys, makeUrl, 2).onError {
-            case err =>
-              val showIds = hashes.map(_._2.bigMapId).mkString(", ")
-              logger
-                .error(
-                  s"I encountered problems while fetching metadata from TZIP-16 for big maps $showIds. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
+      Kleisli { fetchKeys =>
+        val hashes = fetchKeys
+        logger.info("Fetching tzip metadata")
+        node.runBatchedGetQuery(fetchKeys, makeUrl, 2).onError { case err =>
+          val showIds = hashes.map(_._2.bigMapId).mkString(", ")
+          logger
+            .error(
+              s"I encountered problems while fetching metadata from TZIP-16 for big maps $showIds. The error says ${err.getMessage}"
+            )
+            .pure[Future]
         }
-      )
+      }
 
-    /** an effectful function that decodes the json value to an output `Out`*/
+    /** an effectful function that decodes the json value to an output `Out` */
     override val decodeData: Kleisli[Future, String, Option[(String, Tzip16Metadata)]] = Kleisli { json =>
-      import cats.syntax.functor._
       import io.circe.parser.decode
       decode[Tzip16Metadata](json).toOption
         .pure[Future]
@@ -163,25 +155,21 @@ class Tzip16MetadataOperator(
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
     override val fetchData =
-      Kleisli(
-        fetchKeys => {
-          val hashes = fetchKeys
-          logger.info("Fetching tzip metadata")
-          node.runBatchedGetQuery(fetchKeys, makeUrl, 2).onError {
-            case err =>
-              val showHashes = hashes.map(_._1.operationId).mkString(", ")
-              logger
-                .error(
-                  s"I encountered problems while fetching metadata from TZIP-16 for operations $showHashes. The error says ${err.getMessage}"
-                )
-                .pure[Future]
-          }
+      Kleisli { fetchKeys =>
+        val hashes = fetchKeys
+        logger.info("Fetching tzip metadata")
+        node.runBatchedGetQuery(fetchKeys, makeUrl, 2).onError { case err =>
+          val showHashes = hashes.map(_._1.operationId).mkString(", ")
+          logger
+            .error(
+              s"I encountered problems while fetching metadata from TZIP-16 for operations $showHashes. The error says ${err.getMessage}"
+            )
+            .pure[Future]
         }
-      )
+      }
 
-    /** an effectful function that decodes the json value to an output `Out`*/
+    /** an effectful function that decodes the json value to an output `Out` */
     override val decodeData: Kleisli[Future, String, Option[(String, Tzip16Metadata)]] = Kleisli { json =>
-      import cats.syntax.functor._
       import io.circe.parser.decode
       decode[Tzip16Metadata](json).toOption
         .pure[Future]
@@ -199,7 +187,6 @@ class TezosMetadataInterface(
 
   import config.node
 
-  implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   final val traceLoggingGetCategory = "tech.cryptonomic.conseil.indexer.tezos.node-rpc.get"
   final val traceLoggingBatchCategory = "tech.cryptonomic.conseil.indexer.tezos.node-rpc.batch"
@@ -261,9 +248,8 @@ class TezosMetadataInterface(
 
     streamedGetQuery(ids, mapToCommand, concurrencyLevel)
       .runFold(List.empty[(CID, String)])(_ :+ _)
-      .andThen {
-        case _ =>
-          logger.debug(s"$batchId - Tzip Batch completed")
+      .andThen { case _ =>
+        logger.debug(s"$batchId - Tzip Batch completed")
       }
   }
 
@@ -291,21 +277,19 @@ class TezosMetadataInterface(
       (convertIdToUrl(id), id)
     })
 
-    val toRequest: ((String, CID)) => (HttpRequest, CID) = {
-      case (url, id) =>
-        logger.debug(s"Tzip Will query: $url")
-        (HttpRequest(uri = Uri(url)), id)
+    val toRequest: ((String, CID)) => (HttpRequest, CID) = { case (url, id) =>
+      logger.debug(s"Tzip Will query: $url")
+      (HttpRequest(uri = Uri(url)), id)
     }
 
     uris
       .map(toRequest)
       .via(loggedRpcFlow)
-      .mapAsyncUnordered(concurrencyLevel) {
-        case (tried, id) =>
-          Future
-            .fromTry(tried.map(_.entity.toStrict(requestConfig.GETResponseEntityTimeout)))
-            .flatten
-            .map(entity => (entity, id))
+      .mapAsyncUnordered(concurrencyLevel) { case (tried, id) =>
+        Future
+          .fromTry(tried.map(_.entity.toStrict(requestConfig.GETResponseEntityTimeout)))
+          .flatten
+          .map(entity => (entity, id))
       }
       .map { case (content: HttpEntity.Strict, id) => (id, JsonString sanitize content.data.utf8String) }
       .via(loggedRpcResults)

@@ -4,7 +4,7 @@ import java.sql.Timestamp
 
 import cats.implicits._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
-import tech.cryptonomic.conseil.common.tezos.Tables
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
@@ -20,7 +20,9 @@ object BigMapsConversions extends ConseilLogSupport {
   // Simplify understanding in parts of the code
   case class BlockBigMapDiff(get: BlockTagged[(TezosBlockHash, Option[OperationHash], Contract.BigMapDiff)])
       extends AnyVal
-  case class BlockContractIdsBigMapDiff(get: (TezosBlockHash, List[ContractId], Contract.BigMapDiff)) extends AnyVal
+  case class BlockContractIdsBigMapDiff(
+      get: (TezosBlockHash, List[ContractId], Contract.BigMapDiff, Option[BlockLevel])
+  ) extends AnyVal
 
   //input to collect token data to convert
   case class TokenUpdatesInput(
@@ -45,7 +47,9 @@ object BigMapsConversions extends ConseilLogSupport {
             Tables.BigMapsRow(
               bigMapId = id,
               keyType = Some(toMichelsonScript[MichelsonExpression](key_type.expression)),
-              valueType = Some(toMichelsonScript[MichelsonExpression](value_type.expression))
+              valueType = Some(toMichelsonScript[MichelsonExpression](value_type.expression)),
+              forkId = Fork.mainForkId,
+              blockLevel = Some(ref.level)
             )
           )
         case BlockTagged(ref, (hash, _, BigMapAlloc(_, InvalidDecimal(json), _, _))) =>
@@ -78,15 +82,20 @@ object BigMapsConversions extends ConseilLogSupport {
           Some(
             Tables.BigMapContentsRow(
               bigMapId = id,
-              key = toMichelsonScript[MichelsonInstruction](key.expression), //we're using instructions to represent data values
-              keyHash = Some(keyHash.value),
+              key = toMichelsonScript[MichelsonInstruction](
+                key.expression
+              ), //we're using instructions to represent data values
+              keyHash = keyHash.value,
               operationGroupId = opGroupHash.map(_.value),
-              value = value.map(it => toMichelsonScript[MichelsonInstruction](it.expression)), //we're using instructions to represent data values
+              value = value.map(it =>
+                toMichelsonScript[MichelsonInstruction](it.expression)
+              ), //we're using instructions to represent data values
               valueMicheline = value.map(_.expression),
               blockLevel = Some(ref.level),
               timestamp = ref.timestamp.map(Timestamp.from),
               cycle = ref.cycle,
-              period = ref.period
+              period = ref.period,
+              forkId = Fork.mainForkId
             )
           )
         case BlockTagged(ref, (hash, _, BigMapUpdate(_, _, _, InvalidDecimal(json), _))) =>
@@ -108,21 +117,22 @@ object BigMapsConversions extends ConseilLogSupport {
       implicit lazy val _ = logger
 
       def convert(from: BlockContractIdsBigMapDiff) = from.get match {
-        case (_, ids, BigMapAlloc(_, Decimal(id), _, _)) =>
-          ids.map(
-            contractId =>
-              Tables.OriginatedAccountMapsRow(
-                bigMapId = id,
-                accountId = contractId.id
-              )
+        case (_, ids, BigMapAlloc(_, Decimal(id), _, _), level) =>
+          ids.map(contractId =>
+            Tables.OriginatedAccountMapsRow(
+              bigMapId = id,
+              accountId = contractId.id,
+              blockLevel = level,
+              forkId = Fork.mainForkId
+            )
           )
-        case (hash, ids, BigMapAlloc(_, InvalidDecimal(json), _, _)) =>
+        case (hash, ids, BigMapAlloc(_, InvalidDecimal(json), _, _), _) =>
           val showIds = ids.mkString(", ")
           logger.warn(
             s"Big Map Origin: A big_map_diff allocation hasn't been converted to a OriginatedAccounts-BigMap association on db, because the map id '$json' is not a valid number. The block containing the Transation operation is ${hash.value}, involving accounts $showIds"
           )
           List.empty
-        case (_, opHash, diffAction) =>
+        case (_, opHash, diffAction, _) =>
           logger.warn(
             s"Big Map Origin: A big_map_diff result will be ignored and not be converted to a relation for OriginatedAccounts to BigMap on db, because the diff action is not supported: $diffAction for operation $opHash"
           )

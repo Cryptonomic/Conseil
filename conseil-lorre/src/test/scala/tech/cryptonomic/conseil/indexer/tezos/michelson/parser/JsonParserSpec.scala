@@ -9,14 +9,14 @@ import tech.cryptonomic.conseil.common.testkit.LoggingTestSupport
 class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
 
   it should "parse one-argument MichelsonType" in {
-      val json = """{"prim": "contract"}"""
+    val json = """{"prim": "contract"}"""
 
-      parse[MichelsonExpression](json) should equal(Right(MichelsonType("contract")))
-    }
+    parse[MichelsonExpression](json) should equal(Right(MichelsonType("contract")))
+  }
 
   it should "parse two-argument MichelsonType" in {
-      val json =
-        """{
+    val json =
+      """{
         |  "prim": "pair",
         |  "args": [
         |    {
@@ -28,14 +28,14 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         |  ]
         |}""".stripMargin
 
-      parse[MichelsonExpression](json) should equal(
-        Right(MichelsonType("pair", List(MichelsonType("int"), MichelsonType("address"))))
-      )
-    }
+    parse[MichelsonExpression](json) should equal(
+      Right(MichelsonType("pair", List(MichelsonType("int"), MichelsonType("address"))))
+    )
+  }
 
   it should "parse complex MichelsonType" in {
-      val json =
-        """{
+    val json =
+      """{
         |  "prim": "contract",
         |  "args": [
         |    {
@@ -57,80 +57,80 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         |  ]
         |}""".stripMargin
 
-      parse[MichelsonExpression](json) should equal(
-        Right(
-          MichelsonType(
-            "contract",
-            List(
-              MichelsonType("or", List(MichelsonType("option", List(MichelsonType("address"))), MichelsonType("int")))
-            )
+    parse[MichelsonExpression](json) should equal(
+      Right(
+        MichelsonType(
+          "contract",
+          List(
+            MichelsonType("or", List(MichelsonType("option", List(MichelsonType("address"))), MichelsonType("int")))
           )
         )
       )
-    }
+    )
+  }
 
   it should "parse MichelsonType with annotation" in {
-      val json =
-        """{
+    val json =
+      """{
         |  "prim": "int",
         |  "annots": [
         |    ":p"
         |  ]
         |}""".stripMargin
 
-      parse[MichelsonExpression](json) should equal(Right(MichelsonType(prim = "int", annotations = List(":p"))))
-    }
+    parse[MichelsonExpression](json) should equal(Right(MichelsonType(prim = "int", annotations = List(":p"))))
+  }
 
   it should "parse MichelsonInstruction with only one simple instruction" in {
-      val json = """{"prim": "DUP"}"""
+    val json = """{"prim": "DUP"}"""
 
-      parse[MichelsonInstruction](json) should equal(Right(MichelsonSingleInstruction("DUP")))
-    }
+    parse[MichelsonInstruction](json) should equal(Right(MichelsonSingleInstruction("DUP")))
+  }
 
   it should "parse MichelsonInstructionSequence" in {
-      val json = """[{"prim": "CDR"}, {"prim": "DUP"}]"""
+    val json = """[{"prim": "CDR"}, {"prim": "DUP"}]"""
 
-      parse[MichelsonInstruction](json) should equal(
-        Right(MichelsonInstructionSequence(List(MichelsonSingleInstruction("CDR"), MichelsonSingleInstruction("DUP"))))
-      )
-    }
+    parse[MichelsonInstruction](json) should equal(
+      Right(MichelsonInstructionSequence(List(MichelsonSingleInstruction("CDR"), MichelsonSingleInstruction("DUP"))))
+    )
+  }
 
   it should "parse typed MichelsonInstruction" in {
-      val json = """{"prim": "NIL", "args": [{"prim": "operation"}]}"""
+    val json = """{"prim": "NIL", "args": [{"prim": "operation"}]}"""
 
-      parse[MichelsonInstruction](json) should equal(
-        Right(MichelsonSingleInstruction("NIL", List(MichelsonType("operation"))))
-      )
-    }
+    parse[MichelsonInstruction](json) should equal(
+      Right(MichelsonSingleInstruction("NIL", List(MichelsonType("operation"))))
+    )
+  }
 
   it should "parse MichelsonInstruction with annotation" in {
-      val json = """{"prim": "CAR", "annots": ["@pointcolor"]}"""
+    val json = """{"prim": "CAR", "annots": ["@pointcolor"]}"""
 
-      parse[MichelsonInstruction](json) should equal(
-        Right(MichelsonSingleInstruction("CAR", annotations = List("@pointcolor")))
-      )
-    }
+    parse[MichelsonInstruction](json) should equal(
+      Right(MichelsonSingleInstruction("CAR", annotations = List("@pointcolor")))
+    )
+  }
 
   it should "parse complex MichelsonInstruction" in {
-      val json = """[{"prim": "DIP", "args": [[{"prim": "DUP"}]]}]"""
+    val json = """[{"prim": "DIP", "args": [[{"prim": "DUP"}]]}]"""
 
-      parse[MichelsonInstruction](json) should equal(
-        Right(
-          MichelsonInstructionSequence(
-            List(
-              MichelsonSingleInstruction(
-                "DIP",
-                List(MichelsonInstructionSequence(List(MichelsonSingleInstruction("DUP"))))
-              )
+    parse[MichelsonInstruction](json) should equal(
+      Right(
+        MichelsonInstructionSequence(
+          List(
+            MichelsonSingleInstruction(
+              "DIP",
+              List(MichelsonInstructionSequence(List(MichelsonSingleInstruction("DUP"))))
             )
           )
         )
       )
-    }
+    )
+  }
 
   it should "parse MichelsonInstruction typed with int data" in {
-      val json =
-        """[{
+    val json =
+      """[{
         |  "prim": "PUSH",
         |  "args": [
         |    {
@@ -142,18 +142,18 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         |  ]
         |}]""".stripMargin
 
-      parse[MichelsonInstruction](json) should equal(
-        Right(
-          MichelsonInstructionSequence(
-            List(MichelsonSingleInstruction("PUSH", List(MichelsonType("mutez"), MichelsonIntConstant("0"))))
-          )
+    parse[MichelsonInstruction](json) should equal(
+      Right(
+        MichelsonInstructionSequence(
+          List(MichelsonSingleInstruction("PUSH", List(MichelsonType("mutez"), MichelsonIntConstant("0"))))
         )
       )
-    }
+    )
+  }
 
   it should "parse MichelsonInstruction typed with string data" in {
-      val json =
-        """[{
+    val json =
+      """[{
         |  "prim": "PUSH",
         |  "args": [
         |    {
@@ -165,18 +165,18 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         |  ]
         |}]""".stripMargin
 
-      parse[MichelsonInstruction](json) should equal(
-        Right(
-          MichelsonInstructionSequence(
-            List(MichelsonSingleInstruction("PUSH", List(MichelsonType("mutez"), MichelsonStringConstant("0"))))
-          )
+    parse[MichelsonInstruction](json) should equal(
+      Right(
+        MichelsonInstructionSequence(
+          List(MichelsonSingleInstruction("PUSH", List(MichelsonType("mutez"), MichelsonStringConstant("0"))))
         )
       )
-    }
+    )
+  }
 
   it should "parse MichelsonInstruction typed with bytes data" in {
-      val json =
-        """{
+    val json =
+      """{
         |  "prim": "PUSH",
         |  "args": [
         |    {
@@ -188,14 +188,14 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         |  ]
         |}""".stripMargin
 
-      parse[MichelsonInstruction](json) should equal(
-        Right(MichelsonSingleInstruction("PUSH", List(MichelsonType("bytes"), MichelsonBytesConstant("0500"))))
-      )
-    }
+    parse[MichelsonInstruction](json) should equal(
+      Right(MichelsonSingleInstruction("PUSH", List(MichelsonType("bytes"), MichelsonBytesConstant("0500"))))
+    )
+  }
 
   it should "parse double embedded MichelsonInstruction" in {
-      val json =
-        """[
+    val json =
+      """[
         |  {
         |    "prim": "IF_NONE",
         |    "args": [
@@ -213,18 +213,17 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         |  }
         |]""".stripMargin
 
-      parse[MichelsonInstruction](json) should equal(
-        Right(
-          MichelsonInstructionSequence(
-            List(
-              MichelsonSingleInstruction(
-                "IF_NONE",
-                List(
-                  MichelsonInstructionSequence(
-                    List(
-                      MichelsonInstructionSequence(
-                        List(MichelsonSingleInstruction("UNIT"), MichelsonSingleInstruction("FAILWITH"))
-                      )
+    parse[MichelsonInstruction](json) should equal(
+      Right(
+        MichelsonInstructionSequence(
+          List(
+            MichelsonSingleInstruction(
+              "IF_NONE",
+              List(
+                MichelsonInstructionSequence(
+                  List(
+                    MichelsonInstructionSequence(
+                      List(MichelsonSingleInstruction("UNIT"), MichelsonSingleInstruction("FAILWITH"))
                     )
                   )
                 )
@@ -233,11 +232,12 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
           )
         )
       )
-    }
+    )
+  }
 
   it should "parse empty MichelsonInstruction" in {
-      val json =
-        """[
+    val json =
+      """[
         |  {
         |    "prim": "IF_NONE",
         |    "args": [
@@ -257,33 +257,33 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         |  }
         |]""".stripMargin
 
-      parse[MichelsonInstruction](json) should equal(
-        Right(
-          MichelsonInstructionSequence(
-            List(
-              MichelsonSingleInstruction(
-                "IF_NONE",
-                List(
-                  MichelsonEmptyInstruction,
-                  MichelsonInstructionSequence(
-                    List(
-                      MichelsonInstructionSequence(
-                        List(MichelsonSingleInstruction("UNIT"), MichelsonSingleInstruction("FAILWITH"))
-                      )
+    parse[MichelsonInstruction](json) should equal(
+      Right(
+        MichelsonInstructionSequence(
+          List(
+            MichelsonSingleInstruction(
+              "IF_NONE",
+              List(
+                MichelsonEmptyInstruction,
+                MichelsonInstructionSequence(
+                  List(
+                    MichelsonInstructionSequence(
+                      List(MichelsonSingleInstruction("UNIT"), MichelsonSingleInstruction("FAILWITH"))
                     )
-                  ),
-                  MichelsonEmptyInstruction
-                )
+                  )
+                ),
+                MichelsonEmptyInstruction
               )
             )
           )
         )
       )
-    }
+    )
+  }
 
   it should "parse empty MichelsonInstruction when it appears alone" in {
-      val json =
-        """[
+    val json =
+      """[
         |  {
         |    "prim": "IF_NONE",
         |    "args": [
@@ -292,16 +292,16 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         |  }
         |]""".stripMargin
 
-      parse[MichelsonInstruction](json) should equal(
-        Right(
-          MichelsonInstructionSequence(List(MichelsonSingleInstruction("IF_NONE", List(MichelsonEmptyInstruction))))
-        )
+    parse[MichelsonInstruction](json) should equal(
+      Right(
+        MichelsonInstructionSequence(List(MichelsonSingleInstruction("IF_NONE", List(MichelsonEmptyInstruction))))
       )
-    }
+    )
+  }
 
   it should "parse empty MichelsonExpression" in {
-      val json =
-        """{
+    val json =
+      """{
         |  "prim": "Pair",
         |  "args": [
         |    {
@@ -311,14 +311,14 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         |  ]
         |}""".stripMargin
 
-      parse[MichelsonExpression](json) should equal(
-        Right(MichelsonType("Pair", List(MichelsonIntConstant("0"), MichelsonEmptyInstruction)))
-      )
-    }
+    parse[MichelsonExpression](json) should equal(
+      Right(MichelsonType("Pair", List(MichelsonIntConstant("0"), MichelsonEmptyInstruction)))
+    )
+  }
 
   it should "parse LAMBDA MichelsonInstruction" in {
-      val json =
-        """{
+    val json =
+      """{
         |  "prim": "LAMBDA",
         |  "args": [
         |    {
@@ -340,23 +340,23 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         |  ]
         |}""".stripMargin
 
-      parse[MichelsonInstruction](json) should equal(
-        Right(
-          MichelsonSingleInstruction(
-            "LAMBDA",
-            List(
-              MichelsonType("address"),
-              MichelsonType("contract", List(MichelsonType("unit"))),
-              MichelsonInstructionSequence(List(MichelsonSingleInstruction("DUP")))
-            )
+    parse[MichelsonInstruction](json) should equal(
+      Right(
+        MichelsonSingleInstruction(
+          "LAMBDA",
+          List(
+            MichelsonType("address"),
+            MichelsonType("contract", List(MichelsonType("unit"))),
+            MichelsonInstructionSequence(List(MichelsonSingleInstruction("DUP")))
           )
         )
       )
-    }
+    )
+  }
 
   it should "parse MichelsonExpression with both MichelsonExpression and MichelsonInstruction as arguments" in {
-      val json =
-        """{
+    val json =
+      """{
           |  "prim": "Pair",
           |  "args": [
           |    [
@@ -376,34 +376,34 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
           |}
           |""".stripMargin
 
-      parse[MichelsonExpression](json) should equal(
-        Right(
-          MichelsonType(
-            "Pair",
-            List(
-              MichelsonInstructionSequence(List(MichelsonSingleInstruction("Elt", List(MichelsonIntConstant("0"))))),
-              MichelsonStringConstant("Author: Teckhua Chiang, Company: Cryptonomic")
-            ),
-            List()
-          )
+    parse[MichelsonExpression](json) should equal(
+      Right(
+        MichelsonType(
+          "Pair",
+          List(
+            MichelsonInstructionSequence(List(MichelsonSingleInstruction("Elt", List(MichelsonIntConstant("0"))))),
+            MichelsonStringConstant("Author: Teckhua Chiang, Company: Cryptonomic")
+          ),
+          List()
         )
       )
-    }
+    )
+  }
 
   it should "parse MichelsonInstruction represented as simple string" in {
-      val json = """{"string":"hello"}"""
+    val json = """{"string":"hello"}"""
 
-      parse[MichelsonInstruction](json) should equal(
-        Right(
-          MichelsonStringConstant("hello")
-        )
+    parse[MichelsonInstruction](json) should equal(
+      Right(
+        MichelsonStringConstant("hello")
       )
-    }
+    )
+  }
 
   it should "convert simplest json to MichelsonSchema" in {
 
-      val json =
-        """[
+    val json =
+      """[
         |  {
         |    "prim": "parameter",
         |    "args": [
@@ -432,21 +432,21 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         |  }
         |]""".stripMargin
 
-      parse[MichelsonSchema](json) should equal(
-        Right(
-          MichelsonSchema(
-            MichelsonType("int"),
-            MichelsonType("int"),
-            MichelsonCode(List(MichelsonSingleInstruction("DUP")))
-          )
+    parse[MichelsonSchema](json) should equal(
+      Right(
+        MichelsonSchema(
+          MichelsonType("int"),
+          MichelsonType("int"),
+          MichelsonCode(List(MichelsonSingleInstruction("DUP")))
         )
       )
-    }
+    )
+  }
 
   it should "convert json with code wrapped in single array to MichelsonSchema" in {
 
-      val json =
-        """[
+    val json =
+      """[
         |  {
         |    "prim": "parameter",
         |    "args": [
@@ -473,46 +473,46 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         |  }
         |]""".stripMargin
 
-      parse[MichelsonSchema](json) should equal(
-        Right(
-          MichelsonSchema(
-            MichelsonType("int"),
-            MichelsonType("int"),
-            MichelsonCode(List(MichelsonSingleInstruction("DUP")))
-          )
+    parse[MichelsonSchema](json) should equal(
+      Right(
+        MichelsonSchema(
+          MichelsonType("int"),
+          MichelsonType("int"),
+          MichelsonCode(List(MichelsonSingleInstruction("DUP")))
         )
       )
-    }
+    )
+  }
 
   it should "parse MichelsonCode" in {
-      val json = """[{"prim": "DUP"}]"""
+    val json = """[{"prim": "DUP"}]"""
 
-      parse[MichelsonCode](json) should equal(Right(MichelsonCode(List(MichelsonSingleInstruction("DUP")))))
-    }
+    parse[MichelsonCode](json) should equal(Right(MichelsonCode(List(MichelsonSingleInstruction("DUP")))))
+  }
 
   it should "give meaningful error in case of json without parameter section" in {
-      val json = """[{"prim": "storage", "args": []}]"""
+    val json = """[{"prim": "storage", "args": []}]"""
 
-      parse[MichelsonSchema](json) should equal(Left(ParserError("No expression parameter found")))
-    }
+    parse[MichelsonSchema](json) should equal(Left(ParserError("No expression parameter found")))
+  }
 
   it should "give meaningful error in case of json without code section" in {
-      val json =
-        """[{"prim": "parameter", "args": [{"prim": "unit"}]}, {"prim": "storage", "args": [{"prim": "unit"}]}]"""
+    val json =
+      """[{"prim": "parameter", "args": [{"prim": "unit"}]}, {"prim": "storage", "args": [{"prim": "unit"}]}]"""
 
-      parse[MichelsonSchema](json) should equal(Left(ParserError("No code section found")))
-    }
+    parse[MichelsonSchema](json) should equal(Left(ParserError("No code section found")))
+  }
 
   it should "parse empty schema" in {
-      val json = """[]"""
+    val json = """[]"""
 
-      parse[MichelsonSchema](json) should equal(Right(MichelsonSchema.empty))
-    }
+    parse[MichelsonSchema](json) should equal(Right(MichelsonSchema.empty))
+  }
 
   it should "convert complex json to MichelsonSchema" in {
 
-      val json =
-        """[
+    val json =
+      """[
         |  {
         |    "prim": "parameter",
         |    "args": [
@@ -663,43 +663,42 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         |  }
         |]""".stripMargin
 
-      parse[MichelsonSchema](json) should equal(
-        Right(
-          MichelsonSchema(
-            MichelsonType("unit"),
-            MichelsonType(
-              "contract",
-              List(
-                MichelsonType(
-                  "or",
-                  List(
-                    MichelsonType("option", List(MichelsonType("address"))),
-                    MichelsonType(
-                      "or",
-                      List(
-                        MichelsonType(
-                          "pair",
-                          List(
-                            MichelsonType("option", List(MichelsonType("address"))),
-                            MichelsonType("option", List(MichelsonType("mutez")))
-                          )
-                        ),
-                        MichelsonType(
-                          "or",
-                          List(
-                            MichelsonType("mutez"),
-                            MichelsonType(
-                              "or",
-                              List(
-                                MichelsonType(
-                                  "pair",
-                                  List(
-                                    MichelsonType("option", List(MichelsonType("address"))),
-                                    MichelsonType("option", List(MichelsonType("mutez")))
-                                  )
-                                ),
-                                MichelsonType("address")
-                              )
+    parse[MichelsonSchema](json) should equal(
+      Right(
+        MichelsonSchema(
+          MichelsonType("unit"),
+          MichelsonType(
+            "contract",
+            List(
+              MichelsonType(
+                "or",
+                List(
+                  MichelsonType("option", List(MichelsonType("address"))),
+                  MichelsonType(
+                    "or",
+                    List(
+                      MichelsonType(
+                        "pair",
+                        List(
+                          MichelsonType("option", List(MichelsonType("address"))),
+                          MichelsonType("option", List(MichelsonType("mutez")))
+                        )
+                      ),
+                      MichelsonType(
+                        "or",
+                        List(
+                          MichelsonType("mutez"),
+                          MichelsonType(
+                            "or",
+                            List(
+                              MichelsonType(
+                                "pair",
+                                List(
+                                  MichelsonType("option", List(MichelsonType("address"))),
+                                  MichelsonType("option", List(MichelsonType("mutez")))
+                                )
+                              ),
+                              MichelsonType("address")
                             )
                           )
                         )
@@ -708,42 +707,43 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
                   )
                 )
               )
-            ),
-            MichelsonCode(
-              List(
-                MichelsonSingleInstruction("CDR"),
-                MichelsonSingleInstruction("DUP"),
-                MichelsonSingleInstruction("NIL", List(MichelsonType("operation"))),
-                MichelsonInstructionSequence(
-                  List(
-                    MichelsonSingleInstruction(
-                      "DIP",
-                      List(
-                        MichelsonInstructionSequence(
-                          List(
-                            MichelsonSingleInstruction(
-                              "DIP",
-                              List(MichelsonInstructionSequence(List(MichelsonSingleInstruction("DUP"))))
-                            ),
-                            MichelsonSingleInstruction("SWAP")
-                          )
+            )
+          ),
+          MichelsonCode(
+            List(
+              MichelsonSingleInstruction("CDR"),
+              MichelsonSingleInstruction("DUP"),
+              MichelsonSingleInstruction("NIL", List(MichelsonType("operation"))),
+              MichelsonInstructionSequence(
+                List(
+                  MichelsonSingleInstruction(
+                    "DIP",
+                    List(
+                      MichelsonInstructionSequence(
+                        List(
+                          MichelsonSingleInstruction(
+                            "DIP",
+                            List(MichelsonInstructionSequence(List(MichelsonSingleInstruction("DUP"))))
+                          ),
+                          MichelsonSingleInstruction("SWAP")
                         )
                       )
-                    ),
-                    MichelsonSingleInstruction("SWAP"),
-                    MichelsonSingleInstruction("NIL", List(MichelsonType("operation")))
-                  )
+                    )
+                  ),
+                  MichelsonSingleInstruction("SWAP"),
+                  MichelsonSingleInstruction("NIL", List(MichelsonType("operation")))
                 )
               )
             )
           )
         )
       )
-    }
+    )
+  }
 
   it should "correctly transform pair list to nested pairs" in {
-      val json =
-        """{
+    val json =
+      """{
         |   "prim":"pair",
         |   "args":[
         |      {
@@ -767,29 +767,29 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with LoggingTestSupport {
         |   ]
         |}""".stripMargin
 
-      //pair ( address %contract ) ( pair ( string %counterAsset ) ( nat %decimals ) )
+    //pair ( address %contract ) ( pair ( string %counterAsset ) ( nat %decimals ) )
 
-      parse[MichelsonExpression](json) should equal(
-        Right(
-          MichelsonType(
-            "pair",
-            List(
-              MichelsonType(
-                "address",
-                List.empty,
-                List("%contract")
-              ),
-              MichelsonType(
-                "pair",
-                List(
-                  MichelsonType("string", List.empty, List("%counterAsset")),
-                  MichelsonType("nat", List.empty, List("%decimals"))
-                )
+    parse[MichelsonExpression](json) should equal(
+      Right(
+        MichelsonType(
+          "pair",
+          List(
+            MichelsonType(
+              "address",
+              List.empty,
+              List("%contract")
+            ),
+            MichelsonType(
+              "pair",
+              List(
+                MichelsonType("string", List.empty, List("%counterAsset")),
+                MichelsonType("nat", List.empty, List("%decimals"))
               )
             )
           )
         )
       )
-    }
+    )
+  }
 
 }

@@ -3,15 +3,14 @@ package tech.cryptonomic.conseil.indexer.tezos.processing
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import akka.Done
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import cats._
 import cats.implicits._
-import tech.cryptonomic.conseil.indexer.config.{BakingAndEndorsingRights, BatchFetchConfiguration}
+import tech.cryptonomic.conseil.indexer.config.{BakingAndEndorsingRights, BatchFetchConfiguration, Features}
 import tech.cryptonomic.conseil.indexer.tezos.{
   TezosIndexedDataOperations,
   TezosNodeOperator,
-  Tzip16MetadataOperator,
   TezosDatabaseOperations => TezosDb
 }
 import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator.LazyPages
@@ -42,10 +41,10 @@ class AccountsProcessor(
     nodeOperator: TezosNodeOperator,
     indexedData: TezosIndexedDataOperations,
     batchingConf: BatchFetchConfiguration,
-    rightsConf: BakingAndEndorsingRights
-)(
-    implicit mat: ActorMaterializer
-) extends ConseilLogSupport {
+    rightsConf: BakingAndEndorsingRights,
+    enabledFeatures: Features
+)(implicit mat: Materializer)
+    extends ConseilLogSupport {
 
   /** accounts, indexed by id */
   private type AccountsIndex = Map[AccountId, Account]
@@ -61,13 +60,12 @@ class AccountsProcessor(
   private def process(
       ids: Map[AccountId, BlockReference],
       onlyProcessLatest: Boolean = false
-  )(
-      implicit ec: ExecutionContext
+  )(implicit
+      ec: ExecutionContext
   ): Future[List[BlockTagged[DelegateKeys]]] = {
 
-    def logWriteFailure: PartialFunction[Try[_], Unit] = {
-      case Failure(e) =>
-        logger.error("Could not write accounts to the database", e)
+    def logWriteFailure: PartialFunction[Try[_], Unit] = { case Failure(e) =>
+      logger.error("Could not write accounts to the database", e)
     }
 
     def logOutcome: PartialFunction[Try[(Option[Int], Option[Int], _)], Unit] = {
@@ -88,20 +86,17 @@ class AccountsProcessor(
         taggedAccounts: Seq[BlockTagged[AccountsIndex]]
     ): (List[BlockTagged[AccountsIndex]], List[BlockTagged[DelegateKeys]]) = {
       val taggedList = taggedAccounts.toList
-
-      def extractBakerKey(account: Account): Option[PublicKeyHash] =
-        PartialFunction.condOpt(account.delegate) {
-          case Some(Right(pkh)) => pkh
-          case Some(Left(Protocol4Delegate(_, Some(pkh)))) => pkh
-        }
-
-      val taggedBakersKeys = taggedList.map(
-        taggedIndex =>
-          taggedIndex.map(
-            accountsIndex => accountsIndex.values.toList.mapFilter(extractBakerKey)
-          )
-      )
-      (taggedList, taggedBakersKeys)
+      if (enabledFeatures.bakerFeaturesAreOn) {
+        def extractBakerKey(account: Account): Option[PublicKeyHash] =
+          PartialFunction.condOpt(account.delegate) {
+            case Some(Right(pkh)) => pkh
+            case Some(Left(Protocol4Delegate(_, Some(pkh)))) => pkh
+          }
+        val taggedBakersKeys = taggedList.map(taggedIndex =>
+          taggedIndex.map(accountsIndex => accountsIndex.values.toList.mapFilter(extractBakerKey))
+        )
+        (taggedList, taggedBakersKeys)
+      } else (taggedList, List.empty)
     }
 
     /** Starting from accounts grouped by block, and the correspoding delegates,
@@ -117,8 +112,8 @@ class AccountsProcessor(
     def processAccountsPage(
         taggedAccounts: List[BlockTagged[AccountsIndex]],
         taggedBakerKeys: List[BlockTagged[DelegateKeys]]
-    )(
-        implicit ec: ExecutionContext
+    )(implicit
+        ec: ExecutionContext
     ): Future[(Option[Int], Option[Int], List[BlockTagged[DelegateKeys]])] = {
       // we fetch active delegates per block so we can filter out current active bakers
       // at this point in time and put the information about it in the separate row
@@ -137,9 +132,8 @@ class AccountsProcessor(
       accountsWithHistoryFut.flatMap { accountsWithHistory =>
         indexedData
           .runQuery(TezosDb.writeAccountsAndCheckpointBakers(accountsWithHistory, taggedBakerKeys))
-          .map {
-            case (accountWrites, accountHistoryWrites, bakerCheckpoints) =>
-              (accountWrites, bakerCheckpoints, taggedBakerKeys)
+          .map { case (accountWrites, accountHistoryWrites, bakerCheckpoints) =>
+            (accountWrites, bakerCheckpoints, taggedBakerKeys)
           }
           .andThen(logWriteFailure)
       }
@@ -194,9 +188,7 @@ class AccountsProcessor(
         .traverse(levels) { level =>
           indexedData
             .fetchRecentOperationsHashByKind(Set("activate_account"), level)
-            .map(
-              optionalOperationHashes => level -> optionalOperationHashes.toList.map(PublicKeyHash(_))
-            )
+            .map(optionalOperationHashes => level -> optionalOperationHashes.toList.map(PublicKeyHash(_)))
         }
         .map(_.toMap)
 
@@ -214,11 +206,10 @@ class AccountsProcessor(
     def prunedUpdates(): Future[Map[AccountId, BlockReference]] =
       if (onlyProcessLatest) {
         indexedData.getLevelsForAccounts(ids.keySet).map { currentlyStored =>
-          ids.filterNot {
-            case (PublicKeyHash(accountId), BlockReference(_, updateLevel, _, _, _)) =>
-              currentlyStored.exists {
-                case (storedId, storedLevel) => storedId == accountId && storedLevel > updateLevel
-              }
+          ids.filterNot { case (PublicKeyHash(accountId), BlockReference(_, updateLevel, _, _, _)) =>
+            currentlyStored.exists { case (storedId, storedLevel) =>
+              storedId == accountId && storedLevel > updateLevel
+            }
           }
         }
       } else Future.successful(ids)
@@ -265,8 +256,8 @@ class AccountsProcessor(
    */
   private[tezos] def processAccountsForBlocks(
       updates: List[BlockTagged[List[AccountId]]]
-  )(
-      implicit ec: ExecutionContext
+  )(implicit
+      ec: ExecutionContext
   ): Future[List[BlockTagged[List[PublicKeyHash]]]] = {
     logger.info("Processing latest Tezos data for updated accounts...")
 
@@ -276,11 +267,10 @@ class AccountsProcessor(
         if (collected.contains(key)) collected else collected + (key -> entry._2)
       }
 
-    val sorted = updates.flatMap {
-      case BlockTagged(ref, ids) =>
-        ids.map(_ -> ref)
-    }.sortBy {
-      case (id, ref) => ref.level
+    val sorted = updates.flatMap { case BlockTagged(ref, ids) =>
+      ids.map(_ -> ref)
+    }.sortBy { case (id, ref) =>
+      ref.level
     }(Ordering[Long].reverse)
 
     val toBeFetched = keepMostRecent(sorted)

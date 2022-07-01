@@ -1,8 +1,8 @@
 package tech.cryptonomic.conseil.api.routes.openapi
 
-import endpoints.algebra.Documentation
-import endpoints.openapi
-import endpoints.openapi.model.{Info, MediaType, OpenApi, Schema}
+import endpoints4s.algebra.Documentation
+import endpoints4s.openapi
+import endpoints4s.openapi.model.{Info, MediaType, OpenApi, Schema}
 import tech.cryptonomic.conseil.api.routes.info.AppInfoEndpoint
 import tech.cryptonomic.conseil.api.routes.platform.data.bitcoin.BitcoinDataEndpoints
 import tech.cryptonomic.conseil.api.routes.platform.data.ethereum.{EthereumDataEndpoints, QuorumDataEndpoints}
@@ -94,41 +94,41 @@ object OpenApiDoc
     */
   override def validated[A](
       response: List[DocumentedResponse],
-      invalidDocs: endpoints.algebra.Documentation
+      invalidDocs: Documentation
   ): List[DocumentedResponse] =
     response ++ List(
-          DocumentedResponse(
-            status = 400,
-            documentation = invalidDocs.getOrElse(""),
-            headers = DocumentedHeaders(List.empty),
-            content = Map(
-              "application/json" -> MediaType(schema = Some(Schema.Array(Left(Schema.simpleString), None, None)))
-            )
-          ),
-          DocumentedResponse(
-            status = 200,
-            documentation = invalidDocs.getOrElse(""),
-            headers = DocumentedHeaders(List.empty),
-            content = Map(
-              "application/json" -> MediaType(None),
-              "text/csv" -> MediaType(None),
-              "text/plain" -> MediaType(None)
-            )
-          )
+      DocumentedResponse(
+        status = 400,
+        documentation = invalidDocs.getOrElse(""),
+        headers = DocumentedHeaders(List.empty),
+        content = Map(
+          "application/json" -> MediaType(schema = Some(Schema.Array(Left(Schema.simpleString), None, None, None)))
         )
+      ),
+      DocumentedResponse(
+        status = 200,
+        documentation = invalidDocs.getOrElse(""),
+        headers = DocumentedHeaders(List.empty),
+        content = Map(
+          "application/json" -> MediaType(None),
+          "text/csv" -> MediaType(None),
+          "text/plain" -> MediaType(None)
+        )
+      )
+    )
 
   override def validatedAttributes[A](
       response: List[DocumentedResponse],
       invalidDocs: Documentation
   ): List[DocumentedResponse] =
     response :+ DocumentedResponse(
-          status = 400,
-          documentation = invalidDocs.getOrElse(""),
-          headers = DocumentedHeaders(List.empty),
-          content = Map(
-            "application/json" -> MediaType(schema = Some(Schema.Array(Left(Schema.simpleString), None, None)))
-          )
-        )
+      status = 400,
+      documentation = invalidDocs.getOrElse(""),
+      headers = DocumentedHeaders(List.empty),
+      content = Map(
+        "application/json" -> MediaType(schema = Some(Schema.Array(Left(Schema.simpleString), None, None, None)))
+      )
+    )
 
   /** Documented JSON schema for Any */
   implicit override lazy val anySchema: JsonSchema[Any] =

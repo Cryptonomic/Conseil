@@ -19,9 +19,14 @@ class ValidatingDirectives(securityApi: SecurityApi) {
       onComplete(securityApi.validateApiKey(apiKey)).flatMap {
         case Success(true) => provide(apiKey.getOrElse(""))
         case _ =>
-          complete((Unauthorized, apiKey.fold("Missing API key") { _ =>
-            "Incorrect API key"
-          }))
+          complete(
+            (
+              Unauthorized,
+              apiKey.fold("Missing API key") { _ =>
+                "Incorrect API key"
+              }
+            )
+          )
       }
   }
 

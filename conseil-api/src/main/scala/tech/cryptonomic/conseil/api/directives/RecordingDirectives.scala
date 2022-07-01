@@ -1,47 +1,45 @@
 package tech.cryptonomic.conseil.api.directives
 
 import java.util.UUID
-
 import akka.http.scaladsl.model.StatusCodes.InternalServerError
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.BasicDirectives
 import akka.http.scaladsl.server.{Directive, ExceptionHandler, Route}
-import akka.stream.Materializer
-import cats.effect.concurrent.MVar
-import cats.effect.{Concurrent, ContextShift, IO}
+import cats.effect.{Async, IO, Ref}
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import org.slf4j.MDC
+import cats.effect.unsafe.implicits.global
+
+import scala.concurrent.duration.DurationInt
 
 /** Utility class for recording responses */
-class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends ConseilLogSupport {
+class RecordingDirectives(implicit concurrent: Async[IO]) extends ConseilLogSupport {
 
   type RequestMap = Map[UUID, RequestValues]
-  private val requestInfoMap: MVar[IO, Map[UUID, RequestValues]] =
-    MVar.of[IO, RequestMap](Map.empty[UUID, RequestValues]).unsafeRunSync()
+  private val requestInfoMap: Ref[IO, Map[UUID, RequestValues]] =
+    Ref[IO].of(Map.empty[UUID, RequestValues]).unsafeRunSync()
 
   private def requestMapModify[A](
       modify: RequestMap => RequestMap
-  )(useValues: RequestValues => A)(implicit correlationId: UUID) =
+  )(useValues: Option[RequestValues] => A)(implicit correlationId: UUID) =
     for {
-      map <- requestInfoMap.take
-      _ <- requestInfoMap.put(modify(map))
-    } yield useValues(map(correlationId))
+      map <- requestInfoMap.get
+      _ <- requestInfoMap.update(_ => modify(map))
+    } yield useValues(map.get(correlationId))
 
   /** Directive adding recorded values to the MDC */
-  def recordResponseValues(
-      ip: RemoteAddress,
-      stringEntity: String
-  )(implicit materializer: Materializer, correlationId: UUID): Directive[Unit] =
+  def recordResponseValues(ip: RemoteAddress, stringEntity: String)(implicit correlationId: UUID): Directive[Unit] =
     BasicDirectives.extractRequest.flatMap { request =>
       (for {
-        requestMap <- requestInfoMap.take
+        requestMap <- requestInfoMap.get
         value = RequestValues.fromHttpRequestAndIp(request, ip, stringEntity)
-        _ <- requestInfoMap.put(requestMap.updated(correlationId, value))
+        filteredMap = requestMap.filter { case (_, values) => System.nanoTime() - values.startTime < 5.minutes.toNanos }
+        _ <- requestInfoMap.update(_ => filteredMap.updated(correlationId, value))
       } yield ()).unsafeRunSync()
 
-      requestMapModify(
-        map => map.updated(correlationId, RequestValues.fromHttpRequestAndIp(request, ip, stringEntity))
+      requestMapModify(map =>
+        map.updated(correlationId, RequestValues.fromHttpRequestAndIp(request, ip, stringEntity))
       )(_ => ())
         .unsafeRunSync()
 
@@ -49,8 +47,8 @@ class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends ConseilLo
         requestMapModify(
           modify = _.filterNot(_._1 == correlationId)
         ) { values =>
-          values.logResponse(resp)
-        }.unsafeRunAsyncAndForget()
+          values.map(_.logResponse(resp))
+        }.unsafeRunAndForget()
         resp
       }
       response
@@ -58,27 +56,34 @@ class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends ConseilLo
 
   /** Custom exception handler with MDC logging */
   def loggingExceptionHandler(implicit correlationId: UUID): ExceptionHandler =
-    ExceptionHandler {
-      case e: Throwable =>
-        val response = HttpResponse(InternalServerError)
+    ExceptionHandler { case e: Throwable =>
+      val response = HttpResponse(InternalServerError)
 
-        requestMapModify(
-          modify = _.filterNot(_._1 == correlationId)
-        ) { values =>
-          values.logResponse(response, Some(e))
-        }.unsafeRunAsyncAndForget()
-        complete(response)
+      logger.info(
+        s"Request with CorrelationId $correlationId failed with 500, current request map: ${requestInfoMap.get.unsafeRunSync()}"
+      )
+
+      requestMapModify(
+        modify = _.filterNot(_._1 == correlationId)
+      ) { values =>
+        values.map(_.logResponse(response, Some(e)))
+      }.unsafeRunAndForget()
+      complete(response)
     }
 
   /** Providing handling of the requests that timed out */
   def timeoutHandler(route: => Route)(implicit correlationId: UUID): Route =
     withRequestTimeoutResponse { _ =>
       val response = HttpResponse(StatusCodes.ServiceUnavailable, entity = HttpEntity("Request timeout"))
+      logger.info(
+        s"Request with CorrelationId $correlationId failed with 503, current request map: ${requestInfoMap.get.unsafeRunSync()}"
+      )
+
       requestMapModify(
         modify = _.filterNot(_._1 == correlationId)
       ) { values =>
-        values.logResponse(response)
-      }.unsafeRunAsyncAndForget()
+        values.map(_.logResponse(response))
+      }.unsafeRunAndForget()
       response
     }(route)
 
@@ -118,9 +123,7 @@ class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends ConseilLo
   object RequestValues {
 
     /** Extracts Request values from request context and ip address */
-    def fromHttpRequestAndIp(request: HttpRequest, ip: RemoteAddress, stringEntity: String)(
-        implicit materializer: Materializer
-    ): RequestValues =
+    def fromHttpRequestAndIp(request: HttpRequest, ip: RemoteAddress, stringEntity: String): RequestValues =
       RequestValues(
         httpMethod = request.method.value,
         requestBody = stringEntity,

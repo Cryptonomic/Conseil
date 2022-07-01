@@ -93,6 +93,11 @@ trait RandomGenerationKit {
       .retryUntil(canBeWrittenToDb)
       .map(DBSafe(_))
 
+  val databaseFriendlyLongGenerator: Gen[DBSafe[Long]] =
+    arbitrary[Long]
+      .retryUntil(canBeWrittenToDb)
+      .map(DBSafe(_))
+
   /** Can the string be safely stored as a database column?
     * This depends on the database type definitions.
     */
@@ -102,4 +107,10 @@ trait RandomGenerationKit {
     * This depends on the database type definitions.
     */
   def canBeWrittenToDb(num: BigDecimal): Boolean = num.abs < 1e18
+
+  /** Can the number be safely stored as a database column?
+    * This depends on the database type definitions.
+    */
+  def canBeWrittenToDb(num: Long): Boolean = num.abs < 1e18
+
 }

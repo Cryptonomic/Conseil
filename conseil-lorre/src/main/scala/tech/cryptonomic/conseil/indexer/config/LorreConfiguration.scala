@@ -1,8 +1,10 @@
 package tech.cryptonomic.conseil.indexer.config
 
 import tech.cryptonomic.conseil.common.config.ChainEvent
+import tech.cryptonomic.conseil.indexer.config.ConfigUtil.Depth._
 
 import scala.concurrent.duration.FiniteDuration
+import scala.util.Try
 
 /** configurations related to a chain-node network calls */
 final case class NetworkCallsConfiguration(
@@ -12,7 +14,7 @@ final case class NetworkCallsConfiguration(
 )
 
 /** generic configuration for the lorre */
-final case class LorreConfiguration(
+case class LorreConfiguration(
     sleepInterval: FiniteDuration,
     bootupRetryInterval: FiniteDuration,
     bootupConnectionCheckTimeout: FiniteDuration,
@@ -20,12 +22,60 @@ final case class LorreConfiguration(
     feesAverageTimeWindow: FiniteDuration,
     depth: Depth,
     headHash: Option[String],
+    headOffset: Option[Long],
     chainEvents: List[ChainEvent],
     blockRightsFetching: BakingAndEndorsingRights,
     tokenContracts: TokenContracts,
     metadataFetching: TzipMetadata,
+    forkHandling: ForkHandling,
     enabledFeatures: Features
 )
+
+final case class LorreConfigurationHelper(
+    sleepInterval: FiniteDuration,
+    bootupRetryInterval: FiniteDuration,
+    bootupConnectionCheckTimeout: FiniteDuration,
+    feeUpdateInterval: Int,
+    feesAverageTimeWindow: FiniteDuration,
+    depth: String,
+    headHash: Option[String],
+    headOffset: Option[String],
+    chainEvents: List[ChainEvent],
+    blockRightsFetching: BakingAndEndorsingRights,
+    tokenContracts: TokenContracts,
+    metadataFetching: TzipMetadata,
+    forkHandling: ForkHandling,
+    enabledFeatures: Features
+) {
+  def toConf: LorreConfiguration = {
+    val hh = headHash match {
+      case Some("None") => None
+      case Some(value) => Some(value)
+      case None => None
+    }
+    val ho = headOffset match {
+      case Some("None") => None
+      case Some(value) => Try(value.toLong).toOption
+      case None => None
+    }
+    new LorreConfiguration(
+      sleepInterval,
+      bootupRetryInterval,
+      bootupConnectionCheckTimeout,
+      feeUpdateInterval,
+      feesAverageTimeWindow,
+      depth.toDepth.getOrElse(Newest),
+      hh,
+      ho,
+      chainEvents,
+      blockRightsFetching,
+      tokenContracts,
+      metadataFetching,
+      forkHandling,
+      enabledFeatures
+    )
+  }
+}
 
 /** configuration for fetching baking and endorsing rights */
 final case class BakingAndEndorsingRights(
@@ -55,16 +105,23 @@ final case class BatchFetchConfiguration(
 
 /** custom select specific features to be enabled when chain-indexing */
 final case class Features(
-    blockRightsFetchingIsOn: Boolean,
+    futureRightsFetchingIsOn: Boolean,
     forkHandlingIsOn: Boolean,
     metadataFetchingIsOn: Boolean,
-    registeredTokensIsOn: Boolean
+    registeredTokensIsOn: Boolean,
+    rightsProcessingIsOn: Boolean,
+    bakerFeaturesAreOn: Boolean
 )
 
 final case class TokenContracts(
     url: String,
     initialDelay: FiniteDuration,
     interval: FiniteDuration
+)
+
+final case class ForkHandling(
+    backtrackLevels: Int,
+    backtrackInterval: Int
 )
 
 /** sodium library references */

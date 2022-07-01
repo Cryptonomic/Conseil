@@ -41,28 +41,27 @@ trait EthereumDataRoutesCreator
   def platformPath: PlatformPath
 
   /** V2 Route implementation for query endpoint */
-  override val postRoute: Route = ethereumQueryEndpoint.implementedByAsync {
-    case (network, entity, apiQuery, _) =>
-      val path = EntityPath(entity, NetworkPath(network, platformPath))
-      pathValidation(path) {
-        apiQuery
-          .validate(path, metadataService, metadataConfiguration)
-          .flatMap { validationResult =>
-            validationResult.map { validQuery =>
-              operations
-                .queryWithPredicates(platformPath.platform, entity, validQuery.withLimitCap(maxQueryResultSize))
-                .map { queryResponses =>
-                  QueryResponseWithOutput(queryResponses, validQuery.output)
-                }
-            }.left.map(Future.successful).bisequence
-          }
-          .map(Some(_))
-      }
+  override val postRoute: Route = ethereumQueryEndpoint.implementedByAsync { case (network, entity, apiQuery, _) =>
+    val path = EntityPath(entity, NetworkPath(network, platformPath))
+    pathValidation(path) {
+      apiQuery
+        .validate(path, metadataService, metadataConfiguration)
+        .flatMap { validationResult =>
+          validationResult.map { validQuery =>
+            operations
+              .queryWithPredicates(platformPath.platform, entity, validQuery.withLimitCap(maxQueryResultSize))
+              .map { queryResponses =>
+                QueryResponseWithOutput(queryResponses, validQuery.output)
+              }
+          }.left.map(Future.successful).bisequence
+        }
+        .map(Some(_))
+    }
   }
 
   /** V2 Route implementation for blocks endpoint */
-  private val blocksRoute: Route = delegateCall(ethereumBlocksEndpoint)(
-    filter => operations.fetchBlocks(filter.toQuery.withLimitCap(maxQueryResultSize))
+  private val blocksRoute: Route = delegateCall(ethereumBlocksEndpoint)(filter =>
+    operations.fetchBlocks(filter.toQuery.withLimitCap(maxQueryResultSize))
   )
 
   /** V2 Route implementation for blocks head endpoint */
@@ -73,8 +72,8 @@ trait EthereumDataRoutesCreator
     delegateCall(ethereumBlockByHashEndpoint)(hash => operations.fetchBlockByHash(EthereumBlockHash(hash)))
 
   /** V2 Route implementation for transactions endpoint */
-  private val transactionsRoute: Route = delegateCall(ethereumTransactionsEndpoint)(
-    filter => operations.fetchTransactions(filter.toQuery.withLimitCap(maxQueryResultSize))
+  private val transactionsRoute: Route = delegateCall(ethereumTransactionsEndpoint)(filter =>
+    operations.fetchTransactions(filter.toQuery.withLimitCap(maxQueryResultSize))
   )
 
   /** V2 Route implementation for transaction by id endpoint */
@@ -86,33 +85,33 @@ trait EthereumDataRoutesCreator
     delegateCall(ethereumLogsEndpoint)(filter => operations.fetchLogs(filter.toQuery.withLimitCap(maxQueryResultSize)))
 
   /** V2 Route implementation for receipts endpoint */
-  private val receiptsRoute: Route = delegateCall(ethereumReceiptsEndpoint)(
-    filter => operations.fetchReceipts(filter.toQuery.withLimitCap(maxQueryResultSize))
+  private val receiptsRoute: Route = delegateCall(ethereumReceiptsEndpoint)(filter =>
+    operations.fetchReceipts(filter.toQuery.withLimitCap(maxQueryResultSize))
   )
 
   /** V2 Route implementation for contracts endpoint */
-  private val contractsRoute: Route = delegateCall(ethereumContractsEndpoint)(
-    filter => operations.fetchContracts(filter.toQuery.withLimitCap(maxQueryResultSize))
+  private val contractsRoute: Route = delegateCall(ethereumContractsEndpoint)(filter =>
+    operations.fetchContracts(filter.toQuery.withLimitCap(maxQueryResultSize))
   )
 
   /** V2 Route implementation for tokens endpoint */
-  private val tokensRoute: Route = delegateCall(ethereumTokensEndpoint)(
-    filter => operations.fetchTokens(filter.toQuery.withLimitCap(maxQueryResultSize))
+  private val tokensRoute: Route = delegateCall(ethereumTokensEndpoint)(filter =>
+    operations.fetchTokens(filter.toQuery.withLimitCap(maxQueryResultSize))
   )
 
   /** V2 Route implementation for token transfers endpoint */
-  private val tokenTransfersRoute: Route = delegateCall(ethereumTokenTransfersEndpoint)(
-    filter => operations.fetchTokenTransfers(filter.toQuery.withLimitCap(maxQueryResultSize))
+  private val tokenTransfersRoute: Route = delegateCall(ethereumTokenTransfersEndpoint)(filter =>
+    operations.fetchTokenTransfers(filter.toQuery.withLimitCap(maxQueryResultSize))
   )
 
   /** V2 Route implementation for tokens history endpoint */
-  private val tokensHistoryRoute: Route = delegateCall(ethereumTokensHistoryEndpoint)(
-    filter => operations.fetchTokensHistory(filter.toQuery.withLimitCap(maxQueryResultSize))
+  private val tokensHistoryRoute: Route = delegateCall(ethereumTokensHistoryEndpoint)(filter =>
+    operations.fetchTokensHistory(filter.toQuery.withLimitCap(maxQueryResultSize))
   )
 
   /** V2 Route implementation for accounts endpoint */
-  private val accountsRoute: Route = delegateCall(ethereumAccountsEndpoint)(
-    filter => operations.fetchAccounts(filter.toQuery.withLimitCap(maxQueryResultSize))
+  private val accountsRoute: Route = delegateCall(ethereumAccountsEndpoint)(filter =>
+    operations.fetchAccounts(filter.toQuery.withLimitCap(maxQueryResultSize))
   )
 
   /** V2 Route implementation for accounts by address endpoint */
@@ -120,30 +119,30 @@ trait EthereumDataRoutesCreator
     delegateCall(ethereumAccountByAddressEndpoint)(operations.fetchAccountByAddress)
 
   /** V2 Route implementation for accounts history endpoint */
-  private val accountsHistoryRoute: Route = delegateCall(ethereumAccountsHistoryEndpoint)(
-    filter => operations.fetchAccountsHistory(filter.toQuery.withLimitCap(maxQueryResultSize))
+  private val accountsHistoryRoute: Route = delegateCall(ethereumAccountsHistoryEndpoint)(filter =>
+    operations.fetchAccountsHistory(filter.toQuery.withLimitCap(maxQueryResultSize))
   )
 
   /**
     * Helper method, which validates the network and delegates the call for specific endpoint to the given method `f`.
     * Note that this method works only for Tuple2 input parameters in the `endpoint`.
-    **/
+    */
   private def delegateCall0[B](
       endpoint: Endpoint[(String, Option[String]), Option[B]]
   )(f: () => Future[Option[B]]): Route =
-    endpoint.implementedByAsync {
-      case (network, _) => platformNetworkValidation(network)(f())
+    endpoint.implementedByAsync { case (network, _) =>
+      platformNetworkValidation(network)(f())
     }
 
   /**
     * Helper method, which validates the network and delegates the call for specific endpoint to the given method `f`.
     * Note that this method works for more generic input type in the `endpoint`.
-    **/
+    */
   private def delegateCall[A, B](
       endpoint: Endpoint[((String, A), Option[String]), Option[B]]
   )(f: A => Future[Option[B]]): Route =
-    endpoint.implementedByAsync {
-      case ((network, element), _) => platformNetworkValidation(network)(f(element))
+    endpoint.implementedByAsync { case ((network, element), _) =>
+      platformNetworkValidation(network)(f(element))
     }
 
   /** V2 concatenated routes */

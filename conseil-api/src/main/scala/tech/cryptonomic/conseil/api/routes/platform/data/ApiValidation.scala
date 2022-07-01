@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
 import akka.http.scaladsl.server.Directives.complete
 import akka.http.scaladsl.server.Route
 import akka.util.ByteString
-import endpoints.algebra.Documentation
+import endpoints4s.algebra.Documentation
 import tech.cryptonomic.conseil.api.routes.validation.Validation.QueryValidating
 import tech.cryptonomic.conseil.api.routes.platform.data.CsvConversions._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OutputType, QueryResponseWithOutput}

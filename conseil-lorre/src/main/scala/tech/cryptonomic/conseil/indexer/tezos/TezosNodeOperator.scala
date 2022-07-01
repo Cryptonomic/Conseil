@@ -73,9 +73,10 @@ private[tezos] object TezosNodeOperator {
 private[tezos] class TezosNodeOperator(
     val node: TezosRPCInterface,
     val network: String,
-    batchConf: BatchFetchConfiguration
-)(
-    implicit val fetchFutureContext: ExecutionContext
+    batchConf: BatchFetchConfiguration,
+    headOffset: Option[Long]
+)(implicit
+    val fetchFutureContext: ExecutionContext
 ) extends TezosBlocksDataFetchers
     with AccountsDataFetchers
     with ConseilLogSupport {
@@ -253,11 +254,10 @@ private[tezos] class TezosNodeOperator(
       scriptAlter compose storageAlter
     }
 
-    fetchedAccounts.map(
-      indexedAccounts =>
-        indexedAccounts.collect {
-          case (accountId, Some(account)) => accountId -> parseMichelsonScripts(account)
-        }.toMap
+    fetchedAccounts.map(indexedAccounts =>
+      indexedAccounts.collect { case (accountId, Some(account)) =>
+        accountId -> parseMichelsonScripts(account)
+      }.toMap
     )
   }
 
@@ -282,29 +282,28 @@ private[tezos] class TezosNodeOperator(
 
     //uses the index to collect together BlockAccounts matching the same block
     def groupByLatestBlock(data: Map[AccountId, Account]): List[BlockTagged[Map[AccountId, Account]]] =
-      data.groupBy {
-        case (id, _) => accountsBlocksIndex(id)
-      }.map {
-        case (blockReference, accounts) =>
-          accounts.taggedWithBlock(blockReference)
+      data.groupBy { case (id, _) =>
+        accountsBlocksIndex(id)
+      }.map { case (blockReference, accounts) =>
+        accounts.taggedWithBlock(blockReference)
       }.toList
 
     //fetch accounts by requested ids and group them together with corresponding blocks
     val pages = getPaginatedAccountsForBlock(accountsBlocksIndex.mapValues(_.hash)) map { futureMap =>
-          futureMap.andThen {
-            case Success((hash, accountsMap)) =>
-              val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
-              notifyAnyLostIds(searchedFor -- accountsMap.keySet)
-            case Failure(err) =>
-              val showSomeIds = accountsBlocksIndex.keys
-                .take(30)
-                .map(_.value)
-                .mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
-              logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err)
-          }.map {
-            case (_, map) => groupByLatestBlock(map)
-          }
-        }
+      futureMap.andThen {
+        case Success((hash, accountsMap)) =>
+          val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
+          notifyAnyLostIds(searchedFor -- accountsMap.keySet)
+        case Failure(err) =>
+          val showSomeIds = accountsBlocksIndex.keys
+            .take(30)
+            .map(_.value)
+            .mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
+          logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err)
+      }.map { case (_, map) =>
+        groupByLatestBlock(map)
+      }
+    }
 
     (pages, accountsBlocksIndex.size)
   }
@@ -325,7 +324,9 @@ private[tezos] class TezosNodeOperator(
         .map(_.flatten)
 
     if (isGenesis(block))
-      Future.successful(List.empty) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
+      Future.successful(
+        List.empty
+      ) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
     else
       node
         .runAsyncGetQuery(network, s"blocks/${block.hash.value}/operations")
@@ -346,15 +347,15 @@ private[tezos] class TezosNodeOperator(
 
       val fetchCurrentQuorum =
         node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_quorum") flatMap { json =>
-            val nonEmptyJson = if (json.isEmpty) "0" else json
-            decodeLiftingTo[Future, Option[Int]](nonEmptyJson)
-          }
+          val nonEmptyJson = if (json.isEmpty) "0" else json
+          decodeLiftingTo[Future, Option[Int]](nonEmptyJson)
+        }
 
       val fetchCurrentProposal =
         node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_proposal") flatMap { json =>
-            val nonEmptyJson = if (json.isEmpty) """ "3M" """.trim else json
-            decodeLiftingTo[Future, Option[ProtocolId]](nonEmptyJson)
-          }
+          val nonEmptyJson = if (json.isEmpty) """ "3M" """.trim else json
+          decodeLiftingTo[Future, Option[ProtocolId]](nonEmptyJson)
+        }
 
       (fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
     }
@@ -448,8 +449,8 @@ private[tezos] class TezosNodeOperator(
     //we consider it might fail for, i.e., the genesis block, so we simply fallback to an empty result
     fetchOne[TezosBlockHash, List[AccountId], Future, List, Throwable]
       .run(blockHash)
-      .recover {
-        case NonFatal(error) => None
+      .recover { case NonFatal(error) =>
+        None
       }
   }
 
@@ -470,29 +471,28 @@ private[tezos] class TezosNodeOperator(
 
     //uses the index to collect together BlockAccounts matching the same block
     def groupByLatestBlock(data: Map[PublicKeyHash, Delegate]): List[BlockTagged[Map[PublicKeyHash, Delegate]]] =
-      data.groupBy {
-        case (pkh, _) => keysBlocksIndex(pkh)
-      }.map {
-        case (blockReference, delegates) =>
-          delegates.taggedWithBlock(blockReference)
+      data.groupBy { case (pkh, _) =>
+        keysBlocksIndex(pkh)
+      }.map { case (blockReference, delegates) =>
+        delegates.taggedWithBlock(blockReference)
       }.toList
 
     //fetch delegates by requested pkh and group them together with corresponding blocks
     val pages = getPaginatedDelegatesForBlock(keysBlocksIndex.mapValues(_.hash)) map { futureMap =>
-          futureMap.andThen {
-            case Success((hash, delegatesMap)) =>
-              val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
-              notifyAnyLostKeys(searchedFor -- delegatesMap.keySet)
-            case Failure(err) =>
-              val showSomeIds = keysBlocksIndex.keys
-                .take(30)
-                .map(_.value)
-                .mkString("", ",", if (keysBlocksIndex.size > 30) "..." else "")
-              logger.error(s"Could not get delegates' data for key hashes ${showSomeIds}", err)
-          }.map {
-            case (_, map) => groupByLatestBlock(map)
-          }
-        }
+      futureMap.andThen {
+        case Success((hash, delegatesMap)) =>
+          val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
+          notifyAnyLostKeys(searchedFor -- delegatesMap.keySet)
+        case Failure(err) =>
+          val showSomeIds = keysBlocksIndex.keys
+            .take(30)
+            .map(_.value)
+            .mkString("", ",", if (keysBlocksIndex.size > 30) "..." else "")
+          logger.error(s"Could not get delegates' data for key hashes ${showSomeIds}", err)
+      }.map { case (_, map) =>
+        groupByLatestBlock(map)
+      }
+    }
 
     (pages, keysBlocksIndex.size)
   }
@@ -516,7 +516,7 @@ private[tezos] class TezosNodeOperator(
     */
   def getDelegatesForBlock(
       pkhs: List[PublicKeyHash],
-      blockHash: TezosBlockHash = blockHeadHash
+      blockHash: TezosBlockHash
   ): Future[Map[PublicKeyHash, Delegate]] = {
     /* implicitly uses: AccountsDataFetchers.delegateFetcher */
     import cats.instances.future._
@@ -528,11 +528,10 @@ private[tezos] class TezosNodeOperator(
     val fetchedDelegates: Future[List[(PublicKeyHash, Option[Delegate])]] =
       fetch[PublicKeyHash, Option[Delegate], Future, List, Throwable].run(pkhs)
 
-    fetchedDelegates.map(
-      indexedDelegates =>
-        indexedDelegates.collect {
-          case (pkh, Some(delegate)) => pkh -> delegate
-        }.toMap
+    fetchedDelegates.map(indexedDelegates =>
+      indexedDelegates.collect { case (pkh, Some(delegate)) =>
+        pkh -> delegate
+      }.toMap
     )
   }
 
@@ -545,13 +544,13 @@ private[tezos] class TezosNodeOperator(
     import TezosJsonDecoders.Circe.Blocks._
     import TezosJsonDecoders.Circe.decodeLiftingTo
 
-    val offsetString = offset.map(_.toString).getOrElse("")
+    val offsetString = offset.map("~" + _.toString).getOrElse("")
 
     //starts immediately
     val fetchBlock =
-      node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString") flatMap { json =>
-          decodeLiftingTo[Future, BlockData](JS.sanitize(json))
-        }
+      node.runAsyncGetQuery(network, s"blocks/${hash.value}$offsetString") flatMap { json =>
+        decodeLiftingTo[Future, BlockData](JS.sanitize(json))
+      }
 
     for {
       block <- fetchBlock
@@ -569,9 +568,9 @@ private[tezos] class TezosNodeOperator(
     import TezosJsonDecoders.Circe.Blocks._
     import TezosJsonDecoders.Circe.decodeLiftingTo
 
-    val offsetString = offset.map(_.toString).getOrElse("")
+    val offsetString = offset.map("~" + _.toString).getOrElse("")
 
-    node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString") flatMap { json =>
+    node.runAsyncGetQuery(network, s"blocks/${hash.value}$offsetString") flatMap { json =>
       decodeLiftingTo[Future, BlockData](JS.sanitize(json))
     }
   }
@@ -581,14 +580,14 @@ private[tezos] class TezosNodeOperator(
     * @return Block head
     */
   def getBlockHead(): Future[Block] =
-    getBlock(blockHeadHash)
+    getBlock(blockHeadHash, headOffset)
 
   /**
     * Gets just the block head without associated data.
     * @return Block head
     */
   def getBareBlockHead(): Future[BlockData] =
-    getBareBlock(blockHeadHash)
+    getBareBlock(blockHeadHash, headOffset)
 
   /**
     * Given a level range, creates sub-ranges of max the given size
@@ -622,9 +621,8 @@ private[tezos] class TezosNodeOperator(
           logger.info(
             s"I found the new block head at level $headLevel, the currently stored max is $maxIndexedLevel. I'll fetch the missing ${headLevel - maxIndexedLevel} blocks."
           )
-        val paginatedResults = partitionLevelsRange((maxIndexedLevel + 1) to headLevel).map(
-          page => getBlocks((headHash, headLevel), page)
-        )
+        val paginatedResults =
+          partitionLevelsRange((maxIndexedLevel + 1) to headLevel).map(page => getBlocks((headHash, headLevel), page))
         val minLevel = if (bootstrapping) 1L else maxIndexedLevel
         (paginatedResults, headLevel - minLevel)
       } else {
@@ -652,9 +650,8 @@ private[tezos] class TezosNodeOperator(
         val headHash = maxHead.data.hash
         val minLevel =
           depth.map(d => math.max(headLevel - d, maxIndexedLevel.getOrElse(1L)) + 1).filter(_ >= 1).getOrElse(1L)
-        val paginatedResults = partitionLevelsRange(minLevel to headLevel).map(
-          page => getBlocks((headHash, headLevel), page)
-        )
+        val paginatedResults =
+          partitionLevelsRange(minLevel to headLevel).map(page => getBlocks((headHash, headLevel), page))
         (paginatedResults, headLevel - minLevel + 1)
       }
 
@@ -725,6 +722,13 @@ private[tezos] class TezosNodeOperator(
         id <- balanceUpdate.contract.map(_.id).toList ::: balanceUpdate.delegate.map(_.value).toList
       } yield makeAccountId(id)
 
+    def extractAccountIdsFromImplicitOpResults(blockData: BlockData): List[AccountId] =
+      for {
+        blockHeaderMetadata <- discardGenesis(blockData.metadata).toList
+        id <- blockHeaderMetadata.implicit_operations_results.toList.flatten
+          .flatMap(_.balance_updates.flatMap(_.contract.toList))
+      } yield makeAccountId(id.id)
+
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
     /* implicitly uses:
@@ -745,11 +749,13 @@ private[tezos] class TezosNodeOperator(
     } yield {
       val operationalDataMap = fetchedOperationsWithAccounts.toMap
       val proposalsMap = proposalsState.toMap
-      fetchedBlocksData.map {
-        case (offset, md) =>
-          val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
-          val votes = proposalsMap.getOrElse(md.hash, CurrentVotes.empty)
-          (parseMichelsonScripts(Block(md, ops, votes)), (accs ::: extractAccountIds(md)).distinct)
+      fetchedBlocksData.map { case (offset, md) =>
+        val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
+        val votes = proposalsMap.getOrElse(md.hash, CurrentVotes.empty)
+        (
+          parseMichelsonScripts(Block(md, ops, votes)),
+          (accs ::: extractAccountIds(md) ::: extractAccountIdsFromImplicitOpResults(md)).distinct
+        )
       }
     }
   }
@@ -776,9 +782,10 @@ class TezosNodeSenderOperator(
     override val node: TezosRPCInterface,
     network: String,
     batchConf: BatchFetchConfiguration,
-    sodiumConf: SodiumConfiguration
+    sodiumConf: SodiumConfiguration,
+    headOffset: Option[Long]
 )(implicit executionContext: ExecutionContext)
-    extends TezosNodeOperator(node, network, batchConf)
+    extends TezosNodeOperator(node, network, batchConf, headOffset)
     with ConseilLogSupport {
   import TezosNodeOperator._
   import TezosJsonDecoders.Circe.Operations._
@@ -796,7 +803,7 @@ class TezosNodeSenderOperator(
    */
   import shapeless.HList
   import shapeless.record.Record
-  import io.circe.generic.encoding.ReprObjectEncoder._
+  import io.circe.generic.encoding.ReprAsObjectEncoder._
 
   //used in subsequent operations using Sodium
   SodiumLibrary.setLibraryPath(sodiumConf.libraryPath)

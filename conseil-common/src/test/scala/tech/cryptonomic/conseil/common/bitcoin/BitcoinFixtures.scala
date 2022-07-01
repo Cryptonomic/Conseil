@@ -248,7 +248,8 @@ trait BitcoinFixtures {
       merkleRoot = "d6118e27502a9b239c4519351c765667c86b1a4f8ff7592c367e88e4dac63e01",
       nonce = 3851572992L,
       bits = "1b0404cb",
-      difficulty = 16307.42, // TODO: there is some bug in Slick, InMemoryDatabaseSetup creates a field with DECIMAL(21,2) instead NUMERIC as it is in the conseil.sql
+      difficulty =
+        16307.42, // TODO: there is some bug in Slick, InMemoryDatabaseSetup creates a field with DECIMAL(21,2) instead NUMERIC as it is in the conseil.sql
       chainWork = "00000000000000000000000000000000000000000000000008203c8509509ae0",
       nTx = 1,
       previousBlockHash = Some("0000000000038b80cf5db1173e96f2290cfda12c505b0fe1bd37d6975e164a8a"),

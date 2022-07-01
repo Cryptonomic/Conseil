@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.discovery
 
-import endpoints.algebra
+import endpoints4s.algebra
 import tech.cryptonomic.conseil.api.routes.validation.AttributesQueryValidation
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.AttributesValidationError
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes
@@ -61,8 +61,8 @@ trait PlatformDiscoveryEndpoints
     endpoint(
       request = get(
         url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](
-                name = "entity"
-              ) / "attributes",
+          name = "entity"
+        ) / "attributes",
         headers = optRequestHeader("apiKey")
       ),
       response = ok(
@@ -79,8 +79,8 @@ trait PlatformDiscoveryEndpoints
     endpoint(
       request = get(
         url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](
-                name = "entity"
-              ) / segment[String](name = "attribute"),
+          name = "entity"
+        ) / segment[String](name = "attribute"),
         headers = optRequestHeader("apiKey")
       ),
       response = validatedAttributes[List[String]](
@@ -100,8 +100,8 @@ trait PlatformDiscoveryEndpoints
     endpoint(
       request = get(
         url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](
-                name = "entity"
-              ) / segment[String](name = "attribute") / segment[String](name = "filter"),
+          name = "entity"
+        ) / segment[String](name = "attribute") / segment[String](name = "filter"),
         headers = optRequestHeader("apiKey")
       ),
       response = validatedAttributes[List[String]](

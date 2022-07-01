@@ -23,113 +23,113 @@ class BitcoinDataOperationsTest
     with BitcoinDataOperationsTest.Fixtures {
 
   "BitcoinDataOperations" should {
-      val sut = new BitcoinDataOperations(dbConfig) {
-        override lazy val dbReadHandle = dbHandler
-      }
+    val sut = new BitcoinDataOperations(dbConfig) {
+      override lazy val dbReadHandle = dbHandler
+    }
 
-      "return proper number of blocks, while fetching all blocks" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+    "return proper number of blocks, while fetching all blocks" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
 
-        whenReady(sut.fetchBlocks(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
-      }
-
-      "return proper head block" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchBlocksHead()) { result =>
-          result.value should contain key "hash"
-          result.value("hash") shouldBe Some("hash3")
-        }
-      }
-
-      "return proper block by hash" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchBlockByHash(BitcoinBlockHash("hash2"))) { result =>
-          result.value should contain key "hash"
-          result.value("hash") shouldBe Some("hash2")
-        }
-      }
-
-      "return proper number of transactions, while fetching all transactions" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchTransactions(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
-      }
-
-      "return proper transaction by id" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchTransactionById("1")) { result =>
-          result.value should contain key "hash"
-          result.value("txid") shouldBe Some("1")
-        }
-      }
-
-      "return proper number of inputs, while fetching all inputs" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Inputs ++= inputs).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchInputs(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
-      }
-
-      "return proper number of outputs, while fetching all outputs" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Outputs ++= outputs).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchOutputs(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
-      }
-
-      "return proper number of accounts, while fetching all of accounts" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Inputs ++= inputs).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Outputs ++= outputs).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchAccounts(Query.empty)) { result =>
-          result.value.size shouldBe 3
-        }
-      }
-
-      "return proper account by address" in {
-        // given
-        dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Inputs ++= inputs).isReadyWithin(5.seconds) shouldBe true
-        dbHandler.run(Tables.Outputs ++= outputs).isReadyWithin(5.seconds) shouldBe true
-
-        whenReady(sut.fetchAccountByAddress("script_pub_key_address_2")) { result =>
-          result.value should (contain key "address" and contain value output2.scriptPubKeyAddresses)
-          result.value should (contain key "value" and contain value output2.value.map(convertAndScale(_, 2)))
-
-          // Since we are getting data for QueryResponse in generic way,
-          // we are accessing Java API which returns java data types.
-          // We need to convert and adjust scale for what we are receiving from Slick,
-          // because ScalaTest uses `==`, instead od `compareTo` for this type.
-          def convertAndScale(v: BigDecimal, s: Int): java.math.BigDecimal = v.bigDecimal.setScale(s)
-        }
+      whenReady(sut.fetchBlocks(Query.empty)) { result =>
+        result.value.size shouldBe 3
       }
     }
+
+    "return proper head block" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+
+      whenReady(sut.fetchBlocksHead()) { result =>
+        result.value should contain key "hash"
+        result.value("hash") shouldBe Some("hash3")
+      }
+    }
+
+    "return proper block by hash" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+
+      whenReady(sut.fetchBlockByHash(BitcoinBlockHash("hash2"))) { result =>
+        result.value should contain key "hash"
+        result.value("hash") shouldBe Some("hash2")
+      }
+    }
+
+    "return proper number of transactions, while fetching all transactions" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+
+      whenReady(sut.fetchTransactions(Query.empty)) { result =>
+        result.value.size shouldBe 3
+      }
+    }
+
+    "return proper transaction by id" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+
+      whenReady(sut.fetchTransactionById("1")) { result =>
+        result.value should contain key "hash"
+        result.value("txid") shouldBe Some("1")
+      }
+    }
+
+    "return proper number of inputs, while fetching all inputs" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Inputs ++= inputs).isReadyWithin(5.seconds) shouldBe true
+
+      whenReady(sut.fetchInputs(Query.empty)) { result =>
+        result.value.size shouldBe 3
+      }
+    }
+
+    "return proper number of outputs, while fetching all outputs" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Outputs ++= outputs).isReadyWithin(5.seconds) shouldBe true
+
+      whenReady(sut.fetchOutputs(Query.empty)) { result =>
+        result.value.size shouldBe 3
+      }
+    }
+
+    "return proper number of accounts, while fetching all of accounts" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Inputs ++= inputs).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Outputs ++= outputs).isReadyWithin(5.seconds) shouldBe true
+
+      whenReady(sut.fetchAccounts(Query.empty)) { result =>
+        result.value.size shouldBe 3
+      }
+    }
+
+    "return proper account by address" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocks).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Transactions ++= transactions).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Inputs ++= inputs).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Outputs ++= outputs).isReadyWithin(5.seconds) shouldBe true
+
+      whenReady(sut.fetchAccountByAddress("script_pub_key_address_2")) { result =>
+        result.value should (contain key "address" and contain value output2.scriptPubKeyAddresses)
+        result.value should (contain key "value" and contain value output2.value.map(convertAndScale(_, 2)))
+
+        // Since we are getting data for QueryResponse in generic way,
+        // we are accessing Java API which returns java data types.
+        // We need to convert and adjust scale for what we are receiving from Slick,
+        // because ScalaTest uses `==`, instead od `compareTo` for this type.
+        def convertAndScale(v: BigDecimal, s: Int): java.math.BigDecimal = v.bigDecimal.setScale(s)
+      }
+    }
+  }
 }
 
 object BitcoinDataOperationsTest {

@@ -93,8 +93,8 @@ private[tezos] object TezosDatabaseConversions {
   implicit val blockAccountsToAccountRows =
     new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsRow] {
       val toDelegateSetable: Option[AccountDelegate] => Option[Boolean] = delegate =>
-        PartialFunction.condOpt(delegate) {
-          case Some(Left(Protocol4Delegate(setable, _))) => setable
+        PartialFunction.condOpt(delegate) { case Some(Left(Protocol4Delegate(setable, _))) =>
+          setable
         }
 
       val toDelegateValue: Option[AccountDelegate] => Option[String] = delegate =>
@@ -235,9 +235,10 @@ private[tezos] object TezosDatabaseConversions {
   }
 
   //Cannot directly convert a single operation to a row, because we need the block and operation-group info to build the database row
-  implicit val operationToOperationsRow = new Conversion[Id, (Block, OperationHash, Operation), Tables.OperationsRow] {
-    override def convert(from: (Block, OperationHash, Operation)) =
-      (convertEndorsement orElse
+  implicit val operationToOperationsRow =
+    new Conversion[Id, (Block, OperationHash, Operation), Tables.OperationsRow] {
+      override def convert(from: (Block, OperationHash, Operation)) =
+        (convertEndorsement orElse
           convertEndorsementWithSlot orElse
           convertNonceRevelation orElse
           convertActivateAccount orElse
@@ -247,37 +248,42 @@ private[tezos] object TezosDatabaseConversions {
           convertDelegation orElse
           convertBallot orElse
           convertProposals orElse
+          convertRegisterGlobalConstant orElse
+          convertSetDepositsLimit orElse
           convertUnhandledOperations)(from)
-  }
+    }
 
-  private val convertEndorsementWithSlot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, EndorsementWithSlot(endorsement, metadata)) =>
-      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
-      Tables.OperationsRow(
-        operationId = 0,
-        operationGroupHash = groupHash.value,
-        kind = "endorsement_with_slot",
-        level = Some(endorsement.operations.level),
-        delegate = Some(metadata.delegate.value),
-        slots = Some(metadata.slots).map(concatenateToString),
-        blockHash = block.data.hash.value,
-        blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp),
-        internal = false,
-        cycle = TezosOptics.Blocks.extractCycle(block),
-        branch = block.operationGroups.find(h => h.hash == groupHash).map(_.branch.value),
-        numberOfSlots = Some(metadata.slots.length),
-        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
-        utcYear = year,
-        utcMonth = month,
-        utcDay = day,
-        utcTime = time,
-        forkId = Fork.mainForkId
-      )
+  private val convertEndorsementWithSlot: PartialFunction[
+    (Block, OperationHash, Operation),
+    Tables.OperationsRow
+  ] = { case (block, groupHash, EndorsementWithSlot(endorsement, metadata, blockOrder)) =>
+    val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
+    Tables.OperationsRow(
+      operationId = 0,
+      operationGroupHash = groupHash.value,
+      kind = "endorsement_with_slot",
+      level = Some(endorsement.operations.level),
+      delegate = Some(metadata.delegate.value),
+      slots = metadata.slots.map(concatenateToString),
+      operationOrder = blockOrder,
+      blockHash = block.data.hash.value,
+      blockLevel = block.data.header.level,
+      timestamp = toSql(block.data.header.timestamp),
+      internal = false,
+      cycle = TezosOptics.Blocks.extractCycle(block),
+      branch = block.operationGroups.find(h => h.hash == groupHash).map(_.branch.value),
+      numberOfSlots = metadata.slots.map(_.length),
+      period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
+      utcYear = year,
+      utcMonth = month,
+      utcDay = day,
+      utcTime = time,
+      forkId = Fork.mainForkId
+    )
   }
 
   private val convertEndorsement: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Endorsement(level, metadata)) =>
+    case (block, groupHash, Endorsement(level, metadata, blockOrder)) =>
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
@@ -285,14 +291,15 @@ private[tezos] object TezosDatabaseConversions {
         kind = "endorsement",
         level = Some(level),
         delegate = Some(metadata.delegate.value),
-        slots = Some(metadata.slots).map(concatenateToString),
+        slots = metadata.slots.map(concatenateToString),
+        operationOrder = blockOrder,
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
         cycle = TezosOptics.Blocks.extractCycle(block),
         branch = block.operationGroups.find(h => h.hash == groupHash).map(_.branch.value),
-        numberOfSlots = Some(metadata.slots.length),
+        numberOfSlots = metadata.slots.map(_.length),
         period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
@@ -303,7 +310,7 @@ private[tezos] object TezosDatabaseConversions {
   }
 
   private val convertNonceRevelation: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, SeedNonceRevelation(level, nonce, metadata)) =>
+    case (block, groupHash, SeedNonceRevelation(level, nonce, metadata, blockOrder)) =>
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
@@ -311,6 +318,7 @@ private[tezos] object TezosDatabaseConversions {
         kind = "seed_nonce_revelation",
         level = Some(level),
         nonce = Some(nonce.value),
+        operationOrder = blockOrder,
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
@@ -326,12 +334,13 @@ private[tezos] object TezosDatabaseConversions {
   }
 
   private val convertActivateAccount: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, ActivateAccount(pkh, secret, metadata)) =>
+    case (block, groupHash, ActivateAccount(pkh, secret, metadata, blockOrder)) =>
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
         kind = "activate_account",
+        operationOrder = blockOrder,
         pkh = Some(pkh.value),
         secret = Some(secret.value),
         blockHash = block.data.hash.value,
@@ -349,12 +358,13 @@ private[tezos] object TezosDatabaseConversions {
   }
 
   private val convertReveal: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Reveal(counter, fee, gas_limit, storage_limit, pk, source, metadata)) =>
+    case (block, groupHash, Reveal(counter, fee, gas_limit, storage_limit, pk, source, metadata, blockOrder)) =>
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
         kind = "reveal",
+        operationOrder = blockOrder,
         source = Some(source.value),
         fee = extractBigDecimal(fee),
         counter = extractBigDecimal(counter),
@@ -380,20 +390,21 @@ private[tezos] object TezosDatabaseConversions {
 
   private val convertTransaction: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (
-        block,
-        groupHash,
-        Transaction(
-          counter,
-          amount,
-          fee,
-          gas_limit,
-          storage_limit,
-          source,
-          destination,
-          parameters,
-          parameters_micheline,
-          metadata
-        )
+          block,
+          groupHash,
+          Transaction(
+            counter,
+            amount,
+            fee,
+            gas_limit,
+            storage_limit,
+            source,
+            destination,
+            parameters,
+            parameters_micheline,
+            metadata,
+            blockOrder
+          )
         ) =>
       /* If the parameters parsed correctly
        * - parameters will hold the michelson format
@@ -418,6 +429,7 @@ private[tezos] object TezosDatabaseConversions {
         operationId = 0,
         operationGroupHash = groupHash.value,
         kind = "transaction",
+        operationOrder = blockOrder,
         source = Some(source.value),
         fee = extractBigDecimal(fee),
         counter = extractBigDecimal(counter),
@@ -449,22 +461,23 @@ private[tezos] object TezosDatabaseConversions {
 
   private val convertOrigination: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (
-        block,
-        groupHash,
-        Origination(
-          counter,
-          fee,
-          source,
-          balance,
-          gas_limit,
-          storage_limit,
-          mpk,
-          delegatable,
-          delegate,
-          spendable,
-          script,
-          metadata
-        )
+          block,
+          groupHash,
+          Origination(
+            counter,
+            fee,
+            source,
+            balance,
+            gas_limit,
+            storage_limit,
+            mpk,
+            delegatable,
+            delegate,
+            spendable,
+            script,
+            metadata,
+            blockOrder
+          )
         ) =>
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
@@ -472,6 +485,7 @@ private[tezos] object TezosDatabaseConversions {
         operationGroupHash = groupHash.value,
         kind = "origination",
         delegate = delegate.map(_.value),
+        operationOrder = blockOrder,
         source = Some(source.value),
         fee = extractBigDecimal(fee),
         counter = extractBigDecimal(counter),
@@ -505,13 +519,18 @@ private[tezos] object TezosDatabaseConversions {
   }
 
   private val convertDelegation: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Delegation(counter, source, fee, gas_limit, storage_limit, delegate, metadata)) =>
+    case (
+          block,
+          groupHash,
+          Delegation(counter, source, fee, gas_limit, storage_limit, delegate, metadata, blockOrder)
+        ) =>
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
         kind = "delegation",
         delegate = delegate.map(_.value),
+        operationOrder = blockOrder,
         source = Some(source.value),
         fee = extractBigDecimal(fee),
         counter = extractBigDecimal(counter),
@@ -534,13 +553,86 @@ private[tezos] object TezosDatabaseConversions {
       )
   }
 
+  private val convertRegisterGlobalConstant: PartialFunction[
+    (Block, OperationHash, Operation),
+    Tables.OperationsRow
+  ] = {
+    case (
+          block,
+          groupHash,
+          RegisterGlobalConstant(source, fee, counter, gas_limit, storage_limit, value, blockOrder, metadata)
+        ) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
+      Tables.OperationsRow(
+        operationId = 0,
+        operationGroupHash = groupHash.value,
+        kind = "register_global_constant",
+        operationOrder = blockOrder,
+        source = source.map(_.id),
+        fee = extractBigDecimal(fee),
+        counter = extractBigDecimal(counter),
+        gasLimit = extractBigDecimal(gas_limit),
+        storageLimit = extractBigDecimal(storage_limit),
+        status = Some(metadata.operation_result.status),
+        consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false,
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time,
+        forkId = Fork.mainForkId
+      )
+  }
+
+  private val convertSetDepositsLimit: PartialFunction[
+    (Block, OperationHash, Operation),
+    Tables.OperationsRow
+  ] = {
+    case (
+          block,
+          groupHash,
+          SetDepositsLimit(source, fee, counter, gas_limit, storage_limit, limit, blockOrder, metadata)
+        ) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
+      Tables.OperationsRow(
+        operationId = 0,
+        operationGroupHash = groupHash.value,
+        kind = "set_deposits_limit",
+        operationOrder = blockOrder,
+        source = source.map(_.id),
+        fee = extractBigDecimal(fee),
+        counter = extractBigDecimal(counter),
+        gasLimit = extractBigDecimal(gas_limit),
+        storageLimit = extractBigDecimal(storage_limit),
+        status = Some(metadata.operation_result.status),
+        consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false,
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time,
+        forkId = Fork.mainForkId
+      )
+  }
+
   private val convertBallot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Ballot(ballot, proposal, source, ballotPeriod)) =>
+    case (block, groupHash, Ballot(ballot, proposal, source, ballotPeriod, blockOrder)) =>
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
         kind = "ballot",
+        operationOrder = blockOrder,
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
@@ -560,12 +652,13 @@ private[tezos] object TezosDatabaseConversions {
   }
 
   private val convertProposals: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Proposals(source, ballotPeriod, proposals)) =>
+    case (block, groupHash, Proposals(source, ballotPeriod, proposals, blockOrder)) =>
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
         kind = "proposals",
+        operationOrder = blockOrder,
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
@@ -584,30 +677,40 @@ private[tezos] object TezosDatabaseConversions {
 
   }
 
-  private val convertUnhandledOperations: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, op) =>
-      val kind = op match {
-        case DoubleEndorsementEvidence => "double_endorsement_evidence"
-        case DoubleBakingEvidence => "double_baking_evidence"
-        case _ => ""
-      }
-      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
-      Tables.OperationsRow(
-        operationId = 0,
-        operationGroupHash = groupHash.value,
-        kind = kind,
-        blockHash = block.data.hash.value,
-        blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp),
-        internal = false,
-        cycle = TezosOptics.Blocks.extractCycle(block),
-        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
-        utcYear = year,
-        utcMonth = month,
-        utcDay = day,
-        utcTime = time,
-        forkId = Fork.mainForkId
-      )
+  private val convertUnhandledOperations: PartialFunction[
+    (Block, OperationHash, Operation),
+    Tables.OperationsRow
+  ] = { case (block, groupHash, op) =>
+    val kind = op match {
+      case DoubleEndorsementEvidence(_) => "double_endorsement_evidence"
+      case DoublePreendorsementEvidence(_) => "double_preendorsement_evidence"
+      case DoubleBakingEvidence(_) => "double_baking_evidence"
+      case _: TxRollupOrigination => "tx_rollup_origination"
+      case _: TxRollupSubmitBatch => "tx_rollup_submit_batch"
+      case _: TxRollupCommit => "tx_rollup_commit"
+      case _: TxRollupFinalizeCommitment => "tx_rollup_finalize_commitment"
+      case _: TxRollupDispatchTickets => "tx_rollup_dispatch_ticket"
+      case DefaultOperation(kind, _) => kind
+      case _ => ""
+    }
+    val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
+    Tables.OperationsRow(
+      operationId = 0,
+      operationGroupHash = groupHash.value,
+      kind = kind,
+      operationOrder = op.blockOrder,
+      blockHash = block.data.hash.value,
+      blockLevel = block.data.header.level,
+      timestamp = toSql(block.data.header.timestamp),
+      internal = false,
+      cycle = TezosOptics.Blocks.extractCycle(block),
+      period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
+      utcYear = year,
+      utcMonth = month,
+      utcDay = day,
+      utcTime = time,
+      forkId = Fork.mainForkId
+    )
   }
 
   /** Not all operations have some form of balance updates... we're ignoring some type, like double_x_evidence,
@@ -619,8 +722,7 @@ private[tezos] object TezosDatabaseConversions {
     * @param balances an optic instance that lets extract the Map of tagged updates from the source
     * @param hashing an optic instance to extract an optional reference hash value
     */
-  implicit def anyToBalanceUpdates[T, Label](
-      implicit
+  implicit def anyToBalanceUpdates[T, Label](implicit
       balances: Getter[T, Map[BlockTagged[Label], List[OperationMetadata.BalanceUpdate]]],
       hashing: Getter[T, Option[String]],
       showing: Show[Label]
@@ -630,26 +732,24 @@ private[tezos] object TezosDatabaseConversions {
     override def convert(from: T) =
       balances
         .get(from)
-        .flatMap {
-          case (BlockTagged(BlockReference(blockHash, blockLevel, _, cycle, period), tag), updates) =>
-            updates.map {
-              case OperationMetadata.BalanceUpdate(kind, change, category, contract, delegate, level) =>
-                Tables.BalanceUpdatesRow(
-                  id = 0,
-                  source = tag.show,
-                  sourceHash = hashing.get(from),
-                  kind = kind,
-                  accountId = contract.map(_.id).orElse(delegate.map(_.value)).getOrElse("N/A"),
-                  change = BigDecimal(change),
-                  level = level,
-                  category = category,
-                  blockId = blockHash.value,
-                  blockLevel = blockLevel,
-                  cycle = cycle,
-                  period = period,
-                  forkId = Fork.mainForkId
-                )
-            }
+        .flatMap { case (BlockTagged(BlockReference(blockHash, blockLevel, _, cycle, period), tag), updates) =>
+          updates.map { case OperationMetadata.BalanceUpdate(kind, change, category, contract, delegate, level, _) =>
+            Tables.BalanceUpdatesRow(
+              id = 0,
+              source = tag.show,
+              sourceHash = hashing.get(from),
+              kind = kind,
+              accountId = contract.map(_.id).orElse(delegate.map(_.value)).getOrElse("N/A"),
+              change = extractBigDecimal(change).getOrElse(BigDecimal(0L)), // just for tests consistency
+              level = level,
+              category = category,
+              blockId = blockHash.value,
+              blockLevel = blockLevel,
+              cycle = cycle,
+              period = period,
+              forkId = Fork.mainForkId
+            )
+          }
         }
         .toList
   }
@@ -657,7 +757,8 @@ private[tezos] object TezosDatabaseConversions {
   /** Utility alias when we need to keep related data paired together */
   type OperationTablesData = (Tables.OperationsRow, List[Tables.BalanceUpdatesRow])
 
-  /** */
+  /**
+    */
   implicit val internalOperationResultToOperation =
     new Conversion[Id, InternalOperationResults.InternalOperationResult, Operation] {
       override def convert(from: InternalOperationResults.InternalOperationResult): Id[Operation] =
@@ -671,7 +772,7 @@ private[tezos] object TezosDatabaseConversions {
               .withFieldConst(_.fee, InvalidPositiveDecimal("Discarded"))
               .withFieldConst(_.gas_limit, InvalidPositiveDecimal("Discarded"))
               .withFieldConst(_.storage_limit, InvalidPositiveDecimal("Discarded"))
-              .withFieldConst(_.metadata, ResultMetadata[OperationResult.Reveal](reveal.result, List.empty, None))
+              .withFieldConst(_.metadata, ResultMetadata[OperationResult.Reveal](reveal.result, None, None))
               .transform
           case transaction: InternalOperationResults.Transaction =>
             transaction
@@ -684,7 +785,7 @@ private[tezos] object TezosDatabaseConversions {
                 _.metadata,
                 ResultMetadata[OperationResult.Transaction](
                   transaction.result,
-                  transaction.result.balance_updates.getOrElse(List.empty),
+                  transaction.result.balance_updates,
                   None
                 )
               )
@@ -701,7 +802,7 @@ private[tezos] object TezosDatabaseConversions {
                 _.metadata,
                 ResultMetadata[OperationResult.Origination](
                   origination.result,
-                  origination.result.balance_updates.getOrElse(List.empty),
+                  origination.result.balance_updates,
                   None
                 )
               )
@@ -716,7 +817,7 @@ private[tezos] object TezosDatabaseConversions {
               .withFieldConst(_.storage_limit, InvalidPositiveDecimal("Discarded"))
               .withFieldConst(
                 _.metadata,
-                ResultMetadata[OperationResult.Delegation](delegation.result, List.empty, None)
+                ResultMetadata[OperationResult.Delegation](delegation.result, None, None)
               )
               .transform
         }
@@ -736,24 +837,22 @@ private[tezos] object TezosDatabaseConversions {
     override def convert(from: Block) =
       TezosOptics.Blocks
         .extractOperationsAlongWithInternalResults(from)
-        .flatMap {
-          case (group, (operations, internalResults)) =>
-            val mainOperationData = operations.map(
-              op =>
-                (from, group.hash, op).convertTo[Tables.OperationsRow] ->
-                    BlockTagged
-                      .fromBlockData(from.data, op)
-                      .convertToA[List, Tables.BalanceUpdatesRow]
-            )
-            val internalOperationData = internalResults.map { oop =>
-              val op = oop.convertTo[Operation]
-              (from, group.hash, op)
-                .convertTo[Tables.OperationsRow]
-                .copy(internal = true, nonce = Some(oop.nonce.toString)) -> BlockTagged
+        .flatMap { case (group, (operations, internalResults)) =>
+          val mainOperationData = operations.map(op =>
+            (from, group.hash, op).convertTo[Tables.OperationsRow] ->
+              BlockTagged
                 .fromBlockData(from.data, op)
                 .convertToA[List, Tables.BalanceUpdatesRow]
-            }
-            mainOperationData ++ internalOperationData
+          )
+          val internalOperationData = internalResults.map { case oop =>
+            val op = oop.convertTo[Operation]
+            (from, group.hash, op)
+              .convertTo[Tables.OperationsRow]
+              .copy(internal = true, nonce = Some(oop.nonce.toString)) -> BlockTagged
+              .fromBlockData(from.data, op)
+              .convertToA[List, Tables.BalanceUpdatesRow]
+          }
+          mainOperationData ++ internalOperationData
         }
         .toList
 
@@ -769,15 +868,14 @@ private[tezos] object TezosDatabaseConversions {
           from: (TezosBlockHash, BlockLevel, Option[Instant], Option[Int], Option[Int], List[AccountId])
       ) = {
         val (blockHash, blockLevel, timestamp, cycle, _, ids) = from
-        ids.map(
-          accountId =>
-            Tables.AccountsCheckpointRow(
-              accountId = accountId.value,
-              blockId = blockHash.value,
-              blockLevel = blockLevel,
-              asof = Timestamp.from(timestamp.getOrElse(Instant.ofEpochMilli(0))),
-              cycle = cycle
-            )
+        ids.map(accountId =>
+          Tables.AccountsCheckpointRow(
+            accountId = accountId.value,
+            blockId = blockHash.value,
+            blockLevel = blockLevel,
+            asof = Timestamp.from(timestamp.getOrElse(Instant.ofEpochMilli(0))),
+            cycle = cycle
+          )
         )
       }
 
@@ -793,15 +891,14 @@ private[tezos] object TezosDatabaseConversions {
           from: (TezosBlockHash, BlockLevel, Option[Instant], Option[Int], Option[Int], List[PublicKeyHash])
       ) = {
         val (blockHash, blockLevel, _, cycle, period, pkhs) = from
-        pkhs.map(
-          keyHash =>
-            Tables.BakersCheckpointRow(
-              delegatePkh = keyHash.value,
-              blockId = blockHash.value,
-              blockLevel = blockLevel,
-              cycle = cycle,
-              period = period
-            )
+        pkhs.map(keyHash =>
+          Tables.BakersCheckpointRow(
+            delegatePkh = keyHash.value,
+            blockId = blockHash.value,
+            blockLevel = blockLevel,
+            cycle = cycle,
+            period = period
+          )
         )
       }
 
@@ -851,7 +948,7 @@ private[tezos] object TezosDatabaseConversions {
           blockHash = Some(fetchKey.blockHash.value),
           blockLevel = bakingRights.level,
           delegate = bakingRights.delegate,
-          priority = bakingRights.priority,
+          priority = bakingRights.priority.orElse(bakingRights.round).get,
           estimatedTime = bakingRights.estimated_time.map(toSql),
           cycle = fetchKey.cycle,
           governancePeriod = fetchKey.governancePeriod,
@@ -887,7 +984,7 @@ private[tezos] object TezosDatabaseConversions {
         blockHash = None,
         blockLevel = from.level,
         delegate = from.delegate,
-        priority = from.priority,
+        priority = from.priority.orElse(from.round).get,
         estimatedTime = from.estimated_time.map(toSql),
         cycle = from.cycle,
         governancePeriod = from.governancePeriod,

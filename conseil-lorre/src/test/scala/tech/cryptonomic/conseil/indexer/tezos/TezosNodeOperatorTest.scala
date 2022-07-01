@@ -24,111 +24,37 @@ class TezosNodeOperatorTest
   import ExecutionContext.Implicits.global
 
   "getBlock" should "correctly fetch the genesis block" in {
-      //given
-      val tezosRPCInterface = stub[TezosRPCInterface]
-      val blockResponse = Future.successful(TezosResponseBuilder.genesisBlockResponse)
-      val genesisHash = TezosBlockHash("BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe")
+    //given
+    val tezosRPCInterface = stub[TezosRPCInterface]
+    val blockResponse = Future.successful(TezosResponseBuilder.genesisBlockResponse)
+    val genesisHash = TezosBlockHash("BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe")
 
-      /* the node call to get the genesis block, by hash */
-      (tezosRPCInterface.runAsyncGetQuery _)
-        .when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe~")
-        .returns(blockResponse)
+    /* the node call to get the genesis block, by hash */
+    (tezosRPCInterface.runAsyncGetQuery _)
+      .when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe")
+      .returns(blockResponse)
 
-      val sut: TezosNodeOperator =
-        new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig)
+    val sut: TezosNodeOperator =
+      new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig, Fixtures.headOffset)
 
-      //when
-      val block: Future[TezosTypes.Block] = sut.getBlock(genesisHash)
+    //when
+    val block: Future[TezosTypes.Block] = sut.getBlock(genesisHash)
 
-      //then
-      block.futureValue.data.hash shouldBe genesisHash
-      block.futureValue.data.metadata shouldBe GenesisMetadata
-      block.futureValue.operationGroups shouldBe empty
-      block.futureValue.votes shouldBe TezosTypes.CurrentVotes.empty
-    }
-
-  "getLatestBlocks" should "correctly fetch all the blocks if no depth is passed-in" in {
-      //given
-      val tezosRPCInterface = Fixtures.mockNodeInterface()
-
-      val sut: TezosNodeOperator =
-        new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig)
-
-      //when
-      val blockPages: Future[sut.PaginatedBlocksResults] = sut.getLatestBlocks()
-
-      //then
-      val (pages, total) = blockPages.futureValue
-      total shouldBe 3
-      val results = pages.toList
-      results should have length 1
-      results.head.futureValue should have length 1
-
-    }
-
-  "getLatestBlocks" should "correctly fetch latest blocks" in {
-      //given
-      val tezosRPCInterface = Fixtures.mockNodeInterface()
-
-      val sut: TezosNodeOperator =
-        new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig)
-
-      //when
-      val blockPages: Future[sut.PaginatedBlocksResults] = sut.getLatestBlocks(Some(1))
-
-      //then
-      val (pages, total) = blockPages.futureValue
-      total shouldBe 1
-      val results = pages.toList
-      results should have length 1
-      results.head.futureValue should have length 1
-    }
-
-  "getLatestBlocks" should "correctly fetch blocks starting from a given head" in {
-      //given
-      val tezosRPCInterface =
-        Fixtures.mockNodeInterface(blockReferenceHash = "BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c")
-      val sut: TezosNodeOperator =
-        new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig)
-
-      //when
-      val blockPages: Future[sut.PaginatedBlocksResults] =
-        sut.getLatestBlocks(Some(1), Some(TezosBlockHash("BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c")))
-
-      //then
-      val (pages, total) = blockPages.futureValue
-      total shouldBe 1
-      val results = pages.toList
-      results should have length 1
-      results.head.futureValue should have length 1
-    }
-
-  "getBlocksNotInDatabase" should "correclty fetch blocks from head down to the reported indexed level" in {
-      //given
-      val tezosRPCInterface = Fixtures.mockNodeInterface()
-
-      /* we simulate that blocks up to level 2 are already stored
-       * since the head has level 3, only 1 block is expected
-       */
-      val sut: TezosNodeOperator =
-        new TezosNodeOperator(tezosRPCInterface, "zeronet", Fixtures.batchConfig)
-
-      //when
-      val blockPages: Future[sut.PaginatedBlocksResults] = sut.getBlocksNotInDatabase(maxIndexedLevel = 2)
-
-      //then
-      val (pages, total) = blockPages.futureValue
-      total shouldBe 1
-      val results = pages.toList
-      results should have length 1
-      results.head.futureValue should have length 1
-    }
+    //then
+    block.futureValue.data.hash shouldBe genesisHash
+    block.futureValue.data.metadata shouldBe GenesisMetadata
+    block.futureValue.operationGroups shouldBe empty
+    block.futureValue.votes shouldBe TezosTypes.CurrentVotes.empty
+  }
 
   /* provides prebuilt data for the test execution */
   private object Fixtures {
 
     /* default configuration for fetch batching */
     val batchConfig = BatchFetchConfiguration(1, 1, 500, 10 seconds, 10 seconds, 10 seconds)
+
+    /* Default configuration for head offset */
+    val headOffset: Option[Long] = None
 
     /* mocks the rpc interface with proper responses based on the expected reference [head] block hash
      * as given by the parameter
@@ -189,29 +115,28 @@ class TezosNodeOperatorTest
        */
       (tezosRPCInterface.runBatchedGetQuery[Any] _)
         .when("zeronet", *, *, *)
-        .onCall(
-          (_, input, command, _) =>
-            Future.successful(
-              List(
-                //dirty trick to find the type of input content and provide the appropriate response
-                input match {
-                  /* A list of numbers represent offsets from the head block */
-                  case (_: Long) :: tail => (0, TezosResponseBuilder.batchedGetBlockQueryResponse)
-                  /* A list of hashes whose url matches operations requests for those blocks */
-                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "operations" =>
-                    (hash, TezosResponseBuilder.batchedGetOperationsQueryResponse)
-                  /* A list of hashes whose url matches the voting period kind requests for those blocks */
-                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "votes/current_period_kind" =>
-                    (hash, TezosResponseBuilder.votesPeriodKind)
-                  /* A list of hashes whose url matches quorum requests for those blocks */
-                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "votes/current_quorum" =>
-                    (hash, TezosResponseBuilder.votesQuorum)
-                  /* A list of hashes whose url matches current proposal requests for those blocks */
-                  case (hash: TezosBlockHash) :: tail if command(hash) endsWith "votes/current_proposal" =>
-                    (hash, TezosResponseBuilder.votesProposal)
-                }
-              )
+        .onCall((_, input, command, _) =>
+          Future.successful(
+            List(
+              //dirty trick to find the type of input content and provide the appropriate response
+              input match {
+                /* A list of numbers represent offsets from the head block */
+                case (_: Long) :: tail => (0, TezosResponseBuilder.batchedGetBlockQueryResponse)
+                /* A list of hashes whose url matches operations requests for those blocks */
+                case (hash: TezosBlockHash) :: tail if command(hash) endsWith "operations" =>
+                  (hash, TezosResponseBuilder.batchedGetOperationsQueryResponse)
+                /* A list of hashes whose url matches the voting period kind requests for those blocks */
+                case (hash: TezosBlockHash) :: tail if command(hash) endsWith "votes/current_period_kind" =>
+                  (hash, TezosResponseBuilder.votesPeriodKind)
+                /* A list of hashes whose url matches quorum requests for those blocks */
+                case (hash: TezosBlockHash) :: tail if command(hash) endsWith "votes/current_quorum" =>
+                  (hash, TezosResponseBuilder.votesQuorum)
+                /* A list of hashes whose url matches current proposal requests for those blocks */
+                case (hash: TezosBlockHash) :: tail if command(hash) endsWith "votes/current_proposal" =>
+                  (hash, TezosResponseBuilder.votesProposal)
+              }
             )
+          )
         )
 
       tezosRPCInterface

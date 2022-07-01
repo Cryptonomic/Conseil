@@ -4,8 +4,12 @@ import java.util.concurrent.Executors
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import cats.effect.unsafe.implicits.global
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.FiniteDuration
+
 import cats.effect.{IO, Resource}
-import org.http4s.client.blaze.BlazeClientBuilder
+import org.http4s.blaze.client.BlazeClientBuilder
 import org.http4s.client.middleware.Retry
 import slick.jdbc.PostgresProfile.api._
 import slickeffect.Transactor
@@ -43,20 +47,9 @@ class EthereumIndexer(
   private val httpExecutor = Executors.newFixedThreadPool(ethereumConf.batching.httpFetchThreadsCount)
 
   /**
-    * [[cats.ContextShift]] is the equivalent to [[ExecutionContext]],
-    * it's used by the Cats Effect related methods.
-    */
-  implicit private val contextShift = IO.contextShift(ExecutionContext.fromExecutor(indexerExecutor))
-
-  /**
     * [[ExecutionContext]] for the Lorre indexer.
     */
   private val indexerEC = ExecutionContext.fromExecutor(indexerExecutor)
-
-  /**
-    * The timer to schedule continuous indexer runs.
-    */
-  implicit private val timer = IO.timer(indexerEC)
 
   /**
     * Dedicated [[ExecutionContext]] for the http4s.
@@ -83,18 +76,17 @@ class EthereumIndexer(
       } yield ()
 
     indexer
-      .use(
-        ethereumOperations =>
-          repeatEvery(lorreConf.sleepInterval) {
+      .use(ethereumOperations =>
+        repeatEvery(lorreConf.sleepInterval) {
 
-            /**
-              * Place with all the computations for the Ethereum.
-              * Currently, it only contains the blocks. But it can be extended to
-              * handle multiple computations.
-              */
-            IO.delay(logger.info("Start Lorre for Ethereum")) *>
-              ethereumOperations.loadBlocksAndLogs(lorreConf.depth, lorreConf.headHash).compile.drain
-          }
+          /**
+            * Place with all the computations for the Ethereum.
+            * Currently, it only contains the blocks. But it can be extended to
+            * handle multiple computations.
+            */
+          IO.delay(logger.info("Start Lorre for Ethereum")) *>
+            ethereumOperations.loadBlocksAndLogs(lorreConf.depth, lorreConf.headHash).compile.drain
+        }
       )
       .unsafeRunSync()
   }

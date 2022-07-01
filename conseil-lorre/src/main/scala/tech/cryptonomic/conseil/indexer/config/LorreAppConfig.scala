@@ -3,12 +3,13 @@ package tech.cryptonomic.conseil.indexer.config
 import com.github.ghik.silencer.silent
 import com.typesafe.config.Config
 import pureconfig._
-import pureconfig.error.{ConfigReaderFailure, ConfigReaderFailures, ConfigValueLocation, ThrowableFailure}
+import pureconfig.error._
 import pureconfig.generic.auto._
-import pureconfig.generic.{EnumCoproductHint, FieldCoproductHint}
+import pureconfig.generic.FieldCoproductHint
 import scopt.{OptionParser, Read}
 import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.config.{PlatformConfiguration => _, _}
+import tech.cryptonomic.conseil.indexer.config.ConfigUtil.Depth._
 
 import scala.util.{Success, Try}
 
@@ -16,14 +17,6 @@ import scala.util.{Success, Try}
 trait LorreAppConfig {
   import LorreAppConfig.Loaders._
   import LorreAppConfig._
-
-  /* used by scopt to parse the depth object */
-  implicit private val depthRead: Read[Option[Depth]] = Read.reads {
-    case "-1" | "all" => Some(Everything)
-    case "0" | "new" => Some(Newest)
-    case Natural(n) => Some(Custom(n))
-    case _ => None
-  }
 
   /* used by scopt to parse the blockchain platform object */
   implicit private val platformRead: Read[BlockchainPlatform] = Read.reads { str =>
@@ -80,30 +73,41 @@ trait LorreAppConfig {
     def readArgs(args: Array[String]): ConfigReader.Result[ArgumentsConfig] =
       argsParser.parse(args, ArgumentsConfig()).toRight[ConfigReaderFailures](sys.exit(1))
 
-    @silent("local val depthHint in method loadApplicationConfiguration is never used")
-    implicit val depthHint: EnumCoproductHint[Depth] = new EnumCoproductHint[Depth]
     @silent("local val chainEventHint in method loadApplicationConfiguration is never used")
     implicit val chainEventHint: FieldCoproductHint[ChainEvent] = new FieldCoproductHint[ChainEvent]("type") {
       override def fieldValue(name: String): String = name.head.toLower +: name.tail
     }
+    @silent("local val lorreConfigHint in method loadApplicationConfiguration is never used")
+    implicit val lorreConfigHint = new FieldCoproductHint[LorreConfigurationHelper]("type") {
+      override protected def fieldValue(name: String): String = name.take(name.length - "Helper".length).toLowerCase
+    }
+    @silent("local val lorreConfigReader in method loadApplicationConfiguration is never used")
+    implicit val lorreConfigReader: ConfigReader[LorreConfiguration] =
+      ConfigReader[LorreConfigurationHelper].map(_.toConf)
 
     val loadedConf = for {
       args <- readArgs(commandLineArgs)
       ArgumentsConfig(depth, verbose, headHash, platform, network) = args
-      lorre <- loadConfig[LorreConfiguration](namespace = "lorre").map(_.copy(depth = depth, headHash = headHash))
+      lorre <- loadConfig[LorreConfiguration](namespace = "lorre").map { conf =>
+        /** In general, [[ArgumentsConfig]] should take precedence over [[LorreConfiguration]] */
+        if (depth == Newest && headHash.isDefined) conf.copy(headHash = headHash)
+        else if (depth != Newest) {
+          if (!headHash.isDefined) conf.copy(depth = depth)
+          else conf.copy(depth = depth, headHash = headHash)
+        } else conf
+      }
       nodeRequests <- loadConfig[NetworkCallsConfiguration]("lorre")
       platform <- loadPlatformConfiguration(platform.name, network)
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.streaming-client")
       fetching <- loadConfig[BatchFetchConfiguration](namespace = "lorre.batched-fetches")
-    } yield
-      CombinedConfiguration(
-        lorre,
-        platform,
-        nodeRequests,
-        streamingClient,
-        fetching,
-        VerboseOutput(verbose)
-      )
+    } yield CombinedConfiguration(
+      lorre,
+      platform,
+      nodeRequests,
+      streamingClient,
+      fetching,
+      VerboseOutput(verbose)
+    )
 
     //something went wrong
     loadedConf.left.foreach { failures =>
@@ -128,14 +132,10 @@ object LorreAppConfig {
       verbose: VerboseOutput
   )
 
-  /** Used to pattern match on natural numbers */
-  private[config] object Natural {
-    def unapply(s: String): Option[Int] = util.Try(s.toInt).filter(_ > 0).toOption
-  }
-
   private[config] object Loaders extends PlatformConfigurationHint {
 
-    /*** Reads a specific platform configuration based on given 'platform' and 'network' */
+    /** * Reads a specific platform configuration based on given 'platform' and 'network'
+      */
     def loadPlatformConfiguration(
         platform: String,
         network: String,
@@ -151,6 +151,7 @@ object LorreAppConfig {
             case Some(platformsConfig) if platformsConfig.enabled => Right(platformsConfig)
             case Some(platformsConfig) if !platformsConfig.enabled =>
               Left(ConfigReaderFailures(new ConfigReaderFailure {
+
                 override def description: String =
                   s"Could not run Lorre for platform: $platform, network: $network because this network is disabled"
                 override def location: Option[ConfigValueLocation] = None
@@ -190,10 +191,9 @@ object LorreAppConfig {
             .getConfig(namespace)
             .atPath(referenceEntryPath) //puts the config entry where expected by akka
             .withFallback(rootConfig) //adds default values, where not overriden
-            .ensuring(
-              endConfig =>
-                //verifies all expected entries are there
-                Try(endConfig.checkValid(rootConfig.getConfig(referenceEntryPath), referenceEntryPath)).isSuccess
+            .ensuring(endConfig =>
+              //verifies all expected entries are there
+              Try(endConfig.checkValid(rootConfig.getConfig(referenceEntryPath), referenceEntryPath)).isSuccess
             )
         ).toEither.left.map {
           //wraps the error into pureconfig's one

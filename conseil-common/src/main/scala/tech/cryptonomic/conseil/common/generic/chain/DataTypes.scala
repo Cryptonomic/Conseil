@@ -51,7 +51,7 @@ object DataTypes {
   /** Attribute shouldn't be queried because it is of a type that we forbid to query */
   case class InvalidAttributeDataType(message: String) extends AttributesValidationError
 
-  /** Attribute values should not be listed because minimal length is greater than filter length for given column  */
+  /** Attribute values should not be listed because minimal length is greater than filter length for given column */
   case class InvalidAttributeFilterLength(message: String, minMatchLength: Int) extends AttributesValidationError
 
   /** Class which contains output type with the response */
@@ -79,7 +79,7 @@ object DataTypes {
 
     /** Method creating Predicate out of ApiPredicate which is received by the API */
     def toPredicate: Predicate =
-      Predicate("tmp", OperationType.in).patchWith(this)
+      Predicate("tmp", OperationType.in).patchUsing(this)
   }
 
   /** Class representing query ordering */
@@ -156,7 +156,7 @@ object DataTypes {
 
     /** Transforms Aggregation predicate received form API into AggregationPredicate */
     def toAggregationPredicate: AggregationPredicate =
-      AggregationPredicate(operation = OperationType.in).patchWith(this)
+      AggregationPredicate(operation = OperationType.in).patchUsing(this)
   }
 
   /** Aggregation that is received by the API */
@@ -203,7 +203,7 @@ object DataTypes {
       )
   }
 
-  /** Finds invalid snapshot fields*/
+  /** Finds invalid snapshot fields */
   def findInvalidSnapshotFields(
       query: Query,
       entity: EntityPath,
@@ -214,9 +214,8 @@ object DataTypes {
 
     query.snapshot.foldMap { snapshot =>
       metadataConfiguration.entity(entity).flatMap { entityCfg =>
-        entityCfg.attributes.find {
-          case (k, v) =>
-            k == snapshot.field && v.temporalColumn.getOrElse(false)
+        entityCfg.attributes.find { case (k, v) =>
+          k == snapshot.field && v.temporalColumn.getOrElse(false)
         }
       } match {
         case Some(_) => List.empty
@@ -243,13 +242,23 @@ object DataTypes {
     val in, between, like, lt, gt, eq, startsWith, endsWith, before, after, isnull = Value
   }
 
+  /** Helps with changing camel case to snake case */
+  object StringHelper {
+
+    /** Helper regex */
+    private val separatees = "[a-z](?=[A-Z])|[0-9](?=[a-zA-Z])|[A-Z](?=[A-Z][a-z])|[a-zA-Z](?=[0-9])".r
+
+    /** Helper method for converting camel case to snake case */
+    def camel2Snake(s: String): String = separatees.replaceAllIn(s, _.group(0) + '_').toLowerCase
+  }
+
   /** Enumeration of aggregation functions */
   object AggregationType extends Enumeration {
 
     /** Helper method for extracting prefixes needed for SQL */
-    def prefixes: List[String] = values.toList.map(_.toString + "_")
+    def prefixes: List[String] = values.toList.map(x => StringHelper.camel2Snake(x.toString) + "_")
     type AggregationType = Value
-    val sum, count, max, min, avg, countDistinct = Value
+    val countDistinct, sum, count, max, min, avg = Value
   }
 
   /** Enumeration of aggregation functions */

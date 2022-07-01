@@ -1,0 +1,64 @@
+[
+  {
+    "title": "Top accounts",
+    "variables": "",
+    "path": "/v2/data/tezos/#S.network##/accounts",
+    "query": {
+      "fields": ["account_id", "balance"],
+      "predicates": [],
+      "orderBy": [
+        {
+          "field": "balance",
+          "direction": "desc"
+        }
+      ],
+      "aggregation": [],
+      "limit": 50,
+      "output": "json"
+    },
+    "check": [
+      {
+        "node": "/chains/main/blocks/#S.clevel##/context/contracts/#Q.account_id##/balance",
+        "operation": {
+	  "type": "compare",
+          "relation": "1:N",
+          "op": "eq",
+          "field_1": "N.out",
+          "field_2": "Q.balance",
+          "error": "The balance does not  match for #Q.account_id##, percentage difference #Math.10 (Q.balance - N.out) / N.out  * 100##%",
+	  "ok" : "The Balances returned by Conseil and the Tezos Node Match"
+        }
+      }    ]
+  } ,
+  {
+    "title": "Top accounts",
+    "variables": "",
+    "path": "/v2/data/tezos/#S.network##/accounts",
+    "query": {
+      "fields": ["account_id", "balance"],
+      "predicates": [],
+      "orderBy": [
+        {
+          "field": "balance",
+          "direction": "desc"
+        }
+      ],
+      "aggregation": [],
+      "limit": 50,
+      "output": "json"
+    },
+    "check": [
+      {
+        "node": "/chains/main/blocks/#S.clevel##/context/contracts/#Q.account_id##/balance",
+        "operation": {
+	  "type": "compare",
+          "relation": "1:N",
+          "op": "eq",
+          "field_1": "N.out",
+          "field_2": "Math.10 bad_balance = Q.balance * .90, bad_balance",
+          "error": "Expected, this test should Fail . percentage difference #Math.. (bad_balance - N.out) / N.out  * 100##%",
+	  "ok" : "You should Not See this Test succeed"
+        }
+      }    ]
+  } 
+]

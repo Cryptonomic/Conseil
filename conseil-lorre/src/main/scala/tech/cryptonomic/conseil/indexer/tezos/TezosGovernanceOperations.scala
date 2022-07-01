@@ -48,7 +48,7 @@ object TezosGovernanceOperations extends ConseilLogSupport {
     * @param nay how many nays
     * @param pass how many passes
     */
-  case class VoteRollsCounts(yay: Int, nay: Int, pass: Int)
+  case class VoteRollsCounts(yay: Long, nay: Long, pass: Long)
 
   object VoteRollsCounts {
 
@@ -157,8 +157,8 @@ object TezosGovernanceOperations extends ConseilLogSupport {
       activeProposalsBlocks: Map[Block, Option[ProtocolId]],
       activeProposalsBallots: Map[Block, List[Voting.Ballot]],
       rollsByLevel: Map[BlockLevel, List[Voting.BakerRolls]]
-  )(
-      implicit ec: ExecutionContext
+  )(implicit
+      ec: ExecutionContext
   ): Future[List[GovernanceAggregate]] = {
     import TezosOptics.Blocks._
 
@@ -188,8 +188,8 @@ object TezosGovernanceOperations extends ConseilLogSupport {
     val cycles = activeProposalsBlocks.keys
       .filter(votingPeriodIn(ballotPeriods))
       .map(_.data.metadata)
-      .collect {
-        case md: BlockHeaderMetadata => extractCycle(md).get
+      .collect { case md: BlockHeaderMetadata =>
+        extractCycle(md).get
       }
       .toList
       .distinct
@@ -226,16 +226,15 @@ object TezosGovernanceOperations extends ConseilLogSupport {
       cycleCountsMap <- cycleBallotCountsResult
       proposalCounts <- proposalCountsResult
       previousBatchRolls <- previousRollsResult
-    } yield
-      fillAggregates(
-        activeProposalsBlocks,
-        rollsByLevel,
-        activeProposalsBallots,
-        levelCountsMap,
-        cycleCountsMap,
-        proposalCounts.toMap,
-        previousBatchRolls.getOrElse(VoteRollsCounts.zero)
-      )
+    } yield fillAggregates(
+      activeProposalsBlocks,
+      rollsByLevel,
+      activeProposalsBallots,
+      levelCountsMap,
+      cycleCountsMap,
+      proposalCounts.toMap,
+      previousBatchRolls.getOrElse(VoteRollsCounts.zero)
+    )
   }
 
   /* Having all data ready, we can process per block,
@@ -252,93 +251,89 @@ object TezosGovernanceOperations extends ConseilLogSupport {
   ): List[GovernanceAggregate] = {
     import TezosOptics.Blocks._
 
-    proposalsBlocks.toList.flatMap {
-      case (block, currentProposal) =>
-        val ballot = ballots.getOrElse(block, List.empty)
-        val rollsAtLevel = countRolls(rollsByLevel.getOrElse(block.data.header.level, List.empty), ballot)
-        val rollsAtPreviousLevel = rollsByLevel.get(block.data.header.level - 1) match {
-          case Some(bakerRolls) =>
-            countRolls(bakerRolls, ballot)
-          case None =>
-            //when we have no data here we need to use the counts from previously collected blocks
-            previousBatchRolls
-        }
-        val rollsForBlockLevel = VoteRollsCounts.subtract(rollsAtLevel, rollsAtPreviousLevel)
-        val ballotCountPerCycle = block.data.metadata match {
-          case md: BlockHeaderMetadata => ballotCountsPerCycle.get(extractCycle(md).get).map(_.counts)
-          case GenesisMetadata => None
-        }
-        val ballotCountPerLevel = ballotCountsPerLevel.get(block).map(_.counts)
-        val proposalCounts = proposalCountsByBlock.getOrElse(block, Map.empty).toList
+    proposalsBlocks.toList.flatMap { case (block, currentProposal) =>
+      val ballot = ballots.getOrElse(block, List.empty)
+      val rollsAtLevel = countRolls(rollsByLevel.getOrElse(block.data.header.level, List.empty), ballot)
+      val rollsAtPreviousLevel = rollsByLevel.get(block.data.header.level - 1) match {
+        case Some(bakerRolls) =>
+          countRolls(bakerRolls, ballot)
+        case None =>
+          //when we have no data here we need to use the counts from previously collected blocks
+          previousBatchRolls
+      }
+      val rollsForBlockLevel = VoteRollsCounts.subtract(rollsAtLevel, rollsAtPreviousLevel)
+      val ballotCountPerCycle = block.data.metadata match {
+        case md: BlockHeaderMetadata => ballotCountsPerCycle.get(extractCycle(md).get).map(_.counts)
+        case GenesisMetadata => None
+      }
+      val ballotCountPerLevel = ballotCountsPerLevel.get(block).map(_.counts)
+      val proposalCounts = proposalCountsByBlock.getOrElse(block, Map.empty).toList
 
-        /* Here we collect a row for the block being considered
-         * to get voting data for the periods with a specific proposal
-         * under scrutiny: testing vote, testing, promotion.
-         * In addition, we have many rows appended that comes
-         * from operations during the proposal period, contained
-         * in the block, which is now assumed to have no current proposal.
-         * The previous considerations would make it impossible to have
-         * the same proposal protocol and block hash for the two kind
-         * of entries just described. We only have one or the other, by
-         * construction, as the chain would reject any proposal with the
-         * same protocol as the one under voting during the ballots phases.
-         */
-        block.data.metadata match {
-          case metadata: BlockHeaderMetadata =>
-            val activeProposalAggregate = currentProposal.map(
-              proposal =>
-                GovernanceAggregate(
-                  block.data.hash,
-                  metadata,
-                  Some(proposal),
-                  rollsAtLevel,
-                  rollsForBlockLevel,
-                  ballotCountPerCycle,
-                  ballotCountPerLevel
-                )
+      /* Here we collect a row for the block being considered
+       * to get voting data for the periods with a specific proposal
+       * under scrutiny: testing vote, testing, promotion.
+       * In addition, we have many rows appended that comes
+       * from operations during the proposal period, contained
+       * in the block, which is now assumed to have no current proposal.
+       * The previous considerations would make it impossible to have
+       * the same proposal protocol and block hash for the two kind
+       * of entries just described. We only have one or the other, by
+       * construction, as the chain would reject any proposal with the
+       * same protocol as the one under voting during the ballots phases.
+       */
+      block.data.metadata match {
+        case metadata: BlockHeaderMetadata =>
+          val activeProposalAggregate = currentProposal.map(proposal =>
+            GovernanceAggregate(
+              block.data.hash,
+              metadata,
+              Some(proposal),
+              rollsAtLevel,
+              rollsForBlockLevel,
+              ballotCountPerCycle,
+              ballotCountPerLevel
             )
-            val proposalOperationsAggregates =
-              proposalCounts //these come from all individual proposal operations during the proposal period
+          )
+          val proposalOperationsAggregates =
+            proposalCounts //these come from all individual proposal operations during the proposal period
               .filterNot {
                 /* this should never be the case: the proposal currently under evaluation
                  * should not be proposed in operations of the same block
                  */
                 case (proposal, _) => currentProposal.contains(proposal)
-              }.map {
-                case (proposalProtocol, count) =>
-                  GovernanceAggregate(
-                    block.data.hash,
-                    metadata.copy(voting_period_kind = Some(VotingPeriod.proposal)), //we know these are from operations
-                    Some(proposalProtocol),
-                    rollsAtLevel,
-                    rollsForBlockLevel,
-                    Some(Voting.BallotCounts(count, 0, 0)),
-                    ballotCountPerLevel
-                  )
+              }.map { case (proposalProtocol, count) =>
+                GovernanceAggregate(
+                  block.data.hash,
+                  metadata.copy(voting_period_kind = Some(VotingPeriod.proposal)), //we know these are from operations
+                  Some(proposalProtocol),
+                  rollsAtLevel,
+                  rollsForBlockLevel,
+                  Some(Voting.BallotCounts(count, 0, 0)),
+                  ballotCountPerLevel
+                )
               }
 
-            activeProposalAggregate.toList ::: proposalOperationsAggregates
-          case GenesisMetadata =>
-            //case handled to satisfy the compiler, should never run by design
-            List.empty[GovernanceAggregate]
-        }
+          activeProposalAggregate.toList ::: proposalOperationsAggregates
+        case GenesisMetadata =>
+          //case handled to satisfy the compiler, should never run by design
+          List.empty[GovernanceAggregate]
+      }
 
     }
   }
 
   /* Will scan the ballots to count all rolls associated with each vote outcome */
   private def countRolls(listings: List[Voting.BakerRolls], ballots: List[Voting.Ballot]): VoteRollsCounts = {
-    val (yays, nays, passes) = ballots.foldLeft((0, 0, 0)) {
-      case ((yays, nays, passes), votingBallot) =>
-        val rolls = listings.find(_.pkh == votingBallot.pkh).fold(0)(_.rolls)
-        votingBallot.ballot match {
-          case Voting.Vote("yay") => (yays + rolls, nays, passes)
-          case Voting.Vote("nay") => (yays, nays + rolls, passes)
-          case Voting.Vote("pass") => (yays, nays, passes + rolls)
-          case Voting.Vote(notSupported) =>
-            logger.error(s"Not supported vote type $notSupported")
-            (yays, nays, passes)
-        }
+    val (yays, nays, passes) = ballots.foldLeft((0L, 0L, 0L)) { case ((yays, nays, passes), votingBallot) =>
+      val rolls = listings.find(_.pkh == votingBallot.pkh).fold(0L)(x => x.rolls.orElse(x.voting_power).get)
+      votingBallot.ballot match {
+        case Voting.Vote("yay") => (yays + rolls, nays, passes)
+        case Voting.Vote("nay") => (yays, nays + rolls, passes)
+        case Voting.Vote("pass") => (yays, nays, passes + rolls)
+        case Voting.Vote(notSupported) =>
+          logger.error(s"Not supported vote type $notSupported")
+          (yays, nays, passes)
+      }
     }
     VoteRollsCounts(yays, nays, passes)
   }
@@ -376,22 +371,20 @@ object TezosGovernanceOperations extends ConseilLogSupport {
       blocks: Set[Block]
   )(implicit ec: ExecutionContext): DBIO[Option[VoteRollsCounts]] = {
     //adapting database-level formats to the domain-level ones
-    def downCastToInt(bd: BigDecimal) = Try(bd.toIntExact).toOption
+    def downCastToLong(bd: BigDecimal) = Try(bd.toLongExact).toOption
     //should be the level we reached, before the current processing batch
-    val previousBatchHighLevel = blocks.map(_.data.header.level).min - 1
+    val previousBatchHighLevel = Try(blocks.map(_.data.header.level).min).getOrElse(1L) - 1
 
     TezosDatabaseOperations
       .getGovernanceForLevel(previousBatchHighLevel)
-      .map(
-        govRows =>
-          govRows.headOption.flatMap(
-            stats =>
-              (
-                stats.yayRolls.flatMap(downCastToInt),
-                stats.nayRolls.flatMap(downCastToInt),
-                stats.passRolls.flatMap(downCastToInt)
-              ).mapN(VoteRollsCounts.apply)
-          )
+      .map(govRows =>
+        govRows.headOption.flatMap(stats =>
+          (
+            stats.yayRolls,
+            stats.nayRolls,
+            stats.passRolls
+          ).mapN(VoteRollsCounts.apply)
+        )
       )
   }
 

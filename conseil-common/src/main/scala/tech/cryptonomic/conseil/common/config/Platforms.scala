@@ -62,14 +62,16 @@ object Platforms {
     */
   case class PlatformsConfiguration(platforms: List[PlatformConfiguration]) {
 
-    /*** Extracts platforms from configuration */
+    /** * Extracts platforms from configuration
+      */
     def getPlatforms(enabled: Boolean = true): List[Platform] =
       platforms
         .filter(_.enabled == enabled)
         .map(_.platform)
         .map(platform => Platform(platform.name, platform.name.capitalize))
 
-    /*** Extracts networks from configuration */
+    /** * Extracts networks from configuration
+      */
     def getNetworks(platformName: String, enabled: Boolean = true): List[Network] =
       platforms
         .filter(v => v.platform.name == platformName && v.enabled == enabled)
@@ -125,6 +127,7 @@ object Platforms {
       network: String,
       enabled: Boolean,
       node: TezosNodeConfiguration,
+      bakerRollsSize: BigDecimal,
       db: Config,
       tns: Option[TNSContractConfiguration]
   ) extends PlatformConfiguration {

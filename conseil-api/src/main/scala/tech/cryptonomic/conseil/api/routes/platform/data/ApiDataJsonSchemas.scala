@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data
 
-import endpoints.generic
+import endpoints4s.generic
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataTypes.ApiQuery
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 
@@ -74,11 +74,7 @@ trait ApiDataJsonSchemas extends generic.JsonSchemas {
 
   /** Timestamp schema */
   implicit lazy val timestampSchema: JsonSchema[java.sql.Timestamp] =
-    implicitly[JsonSchema[Long]].xmap(
-      millisFromEpoch => new java.sql.Timestamp(millisFromEpoch)
-    )(
-      ts => ts.getTime
-    )
+    implicitly[JsonSchema[Long]].xmap(millisFromEpoch => new java.sql.Timestamp(millisFromEpoch))(ts => ts.getTime)
 
   /** Snapshot schema */
   implicit lazy val snapshotSchema: JsonSchema[Snapshot] =

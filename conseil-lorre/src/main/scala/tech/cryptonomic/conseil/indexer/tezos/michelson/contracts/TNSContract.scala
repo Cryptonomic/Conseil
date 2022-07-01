@@ -190,7 +190,7 @@ object TNSContract extends ConseilLogSupport {
     }
 
     override def readLookupMapContent(registrar: ContractId, content: String): Option[NameRecord] =
-      whenOpt(isKnownRegistrar(registrar)) { MichelineOps.parseReverseLookupContent(content) }
+      whenOpt(isKnownRegistrar(registrar))(MichelineOps.parseReverseLookupContent(content))
 
     /** Call this to store big-map-ids associated with a TNS contract.
       * This is supposed to happen once the chain records a block originating
@@ -218,12 +218,11 @@ object TNSContract extends ConseilLogSupport {
        * We expect the reverse map to be a simple address to name mapping.
        * Any other map (there should be exactly two) must then be the lookup, by exclusion.
        */
-      val (reverseMaps, lookupMaps) = maps.partition {
-        case BigMapsRow(id, keyType, valueType) =>
-          (keyType, valueType) match {
-            case (Some("address"), Some("string")) => true
-            case _ => false
-          }
+      val (reverseMaps, lookupMaps) = maps.partition { case BigMapsRow(id, keyType, valueType, _, _, _) =>
+        (keyType, valueType) match {
+          case (Some("address"), Some("string")) => true
+          case _ => false
+        }
       }
 
       (reverseMaps.headOption.map(_.bigMapId), lookupMaps.headOption.map(_.bigMapId)).tupled.foreach {
@@ -259,8 +258,8 @@ object TNSContract extends ConseilLogSupport {
 
   /** Will extract all updated map ids from a list of diffs */
   private def collectUpdateMaps(diffs: List[Contract.CompatBigMapDiff]): Map[BigMapId, (Micheline, ScriptId)] =
-    diffs.collect {
-      case Left(Contract.BigMapUpdate("update", key, keyHash, Decimal(mapId), _)) => BigMapId(mapId) -> (key, keyHash)
+    diffs.collect { case Left(Contract.BigMapUpdate("update", key, keyHash, Decimal(mapId), _)) =>
+      BigMapId(mapId) -> (key, keyHash)
     }.toMap
 
   /** Defines extraction operations based on micheline fields */
@@ -280,9 +279,13 @@ object TNSContract extends ConseilLogSupport {
     private def parseAsMicheline(micheline: String) =
       JsonParser.parse[MichelsonInstruction](micheline).toOption.collect {
         case MichelsonSingleInstruction(
-            "Pair",
-            _ :: MichelsonType("Pair", MichelsonStringConstant(name) :: MichelsonStringConstant(resolver) :: _, _) :: _,
-            _
+              "Pair",
+              _ :: MichelsonType(
+                "Pair",
+                MichelsonStringConstant(name) :: MichelsonStringConstant(resolver) :: _,
+                _
+              ) :: _,
+              _
             ) =>
           (Name(name), makeAccountId(resolver))
       }
@@ -299,8 +302,8 @@ object TNSContract extends ConseilLogSupport {
         //we profit from scala natively-provided pattern matching on regex to extract named groups
         val extracted = MichelsonParamExpr
           .findFirstIn(michelson)
-          .map {
-            case MichelsonParamExpr(name, resolver) => (Name(name), makeAccountId(resolver))
+          .map { case MichelsonParamExpr(name, resolver) =>
+            (Name(name), makeAccountId(resolver))
           }
           .orElse(parseAsMicheline(michelson))
         if (extracted.isEmpty)
@@ -322,14 +325,13 @@ object TNSContract extends ConseilLogSupport {
 
       val parsed = JsonParser.parse[MichelsonInstruction](micheline)
 
-      parsed.left.foreach(
-        err =>
-          logger.error(
-            s"""Failed to parse michelson expression for TNS map entry.
+      parsed.left.foreach(err =>
+        logger.error(
+          s"""Failed to parse michelson expression for TNS map entry.
               | Content was: $micheline
               | Error is ${err.getMessage}""".stripMargin,
-            err
-          )
+          err
+        )
       )
 
       /* This is the currently expected parse result for a valid tns reverse-lookup map content

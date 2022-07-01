@@ -6,8 +6,7 @@ import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.Materializer
-import cats.effect.IO
-import cats.effect.concurrent.Ref
+import cats.effect.{IO, Ref}
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import pureconfig.error.{ConfigReaderFailures, ThrowableFailure}
 import pureconfig.generic.auto._
@@ -16,6 +15,8 @@ import tech.cryptonomic.conseil.api.config.NautilusCloudConfiguration
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
+
+import cats.effect.unsafe.implicits.global
 
 object Security extends ErrorAccumulatingCirceSupport with ConseilLogSupport {
 

@@ -25,7 +25,7 @@ object EthereumRpcCommands {
     case object Params
     def request = RpcRequest("2.0", rpcMethod, Params, "bn")
 
-    implicit val encodeParams: Encoder[Params.type] = (_) => Json.arr()
+    implicit val encodeParams: Encoder[Params.type] = _ => Json.arr()
   }
 
   /**

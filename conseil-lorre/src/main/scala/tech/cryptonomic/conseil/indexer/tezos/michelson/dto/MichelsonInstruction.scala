@@ -52,44 +52,40 @@ sealed trait MichelsonInstruction extends MichelsonElement {
     } else {
       in match {
         case MichelsonCode(instructions) =>
-          instructions.zipWithIndex.flatMap {
-            case (instruction, index) =>
-              findInstruction(pattern, instruction, s"MichelsonCode:$index" :: acc, startsWith)
+          instructions.zipWithIndex.flatMap { case (instruction, index) =>
+            findInstruction(pattern, instruction, s"MichelsonCode:$index" :: acc, startsWith)
           }
         case expression: MichelsonExpression =>
           expression match {
             case MichelsonType(prim, args, annotations) =>
-              args.zipWithIndex.flatMap {
-                case (instruction, index) =>
-                  findInstruction(
-                    pattern,
-                    instruction,
-                    s"MichelsonType:$prim:${annotations.mkString("&")}:$index" :: acc,
-                    startsWith
-                  )
+              args.zipWithIndex.flatMap { case (instruction, index) =>
+                findInstruction(
+                  pattern,
+                  instruction,
+                  s"MichelsonType:$prim:${annotations.mkString("&")}:$index" :: acc,
+                  startsWith
+                )
               }
             case MichelsonEmptyExpression => List.empty
           }
         case instruction: MichelsonInstruction =>
           instruction match {
             case MichelsonSingleInstruction(name, embeddedElements, annotations) =>
-              embeddedElements.zipWithIndex.flatMap {
-                case (instruction, index) =>
-                  findInstruction(
-                    pattern,
-                    instruction,
-                    s"MichelsonSingleInstruction:$name:${annotations.mkString("&")}:$index" :: acc,
-                    startsWith
-                  )
+              embeddedElements.zipWithIndex.flatMap { case (instruction, index) =>
+                findInstruction(
+                  pattern,
+                  instruction,
+                  s"MichelsonSingleInstruction:$name:${annotations.mkString("&")}:$index" :: acc,
+                  startsWith
+                )
               }
             case MichelsonInstructionSequence(instructions) =>
-              instructions.zipWithIndex.flatMap {
-                case (instruction, index) =>
-                  findInstruction(pattern, instruction, s"MichelsonInstructionSequence:$index" :: acc, startsWith)
+              instructions.zipWithIndex.flatMap { case (instruction, index) =>
+                findInstruction(pattern, instruction, s"MichelsonInstructionSequence:$index" :: acc, startsWith)
               }
             case _ => List.empty
           }
-        case MichelsonSchema(_, _, _) => List.empty
+        case MichelsonSchema(_, _, _, _) => List.empty
         case _ => List.empty
       }
     }

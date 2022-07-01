@@ -1,10 +1,10 @@
 package tech.cryptonomic.conseil.api.routes.validation
 
-import endpoints.algebra
-import endpoints.algebra.Documentation
+import endpoints4s.algebra
+import endpoints4s.algebra.Documentation
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryValidationError
 
-/** Trait adding validation for query  */
+/** Trait adding validation for query */
 trait Validation {
   self: algebra.Responses =>
   import Validation.QueryValidating

@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.indexer.ethereum
 
-import cats.effect.{Concurrent, Resource}
+import cats.effect.{Async, Concurrent, Resource}
 import fs2.Stream
 import slickeffect.Transactor
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
@@ -20,7 +20,7 @@ import scala.concurrent.ExecutionContext
   * @param tx [[slickeffect.Transactor]] to perform a Slick operations on the database
   * @param batchConf Configuration containing batch fetch values
   */
-class EthereumOperations[F[_]: Concurrent](
+class EthereumOperations[F[_]: Async](
     ethereumClient: EthereumClient[F],
     persistence: EthereumPersistence[F],
     tx: Transactor[F],
@@ -49,19 +49,18 @@ class EthereumOperations[F[_]: Concurrent](
             .zip(ethereumClient.getMostRecentBlockNumber.map(Integer.decode))
 
       }
-      .flatMap {
-        case (latestIndexedBlock, mostRecentBlockNumber) =>
-          val range = depth match {
-            case Newest => latestIndexedBlock.map(_.level + 1).getOrElse(1) to mostRecentBlockNumber
-            case Everything => 1 to mostRecentBlockNumber
-            case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.isEmpty =>
-              1 to mostRecentBlockNumber
-            case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.nonEmpty =>
-              latestIndexedBlock.map(_.level + 1).getOrElse(1) to mostRecentBlockNumber
-            case Custom(depth) => (mostRecentBlockNumber - depth) to mostRecentBlockNumber
-          }
+      .flatMap { case (latestIndexedBlock, mostRecentBlockNumber) =>
+        val range = depth match {
+          case Newest => latestIndexedBlock.map(_.level + 1).getOrElse(1) to mostRecentBlockNumber
+          case Everything => 1 to mostRecentBlockNumber
+          case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.isEmpty =>
+            1 to mostRecentBlockNumber
+          case Custom(depth) if depth > mostRecentBlockNumber && latestIndexedBlock.nonEmpty =>
+            latestIndexedBlock.map(_.level + 1).getOrElse(1) to mostRecentBlockNumber
+          case Custom(depth) => (mostRecentBlockNumber - depth) to mostRecentBlockNumber
+        }
 
-          loadBlocksWithTransactions(range)
+        loadBlocksWithTransactions(range)
       }
 
   /**
@@ -73,13 +72,12 @@ class EthereumOperations[F[_]: Concurrent](
   def loadBlocksWithTransactions(range: Range.Inclusive): Stream[F, Unit] =
     Stream
       .eval(tx.transact(persistence.getIndexedBlockHeights(range)))
-      .evalTap(
-        _ =>
-          Concurrent[F].delay(
-            logger.info(
-              s"Block range: $range"
-            )
+      .evalTap(_ =>
+        Concurrent[F].delay(
+          logger.info(
+            s"Block range: $range"
           )
+        )
       )
       .flatMap { xxx =>
         Stream.eval(tx.transact(persistence.getRegisteredTokens)).map(xxx -> _)
@@ -195,7 +193,7 @@ object EthereumOperations {
     * @param tx [[slickeffect.Transactor]] to perform a Slick operations on the database
     * @param batchConf Configuration containing batch fetch values
     */
-  def resource[F[_]: Concurrent](
+  def resource[F[_]: Async](
       rpcClient: RpcClient[F],
       tx: Transactor[F],
       batchConf: EthereumBatchFetchConfiguration

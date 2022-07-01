@@ -6,7 +6,7 @@ import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.settings.ConnectionPoolSettings
-import akka.stream.{ActorMaterializer, Attributes}
+import akka.stream.{ActorMaterializer, Attributes, Materializer}
 import akka.stream.Attributes.LogLevels
 import akka.stream.scaladsl.{Flow, Source}
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
@@ -93,7 +93,7 @@ private[tezos] class TezosNodeInterface(
     with ConseilLogSupport {
   import config.node
 
-  implicit val materializer: ActorMaterializer = ActorMaterializer()
+  implicit val materializer: Materializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   private[this] val rejectingCalls = new java.util.concurrent.atomic.AtomicBoolean(false)
   private[this] lazy val rejected = Failure(
@@ -292,21 +292,19 @@ private[tezos] class TezosNodeInterface(
     //we need to thread the id all through the streaming http stages
     val uris = Source(ids.map(id => (convertIdToUrl(id), id)))
 
-    val toRequest: ((String, CID)) => (HttpRequest, CID) = {
-      case (url, id) =>
-        logger.debug(s"Will query: $url")
-        (HttpRequest(uri = Uri(url)), id)
+    val toRequest: ((String, CID)) => (HttpRequest, CID) = { case (url, id) =>
+      logger.debug(s"Will query: $url")
+      (HttpRequest(uri = Uri(url)), id)
     }
 
     uris
       .map(toRequest)
       .via(loggedRpcFlow)
-      .mapAsyncUnordered(concurrencyLevel) {
-        case (tried, id) =>
-          Future
-            .fromTry(tried.map(_.entity.toStrict(requestConfig.GETResponseEntityTimeout)))
-            .flatten
-            .map(entity => (entity, id))
+      .mapAsyncUnordered(concurrencyLevel) { case (tried, id) =>
+        Future
+          .fromTry(tried.map(_.entity.toStrict(requestConfig.GETResponseEntityTimeout)))
+          .flatten
+          .map(entity => (entity, id))
       }
       .map { case (content: HttpEntity.Strict, id) => (id, JsonString sanitize content.data.utf8String) }
       .via(loggedRpcResults)
@@ -324,8 +322,8 @@ private[tezos] class TezosNodeInterface(
 
     streamedGetQuery(ids, mapToCommand, concurrencyLevel)
       .runFold(List.empty[(CID, String)])(_ :+ _)
-      .andThen {
-        case _ => logger.debug(s"$batchId - Batch completed")
+      .andThen { case _ =>
+        logger.debug(s"$batchId - Batch completed")
       }
   }
 

@@ -12,15 +12,19 @@ object LorreIndexer {
   object ShutdownComplete extends ShutdownComplete
 }
 
-/*** Represents the common trait for all of the indexers */
+/** * Represents the common trait for all of the indexers
+  */
 trait LorreIndexer {
 
-  /*** The type of the blockchain platform e.g. Tezos */
+  /** * The type of the blockchain platform e.g. Tezos
+    */
   def platform: BlockchainPlatform
 
-  /*** Method, which is executed at the startup, to run main loop */
+  /** * Method, which is executed at the startup, to run main loop
+    */
   def start(): Unit
 
-  /*** Method, which is executed at teardown, to close up all of the resources */
+  /** * Method, which is executed at teardown, to close up all of the resources
+    */
   def stop(): Future[ShutdownComplete]
 }

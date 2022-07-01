@@ -55,8 +55,8 @@ class AccountsResetHandler(
           //used to remove processed events
           val processed = levels.toSet
           //we want individual event levels with the associated pattern, such that we can sort them by level
-          val unprocessedEvents = levelsNeedingRefresh.toList.flatMap {
-            case (accountPattern, levels) => levels.filterNot(processed).sorted.map(_ -> accountPattern)
+          val unprocessedEvents = levelsNeedingRefresh.toList.flatMap { case (accountPattern, levels) =>
+            levels.filterNot(processed).sorted.map(_ -> accountPattern)
           }
           SortedSet(unprocessedEvents: _*)
         }
@@ -67,52 +67,51 @@ class AccountsResetHandler(
    * @param events the relevant levels, each with its own selection pattern, that calls for a refresh
    * @return the still unprocessed events, requiring to be handled later
    */
-  private[tezos] def applyUnhandledAccountsResets(events: AccountResetEvents)(
-      implicit ec: ExecutionContext
+  private[tezos] def applyUnhandledAccountsResets(events: AccountResetEvents)(implicit
+      ec: ExecutionContext
   ): Future[UnhandledResetEvents] =
     if (events.nonEmpty) {
       //This method is too long and messy, should be better organized
       for {
         storedHead <- indexedData.fetchMaxLevel
-        unhandled <- if (events.exists(_._1 <= storedHead)) {
-          val (past, toCome) = events.partition(_._1 <= storedHead)
-          val (levels, selectors) = past.unzip
-          val showLevels = levels.mkString(", ")
-          logger.info(
-            s"A block was reached that requires an update of account data as specified in the configuration file. A full refresh is now underway. Relevant block levels: $showLevels"
-          )
-          indexedData.fetchBlockAtLevel(levels.max).flatMap {
-            case Some(referenceBlockForRefresh) =>
-              val (hashRef, levelRef, timestamp, cycle) =
-                (
-                  TezosBlockHash(referenceBlockForRefresh.hash),
-                  referenceBlockForRefresh.level,
-                  referenceBlockForRefresh.timestamp.toInstant,
-                  referenceBlockForRefresh.metaCycle
-                )
-              db.run(
+        unhandled <-
+          if (events.exists(_._1 <= storedHead)) {
+            val (past, toCome) = events.partition(_._1 <= storedHead)
+            val (levels, selectors) = past.unzip
+            val showLevels = levels.mkString(", ")
+            logger.info(
+              s"A block was reached that requires an update of account data as specified in the configuration file. A full refresh is now underway. Relevant block levels: $showLevels"
+            )
+            indexedData.fetchBlockAtLevel(levels.max).flatMap {
+              case Some(referenceBlockForRefresh) =>
+                val (hashRef, levelRef, timestamp, cycle) =
+                  (
+                    TezosBlockHash(referenceBlockForRefresh.hash),
+                    referenceBlockForRefresh.level,
+                    referenceBlockForRefresh.timestamp.toInstant,
+                    referenceBlockForRefresh.metaCycle
+                  )
+                db.run(
                   //put all accounts in checkpoint, log the past levels to the db, keep the rest for future cycles
                   TezosDb.refillAccountsCheckpointFromExisting(hashRef, levelRef, timestamp, cycle, selectors) >>
-                      TezosDb.writeProcessedEventsLevels(
-                        ChainEvent.accountsRefresh.render,
-                        levels.toList
-                      )
-                )
-                .andThen {
+                    TezosDb.writeProcessedEventsLevels(
+                      ChainEvent.accountsRefresh.render,
+                      levels.toList
+                    )
+                ).andThen {
                   case Success(accountsCount) =>
                     val showCount = accountsCount.fold("")(" " + _)
                     logger.info(s"Checkpoint stored for$showCount account updates in view of the full refresh.")
                   case Failure(err) =>
                     logger.error("I failed to store the accounts refresh updates in the checkpoint", err)
-                }
-                .map(_ => toCome) //keep the yet unreached levels and pass them on
-            case None =>
-              logger.warn(
-                s"I couldn't find in Conseil the block data at level ${levels.max}, required for the general accounts update, and this is actually unexpected. I'll retry the whole operation at next cycle."
-              )
-              Future.successful(events)
-          }
-        } else Future.successful(events)
+                }.map(_ => toCome) //keep the yet unreached levels and pass them on
+              case None =>
+                logger.warn(
+                  s"I couldn't find in Conseil the block data at level ${levels.max}, required for the general accounts update, and this is actually unexpected. I'll retry the whole operation at next cycle."
+                )
+                Future.successful(events)
+            }
+          } else Future.successful(events)
       } yield UnhandledResetEvents(unhandled)
     } else NoEventsToHandle
 

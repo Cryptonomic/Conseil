@@ -5,8 +5,8 @@ import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.stream.ActorMaterializer
-import cats.effect.{ContextShift, IO}
+import akka.stream.{ActorMaterializer, Materializer}
+import cats.effect.IO
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives.cors
 import tech.cryptonomic.conseil.api.ConseilApi.NoNetworkEnabledError
 import tech.cryptonomic.conseil.api.config.ConseilAppConfig.CombinedConfiguration
@@ -30,11 +30,11 @@ import tech.cryptonomic.conseil.common.config.Platforms
 import tech.cryptonomic.conseil.common.config.Platforms.BlockchainPlatform
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.sql.DatabaseRunner
-import tech.cryptonomic.conseil.common.util.DatabaseUtil
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.duration.{Duration, DurationInt}
 import scala.util.{Failure, Success}
+import cats.effect.unsafe.implicits.global
 
 object ConseilApi {
 
@@ -49,18 +49,15 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
     extends EnableCORSDirectives
     with ConseilLogSupport {
 
-  import scala.collection.JavaConverters._
-
   private val transformation = new UnitTransformation(config.metadata)
   private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
 
-  implicit private val mat: ActorMaterializer = ActorMaterializer()
+  implicit private val mat: Materializer = ActorMaterializer()
   implicit private val dispatcher: ExecutionContext = system.dispatcher
-  implicit private val contextShift: ContextShift[IO] = IO.contextShift(dispatcher)
 
   config.nautilusCloud match {
     case ncc @ NautilusCloudConfiguration(true, _, _, _, _, delay, interval) =>
-      system.scheduler.schedule(delay, interval)(Security.updateKeys(ncc))
+      system.scheduler.scheduleWithFixedDelay(delay, interval)(() => Security.updateKeys(ncc))
     case _ => ()
   }
 
@@ -102,37 +99,34 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
         enableCORS {
           implicit val correlationId: UUID = UUID.randomUUID()
           handleExceptions(loggingExceptionHandler) {
-            extractClientIP {
-              ip =>
-                extractStrictEntity(10.seconds) {
-                  ent =>
-                    recordResponseValues(ip, ent.data.utf8String)(mat, correlationId) {
-                      timeoutHandler {
+            extractClientIP { ip =>
+              extractStrictEntity(20.seconds) { ent =>
+                recordResponseValues(ip, ent.data.utf8String)(correlationId) {
+                  timeoutHandler {
+                    concat(
+                      validateApiKey { _ =>
                         concat(
-                          validateApiKey { _ =>
-                            concat(
-                              logRequest("Conseil", Logging.DebugLevel) {
-                                AppInfo.route
-                              },
-                              logRequest("Metadata Route", Logging.DebugLevel) {
-                                platformDiscovery.route
-                              },
-                              concat(ApiCache.cachedDataEndpoints.map {
-                                case (platform, routes) =>
-                                  logRequest(s"$platform Data Route", Logging.DebugLevel) {
-                                    routes.getRoute ~ routes.postRoute
-                                  }
-                              }.toSeq: _*)
-                            )
+                          logRequest("Conseil", Logging.DebugLevel) {
+                            AppInfo.route
                           },
-                          options {
-                            // Support for CORS pre-flight checks.
-                            complete("Supported methods : GET and POST.")
-                          }
+                          logRequest("Metadata Route", Logging.DebugLevel) {
+                            platformDiscovery.route
+                          },
+                          concat(ApiCache.cachedDataEndpoints.map { case (platform, routes) =>
+                            logRequest(s"$platform Data Route", Logging.DebugLevel) {
+                              routes.getRoute ~ routes.postRoute
+                            }
+                          }.toSeq: _*)
                         )
+                      },
+                      options {
+                        // Support for CORS pre-flight checks.
+                        complete("Supported methods : GET and POST.")
                       }
-                    }
+                    )
+                  }
                 }
+              }
             }
           }
         }
@@ -182,11 +176,10 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
 
     private val metadataOperations: Map[(String, String), DatabaseRunner] = config.platforms
       .getDatabases()
-      .mapValues(
-        db =>
-          new DatabaseRunner {
-            override lazy val dbReadHandle = db
-          }
+      .mapValues(db =>
+        new DatabaseRunner {
+          override lazy val dbReadHandle = db
+        }
       )
 
     lazy val cachedDiscoveryOperations: GenericPlatformDiscoveryOperations =
@@ -204,8 +197,8 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
       * @see `tech.cryptonomic.conseil.common.config.Platforms` to get list of possible platforms.
       */
     lazy val cachedDataEndpoints: Map[String, ApiDataRoutes] =
-      cache.map {
-        case (key, value) => key.name -> value
+      cache.map { case (key, value) =>
+        key.name -> value
       }
 
     private val visiblePlatforms =
@@ -230,7 +223,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
     } yield platform -> network
 
     if (visibleNetworks.nonEmpty) { // At least one blockchain is enabled
-      cachedDiscoveryOperations.init(visibleNetworks).onComplete {
+      Await.ready(cachedDiscoveryOperations.init(visibleNetworks), Duration.Inf).onComplete {
         case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
         case Success(_) => logger.info("Pre-caching successful!")
       }
@@ -238,6 +231,11 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
       cachedDiscoveryOperations.initAttributesCache(visibleNetworks).onComplete {
         case Failure(exception) => logger.error("Pre-caching attributes failed", exception)
         case Success(_) => logger.info("Pre-caching attributes successful!")
+      }
+
+      cachedDiscoveryOperations.initAttributeValuesCache(visibleNetworks).onComplete {
+        case Failure(exception) => logger.error("Pre-caching attribute values failed", exception)
+        case Success(_) => logger.info("Pre-caching attribute values successful!")
       }
     } else {
       throw NoNetworkEnabledError(
