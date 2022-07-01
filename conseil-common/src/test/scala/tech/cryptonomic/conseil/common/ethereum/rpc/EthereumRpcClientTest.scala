@@ -46,48 +46,52 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
         .unsafeRunSync() shouldBe List(RpcFixtures.transactionReceiptResult)
     }
 
-      "return a contract for the given transaction receipt" in new EthereumClientStubs {
-        Stream(RpcFixtures.transactionReceiptResult)
-          .through(
-            ethereumClientStub(JsonFixtures.getCodeResponse).getContract(batchSize = 1, List(RpcFixtures.exampleToken.copy(address = "0x123")))
-          )
-          .compile
-          .toList
-          .unsafeRunSync() shouldBe List(RpcFixtures.contractResult)
-      }
+    "return a contract for the given transaction receipt" in new EthereumClientStubs {
+      Stream(RpcFixtures.transactionReceiptResult)
+        .through(
+          ethereumClientStub(JsonFixtures.getCodeResponse)
+            .getContract(batchSize = 1, List(RpcFixtures.exampleToken.copy(address = "0x123")))
+        )
+        .compile
+        .toList
+        .unsafeRunSync() shouldBe List(RpcFixtures.contractResult)
+    }
 
-      "return a token transfer for the given log" in new EthereumClientStubs {
-        Stream(RpcFixtures.logResult)
-          .through(
-            ethereumClientStub(JsonFixtures.callResponse).getTokenTransfer(RpcFixtures.blockResult, List(RpcFixtures.exampleToken))
-          )
-          .compile
-          .toList
-          .unsafeRunSync() shouldBe List(RpcFixtures.tokenTransferResult)
-      }
+    "return a token transfer for the given log" in new EthereumClientStubs {
+      Stream(RpcFixtures.logResult)
+        .through(
+          ethereumClientStub(JsonFixtures.callResponse)
+            .getTokenTransfer(RpcFixtures.blockResult, List(RpcFixtures.exampleToken))
+        )
+        .compile
+        .toList
+        .unsafeRunSync() shouldBe List(RpcFixtures.tokenTransferResult)
+    }
 
-      "return a tokens history for the given token transfer" in new EthereumClientStubs {
-        Stream(RpcFixtures.tokenTransferResult)
-          .through(
-            ethereumClientStub(JsonFixtures.callResponse).getTokenBalance(RpcFixtures.blockResult, List(RpcFixtures.exampleToken))
-          )
-          .compile
-          .toList
-          .unsafeRunSync() shouldBe List(RpcFixtures.tokenBalanceFromResult, RpcFixtures.tokenBalanceToResult)
-      }
+    "return a tokens history for the given token transfer" in new EthereumClientStubs {
+      Stream(RpcFixtures.tokenTransferResult)
+        .through(
+          ethereumClientStub(JsonFixtures.callResponse)
+            .getTokenBalance(RpcFixtures.blockResult, List(RpcFixtures.exampleToken))
+        )
+        .compile
+        .toList
+        .unsafeRunSync() shouldBe List(RpcFixtures.tokenBalanceFromResult, RpcFixtures.tokenBalanceToResult)
+    }
 
-      "properly handle token balance if balanceOf() not implemented" in new EthereumClientStubs {
-        Stream(RpcFixtures.tokenTransferResult)
-          .through(
-            ethereumClientStub(JsonFixtures.failedCallResponse).getTokenBalance(RpcFixtures.blockResult, List(RpcFixtures.exampleToken))
-          )
-          .compile
-          .toList
-          .unsafeRunSync() shouldBe List(
-              RpcFixtures.tokenBalanceFromResult.copy(value = BigDecimal(0)),
-              RpcFixtures.tokenBalanceToResult.copy(value = BigDecimal(0))
-            )
-      }
+    "properly handle token balance if balanceOf() not implemented" in new EthereumClientStubs {
+      Stream(RpcFixtures.tokenTransferResult)
+        .through(
+          ethereumClientStub(JsonFixtures.failedCallResponse)
+            .getTokenBalance(RpcFixtures.blockResult, List(RpcFixtures.exampleToken))
+        )
+        .compile
+        .toList
+        .unsafeRunSync() shouldBe List(
+        RpcFixtures.tokenBalanceFromResult.copy(value = BigDecimal(0)),
+        RpcFixtures.tokenBalanceToResult.copy(value = BigDecimal(0))
+      )
+    }
 
     "return account balances for transaction sides" in new EthereumClientStubs {
       Stream(RpcFixtures.transactionResult)

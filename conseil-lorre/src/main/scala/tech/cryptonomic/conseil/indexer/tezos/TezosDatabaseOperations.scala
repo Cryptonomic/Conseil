@@ -12,7 +12,13 @@ import tech.cryptonomic.conseil.common.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
-import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, GovernanceRow, OperationsRow, OriginatedAccountMapsRow, RegisteredTokensRow}
+import tech.cryptonomic.conseil.common.tezos.Tables.{
+  AccountsRow,
+  GovernanceRow,
+  OperationsRow,
+  OriginatedAccountMapsRow,
+  RegisteredTokensRow
+}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.ConfigUtil

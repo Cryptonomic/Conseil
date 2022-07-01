@@ -743,7 +743,8 @@ trait Tables {
 
   /** Entity class storing rows of table RegisteredTokens
     *  @param name Database column name SqlType(text)
-    *  @param address Database column address SqlType(text) */
+    *  @param address Database column address SqlType(text)
+    */
   case class RegisteredTokensRow(name: String, address: String)
 
   /** GetResult implicit for fetching RegisteredTokensRow objects using plain SQL queries */
@@ -759,9 +760,12 @@ trait Tables {
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(name), Rep.Some(address))).shaped.<>({ r =>
-        import r._; _1.map(_ => RegisteredTokensRow.tupled((_1.get, _2.get)))
-      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
+      ((Rep.Some(name), Rep.Some(address))).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => RegisteredTokensRow.tupled((_1.get, _2.get)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
 
     /** Database column name SqlType(text) */
     val name: Rep[String] = column[String]("name")

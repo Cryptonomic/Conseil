@@ -17,7 +17,7 @@ object DefaultDatabaseOperations extends ConseilLogSupport {
 
   /** Reads and inserts CSV file to the database for the given table.
     * Also Gives possibility to upsert when table is already filled with data
-    * */
+    */
   def initTableFromCsv[A <: AbstractTable[_], H <: HList](
       db: Database,
       table: TableQuery[A],
@@ -25,8 +25,8 @@ object DefaultDatabaseOperations extends ConseilLogSupport {
       network: String,
       separator: Char = ',',
       upsert: Boolean = false
-  )(
-      implicit hd: HeaderDecoder[A#TableElementType],
+  )(implicit
+      hd: HeaderDecoder[A#TableElementType],
       g: Generic.Aux[A#TableElementType, H],
       m: Mapper.Aux[ConfigUtil.Csv.Trimmer.type, H, H],
       ec: ExecutionContext

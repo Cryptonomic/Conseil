@@ -24,13 +24,13 @@ class ConfigUtilTest extends ConseilSpec {
       //will provide the HList representation of the row, to be passed as a type for the method
       val genericRow = Generic[Tables.BakerRegistryRow]
 
-        val rows: List[Tables.BakerRegistryRow] =
-          sut
-            .readRowsFromCsv[Tables.BakerRegistryRow, genericRow.Repr](
-              csvSource = getClass.getResource("/tezos/baker_registry/testnet.csv"),
-              separator = ','
-            )
-            .value
+      val rows: List[Tables.BakerRegistryRow] =
+        sut
+          .readRowsFromCsv[Tables.BakerRegistryRow, genericRow.Repr](
+            csvSource = getClass.getResource("/tezos/baker_registry/testnet.csv"),
+            separator = ','
+          )
+          .value
 
       rows should have size 1
 
@@ -69,15 +69,15 @@ class ConfigUtilTest extends ConseilSpec {
 
     "use a database table to find the csv file and map to the corresponding rows for baker registry" in {
 
-        val rows: List[Tables.BakerRegistryRow] =
-          sut
-            .readTableRowsFromCsv(
-              table = Tables.BakerRegistry,
-              platform = "tezos",
-              network = "testnet",
-              separator = ','
-            )
-            .value
+      val rows: List[Tables.BakerRegistryRow] =
+        sut
+          .readTableRowsFromCsv(
+            table = Tables.BakerRegistry,
+            platform = "tezos",
+            network = "testnet",
+            separator = ','
+          )
+          .value
 
       rows should have size 1
 
@@ -116,8 +116,8 @@ class ConfigUtilTest extends ConseilSpec {
 
     "fail to read the csv data if the network doesn't have a matching config file" in {
 
-        val rows: Option[List[Tables.RegisteredTokensRow]] =
-          sut.readTableRowsFromCsv(table = Tables.RegisteredTokens, platform = "whatever", network = "nonsense")
+      val rows: Option[List[Tables.RegisteredTokensRow]] =
+        sut.readTableRowsFromCsv(table = Tables.RegisteredTokens, platform = "whatever", network = "nonsense")
 
       rows shouldBe empty
 
@@ -128,13 +128,13 @@ class ConfigUtilTest extends ConseilSpec {
       //will provide the HList representation of the row, to be passed as a type for the method
       val genericRow = Generic[Tables.RegisteredTokensRow]
 
-        val rows: List[Tables.RegisteredTokensRow] =
-          sut
-            .readRowsFromCsv[Tables.RegisteredTokensRow, genericRow.Repr](
-              csvSource = getClass.getResource("/tezos/registered_tokens/testnet.csv"),
-              separator = '|'
-            )
-            .value
+      val rows: List[Tables.RegisteredTokensRow] =
+        sut
+          .readRowsFromCsv[Tables.RegisteredTokensRow, genericRow.Repr](
+            csvSource = getClass.getResource("/tezos/registered_tokens/testnet.csv"),
+            separator = '|'
+          )
+          .value
 
       rows shouldBe empty
 
