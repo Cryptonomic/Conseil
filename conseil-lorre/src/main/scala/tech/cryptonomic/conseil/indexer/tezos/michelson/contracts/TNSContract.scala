@@ -165,8 +165,19 @@ object TNSContract extends ConseilLogSupport {
       val (parameters, destination, mapDiff) =
         transaction
           .bimap(
-            t => (t.parameters, t.destination, t.metadata.operation_result.big_map_diff),
-            t => (t.parameters, t.destination, t.result.big_map_diff)
+            t =>
+              (
+                t.parameters,
+                t.destination,
+                t.metadata.operation_result.big_map_diff
+                  .orElse(t.metadata.operation_result.lazy_storage_diff.map(_.flatMap(_.toBigMapDiff)))
+              ),
+            t =>
+              (
+                t.parameters,
+                t.destination,
+                t.result.big_map_diff.orElse(t.result.lazy_storage_diff.map(_.flatMap(_.toBigMapDiff)))
+              )
           )
           .merge
 

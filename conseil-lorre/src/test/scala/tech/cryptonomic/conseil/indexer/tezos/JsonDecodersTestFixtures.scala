@@ -710,6 +710,7 @@ trait OperationsJsonData {
         allocated_destination_contract = None,
         balance_updates = None,
         big_map_diff = None,
+        lazy_storage_diff = None,
         consumed_gas = Some(Decimal(2008)),
         originated_contracts = None,
         paid_storage_size_diff = None,
@@ -754,6 +755,7 @@ trait OperationsJsonData {
                 )
               ),
               big_map_diff = None,
+              lazy_storage_diff = None,
               consumed_gas = Some(Decimal(107)),
               originated_contracts = None,
               paid_storage_size_diff = None,
@@ -989,6 +991,7 @@ trait OperationsJsonData {
           allocated_destination_contract = None,
           balance_updates = None,
           big_map_diff = None,
+          lazy_storage_diff = None,
           originated_contracts = None,
           paid_storage_size_diff = None,
           errors = None
@@ -1077,6 +1080,7 @@ trait OperationsJsonData {
           allocated_destination_contract = None,
           balance_updates = None,
           big_map_diff = None,
+          lazy_storage_diff = None,
           originated_contracts = None,
           paid_storage_size_diff = None,
           errors = None
@@ -1185,6 +1189,7 @@ trait OperationsJsonData {
         operation_result = OperationResult.Origination(
           status = "applied",
           big_map_diff = None,
+          lazy_storage_diff = None,
           balance_updates = Some(
             List(
               BalanceUpdate(

@@ -183,6 +183,7 @@ trait TezosDatabaseConversionsTestFixtures {
           allocated_destination_contract = None,
           balance_updates = None,
           big_map_diff = None,
+          lazy_storage_diff = None,
           originated_contracts = None,
           paid_storage_size_diff = None,
           errors = Some(sampleOperationResultsErrors)
@@ -229,6 +230,7 @@ trait TezosDatabaseConversionsTestFixtures {
         operation_result = OperationResult.Origination(
           status = "applied",
           big_map_diff = None,
+          lazy_storage_diff = None,
           balance_updates = Some(
             List(
               BalanceUpdate(

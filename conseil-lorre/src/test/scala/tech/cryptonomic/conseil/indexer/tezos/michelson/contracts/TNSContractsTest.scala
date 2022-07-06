@@ -204,6 +204,7 @@ class TNSContractsTest extends ConseilSpec {
       allocated_destination_contract = None,
       balance_updates = None,
       big_map_diff = Some(mapDiffs),
+      lazy_storage_diff = None,
       consumed_gas = None,
       originated_contracts = None,
       paid_storage_size_diff = None,
