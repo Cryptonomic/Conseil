@@ -11,6 +11,7 @@ import slick.jdbc.JdbcBackend.Database
 import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, TezosConfiguration}
 import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
+import tech.cryptonomic.conseil.common.sql.DefaultDatabaseOperations
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
@@ -129,7 +130,8 @@ class TezosIndexer private (
       unhandled <- accountsResetHandler.applyUnhandledAccountsResets(
         reloadedAccountEvents.orElse(lastReloadedAccountEvents).getOrElse(accountResetEvents)
       )
-      _ <- processTezosBlocks(maxLevel)
+      maxLevelNew <- indexedData.fetchMaxLevel
+      _ <- processTezosBlocks(maxLevelNew)
       _ <- feeOperations
         .processTezosAverageFees(lorreConf.feesAverageTimeWindow)
         .whenA(iteration % lorreConf.feeUpdateInterval == 0)
@@ -498,6 +500,54 @@ object TezosIndexer extends ConseilLogSupport {
 
     /* Used for fetching and handling registered tokens */
     val registeredTokensFetcher = new RegisteredTokensFetcher(db, lorreConf.tokenContracts, gracefulTermination)
+
+    /* Reads csv resources to initialize db tables and smart contracts objects */
+    def parseCSVConfigurations() = {
+      /* This will derive automatically all needed implicit arguments to convert csv rows into a proper table row
+       * Using generic representations for case classes, provided by the `shapeless` library, it will create the
+       * appropriate `kantan.csv.Decoder` for
+       *  - headers, as extracted by the case class definition which, should match name and order of the csv header row
+       *  - table row types, which can be converted to shapeless HLists, which so happens to be of any case class.
+       *
+       * What shapeless does, is provide an automatic conversion, from a case class to a typed generic list of values,
+       * where each element has a type corresponding to a field in the case class, and a "label" that is
+       * a sort of string extracted at compile-time via macros, to figure out the field names.
+       * Such special list, is a `shapeless.HList`, or heterogeneous list, sort of a dynamic tuple,
+       * to be built by adding/removing individual elements in the list, recursively.
+       * This allows generic libraries like kantan to define codecs for generic HLists and,
+       * using shapeless, to adapt any case class to his specific HList, at compile-time.
+       *
+       * For additional information, refer to the project wiki, and
+       * - http://nrinaudo.github.io/kantan.csv/
+       * - http://www.shapeless.io/
+       */
+      import kantan.csv.generic._
+      //we add any missing implicit decoder for column types, not provided by default from the library
+      import tech.cryptonomic.conseil.common.util.ConfigUtil.Csv._
+      import cats.implicits._
+
+      /* Inits tables with values from CSV files */
+      (
+        DefaultDatabaseOperations.initTableFromCsv(db, Tables.KnownAddresses, "tezos", selectedNetwork),
+        DefaultDatabaseOperations.initTableFromCsv(db, Tables.BakerRegistry, "tezos", selectedNetwork),
+        TezosDb.initRegisteredTokensTableFromJson(db, selectedNetwork)
+      ).mapN { case (_, _, _) =>
+        ()
+      }
+      /* Here we want to initialize the registered tokens and additionally get the token data back
+       * since it's needed to process calls to the same token smart contracts as the chain evolves
+       */
+
+    }
+
+    Try(Await.result(parseCSVConfigurations(), 5.seconds)) match {
+      case Success(_) =>
+        ()
+        logger.info("DB initialization successful")
+      case Failure(exception) =>
+        logger.error("DB initialization failed", exception)
+        gracefulTermination().map(_ => ())
+    }
 
     new TezosIndexer(
       ignoreProcessFailures,

@@ -17,44 +17,44 @@ import scala.language.postfixOps
 class DefaultDatabaseOperationsTest extends ConseilSpec with InMemoryDatabase with TezosInMemoryDatabaseSetup {
 
   "The default database operations" should {
-      val fees: List[FeesRow] = List.tabulate(5) { i =>
-        FeesRow(
-          1 + i,
-          3 + i,
-          5 + i,
-          Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)),
-          s"$i-example",
-          None,
-          None,
-          forkId = Fork.mainForkId
-        )
-      }
-
-      "count distinct elements in column properly" in {
-        dbHandler.run(Tables.Fees ++= fees).isReadyWithin(5 seconds) shouldBe true
-        dbHandler.run(countDistinct("tezos", "fees", "timestamp")).futureValue shouldBe 1
-        dbHandler.run(countDistinct("tezos", "fees", "low")).futureValue shouldBe 5
-      }
-
-      "select distinct elements from column properly" in {
-        dbHandler.run(Tables.Fees ++= fees).isReadyWithin(5 seconds) shouldBe true
-        dbHandler.run(selectDistinct("tezos", "fees", "timestamp")).futureValue shouldBe List(
-          "2018-11-22 12:30:00"
-        )
-        dbHandler.run(selectDistinct("tezos", "fees", "low")).futureValue should contain theSameElementsAs List(
-          "1",
-          "2",
-          "3",
-          "4",
-          "5"
-        )
-      }
-
-      "select distinct elements from column with 'like' properly" in {
-        dbHandler.run(Tables.Fees ++= fees).isReadyWithin(5 seconds) shouldBe true
-        dbHandler.run(selectDistinctLike("tezos", "fees", "kind", "1-")).futureValue shouldBe List(
-          "1-example"
-        )
-      }
+    val fees: List[FeesRow] = List.tabulate(5) { i =>
+      FeesRow(
+        1 + i,
+        3 + i,
+        5 + i,
+        Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)),
+        s"$i-example",
+        None,
+        None,
+        forkId = Fork.mainForkId
+      )
     }
+
+    "count distinct elements in column properly" in {
+      dbHandler.run(Tables.Fees ++= fees).isReadyWithin(5 seconds) shouldBe true
+      dbHandler.run(countDistinct("tezos", "fees", "timestamp")).futureValue shouldBe 1
+      dbHandler.run(countDistinct("tezos", "fees", "low")).futureValue shouldBe 5
+    }
+
+    "select distinct elements from column properly" in {
+      dbHandler.run(Tables.Fees ++= fees).isReadyWithin(5 seconds) shouldBe true
+      dbHandler.run(selectDistinct("tezos", "fees", "timestamp")).futureValue shouldBe List(
+        "2018-11-22 12:30:00"
+      )
+      dbHandler.run(selectDistinct("tezos", "fees", "low")).futureValue should contain theSameElementsAs List(
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      )
+    }
+
+    "select distinct elements from column with 'like' properly" in {
+      dbHandler.run(Tables.Fees ++= fees).isReadyWithin(5 seconds) shouldBe true
+      dbHandler.run(selectDistinctLike("tezos", "fees", "kind", "1-")).futureValue shouldBe List(
+        "1-example"
+      )
+    }
+  }
 }

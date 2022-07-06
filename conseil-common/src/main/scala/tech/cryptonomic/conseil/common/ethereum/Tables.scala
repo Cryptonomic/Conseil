@@ -1,5 +1,4 @@
 package tech.cryptonomic.conseil.common.ethereum
-
 // AUTO-GENERATED Slick data model
 /** Stand-alone Slick data model for immediate use */
 object Tables extends {
@@ -21,6 +20,7 @@ trait Tables {
     Blocks.schema,
     Logs.schema,
     Receipts.schema,
+    RegisteredTokens.schema,
     TokensHistory.schema,
     TokenTransfers.schema,
     Transactions.schema
@@ -740,6 +740,42 @@ trait Tables {
 
   /** Collection-like TableQuery object for table Receipts */
   lazy val Receipts = new TableQuery(tag => new Receipts(tag))
+
+  /** Entity class storing rows of table RegisteredTokens
+    *  @param name Database column name SqlType(text)
+    *  @param address Database column address SqlType(text)
+    */
+  case class RegisteredTokensRow(name: String, address: String)
+
+  /** GetResult implicit for fetching RegisteredTokensRow objects using plain SQL queries */
+  implicit def GetResultRegisteredTokensRow(implicit e0: GR[String]): GR[RegisteredTokensRow] = GR { prs =>
+    import prs._
+    RegisteredTokensRow.tupled((<<[String], <<[String]))
+  }
+
+  /** Table description of table registered_tokens. Objects of this class serve as prototypes for rows in queries. */
+  class RegisteredTokens(_tableTag: Tag)
+      extends profile.api.Table[RegisteredTokensRow](_tableTag, Some("ethereum"), "registered_tokens") {
+    def * = (name, address) <> (RegisteredTokensRow.tupled, RegisteredTokensRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      ((Rep.Some(name), Rep.Some(address))).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => RegisteredTokensRow.tupled((_1.get, _2.get)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    /** Database column name SqlType(text) */
+    val name: Rep[String] = column[String]("name")
+
+    /** Database column address SqlType(text) */
+    val address: Rep[String] = column[String]("address")
+  }
+
+  /** Collection-like TableQuery object for table RegisteredTokens */
+  lazy val RegisteredTokens = new TableQuery(tag => new RegisteredTokens(tag))
 
   /** Entity class storing rows of table TokensHistory
     *  @param accountAddress Database column account_address SqlType(text)

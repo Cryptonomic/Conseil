@@ -83,77 +83,77 @@ class BitcoinDataRoutesTest
     BitcoinDataRoutes(metadataService, MetadataConfiguration(Map.empty), conseilOps, 1000)
 
   "Query protocol" should {
-      "return a correct response with OK status code with POST" in {
+    "return a correct response with OK status code with POST" in {
 
-        val postRequest = HttpRequest(
-          HttpMethods.POST,
-          uri = "/v2/data/bitcoin/mainnet/blocks",
-          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
-        )
+      val postRequest = HttpRequest(
+        HttpMethods.POST,
+        uri = "/v2/data/bitcoin/mainnet/blocks",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+      )
 
-        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
-          val resp = entityAs[String]
-          resp should matchJson(jsonStringResponse)
-          status shouldBe StatusCodes.OK
-        }
-      }
-
-      "return 404 NotFound status code for request for the unsupported platform with POST" in {
-
-        val postRequest = HttpRequest(
-          HttpMethods.POST,
-          uri = "/v2/data/notSupportedPlatform/mainnet/blocks",
-          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
-        )
-        postRequest ~> addHeader("apiKey", "hooman") ~> Route.seal(routes.postRoute) ~> check {
-          status shouldBe StatusCodes.NotFound
-        }
-      }
-
-      "return 404 NotFound status code for request for the unsupported network with POST" in {
-
-        val postRequest = HttpRequest(
-          HttpMethods.POST,
-          uri = "/v2/data/bitcoin/notSupportedNetwork/blocks",
-          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
-        )
-        postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
-          status shouldBe StatusCodes.NotFound
-        }
-      }
-
-      "return a correct response with OK status code with GET" in {
-        val getRequest = HttpRequest(HttpMethods.GET, uri = "/v2/data/bitcoin/mainnet/blocks")
-
-        getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
-          val resp = entityAs[String]
-          resp should matchJson(jsonStringResponse)
-          status shouldBe StatusCodes.OK
-        }
+      postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
+        val resp = entityAs[String]
+        resp should matchJson(jsonStringResponse)
+        status shouldBe StatusCodes.OK
       }
     }
 
-  "not handle request for the unsupported platform with GET" in {
-      // Due to the fact that platforms are hardcoded in path (not dynamic),
-      // request won't be handled for unsupported platforms and pushed down to the default rejection handler.
-      val getRequest = HttpRequest(
-        HttpMethods.GET,
-        uri = "/v2/data/notSupportedPlatform/mainnet/blocks"
-      )
-      getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
-        handled shouldBe false
-      }
-    }
+    "return 404 NotFound status code for request for the unsupported platform with POST" in {
 
-  "return 404 NotFound status code for request for the unsupported network with GET" in {
-      val getRequest = HttpRequest(
-        HttpMethods.GET,
-        uri = "/v2/data/bitcoin/notSupportedNetwork/blocks"
+      val postRequest = HttpRequest(
+        HttpMethods.POST,
+        uri = "/v2/data/notSupportedPlatform/mainnet/blocks",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
       )
-      getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
+      postRequest ~> addHeader("apiKey", "hooman") ~> Route.seal(routes.postRoute) ~> check {
         status shouldBe StatusCodes.NotFound
       }
     }
+
+    "return 404 NotFound status code for request for the unsupported network with POST" in {
+
+      val postRequest = HttpRequest(
+        HttpMethods.POST,
+        uri = "/v2/data/bitcoin/notSupportedNetwork/blocks",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+      )
+      postRequest ~> addHeader("apiKey", "hooman") ~> routes.postRoute ~> check {
+        status shouldBe StatusCodes.NotFound
+      }
+    }
+
+    "return a correct response with OK status code with GET" in {
+      val getRequest = HttpRequest(HttpMethods.GET, uri = "/v2/data/bitcoin/mainnet/blocks")
+
+      getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
+        val resp = entityAs[String]
+        resp should matchJson(jsonStringResponse)
+        status shouldBe StatusCodes.OK
+      }
+    }
+  }
+
+  "not handle request for the unsupported platform with GET" in {
+    // Due to the fact that platforms are hardcoded in path (not dynamic),
+    // request won't be handled for unsupported platforms and pushed down to the default rejection handler.
+    val getRequest = HttpRequest(
+      HttpMethods.GET,
+      uri = "/v2/data/notSupportedPlatform/mainnet/blocks"
+    )
+    getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
+      handled shouldBe false
+    }
+  }
+
+  "return 404 NotFound status code for request for the unsupported network with GET" in {
+    val getRequest = HttpRequest(
+      HttpMethods.GET,
+      uri = "/v2/data/bitcoin/notSupportedNetwork/blocks"
+    )
+    getRequest ~> addHeader("apiKey", "hooman") ~> routes.getRoute ~> check {
+      status shouldBe StatusCodes.NotFound
+    }
+  }
 }
 
 object BitcoinDataRoutesTest {

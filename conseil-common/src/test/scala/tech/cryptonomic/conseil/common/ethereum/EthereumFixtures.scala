@@ -315,6 +315,8 @@ trait EthereumFixtures {
       totalSupply = "0x0"
     )
 
+    val exampleToken = Tables.RegisteredTokensRow("example", "0xdac17f958d2ee523a2206206994597c13d831ec7")
+
     val tokenTransferResult = TokenTransfer(
       tokenAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
       blockHash = "0x017685281a11f6514538b113d62c7efb9852922ff308f4596d2c37c6f4717214",

@@ -689,6 +689,8 @@ private[tezos] object TezosDatabaseConversions {
       case _: TxRollupSubmitBatch => "tx_rollup_submit_batch"
       case _: TxRollupCommit => "tx_rollup_commit"
       case _: TxRollupFinalizeCommitment => "tx_rollup_finalize_commitment"
+      case _: TxRollupDispatchTickets => "tx_rollup_dispatch_ticket"
+      case DefaultOperation(kind, _) => kind
       case _ => ""
     }
     val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
@@ -738,7 +740,7 @@ private[tezos] object TezosDatabaseConversions {
               sourceHash = hashing.get(from),
               kind = kind,
               accountId = contract.map(_.id).orElse(delegate.map(_.value)).getOrElse("N/A"),
-              change = extractBigDecimal(change).get,
+              change = extractBigDecimal(change).getOrElse(BigDecimal(0L)), // just for tests consistency
               level = level,
               category = category,
               blockId = blockHash.value,

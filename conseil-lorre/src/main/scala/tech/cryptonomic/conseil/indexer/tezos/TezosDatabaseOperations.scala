@@ -11,7 +11,7 @@ import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
-import tech.cryptonomic.conseil.common.tezos.Tables
+import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
 import tech.cryptonomic.conseil.common.tezos.Tables.{
   GovernanceRow,
   OperationsRow,
@@ -26,7 +26,7 @@ import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.indexer.tezos.bigmaps.BigMapsOperations
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.indexer.tezos.TezosGovernanceOperations.GovernanceAggregate
-import tech.cryptonomic.conseil.indexer.sql.DefaultDatabaseOperations._
+import tech.cryptonomic.conseil.common.sql.DefaultDatabaseOperations._
 
 import scala.collection.immutable.Queue
 import scala.concurrent.{ExecutionContext, Future}
@@ -839,45 +839,14 @@ object TezosDatabaseOperations extends ConseilLogSupport {
   import shapeless._
   import shapeless.ops.hlist._
 
-  /** Reads and inserts CSV file to the database for the given table.
-    * Also Gives possibility to upsert when table is already filled with data
-    */
-  def initTableFromCsv[A <: AbstractTable[_], H <: HList](
-      db: Database,
-      table: TableQuery[A],
-      network: String,
-      separator: Char = ',',
-      upsert: Boolean = false
-  )(implicit
-      hd: HeaderDecoder[A#TableElementType],
-      g: Generic.Aux[A#TableElementType, H],
-      m: Mapper.Aux[ConfigUtil.Csv.Trimmer.type, H, H],
-      ec: ExecutionContext
-  ): Future[(List[A#TableElementType], Option[Int])] =
-    ConfigUtil.Csv.readTableRowsFromCsv(table, network, separator) match {
-      case Some(rows) =>
-        db.run(insertWhenEmpty(table, rows, upsert))
-          .andThen {
-            case Success(_) => logger.info(s"Written ${rows.size} ${table.baseTableRow.tableName} rows")
-            case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
-          }
-          .map(rows -> _)
-      case None =>
-        logger.warn(s"No csv configuration found to initialize table ${table.baseTableRow.tableName} for $network.")
-        Future.successful(List.empty -> None)
-    }
-
   /** Reads json file for registered tokens */
   def readRegisteredTokensJsonFile(network: String): Option[List[RegisteredToken]] = {
     import io.circe.parser.decode
     import RegisteredTokensFetcher.decoder
     import java.io.{BufferedReader, InputStreamReader}
 
-    val reader =
-      new BufferedReader(new InputStreamReader(getClass.getResourceAsStream(s"/registered_tokens/$network.json")))
-    val content = Stream.continually(reader.readLine).takeWhile(_ != null).mkString
-    reader.close() // TODO: loose effect
-
+    val file = getClass.getResource(s"/tezos/registered_tokens/$network.json")
+    val content = Source.fromFile(file.toURI).getLines.mkString
     decode[List[RegisteredToken]](content) match {
       case Left(error) =>
         logger.error(s"Something wrong with registered tokens file $error")
@@ -1004,7 +973,7 @@ object TezosDatabaseOperations extends ConseilLogSupport {
         assert(fromLevel > 0, message = "Invalidation due to fork can be performed from positive block level only")
         val asOfTimestamp = Timestamp.from(asOf)
         query
-          .filter(levelColumn(_) >= fromLevel)
+          .filter(x => levelColumn(x) >= fromLevel && forkIdColumn(x) === Fork.mainForkId)
           .map(e => (invalidationTimeColumn(e), forkIdColumn(e)))
           .update(asOfTimestamp.some, forkId)
       }

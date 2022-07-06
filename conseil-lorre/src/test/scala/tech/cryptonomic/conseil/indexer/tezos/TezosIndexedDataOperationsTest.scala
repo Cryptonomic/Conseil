@@ -14,6 +14,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   Block,
   BlockReference,
   EndorsingRights,
+  GenesisMetadata,
   RightsFetchKey,
   TezosBlockHash,
   Voting
@@ -57,548 +58,550 @@ class TezosIndexedDataOperationsTest
   import LocalGenerationUtils._
 
   "TezosIndexedDataOperations" should {
-      implicit val noTokenContracts: TokenContracts = TokenContracts.fromConfig(List.empty)
-      implicit val noTNSContracts: TNSContract = TNSContract.noContract
+    implicit val noTokenContracts: TokenContracts = TokenContracts.fromConfig(List.empty)
+    implicit val noTNSContracts: TNSContract = TNSContract.noContract
 
-      val sut = new TezosIndexedDataOperations(dbHandler)
+    val sut = new TezosIndexedDataOperations(dbHandler)
 
-      "fetchBlockAtLevel for missing entry" in {
-        //when
-        val result = sut.fetchBlockAtLevel(1).futureValue
+    "fetchBlockAtLevel for missing entry" in {
+      //when
+      val result = sut.fetchBlockAtLevel(1).futureValue
 
-        //then
-        result shouldBe None
-      }
+      //then
+      result shouldBe None
+    }
 
-      "fetchBlockAtLevel for a matching entry" in {
-        // given
+    "fetchBlockAtLevel for a matching entry" in {
+      // given
 
-        /* group by key and count the resulting buckets' size to detect duplicates */
-        def noDuplicateKeys(safeBlocks: List[DBSafe[Block]]): Boolean =
-          !safeBlocks.groupBy(_.value.data.hash).exists { case (key, rows) => rows.size > 1 }
+      /* group by key and count the resulting buckets' size to detect duplicates */
+      def noDuplicateKeys(safeBlocks: List[DBSafe[Block]]): Boolean =
+        !safeBlocks.groupBy(_.value.data.hash).exists { case (key, rows) => rows.size > 1 }
 
-        val generator = for {
-          arbitraryBlocks <- Gen.nonEmptyListOf(arbitrary[DBSafe[Block]]).retryUntil(noDuplicateKeys)
-          level <- Gen.choose(0L, arbitraryBlocks.size - 1)
-        } yield {
-          val orderedBlocks = arbitraryBlocks.zipWithIndex.map {
-            case (DBSafe(block), lvl) =>
-              TezosOptics.Blocks.onLevel
-                .set(lvl)(block)
-                .copy(operationGroups = List.empty)
-          }
-          (orderedBlocks, level)
+      val generator = for {
+        arbitraryBlocks <- Gen.nonEmptyListOf(arbitrary[DBSafe[Block]]).retryUntil(noDuplicateKeys)
+        level <- Gen.choose(0L, arbitraryBlocks.size - 1)
+      } yield {
+        val orderedBlocks = arbitraryBlocks.zipWithIndex.map { case (DBSafe(block), lvl) =>
+          TezosOptics.Blocks.onLevel
+            .set(lvl)(block.copy(data = block.data.copy(metadata = GenesisMetadata))) // TODO: fix metadata generation
+            .copy(operationGroups = List.empty)
         }
-
-        val (generatedBlocks, pickLevel) = generator.sample.value
-
-        info(s"verifying with ${generatedBlocks.size} blocks for level $pickLevel")
-
-        Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks, noTokenContracts)), 5.seconds)
-
-        // when
-        val result = sut.fetchBlockAtLevel(pickLevel).futureValue.value
-
-        // then
-        result.level shouldBe pickLevel
+        (orderedBlocks, level)
       }
 
-      "read latest account ids from checkpoint" in {
-        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+      val (generatedBlocks, pickLevel) = generator.sample.value
 
-        //generate data
-        val blocks = generateBlockRows(toLevel = 5, testReferenceTimestamp)
+      info(s"verifying with ${generatedBlocks.size} blocks for level $pickLevel")
 
-        //store required blocks for FK
-        val accountIds = Array("a0", "a1", "a2", "a3", "a4", "a5", "a6")
-        val blockIds = blocks.map(_.hash)
+      Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks, noTokenContracts)), 5.seconds)
 
-        //create test data:
-        val checkpointRows = Array(
-          Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4, testReferenceTimestamp),
-          Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5, testReferenceTimestamp)
+      // when
+      val result = sut.fetchBlockAtLevel(pickLevel).futureValue.value
+
+      // then
+      result.level shouldBe pickLevel
+    }
+
+    "read latest account ids from checkpoint" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = 5, testReferenceTimestamp)
+
+      //store required blocks for FK
+      val accountIds = Array("a0", "a1", "a2", "a3", "a4", "a5", "a6")
+      val blockIds = blocks.map(_.hash)
+
+      //create test data:
+      val checkpointRows = Array(
+        Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+        Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2, testReferenceTimestamp),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2, testReferenceTimestamp),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3, testReferenceTimestamp),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4, testReferenceTimestamp),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4, testReferenceTimestamp),
+        Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5, testReferenceTimestamp)
+      )
+
+      def entry(accountAtIndex: Int, atLevel: Int, time: Timestamp) =
+        makeAccountId(accountIds(accountAtIndex)) ->
+          BlockReference(TezosBlockHash(blockIds(atLevel)), atLevel, Some(time.toInstant), None, None)
+
+      //expecting only the following to remain
+      val expected =
+        Map(
+          entry(accountAtIndex = 1, atLevel = 1, time = testReferenceTimestamp),
+          entry(accountAtIndex = 2, atLevel = 3, time = testReferenceTimestamp),
+          entry(accountAtIndex = 3, atLevel = 4, time = testReferenceTimestamp),
+          entry(accountAtIndex = 4, atLevel = 2, time = testReferenceTimestamp),
+          entry(accountAtIndex = 5, atLevel = 4, time = testReferenceTimestamp),
+          entry(accountAtIndex = 6, atLevel = 5, time = testReferenceTimestamp)
         )
 
-        def entry(accountAtIndex: Int, atLevel: Int, time: Timestamp) =
-          makeAccountId(accountIds(accountAtIndex)) ->
-              BlockReference(TezosBlockHash(blockIds(atLevel)), atLevel, Some(time.toInstant), None, None)
+      val populate = for {
+        blockCounts <- Tables.Blocks ++= blocks
+        checkpoint <- Tables.AccountsCheckpoint ++= checkpointRows
+      } yield (blockCounts, checkpoint)
 
-        //expecting only the following to remain
-        val expected =
-          Map(
-            entry(accountAtIndex = 1, atLevel = 1, time = testReferenceTimestamp),
-            entry(accountAtIndex = 2, atLevel = 3, time = testReferenceTimestamp),
-            entry(accountAtIndex = 3, atLevel = 4, time = testReferenceTimestamp),
-            entry(accountAtIndex = 4, atLevel = 2, time = testReferenceTimestamp),
-            entry(accountAtIndex = 5, atLevel = 4, time = testReferenceTimestamp),
-            entry(accountAtIndex = 6, atLevel = 5, time = testReferenceTimestamp)
-          )
+      val (storedBlocks, initialCount) = dbHandler.run(populate.transactionally).futureValue
+      val latest = sut.getLatestAccountsFromCheckpoint.futureValue
 
-        val populate = for {
-          blockCounts <- Tables.Blocks ++= blocks
-          checkpoint <- Tables.AccountsCheckpoint ++= checkpointRows
-        } yield (blockCounts, checkpoint)
+      storedBlocks.value shouldBe blocks.size
+      initialCount.value shouldBe checkpointRows.size
 
-        val (storedBlocks, initialCount) = dbHandler.run(populate.transactionally).futureValue
-        val latest = sut.getLatestAccountsFromCheckpoint.futureValue
-
-        storedBlocks.value shouldBe blocks.size
-        initialCount.value shouldBe checkpointRows.size
-
-        latest.toSeq should contain theSameElementsAs expected.toSeq
-
-      }
-
-      "ignore forked data on fetchBlockAtLevel" in {
-        // given
-
-        val (validBlock, invalidation, fork) =
-          arbitrary[(ForkValid[BlocksRow], Timestamp, ju.UUID)].sample.value
-        val invalidBlock = validBlock.data.copy(
-          invalidatedAsof = Some(invalidation),
-          forkId = fork.toString
-        )
-
-        // when
-        val populateAndFetch = for {
-          stored <- dbHandler.run(Tables.Blocks += invalidBlock)
-          result <- sut.fetchBlockAtLevel(invalidBlock.level)
-        } yield (stored, result)
-
-        val (stored, result) = populateAndFetch.futureValue
-
-        //then
-        stored shouldBe >(0)
-
-        result shouldBe empty
-
-      }
-
-      "fetchMaxLevel when DB is empty" in {
-        // when
-        val result = sut.fetchMaxLevel().futureValue
-
-        // then
-        result shouldBe -1
-      }
-
-      "fetchMaxLevel" in {
-        // given
-
-        /* group by key and count the resulting buckets' size to detect duplicates */
-        def noDuplicateKeys(safeBlocks: List[DBSafe[Block]]): Boolean =
-          !safeBlocks.groupBy(_.value.data.hash).exists { case (key, rows) => rows.size > 1 }
-
-        val generator = Gen
-          .nonEmptyListOf(arbitrary[DBSafe[Block]])
-          .retryUntil(noDuplicateKeys)
-          .map { arbitraryBlocks =>
-            arbitraryBlocks.zipWithIndex.map {
-              case (DBSafe(block), lvl) =>
-                TezosOptics.Blocks.onLevel
-                  .set(lvl)(block)
-                  .copy(operationGroups = List.empty)
-            }
-          }
-        val generatedBlocks = generator.sample.value
-
-        info(s"verifying with ${generatedBlocks.size} blocks")
-
-        Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks, noTokenContracts)), 5.seconds)
-
-        // when
-        val result = sut.fetchMaxLevel().futureValue
-
-        // then
-        result shouldBe generatedBlocks.map(_.data.header.level).max
-      }
-
-      "ignore fork-invalidated data when fetchMaxLevel" in {
-        // given
-
-        val (validBlock, invalidation, fork) =
-          arbitrary[(ForkValid[BlocksRow], Timestamp, ju.UUID)].sample.value
-        val invalidBlock = validBlock.data.copy(
-          invalidatedAsof = Some(invalidation),
-          forkId = fork.toString
-        )
-
-        // when
-        val populateAndFetch = for {
-          stored <- dbHandler.run(Tables.Blocks += invalidBlock)
-          result <- sut.fetchMaxLevel()
-        } yield (stored, result)
-
-        val (stored, result) = populateAndFetch.futureValue
-
-        // then
-        stored shouldBe >(0)
-
-        result shouldBe -1
-
-      }
-
-      "fetchMaxBakingRightsLevel when DB is empty" in {
-        // when
-        val result = sut.fetchMaxBakingRightsLevel().futureValue
-
-        // then
-        result shouldBe -1
-      }
-
-      "fetchMaxEndorsingRightsLevel when DB is empty" in {
-        // when
-        val result = sut.fetchMaxEndorsingRightsLevel().futureValue
-
-        // then
-        result shouldBe -1
-      }
-
-      "fetchMaxBakingRightsLevel" in {
-        // when
-        val (fetchKey, bakingRights, block) = {
-          val generator = for {
-            DBSafe(referenceBlock) <- arbitrary[DBSafe[Block]]
-            DBSafe(fetchKey) <- arbitrary[DBSafe[RightsFetchKey]]
-            bakeRights <- Gen.nonEmptyListOf(arbitrary[BakingRights])
-            delegates <- Gen.infiniteStream(arbitrary[DBSafe[String]])
-            dbSafeRights = fetchKey.copy(blockHash = referenceBlock.data.hash)
-            dbSafeBakingRights = bakeRights.zip(delegates).map {
-              case (rights, DBSafe(delegate)) => rights.copy(delegate = delegate)
-            }
-          } yield (dbSafeRights, dbSafeBakingRights, referenceBlock)
-
-          generator.sample.value
-        }
-
-        info(s"verifying with ${bakingRights.size} rights")
-
-        val populate = for {
-          _ <- TezosDatabaseOperations.writeBlocks(List(block), noTokenContracts)
-          Some(stored) <- TezosDatabaseOperations.upsertBakingRights(Map(fetchKey -> bakingRights))
-        } yield stored
-
-        val stored = dbHandler.run(populate).futureValue
-
-        stored shouldBe >(0)
-
-        val result = sut.fetchMaxBakingRightsLevel().futureValue
-
-        // then
-        result shouldBe bakingRights.map(_.level).max
-      }
-
-      "fetchMaxEndorsingRightsLevel" in {
-        // when
-        val (fetchKey, endorsingRights, block) = {
-          val generator = for {
-            DBSafe(referenceBlock) <- arbitrary[DBSafe[Block]]
-            DBSafe(fetchKey) <- arbitrary[DBSafe[RightsFetchKey]]
-            endorseRights <- Gen.nonEmptyListOf(arbitrary[EndorsingRights]).retryUntil(_.exists(_.slots.nonEmpty))
-            delegates <- Gen.infiniteStream(arbitraryBase58CheckString)
-            dbSafeRights = fetchKey.copy(blockHash = referenceBlock.data.hash)
-            dbSafeEndorsingRights = endorseRights.zip(delegates).map {
-              case (rights, delegate) => rights.copy(delegate = delegate)
-            }
-          } yield (dbSafeRights, dbSafeEndorsingRights, referenceBlock)
-
-          generator.sample.value
-        }
-
-        info(s"verifying with ${endorsingRights.size} rights")
-
-        val populate = for {
-          _ <- TezosDatabaseOperations.writeBlocks(List(block), noTokenContracts)
-          Some(stored) <- TezosDatabaseOperations.upsertEndorsingRights(Map(fetchKey -> endorsingRights))
-        } yield stored
-
-        val stored = dbHandler.run(populate).futureValue
-
-        stored shouldBe >(0)
-
-        val result = sut.fetchMaxEndorsingRightsLevel().futureValue
-
-        // then
-        result shouldBe endorsingRights.map(_.level).max
-      }
-
-      "ignore fork-invalidated data when fetchMaxBakingRightsLevel" in {
-        //given
-        val (validRow, validReferencedBlock, invalidation, fork) =
-          arbitrary[(ForkValid[BakingRightsRow], ForkValid[BlocksRow], Timestamp, ju.UUID)].sample.value
-        val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
-        val invalidRow = validRow.data.copy(
-          blockLevel = invalidBlock.level,
-          blockHash = Some(invalidBlock.hash),
-          invalidatedAsof = Some(invalidation),
-          forkId = fork.toString
-        )
-
-        // when
-        val populate = for {
-          _ <- Tables.Blocks += invalidBlock
-          stored <- Tables.BakingRights += invalidRow
-        } yield stored
-
-        val stored = dbHandler.run(populate).futureValue
-
-        val loaded = sut.fetchMaxBakingRightsLevel().futureValue
-
-        // then
-        stored shouldBe >(0)
-
-        loaded shouldBe -1
-
-      }
-
-      "ignore fork-invalidated data when fetchMaxEndorsingRightsLevel" in {
-        //given
-        val (validRow, validReferencedBlock, invalidation, fork) =
-          arbitrary[(ForkValid[EndorsingRightsRow], ForkValid[BlocksRow], Timestamp, ju.UUID)].sample.value
-        val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
-        val invalidRow = validRow.data.copy(
-          blockLevel = invalidBlock.level,
-          blockHash = Some(invalidBlock.hash),
-          invalidatedAsof = Some(invalidation),
-          forkId = fork.toString
-        )
-
-        // when
-        val populate = for {
-          _ <- Tables.Blocks += invalidBlock
-          stored <- Tables.EndorsingRights += invalidRow
-        } yield stored
-
-        val stored = dbHandler.run(populate).futureValue
-
-        val loaded = sut.fetchMaxEndorsingRightsLevel().futureValue
-
-        // then
-        stored shouldBe >(0)
-
-        loaded shouldBe -1
-
-      }
-
-      "ignore fork-invalidated data for latest operation hashes by kind" in {
-        /* Generate the data random sample */
-        val (validRows, validReferencedGroup, validReferencedBlock, invalidation, fork) =
-          Gen
-            .zip(
-              nonConflictingArbitrary[ForkValid[OperationsRow]](
-                //add a bit more realism
-                satisfying = (row: ForkValid[OperationsRow]) => row.data.blockLevel > 0
-              ),
-              arbitrary[ForkValid[OperationGroupsRow]],
-              arbitrary[ForkValid[BlocksRow]],
-              arbitrary[Timestamp],
-              arbitrary[ju.UUID]
-            )
-            .sample
-            .value
-
-        val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
-        val invalidGroup = validReferencedGroup.data.copy(
-          blockId = invalidBlock.hash,
-          blockLevel = invalidBlock.level,
-          invalidatedAsof = Some(invalidation),
-          forkId = fork.toString
-        )
-        /* take heed that we keep the levels random */
-        val invalidRows = validRows.map(
-          _.data.copy(
-            blockHash = invalidBlock.hash,
-            operationGroupHash = invalidGroup.hash,
-            invalidatedAsof = Some(invalidation),
-            forkId = fork.toString
-          )
-        )
-
-        /* take note of relevant params */
-        val minRecordedLevel = invalidRows.map(_.blockLevel).min
-        val operationKinds = invalidRows.map(_.kind).toSet
-        //double-check
-        minRecordedLevel shouldBe >(0L)
-        operationKinds should not be empty
-
-        /* Store everything on db */
-        val populate = for {
-          _ <- Tables.Blocks += invalidBlock
-          _ <- Tables.OperationGroups += invalidGroup
-          Some(stored) <- Tables.Operations ++= invalidRows
-        } yield stored
-
-        /* Test the results */
-        val stored = dbHandler.run(populate).futureValue
-        val loaded = sut
-          .fetchRecentOperationsHashByKind(
-            ofKind = operationKinds,
-            fromLevel = minRecordedLevel
-          )
-          .futureValue
-
-        stored shouldBe >(0)
-        loaded shouldBe empty
-      }
-
-      "ignore fork-invalidated data for account levels" in {
-
-        /* Generate the data random sample */
-        val (validRows, validReferencedBlock, invalidation, fork) =
-          Gen
-            .zip(
-              //duplicate ids will fail to save on the db for violation of the PK uniqueness
-              nonConflictingArbitrary[ForkValid[AccountsRow]],
-              arbitrary[ForkValid[BlocksRow]],
-              arbitrary[Timestamp],
-              arbitrary[ju.UUID]
-            )
-            .sample
-            .value
-
-        val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
-        val invalidRows = validRows.map(
-          _.data.copy(
-            blockId = invalidBlock.hash,
-            blockLevel = invalidBlock.level,
-            invalidatedAsof = Some(invalidation),
-            forkId = fork.toString
-          )
-        )
-
-        /* Store everything on db */
-        val populate = for {
-          _ <- Tables.Blocks += invalidBlock
-          Some(stored) <- Tables.Accounts ++= invalidRows
-        } yield stored
-
-        /* Test the results */
-        val stored = dbHandler.run(populate).futureValue
-        val loaded = sut.getLevelsForAccounts(invalidRows.map(row => makeAccountId(row.accountId)).toSet).futureValue
-
-        stored shouldBe >(0)
-        loaded shouldBe empty
-
-      }
-
-      "ignore fork-invalidated data for filteres bakers" in {
-
-        /* Generate the data random sample */
-        val (validRows, validReferencedBlock, invalidation, fork) =
-          Gen
-            .zip(
-              //duplicate ids will fail to save on the db for violation of the PK uniqueness
-              nonConflictingArbitrary[ForkValid[AccountsRow]],
-              arbitrary[ForkValid[BlocksRow]],
-              arbitrary[Timestamp],
-              arbitrary[ju.UUID]
-            )
-            .sample
-            .value
-
-        val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
-        val invalidRows = validRows.map(
-          _.data.copy(
-            blockId = invalidBlock.hash,
-            blockLevel = invalidBlock.level,
-            invalidatedAsof = Some(invalidation),
-            forkId = fork.toString
-          )
-        )
-
-        /* Store everything on db */
-        val populate = for {
-          _ <- Tables.Blocks += invalidBlock
-          Some(stored) <- Tables.Accounts ++= invalidRows
-        } yield stored
-
-        /* Test the results */
-        val stored = dbHandler.run(populate).futureValue
-        val loaded = sut.getFilteredBakerAccounts(exclude = Set.empty).futureValue
-
-        stored shouldBe >(0)
-        loaded shouldBe empty
-
-      }
-
-      "ignore fork-invalidated data for bakers by block-hash" in {
-
-        val (validRow, validReferencedBlock, invalidation, fork) =
-          arbitrary[
-            (
-                ForkValid[BakersRow],
-                ForkValid[BlocksRow],
-                Timestamp,
-                ju.UUID
-            )
-          ].sample.value
-
-        val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
-        val invalidRow = validRow.data.copy(
-          blockId = invalidBlock.hash,
-          blockLevel = invalidBlock.level,
-          invalidatedAsof = Some(invalidation),
-          forkId = fork.toString
-        )
-
-        val populate = for {
-          _ <- Tables.Blocks += invalidBlock
-          stored <- Tables.Bakers += invalidRow
-        } yield stored
-
-        val stored = dbHandler.run(populate).futureValue
-        val loaded = sut.getBakersForBlocks(List(TezosBlockHash(invalidRow.blockId))).futureValue
-
-        stored shouldBe >(0)
-        //get all rolls for any requested hash and concat them together
-        loaded.foldLeft(List.empty[Voting.BakerRolls]) {
-          case (allRolls, (hash, rolls)) => allRolls ++ rolls
-        } shouldBe empty
-
-      }
-
-      "ignore fork-invalidated data for activated accounts" in {
-
-        val (validRow, validReferencedBlock, invalidation, fork) =
-          arbitrary[
-            (
-                ForkValid[AccountsRow],
-                ForkValid[BlocksRow],
-                Timestamp,
-                ju.UUID
-            )
-          ].sample.value
-
-        val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
-        val invalidRow = validRow.data.copy(
-          isActivated = true,
-          blockLevel = invalidBlock.level,
-          blockId = invalidBlock.hash,
-          invalidatedAsof = Some(invalidation),
-          forkId = fork.toString
-        )
-
-        val populate = for {
-          _ <- Tables.Blocks += invalidBlock
-          stored <- Tables.Accounts += invalidRow
-        } yield stored
-
-        val stored = dbHandler.run(populate).futureValue
-        val loaded = sut.findActivatedAccountIds.futureValue
-
-        stored shouldBe >(0)
-        loaded shouldBe empty
-
-      }
+      latest.toSeq should contain theSameElementsAs expected.toSeq
 
     }
+
+    "ignore forked data on fetchBlockAtLevel" in {
+      // given
+
+      val (validBlock, invalidation, fork) =
+        arbitrary[(ForkValid[BlocksRow], Timestamp, ju.UUID)].sample.value
+      val invalidBlock = validBlock.data.copy(
+        invalidatedAsof = Some(invalidation),
+        forkId = fork.toString
+      )
+
+      // when
+      val populateAndFetch = for {
+        stored <- dbHandler.run(Tables.Blocks += invalidBlock)
+        result <- sut.fetchBlockAtLevel(invalidBlock.level)
+      } yield (stored, result)
+
+      val (stored, result) = populateAndFetch.futureValue
+
+      //then
+      stored shouldBe >(0)
+
+      result shouldBe empty
+
+    }
+
+    "fetchMaxLevel when DB is empty" in {
+      // when
+      val result = sut.fetchMaxLevel().futureValue
+
+      // then
+      result shouldBe -1
+    }
+
+    "fetchMaxLevel" in {
+      // given
+
+      /* group by key and count the resulting buckets' size to detect duplicates */
+      def noDuplicateKeys(safeBlocks: List[DBSafe[Block]]): Boolean =
+        !safeBlocks.groupBy(_.value.data.hash).exists { case (key, rows) => rows.size > 1 }
+
+      val generator = Gen
+        .nonEmptyListOf(arbitrary[DBSafe[Block]])
+        .retryUntil(noDuplicateKeys)
+        .map { arbitraryBlocks =>
+          arbitraryBlocks.zipWithIndex.map { case (DBSafe(block), lvl) =>
+            TezosOptics.Blocks.onLevel
+              .set(lvl)(block.copy(data = block.data.copy(metadata = GenesisMetadata))) // TODO: fix metadata generation
+              .copy(operationGroups = List.empty)
+          }
+        }
+      val generatedBlocks = generator.sample.value
+
+      info(s"verifying with ${generatedBlocks.size} blocks")
+
+      Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks, noTokenContracts)), 5.seconds)
+
+      // when
+      val result = sut.fetchMaxLevel().futureValue
+
+      // then
+      result shouldBe generatedBlocks.map(_.data.header.level).max
+    }
+
+    "ignore fork-invalidated data when fetchMaxLevel" in {
+      // given
+
+      val (validBlock, invalidation, fork) =
+        arbitrary[(ForkValid[BlocksRow], Timestamp, ju.UUID)].sample.value
+      val invalidBlock = validBlock.data.copy(
+        invalidatedAsof = Some(invalidation),
+        forkId = fork.toString
+      )
+
+      // when
+      val populateAndFetch = for {
+        stored <- dbHandler.run(Tables.Blocks += invalidBlock)
+        result <- sut.fetchMaxLevel()
+      } yield (stored, result)
+
+      val (stored, result) = populateAndFetch.futureValue
+
+      // then
+      stored shouldBe >(0)
+
+      result shouldBe -1
+
+    }
+
+    "fetchMaxBakingRightsLevel when DB is empty" in {
+      // when
+      val result = sut.fetchMaxBakingRightsLevel().futureValue
+
+      // then
+      result shouldBe -1
+    }
+
+    "fetchMaxEndorsingRightsLevel when DB is empty" in {
+      // when
+      val result = sut.fetchMaxEndorsingRightsLevel().futureValue
+
+      // then
+      result shouldBe -1
+    }
+
+    "fetchMaxBakingRightsLevel" in {
+      // when
+      val (fetchKey, bakingRights, block) = {
+        val generator = for {
+          DBSafe(referenceBlock) <- arbitrary[DBSafe[Block]]
+          DBSafe(fetchKey) <- arbitrary[DBSafe[RightsFetchKey]]
+          bakeRights <- Gen.nonEmptyListOf(arbitrary[BakingRights])
+          delegates <- Gen.infiniteStream(arbitrary[DBSafe[String]])
+          dbSafeRights = fetchKey.copy(blockHash = referenceBlock.data.hash)
+          dbSafeBakingRights = bakeRights.zip(delegates).map { case (rights, DBSafe(delegate)) =>
+            rights.copy(delegate = delegate)
+          }
+        } yield (dbSafeRights, dbSafeBakingRights, referenceBlock)
+
+        generator.sample.value
+      }
+
+      info(s"verifying with ${bakingRights.size} rights")
+
+      val populate = for {
+        _ <- TezosDatabaseOperations.writeBlocks(List(block), noTokenContracts)
+        Some(stored) <- TezosDatabaseOperations.upsertBakingRights(Map(fetchKey -> bakingRights))
+      } yield stored
+
+      val stored = dbHandler.run(populate).futureValue
+
+      stored shouldBe >(0)
+
+      val result = sut.fetchMaxBakingRightsLevel().futureValue
+
+      // then
+      result shouldBe bakingRights.map(_.level).max
+    }
+
+    "fetchMaxEndorsingRightsLevel" in {
+      // when
+      val (fetchKey, endorsingRights, block) = {
+        val generator = for {
+          DBSafe(referenceBlock) <- arbitrary[DBSafe[Block]]
+          DBSafe(fetchKey) <- arbitrary[DBSafe[RightsFetchKey]]
+          endorseRights <- Gen.nonEmptyListOf(arbitrary[EndorsingRights]).retryUntil(_.exists(_.slots.nonEmpty))
+          delegates <- Gen.infiniteStream(arbitraryBase58CheckString)
+          dbSafeRights = fetchKey.copy(blockHash = referenceBlock.data.hash)
+          dbSafeEndorsingRights = endorseRights.zip(delegates).map { case (rights, delegate) =>
+            rights.copy(delegate = delegate)
+          }
+        } yield (
+          dbSafeRights,
+          dbSafeEndorsingRights,
+          referenceBlock.copy(data = referenceBlock.data.copy(metadata = GenesisMetadata))
+        ) // TODO: fix metadata generation
+
+        generator.sample.value
+      }
+
+      info(s"verifying with ${endorsingRights.size} rights")
+
+      val populate = for {
+        _ <- TezosDatabaseOperations.writeBlocks(List(block), noTokenContracts)
+        Some(stored) <- TezosDatabaseOperations.upsertEndorsingRights(Map(fetchKey -> endorsingRights))
+      } yield stored
+
+      val stored = dbHandler.run(populate).futureValue
+
+      stored shouldBe >(0)
+
+      val result = sut.fetchMaxEndorsingRightsLevel().futureValue
+
+      // then
+      result shouldBe endorsingRights.map(_.level).max
+    }
+
+    "ignore fork-invalidated data when fetchMaxBakingRightsLevel" in {
+      //given
+      val (validRow, validReferencedBlock, invalidation, fork) =
+        arbitrary[(ForkValid[BakingRightsRow], ForkValid[BlocksRow], Timestamp, ju.UUID)].sample.value
+      val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
+      val invalidRow = validRow.data.copy(
+        blockLevel = invalidBlock.level,
+        blockHash = Some(invalidBlock.hash),
+        invalidatedAsof = Some(invalidation),
+        forkId = fork.toString
+      )
+
+      // when
+      val populate = for {
+        _ <- Tables.Blocks += invalidBlock
+        stored <- Tables.BakingRights += invalidRow
+      } yield stored
+
+      val stored = dbHandler.run(populate).futureValue
+
+      val loaded = sut.fetchMaxBakingRightsLevel().futureValue
+
+      // then
+      stored shouldBe >(0)
+
+      loaded shouldBe -1
+
+    }
+
+    "ignore fork-invalidated data when fetchMaxEndorsingRightsLevel" in {
+      //given
+      val (validRow, validReferencedBlock, invalidation, fork) =
+        arbitrary[(ForkValid[EndorsingRightsRow], ForkValid[BlocksRow], Timestamp, ju.UUID)].sample.value
+      val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
+      val invalidRow = validRow.data.copy(
+        blockLevel = invalidBlock.level,
+        blockHash = Some(invalidBlock.hash),
+        invalidatedAsof = Some(invalidation),
+        forkId = fork.toString
+      )
+
+      // when
+      val populate = for {
+        _ <- Tables.Blocks += invalidBlock
+        stored <- Tables.EndorsingRights += invalidRow
+      } yield stored
+
+      val stored = dbHandler.run(populate).futureValue
+
+      val loaded = sut.fetchMaxEndorsingRightsLevel().futureValue
+
+      // then
+      stored shouldBe >(0)
+
+      loaded shouldBe -1
+
+    }
+
+    "ignore fork-invalidated data for latest operation hashes by kind" in {
+      /* Generate the data random sample */
+      val (validRows, validReferencedGroup, validReferencedBlock, invalidation, fork) =
+        Gen
+          .zip(
+            nonConflictingArbitrary[ForkValid[OperationsRow]](
+              //add a bit more realism
+              satisfying = (row: ForkValid[OperationsRow]) => row.data.blockLevel > 0
+            ),
+            arbitrary[ForkValid[OperationGroupsRow]],
+            arbitrary[ForkValid[BlocksRow]],
+            arbitrary[Timestamp],
+            arbitrary[ju.UUID]
+          )
+          .sample
+          .value
+
+      val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
+      val invalidGroup = validReferencedGroup.data.copy(
+        blockId = invalidBlock.hash,
+        blockLevel = invalidBlock.level,
+        invalidatedAsof = Some(invalidation),
+        forkId = fork.toString
+      )
+      /* take heed that we keep the levels random */
+      val invalidRows = validRows.map(
+        _.data.copy(
+          blockHash = invalidBlock.hash,
+          operationGroupHash = invalidGroup.hash,
+          invalidatedAsof = Some(invalidation),
+          forkId = fork.toString
+        )
+      )
+
+      /* take note of relevant params */
+      val minRecordedLevel = invalidRows.map(_.blockLevel).min
+      val operationKinds = invalidRows.map(_.kind).toSet
+      //double-check
+      minRecordedLevel shouldBe >(0L)
+      operationKinds should not be empty
+
+      /* Store everything on db */
+      val populate = for {
+        _ <- Tables.Blocks += invalidBlock
+        _ <- Tables.OperationGroups += invalidGroup
+        Some(stored) <- Tables.Operations ++= invalidRows
+      } yield stored
+
+      /* Test the results */
+      val stored = dbHandler.run(populate).futureValue
+      val loaded = sut
+        .fetchRecentOperationsHashByKind(
+          ofKind = operationKinds,
+          fromLevel = minRecordedLevel
+        )
+        .futureValue
+
+      stored shouldBe >(0)
+      loaded shouldBe empty
+    }
+
+    "ignore fork-invalidated data for account levels" in {
+
+      /* Generate the data random sample */
+      val (validRows, validReferencedBlock, invalidation, fork) =
+        Gen
+          .zip(
+            //duplicate ids will fail to save on the db for violation of the PK uniqueness
+            nonConflictingArbitrary[ForkValid[AccountsRow]],
+            arbitrary[ForkValid[BlocksRow]],
+            arbitrary[Timestamp],
+            arbitrary[ju.UUID]
+          )
+          .sample
+          .value
+
+      val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
+      val invalidRows = validRows.map(
+        _.data.copy(
+          blockId = invalidBlock.hash,
+          blockLevel = invalidBlock.level,
+          invalidatedAsof = Some(invalidation),
+          forkId = fork.toString
+        )
+      )
+
+      /* Store everything on db */
+      val populate = for {
+        _ <- Tables.Blocks += invalidBlock
+        Some(stored) <- Tables.Accounts ++= invalidRows
+      } yield stored
+
+      /* Test the results */
+      val stored = dbHandler.run(populate).futureValue
+      val loaded = sut.getLevelsForAccounts(invalidRows.map(row => makeAccountId(row.accountId)).toSet).futureValue
+
+      stored shouldBe >(0)
+      loaded shouldBe empty
+
+    }
+
+    "ignore fork-invalidated data for filteres bakers" in {
+
+      /* Generate the data random sample */
+      val (validRows, validReferencedBlock, invalidation, fork) =
+        Gen
+          .zip(
+            //duplicate ids will fail to save on the db for violation of the PK uniqueness
+            nonConflictingArbitrary[ForkValid[AccountsRow]],
+            arbitrary[ForkValid[BlocksRow]],
+            arbitrary[Timestamp],
+            arbitrary[ju.UUID]
+          )
+          .sample
+          .value
+
+      val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
+      val invalidRows = validRows.map(
+        _.data.copy(
+          blockId = invalidBlock.hash,
+          blockLevel = invalidBlock.level,
+          invalidatedAsof = Some(invalidation),
+          forkId = fork.toString
+        )
+      )
+
+      /* Store everything on db */
+      val populate = for {
+        _ <- Tables.Blocks += invalidBlock
+        Some(stored) <- Tables.Accounts ++= invalidRows
+      } yield stored
+
+      /* Test the results */
+      val stored = dbHandler.run(populate).futureValue
+      val loaded = sut.getFilteredBakerAccounts(exclude = Set.empty).futureValue
+
+      stored shouldBe >(0)
+      loaded shouldBe empty
+
+    }
+
+    "ignore fork-invalidated data for bakers by block-hash" in {
+
+      val (validRow, validReferencedBlock, invalidation, fork) =
+        arbitrary[
+          (
+              ForkValid[BakersRow],
+              ForkValid[BlocksRow],
+              Timestamp,
+              ju.UUID
+          )
+        ].sample.value
+
+      val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
+      val invalidRow = validRow.data.copy(
+        blockId = invalidBlock.hash,
+        blockLevel = invalidBlock.level,
+        invalidatedAsof = Some(invalidation),
+        forkId = fork.toString
+      )
+
+      val populate = for {
+        _ <- Tables.Blocks += invalidBlock
+        stored <- Tables.Bakers += invalidRow
+      } yield stored
+
+      val stored = dbHandler.run(populate).futureValue
+      val loaded = sut.getBakersForBlocks(List(TezosBlockHash(invalidRow.blockId))).futureValue
+
+      stored shouldBe >(0)
+      //get all rolls for any requested hash and concat them together
+      loaded.foldLeft(List.empty[Voting.BakerRolls]) { case (allRolls, (hash, rolls)) =>
+        allRolls ++ rolls
+      } shouldBe empty
+
+    }
+
+    "ignore fork-invalidated data for activated accounts" in {
+
+      val (validRow, validReferencedBlock, invalidation, fork) =
+        arbitrary[
+          (
+              ForkValid[AccountsRow],
+              ForkValid[BlocksRow],
+              Timestamp,
+              ju.UUID
+          )
+        ].sample.value
+
+      val invalidBlock = validReferencedBlock.data.copy(invalidatedAsof = Some(invalidation), forkId = fork.toString)
+      val invalidRow = validRow.data.copy(
+        isActivated = true,
+        blockLevel = invalidBlock.level,
+        blockId = invalidBlock.hash,
+        invalidatedAsof = Some(invalidation),
+        forkId = fork.toString
+      )
+
+      val populate = for {
+        _ <- Tables.Blocks += invalidBlock
+        stored <- Tables.Accounts += invalidRow
+      } yield stored
+
+      val stored = dbHandler.run(populate).futureValue
+      val loaded = sut.findActivatedAccountIds.futureValue
+
+      stored shouldBe >(0)
+      loaded shouldBe empty
+
+    }
+
+  }
 
   private object LocalGenerationUtils {
 
@@ -655,8 +658,7 @@ class TezosIndexedDataOperationsTest
       * The key is provided implicitly by an instance of [[HasKey]] for the
       * entities we're trying to generate.
       */
-    def nonConflictingArbitrary[T1: Arbitrary, T2: Arbitrary](
-        implicit
+    def nonConflictingArbitrary[T1: Arbitrary, T2: Arbitrary](implicit
         hasKey1: HasKey[T1, _],
         hasKey2: HasKey[T2, _]
     ): Gen[List[(T1, T2)]] =
@@ -713,10 +715,9 @@ class TezosIndexedDataOperationsTest
       * with the given id and at the specific time
       */
     def allInvalidated[T <: CanBeInvalidated](asof: Instant, forkId: String)(invalidated: Seq[T]): Boolean =
-      invalidated.forall(
-        it =>
-          it.invalidatedAsof == Some(Timestamp.from(asof)) &&
-            it.forkId == forkId
+      invalidated.forall(it =>
+        it.invalidatedAsof == Some(Timestamp.from(asof)) &&
+        it.forkId == forkId
       )
 
   }

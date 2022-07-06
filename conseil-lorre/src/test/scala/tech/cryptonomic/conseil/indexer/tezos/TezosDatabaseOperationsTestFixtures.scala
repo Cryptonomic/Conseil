@@ -45,8 +45,8 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
       blockHash: TezosBlockHash,
       blockLevel: BlockLevel,
       time: Instant = testReferenceTimestamp.toInstant
-  )(
-      implicit randomSeed: RandomSeed
+  )(implicit
+      randomSeed: RandomSeed
   ): BlockTagged[Map[AccountId, Account]] = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
 
@@ -75,8 +75,8 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
       blockHash: TezosBlockHash,
       blockLevel: BlockLevel,
       delegateKey: Option[PublicKeyHash] = None
-  )(
-      implicit randomSeed: RandomSeed
+  )(implicit
+      randomSeed: RandomSeed
   ): BlockTagged[Map[PublicKeyHash, Delegate]] = {
     require(
       delegatedHashes.nonEmpty,
@@ -162,7 +162,8 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
                 consumed_gas = PositiveDecimal(0),
                 level = Some(randomMetadataLevel()),
                 voting_period_info = None,
-                level_info = None
+                level_info = None,
+                implicit_operations_results = None
               )
         ),
         operationGroups = List.empty,
@@ -174,10 +175,9 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
 
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel)
-      .foldLeft(List(genesis)) {
-        case (chain, lvl) =>
-          val currentBlock = generateOne(lvl, chain.head.data.hash)
-          currentBlock :: chain
+      .foldLeft(List(genesis)) { case (chain, lvl) =>
+        val currentBlock = generateOne(lvl, chain.head.data.hash)
+        currentBlock :: chain
       }
       .reverse
 
@@ -213,11 +213,12 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
     List.fill(howMany) {
       OperationMetadata.BalanceUpdate(
         kind = generateAlphaNumeric(10),
-        change = randomSource.nextLong(),
+        change = Decimal(randomSource.nextInt()),
         category = Some(generateAlphaNumeric(10)),
         contract = Some(ContractId(generateAlphaNumeric(10))),
         delegate = Some(PublicKeyHash(generateAlphaNumeric(10))),
-        level = Some(randomSource.nextInt(100))
+        level = Some(randomSource.nextInt(100)),
+        origin = None
       )
     }
 
@@ -268,18 +269,17 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
 
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel)
-      .foldLeft(List(genesis)) {
-        case (chain, lvl) =>
-          val currentBlock = generateOne(lvl, chain.head.hash)
-          currentBlock :: chain
+      .foldLeft(List(genesis)) { case (chain, lvl) =>
+        val currentBlock = generateOne(lvl, chain.head.hash)
+        currentBlock :: chain
       }
       .reverse
 
   }
 
   /* create an operation group for each block passed in, using random values, with the requested copies of operations */
-  def generateOperationGroup(block: Block, generateOperations: Boolean)(
-      implicit randomSeed: RandomSeed
+  def generateOperationGroup(block: Block, generateOperations: Boolean)(implicit
+      randomSeed: RandomSeed
   ): OperationsGroup = {
 
     //custom hash generator with predictable seed
@@ -305,18 +305,17 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
     val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
 
     blocks
-      .map(
-        block =>
-          Tables.OperationGroupsRow(
-            protocol = "protocol",
-            chainId = block.chainId,
-            hash = generateHash(10),
-            branch = generateHash(10),
-            signature = Some(s"sig${generateHash(10)}"),
-            blockId = block.hash,
-            blockLevel = block.level,
-            forkId = Fork.mainForkId
-          )
+      .map(block =>
+        Tables.OperationGroupsRow(
+          protocol = "protocol",
+          chainId = block.chainId,
+          hash = generateHash(10),
+          branch = generateHash(10),
+          signature = Some(s"sig${generateHash(10)}"),
+          blockId = block.hash,
+          blockLevel = block.level,
+          forkId = Fork.mainForkId
+        )
       )
       .toList
   }
@@ -327,24 +326,23 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
       block: BlocksRow,
       group: OperationGroupsRow
   ): Seq[Tables.OperationsRow] =
-    fees.zipWithIndex.map {
-      case (fee, index) =>
-        Tables.OperationsRow(
-          kind = "kind",
-          operationGroupHash = group.hash,
-          operationId = -1,
-          fee = fee,
-          blockHash = block.hash,
-          blockLevel = block.level,
-          timestamp = new Timestamp(block.timestamp.getTime + index),
-          level = Some(block.level),
-          internal = false,
-          utcYear = 1970,
-          utcMonth = 1,
-          utcDay = 1,
-          utcTime = "00:00:00",
-          forkId = Fork.mainForkId
-        )
+    fees.zipWithIndex.map { case (fee, index) =>
+      Tables.OperationsRow(
+        kind = "kind",
+        operationGroupHash = group.hash,
+        operationId = -1,
+        fee = fee,
+        blockHash = block.hash,
+        blockLevel = block.level,
+        timestamp = new Timestamp(block.timestamp.getTime + index),
+        level = Some(block.level),
+        internal = false,
+        utcYear = 1970,
+        utcMonth = 1,
+        utcDay = 1,
+        utcTime = "00:00:00",
+        forkId = Fork.mainForkId
+      )
     }
 
   /* randomly generates a number of account rows for some block */
@@ -409,30 +407,35 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
           slot = None,
           slots = Some(List(29, 27, 20, 17)),
           delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
-          balance_updates = List(
-            BalanceUpdate(
-              kind = "contract",
-              contract = Some(ContractId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
-              change = -256000000,
-              category = None,
-              delegate = None,
-              level = None
-            ),
-            BalanceUpdate(
-              kind = "freezer",
-              category = Some("deposits"),
-              delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
-              change = 256000000,
-              contract = None,
-              level = Some(1424)
-            ),
-            BalanceUpdate(
-              kind = "freezer",
-              category = Some("rewards"),
-              delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
-              change = 4000000,
-              contract = None,
-              level = Some(1424)
+          balance_updates = Some(
+            List(
+              BalanceUpdate(
+                kind = "contract",
+                contract = Some(ContractId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
+                change = Decimal(-256000000),
+                category = None,
+                delegate = None,
+                level = None,
+                origin = None
+              ),
+              BalanceUpdate(
+                kind = "freezer",
+                category = Some("deposits"),
+                delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
+                change = Decimal(256000000),
+                contract = None,
+                level = Some(1424),
+                origin = None
+              ),
+              BalanceUpdate(
+                kind = "freezer",
+                category = Some("rewards"),
+                delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
+                change = Decimal(4000000),
+                contract = None,
+                level = Some(1424),
+                origin = None
+              )
             )
           )
         )
@@ -443,14 +446,17 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
         level = 199360,
         nonce = Nonce("4ddd711e76cf8c71671688aff7ce9ff67bf24bc16be31cd5dbbdd267456745e0"),
         metadata = BalanceUpdatesMetadata(
-          balance_updates = List(
-            BalanceUpdate(
-              kind = "freezer",
-              category = Some("rewards"),
-              delegate = Some(PublicKeyHash("tz1aWXP237BLwNHJcCD4b3DutCevhqq2T1Z9")),
-              level = Some(1557),
-              change = 125000,
-              contract = None
+          balance_updates = Some(
+            List(
+              BalanceUpdate(
+                kind = "freezer",
+                category = Some("rewards"),
+                delegate = Some(PublicKeyHash("tz1aWXP237BLwNHJcCD4b3DutCevhqq2T1Z9")),
+                level = Some(1557),
+                change = Decimal(125000),
+                contract = None,
+                origin = None
+              )
             )
           )
         )
@@ -461,14 +467,17 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
         pkh = PublicKeyHash("tz1ieofA4fCLAnSgYbE9ZgDhdTuet34qGZWw"),
         secret = Secret("026a9a6b7ea07238dab3e4322d93a6abe8da278a"),
         metadata = BalanceUpdatesMetadata(
-          balance_updates = List(
-            BalanceUpdate(
-              kind = "contract",
-              contract = Some(ContractId("tz1ieofA4fCLAnSgYbE9ZgDhdTuet34qGZWw")),
-              change = 13448692695L,
-              category = None,
-              delegate = None,
-              level = None
+          balance_updates = Some(
+            List(
+              BalanceUpdate(
+                kind = "contract",
+                contract = Some(ContractId("tz1ieofA4fCLAnSgYbE9ZgDhdTuet34qGZWw")),
+                change = Decimal(13448692695L),
+                category = None,
+                delegate = None,
+                level = None,
+                origin = None
+              )
             )
           )
         )
@@ -483,22 +492,26 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
         storage_limit = PositiveDecimal(257),
         public_key = PublicKey("edpktxRxk9r61tjEZCt5a2hY2MWC3gzECGL7FXS1K6WXGG28hTFdFz"),
         metadata = ResultMetadata[OperationResult.Reveal](
-          balance_updates = List(
-            BalanceUpdate(
-              kind = "contract",
-              contract = Some(ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq")),
-              change = -10000L,
-              category = None,
-              delegate = None,
-              level = None
-            ),
-            BalanceUpdate(
-              kind = "freezer",
-              category = Some("fees"),
-              delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
-              level = Some(1561),
-              change = 10000L,
-              contract = None
+          balance_updates = Some(
+            List(
+              BalanceUpdate(
+                kind = "contract",
+                contract = Some(ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq")),
+                change = Decimal(-10000L),
+                category = None,
+                delegate = None,
+                level = None,
+                origin = None
+              ),
+              BalanceUpdate(
+                kind = "freezer",
+                category = Some("fees"),
+                delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
+                level = Some(1561),
+                change = Decimal(10000L),
+                contract = None,
+                origin = None
+              )
             )
           ),
           operation_result = OperationResult.Reveal(
@@ -521,22 +534,26 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
         parameters = Some(Left(Parameters(Micheline("""{"string":"world"}""")))),
         parameters_micheline = None,
         metadata = ResultMetadata(
-          balance_updates = List(
-            BalanceUpdate(
-              kind = "contract",
-              contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-              change = -1416L,
-              category = None,
-              delegate = None,
-              level = None
-            ),
-            BalanceUpdate(
-              kind = "freezer",
-              category = Some("fees"),
-              delegate = Some(PublicKeyHash("tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u")),
-              level = Some(1583),
-              change = 1416L,
-              contract = None
+          balance_updates = Some(
+            List(
+              BalanceUpdate(
+                kind = "contract",
+                contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+                change = Decimal(-1416L),
+                category = None,
+                delegate = None,
+                level = None,
+                origin = None
+              ),
+              BalanceUpdate(
+                kind = "freezer",
+                category = Some("fees"),
+                delegate = Some(PublicKeyHash("tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u")),
+                level = Some(1583),
+                change = Decimal(1416L),
+                contract = None,
+                origin = None
+              )
             )
           ),
           operation_result = OperationResult.Transaction(
@@ -547,6 +564,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
             allocated_destination_contract = None,
             balance_updates = None,
             big_map_diff = Some(List.empty),
+            lazy_storage_diff = None,
             originated_contracts = None,
             paid_storage_size_diff = None,
             errors = None
@@ -568,60 +586,69 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
         delegate = None,
         script = Some(sampleScriptedContract),
         metadata = ResultMetadata(
-          balance_updates = List(
-            BalanceUpdate(
-              kind = "contract",
-              contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-              change = -1441L,
-              category = None,
-              delegate = None,
-              level = None
-            ),
-            BalanceUpdate(
-              kind = "freezer",
-              category = Some("fees"),
-              delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
-              level = Some(1583),
-              change = 1441L,
-              contract = None
+          balance_updates = Some(
+            List(
+              BalanceUpdate(
+                kind = "contract",
+                contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+                change = Decimal(-1441L),
+                category = None,
+                delegate = None,
+                level = None,
+                origin = None
+              ),
+              BalanceUpdate(
+                kind = "freezer",
+                category = Some("fees"),
+                delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
+                level = Some(1583),
+                change = Decimal(1441L),
+                contract = None,
+                origin = None
+              )
             )
           ),
           operation_result = OperationResult.Origination(
             status = "applied",
             big_map_diff = Some(List.empty),
+            lazy_storage_diff = None,
             balance_updates = Some(
               List(
                 BalanceUpdate(
                   kind = "contract",
                   contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-                  change = -46000L,
+                  change = Decimal(-46000L),
                   category = None,
                   delegate = None,
-                  level = None
+                  level = None,
+                  origin = None
                 ),
                 BalanceUpdate(
                   kind = "contract",
                   contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-                  change = -257000L,
+                  change = Decimal(-257000L),
                   category = None,
                   delegate = None,
-                  level = None
+                  level = None,
+                  origin = None
                 ),
                 BalanceUpdate(
                   kind = "contract",
                   contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-                  change = -1000000L,
+                  change = Decimal(-1000000L),
                   category = None,
                   delegate = None,
-                  level = None
+                  level = None,
+                  origin = None
                 ),
                 BalanceUpdate(
                   kind = "contract",
                   contract = Some(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4")),
-                  change = 1000000L,
+                  change = Decimal(1000000L),
                   category = None,
                   delegate = None,
-                  level = None
+                  level = None,
+                  origin = None
                 )
               )
             ),
@@ -643,22 +670,26 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
         storage_limit = PositiveDecimal(0),
         delegate = Some(PublicKeyHash("tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u")),
         metadata = ResultMetadata(
-          balance_updates = List(
-            BalanceUpdate(
-              kind = "contract",
-              contract = Some(ContractId("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9")),
-              change = -1400L,
-              category = None,
-              delegate = None,
-              level = None
-            ),
-            BalanceUpdate(
-              kind = "freezer",
-              category = Some("fees"),
-              delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
-              level = Some(1612),
-              change = 1400L,
-              contract = None
+          balance_updates = Some(
+            List(
+              BalanceUpdate(
+                kind = "contract",
+                contract = Some(ContractId("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9")),
+                change = Decimal(-1400L),
+                category = None,
+                delegate = None,
+                level = None,
+                origin = None
+              ),
+              BalanceUpdate(
+                kind = "freezer",
+                category = Some("fees"),
+                delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
+                level = Some(1612),
+                change = Decimal(1400L),
+                contract = None,
+                origin = None
+              )
             )
           ),
           operation_result = OperationResult.Delegation(
@@ -686,7 +717,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
 
     val sampleOperations: List[Operation] =
       sampleEndorsement :: sampleNonceRevelation :: sampleAccountActivation :: sampleReveal :: sampleTransaction :: sampleOrigination :: sampleDelegation ::
-          DoubleEndorsementEvidence() :: DoubleBakingEvidence() :: sampleProposals :: sampleBallot :: Nil
+        DoubleEndorsementEvidence() :: DoubleBakingEvidence() :: sampleProposals :: sampleBallot :: Nil
 
     /** Converts operations in a list by selectively adding
       * BigMapAlloc within it's results.

@@ -369,7 +369,33 @@ object TezosOptics {
             }
           }
           operation.copy(metadata = operation.metadata.copy(internal_operation_results = internalOpResult))
+        case x: TxRollupDispatchTickets =>
+          index += 1
+          val operation = x.copy(blockOrder = Some(index))
+          val internalOpResult = operation.metadata.internal_operation_results.map { operationResults =>
+            operationResults.map {
+              case i: InternalOperationResults.Reveal =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Transaction =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Origination =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.Delegation =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+              case i: InternalOperationResults.TxRollupOrigination =>
+                index += 1
+                i.copy(blockOrder = Some(index))
+            }
+          }
+          operation.copy(metadata = operation.metadata.copy(internal_operation_results = internalOpResult))
         case x: TxRollupFinalizeCommitment =>
+          index += 1
+          x.copy(blockOrder = Some(index))
+        case x: DefaultOperation =>
           index += 1
           x.copy(blockOrder = Some(index))
       }
@@ -656,14 +682,14 @@ object TezosOptics {
       GenPrism[InternalOperationResults.InternalOperationResult, InternalTransaction]
 
     val whenOriginationBigMapDiffs =
-      Optional[OperationResult.Origination, List[Contract.CompatBigMapDiff]](_.big_map_diff)(diffs =>
-        result => result.copy(big_map_diff = diffs.some)
-      )
+      Optional[OperationResult.Origination, List[Contract.CompatBigMapDiff]] { x =>
+        x.big_map_diff.orElse(x.lazy_storage_diff.map(_.flatMap(_.toBigMapDiff)))
+      }(diffs => result => result.copy(big_map_diff = diffs.some))
 
     val whenTransactionBigMapDiffs =
-      Optional[OperationResult.Transaction, List[Contract.CompatBigMapDiff]](_.big_map_diff)(diffs =>
-        result => result.copy(big_map_diff = diffs.some)
-      )
+      Optional[OperationResult.Transaction, List[Contract.CompatBigMapDiff]] { x =>
+        x.big_map_diff.orElse(x.lazy_storage_diff.map(_.flatMap(_.toBigMapDiff)))
+      }(diffs => result => result.copy(big_map_diff = diffs.some))
 
     private[TezosOptics] val selectBigMapAlloc =
       stdLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[

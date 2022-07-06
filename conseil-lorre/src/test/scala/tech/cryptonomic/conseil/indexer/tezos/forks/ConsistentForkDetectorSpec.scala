@@ -47,8 +47,8 @@ class ConsistentForkDetectorSpec
       val sut = detector(forkingPoint = range.fork, withDataSearch = _ => randomBlockSearch)
 
       val failure = the[ConsistentDetectionRepeatingFailure] thrownBy {
-            sut.searchForkLevel(range.low, range.high)
-          }
+        sut.searchForkLevel(range.low, range.high)
+      }
 
       failure.attempts shouldBe 2
     }
@@ -128,8 +128,8 @@ class ConsistentForkDetectorSpec
      * that the predecessor won't ever match the block ids before the fork.
      * We use this to test the cases where the consistency-check always fails.
      */
-    val randomBlockSearch: SearchBlockData[cats.Id] = {
-      case _ => arbitrary[BlockData].suchThat(_.header.predecessor != blockA).sample.get
+    val randomBlockSearch: SearchBlockData[cats.Id] = { case _ =>
+      arbitrary[BlockData].suchThat(_.header.predecessor != blockA).sample.get
     }
 
     /** we want to test by generating random triplets that

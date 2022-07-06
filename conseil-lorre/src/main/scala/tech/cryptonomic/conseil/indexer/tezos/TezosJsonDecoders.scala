@@ -1,7 +1,10 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
 import com.github.ghik.silencer.silent
+import io.circe.Decoder.Result
+import io.circe.HCursor
 import tech.cryptonomic.conseil.common.tezos.TezosTypes
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.Contract.{Diff, LazyStorageDiff, Update}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.JsonUtil.CirceCommonDecoders.decodeUntaggedEither
 
@@ -158,6 +161,7 @@ private[tezos] object TezosJsonDecoders {
       implicit val metadataLevelDecoder: Decoder[BlockHeaderMetadataLevel] = deriveConfiguredDecoder
       val blockMetadataDecoder: Decoder[BlockHeaderMetadata] = deriveConfiguredDecoder
       implicit val votingPeriodInfoDecoder: Decoder[VotingPeriodInfo] = deriveConfiguredDecoder
+      implicit val implicitOperationResultsDecoder: Decoder[ImplicitOperationResults] = deriveConfiguredDecoder
       implicit val votingPeriodObjectDecoder: Decoder[VotingPeriodObject] = deriveConfiguredDecoder
       implicit val blockHeaderMetadataLevelInfoDecoder: Decoder[BlockHeaderMetadataLevelInfo] = deriveConfiguredDecoder
       implicit val metadataDecoder: Decoder[BlockMetadata] = blockMetadataDecoder.widen or genesisMetadataDecoder.widen
@@ -229,6 +233,9 @@ private[tezos] object TezosJsonDecoders {
         deriveConfiguredDecoder[BigMapAlloc].widen,
         deriveConfiguredDecoder[BigMapRemove].widen
       ).reduceLeft(_ or _)
+      implicit val bigMapDecoder: Decoder[LazyStorageDiff] = deriveConfiguredDecoder
+      implicit private val diffDecoder: Decoder[Diff] = deriveConfiguredDecoder
+      implicit private val updateDecoder: Decoder[Update] = deriveConfiguredDecoder
       implicit val compatDecoder: Decoder[CompatBigMapDiff] = decodeUntaggedEither
     }
 
@@ -289,7 +296,13 @@ private[tezos] object TezosJsonDecoders {
       implicit val internalTxRollupOrigination: Decoder[InternalOperationResults.TxRollupOrigination] =
         deriveConfiguredDecoder
       implicit val tezosTypesParametersDecoder: Decoder[TezosTypes.Parameters] = deriveConfiguredDecoder
-      implicit val operationDecoder: Decoder[Operation] = deriveConfiguredDecoder
+      implicit val operationDecoder: Decoder[Operation] = new Decoder[Operation] {
+        override def apply(c: HCursor): Result[Operation] = {
+          implicit val defaultOperationDecoder: Decoder[DefaultOperation] = deriveConfiguredDecoder
+          implicit val basicDecoder: Decoder[Operation] = deriveConfiguredDecoder
+          basicDecoder.widen.or(defaultOperationDecoder.widen)(c)
+        }
+      }
       implicit val operationsDecoder: Decoder[Operations] = deriveConfiguredDecoder
       implicit val endorsementDecoder: Decoder[EndorsementInternalObject] = deriveConfiguredDecoder
       implicit val operationGroupDecoder: Decoder[OperationsGroup] = deriveConfiguredDecoder

@@ -6,47 +6,47 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OperationType, P
 class ApiDataOperationsTest extends ConseilSpec {
 
   "ApiDataOperations" should {
-      "sanitizeFields" in {
-        // given
-        val input = List.empty
+    "sanitizeFields" in {
+      // given
+      val input = List.empty
 
-        // when
-        val result = ApiDataOperations.sanitizeFields(input)
+      // when
+      val result = ApiDataOperations.sanitizeFields(input)
 
-        // then
-        result shouldBe List.empty
-      }
+      // then
+      result shouldBe List.empty
+    }
 
-      "sanitizePredicates" in {
-        // given
-        val examplePredicates = List(
-          Predicate(
-            field = "some_field",
-            operation = OperationType.in,
-            set = List(
-              "valid",
-              "valid_value",
-              "invalid*value",
-              "another;invalid,value",
-              "yet.another.value"
-            )
+    "sanitizePredicates" in {
+      // given
+      val examplePredicates = List(
+        Predicate(
+          field = "some_field",
+          operation = OperationType.in,
+          set = List(
+            "valid",
+            "valid_value",
+            "invalid*value",
+            "another;invalid,value",
+            "yet.another.value"
           )
         )
+      )
 
-        // when
-        val results = ApiDataOperations.sanitizePredicates(examplePredicates).head.set
+      // when
+      val results = ApiDataOperations.sanitizePredicates(examplePredicates).head.set
 
-        // then
-        results should contain allElementsOf List(
-          "valid",
-          "valid_value",
-          "invalidvalue",
-          "anotherinvalidvalue",
-          "yet.another.value"
-        )
-        results.size shouldBe 5
+      // then
+      results should contain allElementsOf List(
+        "valid",
+        "valid_value",
+        "invalidvalue",
+        "anotherinvalidvalue",
+        "yet.another.value"
+      )
+      results.size shouldBe 5
 
-      }
     }
+  }
 
 }

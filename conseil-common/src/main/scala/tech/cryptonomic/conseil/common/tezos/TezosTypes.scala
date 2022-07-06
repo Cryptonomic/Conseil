@@ -5,6 +5,7 @@ import tech.cryptonomic.conseil.common.config.Platforms._
 import cats.Functor
 import pureconfig._
 import pureconfig.generic.auto._
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.Contract.LazyStorageDiff
 
 import java.time.Instant
 import java.time.ZonedDateTime
@@ -102,8 +103,18 @@ object TezosTypes {
       voting_period_kind: Option[VotingPeriod.Kind],
       voting_period_info: Option[VotingPeriodInfo],
       level: Option[BlockHeaderMetadataLevel],
-      level_info: Option[BlockHeaderMetadataLevelInfo]
+      level_info: Option[BlockHeaderMetadataLevelInfo],
+      implicit_operations_results: Option[List[ImplicitOperationResults]]
   ) extends BlockMetadata
+
+  final case class ImplicitOperationResults(
+      kind: String,
+      storage: Option[Micheline],
+      balance_updates: List[OperationMetadata.BalanceUpdate],
+      consumed_gas: PositiveBigNumber,
+      consumed_milligas: PositiveBigNumber,
+      storage_size: PositiveBigNumber
+  )
 
   final case class BlockHeaderMetadataLevel(
       level: BlockLevel,
@@ -155,6 +166,45 @@ object TezosTypes {
   final case class InvalidDecimal(jsonString: String) extends BigNumber
 
   object Contract {
+
+    case class LazyStorageDiff(kind: String, id: BigNumber, diff: Diff) {
+      def toBigMapDiff: List[CompatBigMapDiff] = {
+        val result = this match {
+          case LazyStorageDiff(kind, id, diff) =>
+            kind match {
+              case "big_map" =>
+                diff match {
+                  case d @ Diff("update", updates, _, _, _) =>
+                    updates.toList.flatten.map { upd =>
+                      BigMapUpdate(d.action, upd.key, upd.key_hash, id, upd.value)
+                    }
+                  case d @ Diff("remove", _, _, _, _) =>
+                    List(BigMapRemove(d.action, id))
+                  case d @ Diff("copy", _, sourceOpt, _, _) =>
+                    sourceOpt.map(source => BigMapCopy(d.action, source, id)).toList
+                  case d @ Diff("alloc", _, _, key_type, value_type) =>
+                    key_type.flatMap { kt =>
+                      value_type.map { vt =>
+                        BigMapAlloc(d.action, id, kt, vt)
+                      }
+                    }.toList
+
+                }
+              case _ => List.empty
+            }
+        }
+        result.map(Left(_))
+      }
+    }
+
+    case class Diff(
+        action: String,
+        updates: Option[List[Update]],
+        source: Option[BigNumber],
+        key_type: Option[Micheline],
+        value_type: Option[Micheline]
+    )
+    case class Update(key: Micheline, key_hash: ScriptId, value: Option[Micheline])
 
     /** retro-compat adapter from protocol 5+ */
     type CompatBigMapDiff = Either[BigMapDiff, Protocol4BigMapDiff]
@@ -212,25 +262,63 @@ object TezosTypes {
 
   /** The set of operations kinds */
   val knownOperationKinds = Set(
-    "seed_nonce_revelation",
-    "delegation",
-    "transaction",
-    "activate_account",
-    "origination",
-    "reveal",
-    "double_endorsement_evidence",
-    "double_baking_evidence",
     "endorsement",
+    "preendorsement",
+    "seed_nonce_revelation",
+    "double_endorsement_evidence",
+    "double_preendorsement_evidence",
+    "double_baking_evidence",
+    "activate_account",
     "proposals",
     "ballot",
-    "endorsement_with_slot",
+    "reveal",
+    "transaction",
+    "origination",
+    "delegation",
+    "set_deposits_limit",
+    "failing_noop",
+    "register_global_constant",
+    "tx_rollup_origination",
+    "tx_rollup_submit_batch",
+    "tx_rollup_commit",
+    "tx_rollup_return_bond",
+    "tx_rollup_finalize_commitment",
+    "tx_rollup_remove_commitment",
+    "tx_rollup_rejection",
+    "tx_rollup_dispatch_tickets",
+    "transfer_ticket",
+    "sc_rollup_originate",
+    "sc_rollup_add_messages",
+    "sc_rollup_cement",
+    "sc_rollup_publish",
+    "seed_nonce_revelation",
+    "endorsement",
     "preendorsement",
     "double_preendorsement_evidence",
+    "double_endorsement_evidence",
+    "double_baking_evidence",
+    "activate_account",
+    "proposals",
+    "ballot",
+    "reveal",
+    "transaction",
+    "origination",
+    "delegation",
+    "register_global_constant",
     "set_deposits_limit",
     "tx_rollup_origination",
     "tx_rollup_submit_batch",
     "tx_rollup_commit",
-    "tx_rollup_finalize_commitment"
+    "tx_rollup_return_bond",
+    "tx_rollup_finalize_commitment",
+    "tx_rollup_remove_commitment",
+    "tx_rollup_rejection",
+    "transfer_ticket",
+    "tx_rollup_dispatch_tickets",
+    "sc_rollup_originate",
+    "sc_rollup_add_messages",
+    "sc_rollup_cement",
+    "sc_rollup_publish"
   )
 
   final case class Operations(
@@ -363,6 +451,17 @@ object TezosTypes {
       blockOrder: Option[Int] = None
   ) extends Operation
 
+  final case class TxRollupDispatchTickets(
+      counter: PositiveBigNumber,
+      fee: PositiveBigNumber,
+      source: PublicKeyHash,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      tx_rollup: PublicKeyHash,
+      metadata: ResultMetadata[OperationResult.Origination],
+      blockOrder: Option[Int] = None
+  ) extends Operation
+
   final case class Delegation(
       counter: PositiveBigNumber,
       source: PublicKeyHash,
@@ -412,6 +511,11 @@ object TezosTypes {
       limit: Option[PositiveBigNumber],
       blockOrder: Option[Int] = None,
       metadata: ResultMetadata[OperationResult.SetDepositsLimit]
+  ) extends Operation
+
+  final case class DefaultOperation(
+      kind: String,
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   //metadata definitions, both shared or specific to operation kind
@@ -535,6 +639,7 @@ object TezosTypes {
         allocated_destination_contract: Option[Boolean],
         balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
         big_map_diff: Option[List[Contract.CompatBigMapDiff]],
+        lazy_storage_diff: Option[List[LazyStorageDiff]],
         consumed_gas: Option[BigNumber],
         originated_contracts: Option[List[ContractId]],
         paid_storage_size_diff: Option[BigNumber],
@@ -546,6 +651,7 @@ object TezosTypes {
     final case class Origination(
         status: String,
         big_map_diff: Option[List[Contract.CompatBigMapDiff]],
+        lazy_storage_diff: Option[List[LazyStorageDiff]],
         balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
         consumed_gas: Option[BigNumber],
         originated_contracts: Option[List[ContractId]],
