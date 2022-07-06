@@ -26,7 +26,8 @@ object TezosForkInvalidatingAmender {
   * E.g. removing processed chain events from the db registry.
   */
 class TezosForkInvalidatingAmender(db: Database)(implicit ec: ExecutionContext)
-    extends ForkAmender[Future, TezosBlockHash]  with ConseilLogSupport {
+    extends ForkAmender[Future, TezosBlockHash]
+    with ConseilLogSupport {
 
   /* Note that we need to defer constraint checks manually with postgres
    * policies on consistency levels.

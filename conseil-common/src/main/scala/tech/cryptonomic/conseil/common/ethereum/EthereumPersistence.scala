@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.common.ethereum
 
 import java.sql.Timestamp
 import java.time.Instant
+
 import cats.Id
 import cats.effect.{Concurrent, Resource}
 import slick.jdbc.PostgresProfile.api._
@@ -117,6 +118,12 @@ class EthereumPersistence[F[_]: Concurrent] extends ConseilLogSupport {
     */
   def getLatestIndexedBlock: DBIO[Option[Tables.BlocksRow]] =
     Tables.Blocks.sortBy(_.level.desc).take(1).result.headOption
+
+  /**
+    * Gets registered tokens
+    */
+  def getRegisteredTokens: DBIO[Seq[Tables.RegisteredTokensRow]] =
+    Tables.RegisteredTokens.result
 
 }
 

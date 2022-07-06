@@ -27,7 +27,7 @@ class ConfigUtilTest extends ConseilSpec {
       val rows: List[Tables.BakerRegistryRow] =
         sut
           .readRowsFromCsv[Tables.BakerRegistryRow, genericRow.Repr](
-            csvSource = getClass.getResource("/baker_registry/testnet.csv"),
+            csvSource = getClass.getResource("/tezos/baker_registry/testnet.csv"),
             separator = ','
           )
           .value
@@ -73,6 +73,7 @@ class ConfigUtilTest extends ConseilSpec {
         sut
           .readTableRowsFromCsv(
             table = Tables.BakerRegistry,
+            platform = "tezos",
             network = "testnet",
             separator = ','
           )
@@ -116,7 +117,7 @@ class ConfigUtilTest extends ConseilSpec {
     "fail to read the csv data if the network doesn't have a matching config file" in {
 
       val rows: Option[List[Tables.RegisteredTokensRow]] =
-        sut.readTableRowsFromCsv(table = Tables.RegisteredTokens, network = "nonsense")
+        sut.readTableRowsFromCsv(table = Tables.RegisteredTokens, platform = "whatever", network = "nonsense")
 
       rows shouldBe empty
 
@@ -130,7 +131,7 @@ class ConfigUtilTest extends ConseilSpec {
       val rows: List[Tables.RegisteredTokensRow] =
         sut
           .readRowsFromCsv[Tables.RegisteredTokensRow, genericRow.Repr](
-            csvSource = getClass.getResource("/registered_tokens/testnet.csv"),
+            csvSource = getClass.getResource("/tezos/registered_tokens/testnet.csv"),
             separator = '|'
           )
           .value

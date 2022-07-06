@@ -46,6 +46,7 @@ object ConfigUtil {
       */
     def readTableRowsFromCsv[T <: AbstractTable[_], H <: HList](
         table: TableQuery[T],
+        platform: String,
         network: String,
         separator: Char = ','
     )(implicit
@@ -54,7 +55,7 @@ object ConfigUtil {
         m: Mapper.Aux[Trimmer.type, H, H]
     ): Option[List[T#TableElementType]] =
       readRowsFromCsv[T#TableElementType, H](
-        csvSource = getClass.getResource(s"/${table.baseTableRow.tableName}/$network.csv"),
+        csvSource = getClass.getResource(s"/$platform/${table.baseTableRow.tableName}/$network.csv"),
         separator
       )
 

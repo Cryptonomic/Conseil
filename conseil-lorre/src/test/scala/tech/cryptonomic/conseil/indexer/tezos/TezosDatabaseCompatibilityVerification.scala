@@ -45,7 +45,6 @@ trait TezosDatabaseCompatibilityVerification {
     balanceUpdate.contract.forall(id => canBeWrittenToDb(id.id)) &&
     balanceUpdate.delegate.forall(pkh => canBeWrittenToDb(pkh.value))
 
-
   /** Can the number be safely stored as a database column?
     * This depends on the database type definitions.
     */

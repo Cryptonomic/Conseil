@@ -8,10 +8,32 @@ import org.scalacheck.ScalacheckShapeless._
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.{DBSafe, RandomSeed}
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, Block, BlockReference, EndorsingRights, GenesisMetadata, RightsFetchKey, TezosBlockHash, Voting, makeAccountId}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
+  makeAccountId,
+  BakingRights,
+  Block,
+  BlockReference,
+  EndorsingRights,
+  GenesisMetadata,
+  RightsFetchKey,
+  TezosBlockHash,
+  Voting
+}
 import tech.cryptonomic.conseil.common.tezos.{Fork, TezosOptics}
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsHistoryRow, AccountsRow, BakersHistoryRow, BakersRow, BakingRightsRow, BlocksRow, EndorsingRightsRow, GovernanceRow, OperationGroupsRow, OperationsRow, TokenBalancesRow}
+import tech.cryptonomic.conseil.common.tezos.Tables.{
+  AccountsHistoryRow,
+  AccountsRow,
+  BakersHistoryRow,
+  BakersRow,
+  BakingRightsRow,
+  BlocksRow,
+  EndorsingRightsRow,
+  GovernanceRow,
+  OperationGroupsRow,
+  OperationsRow,
+  TokenBalancesRow
+}
 import tech.cryptonomic.conseil.indexer.tezos.TezosDataGenerationKit.ForkValid
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
 
@@ -284,7 +306,11 @@ class TezosIndexedDataOperationsTest
           dbSafeEndorsingRights = endorseRights.zip(delegates).map { case (rights, delegate) =>
             rights.copy(delegate = delegate)
           }
-        } yield (dbSafeRights, dbSafeEndorsingRights, referenceBlock.copy(data = referenceBlock.data.copy(metadata = GenesisMetadata))) // TODO: fix metadata generation
+        } yield (
+          dbSafeRights,
+          dbSafeEndorsingRights,
+          referenceBlock.copy(data = referenceBlock.data.copy(metadata = GenesisMetadata))
+        ) // TODO: fix metadata generation
 
         generator.sample.value
       }

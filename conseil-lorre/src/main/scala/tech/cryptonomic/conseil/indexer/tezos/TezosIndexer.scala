@@ -11,6 +11,7 @@ import slick.jdbc.JdbcBackend.Database
 import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, TezosConfiguration}
 import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
+import tech.cryptonomic.conseil.common.sql.DefaultDatabaseOperations
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
@@ -476,8 +477,8 @@ object TezosIndexer extends ConseilLogSupport {
 
       /* Inits tables with values from CSV files */
       (
-        TezosDb.initTableFromCsv(db, Tables.KnownAddresses, selectedNetwork),
-        TezosDb.initTableFromCsv(db, Tables.BakerRegistry, selectedNetwork),
+        DefaultDatabaseOperations.initTableFromCsv(db, Tables.KnownAddresses, "tezos", selectedNetwork),
+        DefaultDatabaseOperations.initTableFromCsv(db, Tables.BakerRegistry, "tezos", selectedNetwork),
         TezosDb.initRegisteredTokensTableFromJson(db, selectedNetwork)
       ).mapN { case (_, _, _) =>
         ()

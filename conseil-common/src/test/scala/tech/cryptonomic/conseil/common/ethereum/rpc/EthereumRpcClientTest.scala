@@ -49,7 +49,8 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
     "return a contract for the given transaction receipt" in new EthereumClientStubs {
       Stream(RpcFixtures.transactionReceiptResult)
         .through(
-          ethereumClientStub(JsonFixtures.getCodeResponse).getContract(batchSize = 1)
+          ethereumClientStub(JsonFixtures.getCodeResponse)
+            .getContract(batchSize = 1, List(RpcFixtures.exampleToken.copy(address = "0x123")))
         )
         .compile
         .toList
@@ -59,7 +60,8 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
     "return a token transfer for the given log" in new EthereumClientStubs {
       Stream(RpcFixtures.logResult)
         .through(
-          ethereumClientStub(JsonFixtures.callResponse).getTokenTransfer(RpcFixtures.blockResult)
+          ethereumClientStub(JsonFixtures.callResponse)
+            .getTokenTransfer(RpcFixtures.blockResult, List(RpcFixtures.exampleToken))
         )
         .compile
         .toList
@@ -69,7 +71,8 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
     "return a tokens history for the given token transfer" in new EthereumClientStubs {
       Stream(RpcFixtures.tokenTransferResult)
         .through(
-          ethereumClientStub(JsonFixtures.callResponse).getTokenBalance(RpcFixtures.blockResult)
+          ethereumClientStub(JsonFixtures.callResponse)
+            .getTokenBalance(RpcFixtures.blockResult, List(RpcFixtures.exampleToken))
         )
         .compile
         .toList
@@ -79,7 +82,8 @@ class EthereumRpcClientTest extends ConseilSpec with EthereumFixtures with Ether
     "properly handle token balance if balanceOf() not implemented" in new EthereumClientStubs {
       Stream(RpcFixtures.tokenTransferResult)
         .through(
-          ethereumClientStub(JsonFixtures.failedCallResponse).getTokenBalance(RpcFixtures.blockResult)
+          ethereumClientStub(JsonFixtures.failedCallResponse)
+            .getTokenBalance(RpcFixtures.blockResult, List(RpcFixtures.exampleToken))
         )
         .compile
         .toList
