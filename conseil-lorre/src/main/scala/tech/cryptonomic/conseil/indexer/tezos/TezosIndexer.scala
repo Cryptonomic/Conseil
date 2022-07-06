@@ -379,7 +379,7 @@ object TezosIndexer extends ConseilLogSupport {
         TezosDb.initTableFromCsv(db, Tables.KnownAddresses, selectedNetwork),
         TezosDb.initTableFromCsv(db, Tables.BakerRegistry, selectedNetwork),
         TezosDb.initRegisteredTokensTableFromJson(db, selectedNetwork)
-        ).mapN { case (ka, _, _) =>
+      ).mapN { case (ka, _, _) =>
         ka._1
       }
       /* Here we want to initialize the registered tokens and additionally get the token data back
@@ -398,9 +398,9 @@ object TezosIndexer extends ConseilLogSupport {
       } yield ShutdownComplete
 
     val knownAddresses = Try(Await.result(parseCSVConfigurations(), 5.seconds)) match {
-      case Success(xx) =>
+      case Success(ka) =>
         logger.info("DB initialization successful")
-        xx
+        ka
       case Failure(exception) =>
         logger.error("DB initialization failed", exception)
         gracefulTermination().map(_ => ())
@@ -457,7 +457,7 @@ object TezosIndexer extends ConseilLogSupport {
       accountsProcessor,
       bakersProcessor,
       lorreConf.enabledFeatures,
-      if(lorreConf.enabledFeatures.lightweightIndexing) Some(knownAddresses) else None
+      if (lorreConf.enabledFeatures.lightweightIndexing) Some(knownAddresses) else None
     )
 
     val metadataProcessor = new MetadataProcessor(

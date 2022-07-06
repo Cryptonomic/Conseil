@@ -4,7 +4,13 @@ import scala.util.{Failure, Success, Try}
 import scala.concurrent.{ExecutionContext, Future}
 import slick.jdbc.PostgresProfile.api._
 import cats.implicits._
-import tech.cryptonomic.conseil.indexer.tezos.{TezosGovernanceOperations, TezosNamesOperations, TezosNodeOperator, Tzip16MetadataOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.indexer.tezos.{
+  TezosGovernanceOperations,
+  TezosNamesOperations,
+  TezosNodeOperator,
+  Tzip16MetadataOperator,
+  TezosDatabaseOperations => TezosDb
+}
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
 import tech.cryptonomic.conseil.common.tezos.{Tables, TezosTypes}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, InternalOperationResults, Voting}
@@ -56,7 +62,7 @@ class BlocksProcessor(
         case Some(value) =>
           results.map { case (block, accountIds) =>
             val ids = accountIds.toSet.intersect(value.map(x => TezosTypes.PublicKeyHash(x.address)).toSet).toList
-             block -> ids.taggedWithBlockData(block.data)
+            block -> ids.taggedWithBlockData(block.data)
           }.unzip
         case None =>
           results.map { case (block, accountIds) =>
@@ -67,13 +73,17 @@ class BlocksProcessor(
     }
 
     for {
-        _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates, knownAddresses)) andThen logBlockOutcome
-        _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
-        bakersCheckpoints <- accountsProcessor.processAccountsForBlocks(accountUpdates) // should this fail, we still recover data from the checkpoint
-        _ <- bakersProcessor.processBakersForBlocks(bakersCheckpoints)
-        _ <- bakersProcessor.updateBakersBalances(blocks)
-        rollsData <- nodeOperator.getBakerRollsForBlocks(blocks)
-        _ <- processBlocksForGovernance(rollsData.toMap)
+      _ <- db.run(
+        TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates, knownAddresses)
+      ) andThen logBlockOutcome
+      _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
+      bakersCheckpoints <- accountsProcessor.processAccountsForBlocks(
+        accountUpdates
+      ) // should this fail, we still recover data from the checkpoint
+      _ <- bakersProcessor.processBakersForBlocks(bakersCheckpoints)
+      _ <- bakersProcessor.updateBakersBalances(blocks)
+      rollsData <- nodeOperator.getBakerRollsForBlocks(blocks)
+      _ <- processBlocksForGovernance(rollsData.toMap)
     } yield results.size
 
   }

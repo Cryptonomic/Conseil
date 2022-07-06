@@ -12,7 +12,12 @@ import tech.cryptonomic.conseil.common.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.tezos.Tables
-import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, GovernanceRow, KnownAddresses, OperationsRow, OriginatedAccountMapsRow, RegisteredTokensRow}
+import tech.cryptonomic.conseil.common.tezos.Tables.{
+  GovernanceRow,
+  OperationsRow,
+  OriginatedAccountMapsRow,
+  RegisteredTokensRow
+}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.ConfigUtil
@@ -113,8 +118,12 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     val saveBlocksAction = Tables.Blocks ++= blocks.map(_.convertTo[BlocksRow])
     val saveBlocksBalanceUpdatesAction = Tables.BalanceUpdates ++= blocks.flatMap { block =>
       block.data.convertToA[List, BalanceUpdatesRow]
+    }.filter { updatesRow =>
+      knownAddresses match {
+        case Some(value) => value.map(_.address).contains(updatesRow.accountId)
+        case None => true
+      }
     }
-
 
     val saveGroupsAction = Tables.OperationGroups ++= blocks.flatMap(_.convertToA[List, OperationGroupsRow])
 
@@ -143,7 +152,9 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       saveBlocksAction,
       saveBlocksBalanceUpdatesAction,
       saveGroupsAction,
-      saveOperationsAndBalances.traverse(blocks.flatMap(xx => (xx->knownAddresses).convertToA[List, OperationTablesData])),
+      saveOperationsAndBalances.traverse(
+        blocks.flatMap(block => (block -> knownAddresses).convertToA[List, OperationTablesData])
+      ),
       saveBigMaps(blocks)(ec, tokenContracts, tnsContracts)
     )
 
@@ -404,7 +415,9 @@ object TezosDatabaseOperations extends ConseilLogSupport {
             ContractId(address) -> interfaces
         }.toList
       )
-      (writeBlocks(blocks, tokens, knownAddresses) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
+      (writeBlocks(blocks, tokens, knownAddresses) andThen writeAccountsCheckpoint(
+        accountUpdates.map(_.asTuple)
+      )).transactionally
     }
   }
 
@@ -859,7 +872,6 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     import io.circe.parser.decode
     import RegisteredTokensFetcher.decoder
     import java.io.{BufferedReader, InputStreamReader}
-    import scala.io.Source
 
     val reader =
       new BufferedReader(new InputStreamReader(getClass.getResourceAsStream(s"/registered_tokens/$network.json")))

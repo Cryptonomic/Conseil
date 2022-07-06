@@ -353,14 +353,14 @@ object TezosTypes {
   ) extends Operation
 
   final case class TxRollupFinalizeCommitment(
-    counter: PositiveBigNumber,
-    fee: PositiveBigNumber,
-    source: PublicKeyHash,
-    gas_limit: PositiveBigNumber,
-    storage_limit: PositiveBigNumber,
-    rollup: PublicKeyHash,
-    metadata: ResultMetadata[OperationResult.Origination],
-    blockOrder: Option[Int] = None
+      counter: PositiveBigNumber,
+      fee: PositiveBigNumber,
+      source: PublicKeyHash,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      rollup: PublicKeyHash,
+      metadata: ResultMetadata[OperationResult.Origination],
+      blockOrder: Option[Int] = None
   ) extends Operation
 
   final case class Delegation(
