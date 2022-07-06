@@ -507,6 +507,18 @@ object TezosOptics {
                       blockOrder
                     ) =>
                   addresses.contains(source.value)
+                case TxRollupDispatchTickets(
+                      counter,
+                      fee,
+                      source,
+                      gas_limit,
+                      storage_limit,
+                      tx_rollup,
+                      metadata,
+                      blockOrder
+                    ) =>
+                  addresses.contains(source.value)
+                case DefaultOperation(kind, blockOrder) => true
               }
             case None => true
           }

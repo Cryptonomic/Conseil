@@ -36,6 +36,8 @@ import java.util.UUID
 import slick.dbio.DBIOAction
 import tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
 
+import scala.io.Source
+
 /**
   * Functions for writing Tezos data to a database.
   */
