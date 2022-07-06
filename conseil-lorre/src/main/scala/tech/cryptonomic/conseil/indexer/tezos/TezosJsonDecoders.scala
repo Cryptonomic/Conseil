@@ -4,6 +4,7 @@ import com.github.ghik.silencer.silent
 import io.circe.Decoder.Result
 import io.circe.HCursor
 import tech.cryptonomic.conseil.common.tezos.TezosTypes
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.Contract.{Diff, LazyStorageDiff, Update}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.JsonUtil.CirceCommonDecoders.decodeUntaggedEither
 
@@ -232,6 +233,9 @@ private[tezos] object TezosJsonDecoders {
         deriveConfiguredDecoder[BigMapAlloc].widen,
         deriveConfiguredDecoder[BigMapRemove].widen
       ).reduceLeft(_ or _)
+      implicit val bigMapDecoder: Decoder[LazyStorageDiff] = deriveConfiguredDecoder
+      implicit private val diffDecoder: Decoder[Diff] = deriveConfiguredDecoder
+      implicit private val updateDecoder: Decoder[Update] = deriveConfiguredDecoder
       implicit val compatDecoder: Decoder[CompatBigMapDiff] = decodeUntaggedEither
     }
 

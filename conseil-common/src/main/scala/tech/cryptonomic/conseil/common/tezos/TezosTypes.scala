@@ -5,6 +5,7 @@ import tech.cryptonomic.conseil.common.config.Platforms._
 import cats.Functor
 import pureconfig._
 import pureconfig.generic.auto._
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.Contract.LazyStorageDiff
 
 import java.time.Instant
 import java.time.ZonedDateTime
@@ -165,6 +166,45 @@ object TezosTypes {
   final case class InvalidDecimal(jsonString: String) extends BigNumber
 
   object Contract {
+
+    case class LazyStorageDiff(kind: String, id: BigNumber, diff: Diff) {
+      def toBigMapDiff: List[CompatBigMapDiff] = {
+        val result = this match {
+          case LazyStorageDiff(kind, id, diff) =>
+            kind match {
+              case "big_map" =>
+                diff match {
+                  case d @ Diff("update", updates, _, _, _) =>
+                    updates.toList.flatten.map { upd =>
+                      BigMapUpdate(d.action, upd.key, upd.key_hash, id, upd.value)
+                    }
+                  case d @ Diff("remove", _, _, _, _) =>
+                    List(BigMapRemove(d.action, id))
+                  case d @ Diff("copy", _, sourceOpt, _, _) =>
+                    sourceOpt.map(source => BigMapCopy(d.action, source, id)).toList
+                  case d @ Diff("alloc", _, _, key_type, value_type) =>
+                    key_type.flatMap { kt =>
+                      value_type.map { vt =>
+                        BigMapAlloc(d.action, id, kt, vt)
+                      }
+                    }.toList
+
+                }
+              case _ => List.empty
+            }
+        }
+        result.map(Left(_))
+      }
+    }
+
+    case class Diff(
+        action: String,
+        updates: Option[List[Update]],
+        source: Option[BigNumber],
+        key_type: Option[Micheline],
+        value_type: Option[Micheline]
+    )
+    case class Update(key: Micheline, key_hash: ScriptId, value: Option[Micheline])
 
     /** retro-compat adapter from protocol 5+ */
     type CompatBigMapDiff = Either[BigMapDiff, Protocol4BigMapDiff]
@@ -599,6 +639,7 @@ object TezosTypes {
         allocated_destination_contract: Option[Boolean],
         balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
         big_map_diff: Option[List[Contract.CompatBigMapDiff]],
+        lazy_storage_diff: Option[List[LazyStorageDiff]],
         consumed_gas: Option[BigNumber],
         originated_contracts: Option[List[ContractId]],
         paid_storage_size_diff: Option[BigNumber],
@@ -610,6 +651,7 @@ object TezosTypes {
     final case class Origination(
         status: String,
         big_map_diff: Option[List[Contract.CompatBigMapDiff]],
+        lazy_storage_diff: Option[List[LazyStorageDiff]],
         balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
         consumed_gas: Option[BigNumber],
         originated_contracts: Option[List[ContractId]],
