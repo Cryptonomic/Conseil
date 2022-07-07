@@ -834,10 +834,11 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     import io.circe.parser.decode
     import RegisteredTokensFetcher.decoder
     import java.io.{BufferedReader, InputStreamReader}
-    import scala.io.Source
 
-    val file = getClass.getResource(s"/tezos/registered_tokens/$network.json")
-    val content = Source.fromFile(file.toURI).getLines.mkString
+    val reader =
+      new BufferedReader(new InputStreamReader(getClass.getResourceAsStream(s"/tezos/registered_tokens/$network.json")))
+    val content = Stream.continually(reader.readLine).takeWhile(_ != null).mkString
+    reader.close() // TODO: loose effect
     decode[List[RegisteredToken]](content) match {
       case Left(error) =>
         logger.error(s"Something wrong with registered tokens file $error")
