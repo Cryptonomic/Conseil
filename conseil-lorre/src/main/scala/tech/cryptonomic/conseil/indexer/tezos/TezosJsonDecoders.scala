@@ -268,6 +268,7 @@ private[tezos] object TezosJsonDecoders {
       implicit val registerGlobalConstantResultDecoder: Decoder[OperationResult.RegisterGlobalConstant] =
         deriveConfiguredDecoder
       implicit val setDepositsLimitResultDecoder: Decoder[OperationResult.SetDepositsLimit] = deriveConfiguredDecoder
+      implicit val increasePaidStorageResultDecoder: Decoder[OperationResult.IncreasePaidStorage] = deriveConfiguredDecoder
       implicit val revealMetadataDecoder: Decoder[ResultMetadata[OperationResult.Reveal]] = deriveConfiguredDecoder
       implicit val transactionMetadataDecoder: Decoder[ResultMetadata[OperationResult.Transaction]] =
         deriveConfiguredDecoder
@@ -281,6 +282,10 @@ private[tezos] object TezosJsonDecoders {
         deriveConfiguredDecoder
       implicit val setDepositsLimitMetadataDecoder: Decoder[
         ResultMetadata[OperationResult.SetDepositsLimit]
+      ] =
+        deriveConfiguredDecoder
+      implicit val increasePaidStorageMetadataDecoder: Decoder[
+        ResultMetadata[OperationResult.IncreasePaidStorage]
       ] =
         deriveConfiguredDecoder
       implicit val internalOperationResultDecoder: Decoder[InternalOperationResults.InternalOperationResult] =
