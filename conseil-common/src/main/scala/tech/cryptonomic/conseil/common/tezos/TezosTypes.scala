@@ -513,6 +513,18 @@ object TezosTypes {
       metadata: ResultMetadata[OperationResult.SetDepositsLimit]
   ) extends Operation
 
+  final case class IncreasePaidStorage(
+    source: Option[String],
+    fee: PositiveBigNumber,
+    counter: PositiveBigNumber,
+    gas_limit: PositiveBigNumber,
+    storage_limit: PositiveBigNumber,
+    amount: Option[BigDecimal],
+    destination: Option[String],
+    blockOrder: Option[Int] = None,
+    metadata: ResultMetadata[OperationResult.IncreasePaidStorage]
+  ) extends Operation
+
   final case class DefaultOperation(
       kind: String,
       blockOrder: Option[Int] = None
@@ -683,6 +695,12 @@ object TezosTypes {
         balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
         consumed_gas: Option[BigNumber]
     )
+
+    final case class IncreasePaidStorage(
+     status: String,
+     balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
+     consumed_milligas: Option[BigNumber]
+   )
 
   }
 

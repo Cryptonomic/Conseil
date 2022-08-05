@@ -35,6 +35,12 @@ object OperationBalances {
   implicit def opsBalanceUpdatesGetter[OP <: Operation] =
     Getter[BlockTagged[OP], Map[BlockTagged[Label], List[BalanceUpdate]]] { case b: BlockTagged[OP] =>
       b.content match {
+        case i: IncreasePaidStorage =>
+          Map(
+            b.updateContent(OPERATION_SOURCE) -> i.metadata.balance_updates.toList.flatten,
+            b.updateContent(OPERATION_RESULT_SOURCE) -> i.metadata.operation_result.balance_updates
+              .getOrElse(List.empty)
+          )
         case e: EndorsementWithSlot =>
           Map(b.updateContent(OPERATION_SOURCE) -> e.metadata.balance_updates.toList.flatten)
         case e: Endorsement =>
