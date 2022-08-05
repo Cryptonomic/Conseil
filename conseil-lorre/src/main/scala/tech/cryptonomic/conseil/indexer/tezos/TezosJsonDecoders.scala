@@ -284,7 +284,7 @@ private[tezos] object TezosJsonDecoders {
         ResultMetadata[OperationResult.SetDepositsLimit]
       ] =
         deriveConfiguredDecoder
-      implicit val IncreasePaidStorageDecoder: Decoder[
+      implicit val increasePaidStorageMetadataDecoder: Decoder[
         ResultMetadata[OperationResult.IncreasePaidStorage]
       ] =
         deriveConfiguredDecoder
