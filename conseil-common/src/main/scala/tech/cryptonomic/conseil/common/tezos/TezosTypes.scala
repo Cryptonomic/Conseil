@@ -525,6 +525,16 @@ object TezosTypes {
     metadata: ResultMetadata[OperationResult.IncreasePaidStorage]
   ) extends Operation
 
+  final case class Event(
+    source: Option[String],
+    nonce: Option[String],
+    //`type`: String,
+    tag: Option[String],
+    payload: Option[String],
+    blockOrder: Option[Int] = None,
+    metadata: ResultMetadata[OperationResult.Event]
+  ) extends Operation
+
   final case class DefaultOperation(
       kind: String,
       blockOrder: Option[Int] = None
@@ -611,6 +621,16 @@ object TezosTypes {
         nonce: Int,
         originated_rollup: PublicKeyHash,
         blockOrder: Option[Int] = None
+    ) extends InternalOperationResult
+
+    case class Event(
+      source: Option[ContractId],
+      nonce: Int,
+      //`type`: ParametersCompatibility,
+      tag: String,
+      payload: ParametersCompatibility,
+      blockOrder: Option[Int] = None,
+      metadata: ResultMetadata[OperationResult.Event]
     ) extends InternalOperationResult
 
   }
@@ -701,6 +721,11 @@ object TezosTypes {
      balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
      consumed_milligas: Option[BigNumber]
    )
+
+    final case class Event(
+      status: String,
+      consumed_milligas: Option[BigNumber]
+    )
 
   }
 
