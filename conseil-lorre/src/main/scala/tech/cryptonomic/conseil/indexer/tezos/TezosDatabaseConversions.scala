@@ -250,6 +250,7 @@ private[tezos] object TezosDatabaseConversions {
           convertProposals orElse
           convertRegisterGlobalConstant orElse
           convertSetDepositsLimit orElse
+          convertIncreasePaidStorage orElse
           convertEvent orElse
           convertUnhandledOperations)(from)
     }
