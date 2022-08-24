@@ -35,10 +35,6 @@ object OperationBalances {
   implicit def opsBalanceUpdatesGetter[OP <: Operation] =
     Getter[BlockTagged[OP], Map[BlockTagged[Label], List[BalanceUpdate]]] { case b: BlockTagged[OP] =>
       b.content match {
-        case i: Event =>
-          Map(
-            b.updateContent(OPERATION_SOURCE) -> i.metadata.balance_updates.toList.flatten
-          )
         case i: IncreasePaidStorage =>
           Map(
             b.updateContent(OPERATION_SOURCE) -> i.metadata.balance_updates.toList.flatten,

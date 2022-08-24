@@ -671,7 +671,7 @@ private[tezos] object TezosDatabaseConversions {
     case (
       block,
       groupHash,
-      Event(source, nonce, tag, payload, blockOrder, metadata)
+      Event(source, nonce, typeOfEvent, tag, payload, result, blockOrder)
       ) =>
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
@@ -679,12 +679,13 @@ private[tezos] object TezosDatabaseConversions {
         operationGroupHash = groupHash.value,
         kind = "event",
         operationOrder = blockOrder,
-        source = source,
-        nonce = nonce,
-        script = tag,
-        parametersMicheline = payload,
-        status = Some(metadata.operation_result.status),
-        consumedGas = metadata.operation_result.consumed_milligas.flatMap(extractBigDecimal),
+        source = Some(source),
+        nonce = Some(nonce.toString),
+        script = Some(tag), //fix
+        parameters = Some(typeOfEvent.toString()), //fix
+        parametersMicheline = Some(payload.toString()), //fix
+        status = Some(result.status),
+        //consumedGas = new BigDecimal(result.consumed_milligas),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
@@ -893,6 +894,11 @@ private[tezos] object TezosDatabaseConversions {
                 _.metadata,
                 ResultMetadata[OperationResult.Delegation](delegation.result, None, None)
               )
+              .transform
+
+          case event: InternalOperationResults.Event =>
+            event
+              .into[Event]
               .transform
         }
     }

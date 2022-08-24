@@ -1,8 +1,8 @@
 package tech.cryptonomic.conseil.common.tezos
 
 import tech.cryptonomic.conseil.common.config.Platforms._
-
 import cats.Functor
+import io.circe.Json
 import pureconfig._
 import pureconfig.generic.auto._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Contract.LazyStorageDiff
@@ -318,7 +318,8 @@ object TezosTypes {
     "sc_rollup_originate",
     "sc_rollup_add_messages",
     "sc_rollup_cement",
-    "sc_rollup_publish"
+    "sc_rollup_publish",
+    "event"
   )
 
   final case class Operations(
@@ -526,13 +527,13 @@ object TezosTypes {
   ) extends Operation
 
   final case class Event(
-    source: Option[String],
-    nonce: Option[String],
-    //`type`: String,
-    tag: Option[String],
-    payload: Option[String],
+    source: String,
+    nonce: Int,
+    `type`: Json,
+    tag: String,
+    payload: Json,
+    result: OperationResult.Event,
     blockOrder: Option[Int] = None,
-    metadata: ResultMetadata[OperationResult.Event]
   ) extends Operation
 
   final case class DefaultOperation(
@@ -624,13 +625,14 @@ object TezosTypes {
     ) extends InternalOperationResult
 
     case class Event(
-      source: Option[ContractId],
+      kind: String,
+      source: String,
       nonce: Int,
-      //`type`: ParametersCompatibility,
+      `type`: Json,
       tag: String,
-      payload: ParametersCompatibility,
+      payload: Json,
       blockOrder: Option[Int] = None,
-      metadata: ResultMetadata[OperationResult.Event]
+      result: OperationResult.Event
     ) extends InternalOperationResult
 
   }
@@ -724,7 +726,7 @@ object TezosTypes {
 
     final case class Event(
       status: String,
-      consumed_milligas: Option[BigNumber]
+      consumed_milligas: String
     )
 
   }

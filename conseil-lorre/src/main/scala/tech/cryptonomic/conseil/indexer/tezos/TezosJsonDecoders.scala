@@ -303,9 +303,9 @@ private[tezos] object TezosJsonDecoders {
         deriveConfiguredDecoder
       implicit val internalDelegationResultDecoder: Decoder[InternalOperationResults.Delegation] =
         deriveConfiguredDecoder
-      implicit val internalTxRollupOrigination: Decoder[InternalOperationResults.TxRollupOrigination] =
+      implicit val internalTxRollupOriginationDecoder: Decoder[InternalOperationResults.TxRollupOrigination] =
         deriveConfiguredDecoder
-      implicit val internalEvent: Decoder[InternalOperationResults.Event] =
+      implicit val internalEventDecoder: Decoder[InternalOperationResults.Event] =
         deriveConfiguredDecoder
       implicit val tezosTypesParametersDecoder: Decoder[TezosTypes.Parameters] = deriveConfiguredDecoder
       implicit val operationDecoder: Decoder[Operation] = new Decoder[Operation] {
