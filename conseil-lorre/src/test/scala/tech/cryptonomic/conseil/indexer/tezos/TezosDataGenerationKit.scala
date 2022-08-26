@@ -1,40 +1,16 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
+import io.circe.Json
 import tech.cryptonomic.conseil.common.testkit.util.{DBSafe, RandomGenerationKit}
 import tech.cryptonomic.conseil.common.tezos.Fork
-import tech.cryptonomic.conseil.common.tezos.Tables.{
-  AccountsHistoryRow,
-  AccountsRow,
-  BakersHistoryRow,
-  BakersRow,
-  BakingRightsRow,
-  BlocksRow,
-  EndorsingRightsRow,
-  FeesRow,
-  GovernanceRow,
-  OperationGroupsRow,
-  OperationsRow,
-  ProcessedChainEventsRow,
-  TokenBalancesRow
-}
+import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsHistoryRow, AccountsRow, BakersHistoryRow, BakersRow, BakingRightsRow, BlocksRow, EndorsingRightsRow, FeesRow, GovernanceRow, OperationGroupsRow, OperationsRow, ProcessedChainEventsRow, TokenBalancesRow}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
-  Block,
-  BlockData,
-  BlockHeaderMetadata,
-  OperationHash,
-  OperationsGroup,
-  PositiveDecimal,
-  PublicKeyHash,
-  RightsFetchKey,
-  TezosBlockHash,
-  Voting,
-  VotingPeriod
-}
-
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, BlockData, BlockHeaderMetadata, OperationHash, OperationsGroup, PositiveDecimal, PublicKeyHash, RightsFetchKey, TezosBlockHash, Voting, VotingPeriod}
 import org.scalacheck._
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.ScalacheckShapeless._
+import io.circe.syntax._
+
 import java.time._
 import java.time.format.DateTimeFormatter
 
@@ -72,6 +48,8 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
     implicit val zdtInstance = Arbitrary(utcZoneDateTimeGen)
 
     implicit val blockHashGenerator = Arbitrary(arbitraryBase58CheckString.map(TezosBlockHash))
+
+    implicit lazy val arbitraryJSON: Arbitrary[Json] = Arbitrary(Gen.oneOf("{}".asJson, "{[]}".asJson))
 
     private val blockDataGenerator: Gen[BlockData] =
       for {
@@ -228,6 +206,7 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
         arbitraryProposalHashes <- Gen.option(Gen.listOf(arbitraryBase58CheckString))
         arbitraryBallot <- Gen.option(DomainModelGeneration.ballotVoteInstance.arbitrary)
         arbitraryKind <- DomainModelGeneration.operationKindGenerator
+        arbitraryTag <- Gen.option(Gen.alphaNumStr)
       } yield ForkValid(
         /* we currently generate totally random strings for hash fields, as long as it's ok */
         totallyArbitrary.copy(
@@ -251,7 +230,10 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
           utcTime = arbitraryDatetime.format(DateTimeFormatter.ISO_TIME),
           proposal = arbitraryProposalHashes.map(_.mkString(",")),
           invalidatedAsof = None,
-          forkId = Fork.mainForkId
+          forkId = Fork.mainForkId,
+          eventtype = arbitraryScript,
+          tag = arbitraryTag,
+          payload = arbitraryScript
         )
       )
     )

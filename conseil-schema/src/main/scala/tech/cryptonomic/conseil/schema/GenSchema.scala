@@ -43,7 +43,7 @@ object GenSchema extends App {
     | ${configSection.drop(1)} {
     |   profile: "slick.jdbc.PostgresProfile$$"
     |   db {
-    |     driver: "org.portgresql.Driver"
+    |     driver: "org.postgresql.Driver"
     |     url: "jdbc:postgresql:<host>/<db-name>"
     |     user: ""
     |     password: ""

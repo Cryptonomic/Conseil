@@ -682,9 +682,9 @@ private[tezos] object TezosDatabaseConversions {
         operationOrder = blockOrder,
         source = Some(source),
         nonce = Some(nonce.toString),
-        script = Some(tag), //fix
-        parameters = Some(typeOfEvent.toString()), //fix
-        parametersMicheline = Some(payload.toString()), //fix
+        tag = Some(tag),
+        eventtype = Some(typeOfEvent.toString()),
+        payload = Some(payload.toString()),
         status = Some(result.status),
         //consumedGas = new BigDecimal(result.consumed_milligas),
         blockHash = block.data.hash.value,

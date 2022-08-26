@@ -319,6 +319,7 @@ object TezosTypes {
     "sc_rollup_add_messages",
     "sc_rollup_cement",
     "sc_rollup_publish",
+    "increase_paid_storage",
     "event"
   )
 
