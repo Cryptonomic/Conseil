@@ -251,6 +251,7 @@ private[tezos] object TezosDatabaseConversions {
           convertRegisterGlobalConstant orElse
           convertSetDepositsLimit orElse
           convertIncreasePaidStorage orElse
+          convertVDFRevelation orElse
           convertEvent orElse
           convertUnhandledOperations)(from)
     }
@@ -665,6 +666,36 @@ private[tezos] object TezosDatabaseConversions {
       )
   }
 
+  private val convertVDFRevelation: PartialFunction[
+    (Block, OperationHash, Operation),
+    Tables.OperationsRow
+  ] = {
+    case (
+      block,
+      groupHash,
+      VDFRevelation(solution, blockOrder, metadata)
+      ) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
+      Tables.OperationsRow(
+        operationId = 0,
+        operationGroupHash = groupHash.value,
+        kind = "vdf_revelation",
+        solution = Some(solution.mkString("[", ",", "]")),
+        operationOrder = blockOrder,
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false,
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time,
+        forkId = Fork.mainForkId
+      )
+  }
+
   private val convertEvent: PartialFunction[
     (Block, OperationHash, Operation),
     Tables.OperationsRow
@@ -816,7 +847,7 @@ private[tezos] object TezosDatabaseConversions {
               sourceHash = hashing.get(from),
               kind = kind,
               accountId = contract.map(_.id).orElse(delegate.map(_.value)).getOrElse("N/A"),
-              change = extractBigDecimal(change).getOrElse(BigDecimal(0L)), // just for tests consistency
+              change = extractBigDecimal(change).getOrElse(BigDecimal(0L)), // just for tests consistency""
               level = level,
               category = category,
               blockId = blockHash.value,
