@@ -251,6 +251,7 @@ private[tezos] object TezosDatabaseConversions {
           convertRegisterGlobalConstant orElse
           convertSetDepositsLimit orElse
           convertIncreasePaidStorage orElse
+          convertEvent orElse
           convertUnhandledOperations)(from)
     }
 
@@ -664,6 +665,42 @@ private[tezos] object TezosDatabaseConversions {
       )
   }
 
+  private val convertEvent: PartialFunction[
+    (Block, OperationHash, Operation),
+    Tables.OperationsRow
+  ] = {
+    case (
+      block,
+      groupHash,
+      Event(source, nonce, typeOfEvent, tag, payload, result, blockOrder)
+      ) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
+      Tables.OperationsRow(
+        operationId = 0,
+        operationGroupHash = groupHash.value,
+        kind = "event",
+        operationOrder = blockOrder,
+        source = Some(source),
+        nonce = Some(nonce.toString),
+        tag = Some(tag),
+        eventtype = Some(typeOfEvent.toString()),
+        payload = Some(payload.toString()),
+        status = Some(result.status),
+        //consumedGas = new BigDecimal(result.consumed_milligas),
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false,
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time,
+        forkId = Fork.mainForkId
+      )
+  }
+
   private val convertBallot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, Ballot(ballot, proposal, source, ballotPeriod, blockOrder)) =>
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
@@ -858,6 +895,11 @@ private[tezos] object TezosDatabaseConversions {
                 _.metadata,
                 ResultMetadata[OperationResult.Delegation](delegation.result, None, None)
               )
+              .transform
+
+          case event: InternalOperationResults.Event =>
+            event
+              .into[Event]
               .transform
         }
     }
