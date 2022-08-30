@@ -847,7 +847,7 @@ private[tezos] object TezosDatabaseConversions {
               sourceHash = hashing.get(from),
               kind = kind,
               accountId = contract.map(_.id).orElse(delegate.map(_.value)).getOrElse("N/A"),
-              change = extractBigDecimal(change).getOrElse(BigDecimal(0L)), // just for tests consistency""
+              change = extractBigDecimal(change).getOrElse(BigDecimal(0L)), // just for tests consistency
               level = level,
               category = category,
               blockId = blockHash.value,
