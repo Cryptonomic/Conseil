@@ -503,6 +503,7 @@ CREATE TABLE tezos.operations (
     eventtype character varying,
     tag character varying,
     payload character varying,
+    solution character varying,
     "timestamp" timestamp without time zone NOT NULL,
     errors character varying,
     utc_year integer NOT NULL,

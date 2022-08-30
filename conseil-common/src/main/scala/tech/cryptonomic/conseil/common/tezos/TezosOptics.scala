@@ -211,6 +211,9 @@ object TezosOptics {
         case x: IncreasePaidStorage =>
           index += 1
           x.copy(blockOrder = Some(index))
+        case x: VDFRevelation =>
+          index += 1
+          x.copy(blockOrder = Some(index))
         case x: Event =>
           index += 1
           x.copy(blockOrder = Some(index))

@@ -320,6 +320,7 @@ object TezosTypes {
     "sc_rollup_cement",
     "sc_rollup_publish",
     "increase_paid_storage",
+    "vdf_revelation",
     "event"
   )
 
@@ -527,6 +528,12 @@ object TezosTypes {
     metadata: ResultMetadata[OperationResult.IncreasePaidStorage]
   ) extends Operation
 
+  final case class VDFRevelation(
+    solution: Array[String],
+    blockOrder: Option[Int] = None,
+    metadata: OperationResult.VDFRevelation
+  ) extends Operation
+
   final case class Event(
     source: String,
     nonce: Int,
@@ -724,6 +731,10 @@ object TezosTypes {
      balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
      consumed_milligas: Option[BigNumber]
    )
+
+    final case class VDFRevelation(
+      balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
+    )
 
     final case class Event(
       status: String,
