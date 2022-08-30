@@ -677,12 +677,13 @@ trait OperationsJsonData {
         operation_result = OperationResult.Reveal(
           status = "applied",
           consumed_gas = Some(Decimal(10000)),
+          consumed_milligas = Some(PositiveDecimal(10000)),
           errors = None
         ),
         internal_operation_results = Some(
           List(
             InternalOperationResults.Reveal(
-              result = OperationResult.Reveal("applied", Some(Decimal(10000)), None),
+              result = OperationResult.Reveal("applied", Some(Decimal(10000)), Some(PositiveDecimal(10000)), None),
               public_key = PublicKey("edpktxRxk9r61tjEZCt5a2hY2MWC3gzECGL7FXS1K6WXGG28hTFdFz"),
               nonce = 1234,
               source = PublicKeyHash("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
@@ -712,6 +713,7 @@ trait OperationsJsonData {
         big_map_diff = None,
         lazy_storage_diff = None,
         consumed_gas = Some(Decimal(2008)),
+        consumed_milligas = Some(PositiveDecimal(2008)),
         originated_contracts = None,
         paid_storage_size_diff = None,
         storage = Some(Micheline("""{"prim":"Unit"}""")),
@@ -757,6 +759,7 @@ trait OperationsJsonData {
               big_map_diff = None,
               lazy_storage_diff = None,
               consumed_gas = Some(Decimal(107)),
+              consumed_milligas = Some(PositiveDecimal(107)),
               originated_contracts = None,
               paid_storage_size_diff = None,
               storage = None,
@@ -902,7 +905,8 @@ trait OperationsJsonData {
         operation_result = OperationResult.Reveal(
           status = "failed",
           errors = Some(List(Error("""{"kind":"temporary","id":"proto.alpha.gas_exhausted.operation"}"""))),
-          consumed_gas = None
+          consumed_gas = None,
+          consumed_milligas = None
         )
       )
     )
@@ -987,6 +991,7 @@ trait OperationsJsonData {
           status = "applied",
           storage = Some(Micheline("""{"string":"world"}""")),
           consumed_gas = Some(Decimal(11375)),
+          consumed_milligas = Some(PositiveDecimal(11375)),
           storage_size = Some(Decimal(46)),
           allocated_destination_contract = None,
           balance_updates = None,
@@ -1076,6 +1081,7 @@ trait OperationsJsonData {
           status = "applied",
           storage = Some(Micheline("""{"string":"world"}""")),
           consumed_gas = Some(Decimal(11375)),
+          consumed_milligas = Some(PositiveDecimal(11375)),
           storage_size = Some(Decimal(46)),
           allocated_destination_contract = None,
           balance_updates = None,
@@ -1232,6 +1238,7 @@ trait OperationsJsonData {
           ),
           originated_contracts = Some(List(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4"))),
           consumed_gas = Some(Decimal(11262)),
+          consumed_milligas = Some(PositiveDecimal(11262)),
           storage_size = Some(Decimal(46)),
           paid_storage_size_diff = Some(Decimal(46)),
           errors = None
@@ -1367,6 +1374,7 @@ trait OperationsJsonData {
         operation_result = OperationResult.Delegation(
           status = "applied",
           consumed_gas = Some(Decimal(10000)),
+          consumed_milligas = Some(PositiveDecimal(10000)),
           errors = None
         )
       )

@@ -159,7 +159,8 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
                 baker = PublicKeyHash(generateHash(10)),
                 voting_period_kind = Some(VotingPeriod.proposal),
                 nonce_hash = Some(NonceHash(generateHash(10))),
-                consumed_gas = PositiveDecimal(0),
+                consumed_gas = Some(PositiveDecimal(0)),
+                consumed_milligas = Some(PositiveDecimal(0)),
                 level = Some(randomMetadataLevel()),
                 voting_period_info = None,
                 level_info = None,
@@ -517,6 +518,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
           operation_result = OperationResult.Reveal(
             status = "applied",
             consumed_gas = Some(Decimal(10000)),
+            consumed_milligas = Some(PositiveDecimal(10000)),
             errors = None
           )
         )
@@ -560,6 +562,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
             status = "applied",
             storage = Some(Micheline("""{"string":"world"}""")),
             consumed_gas = Some(Decimal(11375)),
+            consumed_milligas = Some(PositiveDecimal(11375)),
             storage_size = Some(Decimal(46)),
             allocated_destination_contract = None,
             balance_updates = None,
@@ -654,6 +657,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
             ),
             originated_contracts = Some(List(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4"))),
             consumed_gas = Some(Decimal(11262)),
+            consumed_milligas = Some(PositiveDecimal(11262)),
             storage_size = Some(Decimal(46)),
             paid_storage_size_diff = Some(Decimal(46)),
             errors = None
@@ -695,6 +699,7 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
           operation_result = OperationResult.Delegation(
             status = "applied",
             consumed_gas = Some(Decimal(10000)),
+            consumed_milligas = Some(PositiveDecimal(10000)),
             errors = None
           )
         )

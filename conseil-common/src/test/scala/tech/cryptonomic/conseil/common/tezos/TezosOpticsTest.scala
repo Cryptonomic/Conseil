@@ -33,7 +33,8 @@ class TezosOpticsTest extends ConseilSpec {
           voting_period_kind = Some(defaultVotingPeriod),
           voting_period_info = None,
           nonce_hash = None,
-          consumed_gas = PositiveDecimal(0),
+          consumed_gas = Some(PositiveDecimal(0)),
+          consumed_milligas = Some(PositiveDecimal(0)),
           level = Some(BlockHeaderMetadataLevel(0, 0, 0, 0, 0, 0, expected_commitment = false)),
           level_info = None,
           implicit_operations_results = None

@@ -136,6 +136,7 @@ trait TezosDatabaseConversionsTestFixtures {
         operation_result = OperationResult.Reveal(
           status = "applied",
           consumed_gas = Some(Decimal(10000)),
+          consumed_milligas = Some(PositiveDecimal(10000)),
           errors = Some(sampleOperationResultsErrors)
         )
       )
@@ -179,6 +180,7 @@ trait TezosDatabaseConversionsTestFixtures {
           status = "applied",
           storage = Some(Micheline("""{"string":"world"}""")),
           consumed_gas = Some(Decimal(11375)),
+          consumed_milligas = Some(PositiveDecimal(11375)),
           storage_size = Some(Decimal(46)),
           allocated_destination_contract = None,
           balance_updates = None,
@@ -277,6 +279,7 @@ trait TezosDatabaseConversionsTestFixtures {
             ) :: Nil
           ),
           consumed_gas = Some(Decimal(11262)),
+          consumed_milligas = Some(PositiveDecimal(11262)),
           storage_size = Some(Decimal(46)),
           paid_storage_size_diff = Some(Decimal(46)),
           errors = Some(sampleOperationResultsErrors)
@@ -318,6 +321,7 @@ trait TezosDatabaseConversionsTestFixtures {
         operation_result = OperationResult.Delegation(
           status = "applied",
           consumed_gas = Some(Decimal(10000)),
+          consumed_milligas = Some(PositiveDecimal(10000)),
           errors = Some(sampleOperationResultsErrors)
         )
       )

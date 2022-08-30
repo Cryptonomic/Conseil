@@ -60,7 +60,8 @@ object TezosDataGenerationKit extends RandomGenerationKit with TezosDatabaseComp
       } yield data.copy(
         hash = hash,
         metadata = metadata.copy(
-          consumed_gas = gasConsumption
+          consumed_gas = Some(gasConsumption),
+          consumed_milligas = Some(gasConsumption),
         )
       )
 

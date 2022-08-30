@@ -109,10 +109,7 @@ class TezosDatabaseOperationsTest
           row.currentExpectedQuorum shouldEqual block.votes.quorum
           row.activeProposal shouldEqual block.votes.active.map(_.id)
           row.baker shouldEqual metadata.map(_.baker.value)
-          row.consumedGas shouldEqual metadata.map(_.consumed_gas).flatMap {
-            case PositiveDecimal(value) => Some(value)
-            case _ => None
-          }
+          row.consumedGas shouldEqual metadata.map(_.consumed_gas)
           row.priority.value shouldEqual block.data.header.priority.value
         }
 
