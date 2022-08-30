@@ -110,6 +110,7 @@ class TezosDatabaseOperationsTest
           row.activeProposal shouldEqual block.votes.active.map(_.id)
           row.baker shouldEqual metadata.map(_.baker.value)
           row.consumedGas shouldEqual metadata.map(_.consumed_gas)
+          row.consumedMilligas shouldEqual metadata.map(_.consumed_milligas)
           row.priority.value shouldEqual block.data.header.priority.value
         }
 
