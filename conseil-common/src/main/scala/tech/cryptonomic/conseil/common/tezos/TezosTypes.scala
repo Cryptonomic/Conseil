@@ -98,7 +98,8 @@ object TezosTypes {
   final case class BlockHeaderMetadata(
       balance_updates: List[OperationMetadata.BalanceUpdate],
       nonce_hash: Option[NonceHash],
-      consumed_gas: PositiveBigNumber,
+      consumed_gas: Option[PositiveBigNumber],
+      consumed_milligas: Option[PositiveBigNumber],
       baker: PublicKeyHash,
       voting_period_kind: Option[VotingPeriod.Kind],
       voting_period_info: Option[VotingPeriodInfo],
@@ -111,8 +112,8 @@ object TezosTypes {
       kind: String,
       storage: Option[Micheline],
       balance_updates: List[OperationMetadata.BalanceUpdate],
-      consumed_gas: PositiveBigNumber,
-      consumed_milligas: PositiveBigNumber,
+      consumed_gas: Option[PositiveBigNumber],
+      consumed_milligas: Option[PositiveBigNumber],
       storage_size: PositiveBigNumber
   )
 
@@ -627,6 +628,7 @@ object TezosTypes {
     case class TxRollupOrigination(
         kind: String,
         consumed_gas: Option[BigNumber],
+        consumed_milligas: Option[PositiveBigNumber],
         nonce: Int,
         originated_rollup: PublicKeyHash,
         blockOrder: Option[Int] = None
@@ -673,6 +675,7 @@ object TezosTypes {
     final case class Reveal(
         status: String,
         consumed_gas: Option[BigNumber],
+        consumed_milligas: Option[PositiveBigNumber],
         errors: Option[List[Error]]
     )
 
@@ -683,6 +686,7 @@ object TezosTypes {
         big_map_diff: Option[List[Contract.CompatBigMapDiff]],
         lazy_storage_diff: Option[List[LazyStorageDiff]],
         consumed_gas: Option[BigNumber],
+        consumed_milligas: Option[PositiveBigNumber],
         originated_contracts: Option[List[ContractId]],
         paid_storage_size_diff: Option[BigNumber],
         storage: Option[Micheline],
@@ -696,6 +700,7 @@ object TezosTypes {
         lazy_storage_diff: Option[List[LazyStorageDiff]],
         balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
         consumed_gas: Option[BigNumber],
+        consumed_milligas: Option[PositiveBigNumber],
         originated_contracts: Option[List[ContractId]],
         paid_storage_size_diff: Option[BigNumber],
         storage_size: Option[BigNumber],
@@ -709,6 +714,7 @@ object TezosTypes {
     final case class Delegation(
         status: String,
         consumed_gas: Option[BigNumber],
+        consumed_milligas: Option[PositiveBigNumber],
         errors: Option[List[Error]]
     )
 
@@ -716,6 +722,7 @@ object TezosTypes {
         status: String,
         balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
         consumed_gas: Option[BigNumber],
+        consumed_milligas: Option[PositiveBigNumber],
         storage_size: Option[BigNumber],
         global_address: Option[String]
     )
@@ -723,7 +730,8 @@ object TezosTypes {
     final case class SetDepositsLimit(
         status: String,
         balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
-        consumed_gas: Option[BigNumber]
+        consumed_gas: Option[BigNumber],
+        consumed_milligas: Option[PositiveBigNumber],
     )
 
     final case class IncreasePaidStorage(

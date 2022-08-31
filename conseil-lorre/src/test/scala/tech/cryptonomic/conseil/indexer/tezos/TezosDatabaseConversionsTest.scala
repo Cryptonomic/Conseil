@@ -125,10 +125,8 @@ class TezosDatabaseConversionsTest
 
       converted.invalidatedAsof shouldBe empty
 
-      metadata.map(_.consumed_gas) match {
-        case Some(PositiveDecimal(bignumber)) => converted.consumedGas.value shouldBe bignumber
-        case _ => converted.consumedGas shouldBe empty
-      }
+      metadata.map(_.consumed_gas) shouldBe converted.consumedGas
+      metadata.map(_.consumed_milligas) shouldBe converted.consumedMilligas
 
     }
 
