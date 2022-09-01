@@ -47,8 +47,6 @@ services:
     entrypoint: ["/root/wait-for.sh", "conseil-postgres:5432", "-t", "120", "--", "/root/entrypoint.sh", "conseil-api"]
     depends_on:
       - conseil-postgres
-    volumes:
-      - "conseil-sql:/root/sql/"
     networks:
       - conseil-net
 
@@ -111,7 +109,7 @@ services:
   conseil-postgres:
     image: postgres:12.6
     ports:
-      - 5432:5432
+      - 5439:5432
     environment:
       POSTGRES_USER: "conseiluser"
       POSTGRES_PASSWORD: "p@ssw0rd"
@@ -121,9 +119,6 @@ services:
       - "../sql:/docker-entrypoint-initdb.d/"
     networks:
       - conseil-net
-
-volumes:
-  conseil-sql:
 
 networks:
   conseil-net:
