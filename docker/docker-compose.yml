@@ -2,38 +2,11 @@ version: "3.1"
 
 services:
   conseil-api:
-    image: cons:latest
+    image: cryptonomictech/conseil:latest
     ports:
-      - 80:80
+      - 1337:1337
     environment:
       # List of supported environment variables:
-
-      # CONSEIL_XTZ_NETWORK:???           # (default zeronet)
-      # CONSEIL_XTZ_ENABLED:???           # (default false)
-      # CONSEIL_XTZ_NODE_PROTOCOL:???     # (default https)
-      # CONSEIL_XTZ_NODE_HOSTNAME:???     # (default nautilus.cryptonomic.tech)
-      # CONSEIL_XTZ_NODE_PORT:???         # (default 8732)
-      # CONSEIL_XTZ_NODE_PATH_PREFIX:???  # (default tezos/zeronet/)
-      # CONSEIL_XTZ_BACKER_ROLLS_SIZE:??? # (default 8000)
-
-      # CONSEIL_BTC_NETWORK:???                           # (default mainnet)
-      # CONSEIL_BTC_ENABLED:???                           # (default false)
-      # CONSEIL_BTC_NODE_PROTOCOL:???                     # (default https)
-      # CONSEIL_BTC_NODE_HOSTNAME:???                     # (default localhost)
-      # CONSEIL_BTC_NODE_PORT:???                         # (default 8332)
-      # CONSEIL_BTC_NODE_USERNAME:???                     # (default bitcoin)
-      # CONSEIL_BTC_NODE_PASSWORD:???                     # (default sP9PV88xtbGwLMAEi2rVlZ7jIFfJbpOmTUCsBBBRN9I=)
-      # CONSEIL_BTC_BATCHING_INDEXER_THREADS_COUNT:???    # (default 8)
-      # CONSEIL_BTC_BATCHING_HTTP_FETCH_THREADS_COUNT:??? # (default 8)
-      # CONSEIL_BTC_BATCHING_HASH_BATCH_SIZE:???          # (default 2000)
-      # CONSEIL_BTC_BATCHING_BLOCKS_BATCH_SIZE:???        # (default 500)
-      # CONSEIL_BTC_BATCHING_TRANSACTIONS_BATCH_SIZE:???  # (default 500)
-
-      # CONSEIL_ETH_NETWORK # (default mainnet)
-      # CONSEIL_ETH_ENABLED # (default false)
-
-      # CONSEIL_QUO_NETWORK # (default mainnet)
-      # CONSEIL_QUO_ENABLED # (default false)
 
       # CONSEIL_API_DB_NAME:???     # (default conseil)
       # CONSEIL_API_DB_USER:???     # (default foo)
@@ -61,12 +34,7 @@ services:
       CONSEIL_XTZ_PORT: 80
       CONSEIL_XTZ_KEY: "conseil"
 
-      CONSEIL_API_ALLOW_BLANK_KEYS: "true"
-
-      CONSEIL_XTZ_NETWORK: "granadanet"
-      CONSEIL_XTZ_ENABLED: "true"
-      CONSEIL_XTZ_NODE_HOSTNAME: "tezos-granada.cryptonomic-infra.tech"
-      CONSEIL_XTZ_NODE_PORT: 443
+      CONSEIL_API_KEY: "conseil"
 
       JVM_XMX: "4G"
     entrypoint: ["/root/wait-for.sh", "conseil-postgres:5432", "-t", "120", "--", "/root/entrypoint.sh", "conseil-api"]
@@ -78,7 +46,7 @@ services:
       - conseil-net
 
   conseil-lorre:
-    image: cons:latest
+    image: cryptonomictech/conseil:latest
     environment:
       # List of supported environment variables:
 
@@ -114,16 +82,17 @@ services:
       CONSEIL_LORRE_DEPTH: "newest"
       CONSEIL_LORRE_HEAD_HASH: "head"
 
-      CONSEIL_XTZ_NETWORK: "granadanet"
+      CONSEIL_XTZ_NETWORK: "jakartanet"
       CONSEIL_XTZ_ENABLED: "true"
-      CONSEIL_XTZ_NODE_HOSTNAME: "tezos-granada.cryptonomic-infra.tech"
-      CONSEIL_XTZ_NODE_PORT: 443
+      CONSEIL_XTZ_NODE_PROTOCOL: "http"
+      CONSEIL_XTZ_NODE_HOSTNAME: "172.17.0.1"
+      CONSEIL_XTZ_NODE_PORT: 8732
 
       LORRE_RUNNER_PLATFORM: "tezos"
-      LORRE_RUNNER_NETWORK: "granadanet"
+      LORRE_RUNNER_NETWORK: "jakartanet"
 
       # Feature-Flag: set to false to disable the concurrent computation of future endorsement/baking rights
-      CONSEIL_LORRE_BLOCK_RIGHTS_FETCHING_ENABLED: "true"
+      CONSEIL_LORRE_BLOCK_RIGHTS_FETCHING_ENABLED: "false"
 
       JVM_XMX: "4G"
     entrypoint: ["/root/wait-for.sh", "conseil-postgres:5432", "-t", "120", "--", "/root/entrypoint.sh", "conseil-lorre"]
@@ -133,7 +102,7 @@ services:
       - conseil-net
 
   conseil-postgres:
-    image: postgres:11.9
+    image: postgres:12.6
     ports:
       - 5432:5432
     environment:
@@ -142,7 +111,7 @@ services:
       POSTGRES_DB: "conseil-local"
       POSTGRES_INITDB_ARGS: "--lc-collate=en_US.UTF-8 -E UTF8"
     volumes:
-      - "conseil-sql:/docker-entrypoint-initdb.d/"
+      - "../sql:/docker-entrypoint-initdb.d/"
     networks:
       - conseil-net
 
