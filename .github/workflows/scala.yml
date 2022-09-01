@@ -22,5 +22,5 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      - name: Run tests
-        run: sbt test
+      - name: Assemble JARs
+        run: sbt assembly
