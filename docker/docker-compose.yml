@@ -8,6 +8,12 @@ services:
     environment:
       # List of supported environment variables:
 
+      # CONSEIL_XTZ_NETWORK:???           # (default zeronet)
+      # CONSEIL_XTZ_ENABLED:???           # (default false)
+
+      # CONSEIL_BTC_NETWORK:??? # (default mainnet)
+      # CONSEIL_BTC_ENABLED:??? # (default false)
+
       # CONSEIL_API_DB_NAME:???     # (default conseil)
       # CONSEIL_API_DB_USER:???     # (default foo)
       # CONSEIL_API_DB_PASSWORD:??? # (default bar)
@@ -28,10 +34,11 @@ services:
 
       # CONFIG_PATH:??? # (optional path to external configuration)
 
+      CONSEIL_XTZ_NETWORK: "jakartanet"
+      CONSEIL_XTZ_ENABLED: "true"
       CONSEIL_XTZ_DB_URL: "jdbc:postgresql://conseil-postgres:5432/conseil-local"
       CONSEIL_XTZ_DB_USER: "conseiluser"
       CONSEIL_XTZ_DB_PASSWORD: "p@ssw0rd"
-      CONSEIL_XTZ_PORT: 80
       CONSEIL_XTZ_KEY: "conseil"
 
       CONSEIL_API_KEY: "conseil"
