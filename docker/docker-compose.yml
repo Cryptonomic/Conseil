@@ -34,13 +34,11 @@ services:
 
       # CONFIG_PATH:??? # (optional path to external configuration)
 
-      CONSEIL_XTZ_NETWORK: "jakartanet"
       CONSEIL_XTZ_ENABLED: "true"
+      CONSEIL_XTZ_NETWORK: "mainnet"
       CONSEIL_XTZ_DB_URL: "jdbc:postgresql://conseil-postgres:5432/conseil-local"
       CONSEIL_XTZ_DB_USER: "conseiluser"
       CONSEIL_XTZ_DB_PASSWORD: "p@ssw0rd"
-      CONSEIL_XTZ_KEY: "conseil"
-
       CONSEIL_API_KEY: "conseil"
 
       JVM_XMX: "4G"
@@ -87,14 +85,15 @@ services:
       CONSEIL_LORRE_DEPTH: "newest"
       CONSEIL_LORRE_HEAD_HASH: "head"
 
-      CONSEIL_XTZ_NETWORK: "jakartanet"
+      CONSEIL_XTZ_NETWORK: "mainnet"
       CONSEIL_XTZ_ENABLED: "true"
       CONSEIL_XTZ_NODE_PROTOCOL: "http"
-      CONSEIL_XTZ_NODE_HOSTNAME: "172.17.0.1"
+      CONSEIL_XTZ_NODE_HOSTNAME: "65.108.44.106"
       CONSEIL_XTZ_NODE_PORT: 8732
+      CONSEIL_XTZ_NODE_PATH_PREFIX: ""
 
       LORRE_RUNNER_PLATFORM: "tezos"
-      LORRE_RUNNER_NETWORK: "jakartanet"
+      LORRE_RUNNER_NETWORK: "mainnet"
 
       # Feature-Flag: set to false to disable the concurrent computation of future endorsement/baking rights
       CONSEIL_LORRE_BLOCK_RIGHTS_FETCHING_ENABLED: "false"
@@ -109,7 +108,7 @@ services:
   conseil-postgres:
     image: postgres:12.6
     ports:
-      - 5439:5432
+      - 5432:5432
     environment:
       POSTGRES_USER: "conseiluser"
       POSTGRES_PASSWORD: "p@ssw0rd"
