@@ -52,7 +52,7 @@ class BakingAndEndorsingRightsProcessor(
       data.metadata match {
         case TezosTypes.GenesisMetadata =>
           RightsFetchKey(data.hash, None, None)
-        case BlockHeaderMetadata(_, _, _, _, _, voting_period_info, level, level_info, _) =>
+        case BlockHeaderMetadata(_, _, _, _, _, _, voting_period_info, level, level_info, _) =>
           RightsFetchKey(
             data.hash,
             level.map(_.cycle).orElse(level_info.map(_.cycle)),

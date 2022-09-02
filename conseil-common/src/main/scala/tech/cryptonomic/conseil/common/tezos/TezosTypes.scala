@@ -746,7 +746,7 @@ object TezosTypes {
 
     final case class Event(
       status: String,
-      consumed_milligas: String
+      consumed_milligas: Option[BigNumber]
     )
 
   }
