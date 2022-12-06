@@ -217,6 +217,9 @@ object TezosOptics {
         case x: Event =>
           index += 1
           x.copy(blockOrder = Some(index))
+        case x: UpdateConsensusKey =>
+          index += 1
+          x.copy(blockOrder = Some(index))
         case x: Reveal =>
           index += 1
           val operation = x.copy(blockOrder = Some(index))

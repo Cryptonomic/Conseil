@@ -322,7 +322,8 @@ object TezosTypes {
     "sc_rollup_publish",
     "increase_paid_storage",
     "vdf_revelation",
-    "event"
+    "event",
+    "update_consensus_key"
   )
 
   final case class Operations(
@@ -545,6 +546,17 @@ object TezosTypes {
     blockOrder: Option[Int] = None,
   ) extends Operation
 
+  final case class UpdateConsensusKey(
+    source: Option[String],
+    fee: PositiveBigNumber,
+    counter: PositiveBigNumber,
+    gas_limit: PositiveBigNumber,
+    storage_limit: PositiveBigNumber,
+    pk: PublicKey,
+    blockOrder: Option[Int] = None,
+    metadata: ResultMetadata[OperationResult.UpdateConsensusKey]
+  ) extends Operation
+
   final case class DefaultOperation(
       kind: String,
       blockOrder: Option[Int] = None
@@ -747,6 +759,12 @@ object TezosTypes {
     final case class Event(
       status: String,
       consumed_milligas: Option[BigNumber]
+    )
+
+    final case class UpdateConsensusKey(
+      status: String,
+      consumed_gas: Option[BigNumber],
+      consumed_milligas: Option[PositiveBigNumber],
     )
 
   }

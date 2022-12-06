@@ -289,11 +289,17 @@ private[tezos] object TezosJsonDecoders {
         ResultMetadata[OperationResult.IncreasePaidStorage]
       ] =
         deriveConfiguredDecoder
+      implicit val increasePaidStorageDecoder: Decoder[
+        IncreasePaidStorage
+      ] =
+        deriveConfiguredDecoder
       implicit val VDFRevelationMetadataDecoder: Decoder[OperationResult.VDFRevelation] =
         deriveConfiguredDecoder
       implicit val EventMetadataDecoder: Decoder[
         ResultMetadata[OperationResult.Event]
       ] =
+        deriveConfiguredDecoder
+      implicit val UpdateConsensusKeyMetadataDecoder: Decoder[OperationResult.UpdateConsensusKey] =
         deriveConfiguredDecoder
       implicit val internalOperationResultDecoder: Decoder[InternalOperationResults.InternalOperationResult] =
         deriveConfiguredDecoder

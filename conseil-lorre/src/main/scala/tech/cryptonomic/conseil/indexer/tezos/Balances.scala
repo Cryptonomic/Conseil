@@ -43,6 +43,8 @@ object OperationBalances {
           )
         case e: VDFRevelation =>
           Map(b.updateContent(OPERATION_SOURCE) -> e.metadata.balance_updates.toList.flatten)
+        case e: UpdateConsensusKey =>
+          Map(b.updateContent(OPERATION_SOURCE) -> e.metadata.balance_updates.toList.flatten)
         case e: EndorsementWithSlot =>
           Map(b.updateContent(OPERATION_SOURCE) -> e.metadata.balance_updates.toList.flatten)
         case e: Endorsement =>
