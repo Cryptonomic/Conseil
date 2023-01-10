@@ -3,6 +3,8 @@
 [![Build Status](https://travis-ci.org/Cryptonomic/Conseil.svg?branch=master)](https://travis-ci.org/Cryptonomic/Conseil)
 [![Coverage Status](https://coveralls.io/repos/github/Cryptonomic/Conseil/badge.svg?branch=master)](https://coveralls.io/github/Cryptonomic/Conseil?branch=master)
 
+Note: As of January 2023, Conseil is maintained on a best effort basis for Tezos: https://discourse.cryptonomic.tech/t/psa-conseil-conseiljs-will-now-be-maintained-on-a-best-effort-basis-for-tezos/235/2
+
 Conseil is an indexer and API for blockchains, currently focused on the [Tezos](https://tezos.com/), which allows you to seamlessly run complex queries against blockchain data. It is written in the functional style in the [Scala](https://scala-lang.org/) programming language. This project forms an essential part of the [Cryptonomic stack](https://cryptonomic.tech/developers.html).
 
 Conseil consists of two processes:
