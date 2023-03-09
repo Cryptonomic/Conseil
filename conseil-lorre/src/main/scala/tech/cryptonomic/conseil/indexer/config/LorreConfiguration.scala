@@ -110,7 +110,8 @@ final case class Features(
     metadataFetchingIsOn: Boolean,
     registeredTokensIsOn: Boolean,
     rightsProcessingIsOn: Boolean,
-    bakerFeaturesAreOn: Boolean
+    bakerFeaturesAreOn: Boolean,
+    lightweightIndexing: Boolean
 )
 
 final case class TokenContracts(

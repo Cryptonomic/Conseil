@@ -13,7 +13,6 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.tezos.{Fork, Tables}
 import tech.cryptonomic.conseil.common.tezos.Tables.{
-  AccountsRow,
   GovernanceRow,
   OperationsRow,
   OriginatedAccountMapsRow,
@@ -36,6 +35,8 @@ import scala.util.{Failure, Success}
 import java.util.UUID
 import slick.dbio.DBIOAction
 import tech.cryptonomic.conseil.indexer.tezos.RegisteredTokensFetcher.RegisteredToken
+
+import scala.io.Source
 
 /**
   * Functions for writing Tezos data to a database.
@@ -101,7 +102,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     */
   def writeBlocks(
       blocks: List[Block],
-      tokenContracts: TokenContracts
+      tokenContracts: TokenContracts,
+      knownAddresses: Option[List[Tables.KnownAddressesRow]]
   )(implicit ec: ExecutionContext, tnsContracts: TNSContract): DBIO[Unit] = {
     // Kleisli is a Function with effects, Kleisli[F, A, B] ~= A => F[B]
     import TezosDatabaseConversions.OperationTablesData
@@ -118,6 +120,11 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     val saveBlocksAction = Tables.Blocks ++= blocks.map(_.convertTo[BlocksRow])
     val saveBlocksBalanceUpdatesAction = Tables.BalanceUpdates ++= blocks.flatMap { block =>
       block.data.convertToA[List, BalanceUpdatesRow]
+    }.filter { updatesRow =>
+      knownAddresses match {
+        case Some(value) => value.map(_.address).contains(updatesRow.accountId)
+        case None => true
+      }
     }
 
     val saveGroupsAction = Tables.OperationGroups ++= blocks.flatMap(_.convertToA[List, OperationGroupsRow])
@@ -147,7 +154,9 @@ object TezosDatabaseOperations extends ConseilLogSupport {
       saveBlocksAction,
       saveBlocksBalanceUpdatesAction,
       saveGroupsAction,
-      saveOperationsAndBalances.traverse(blocks.flatMap(_.convertToA[List, OperationTablesData])),
+      saveOperationsAndBalances.traverse(
+        blocks.flatMap(block => (block -> knownAddresses).convertToA[List, OperationTablesData])
+      ),
       saveBigMaps(blocks)(ec, tokenContracts, tnsContracts)
     )
 
@@ -396,7 +405,8 @@ object TezosDatabaseOperations extends ConseilLogSupport {
     */
   def writeBlocksAndCheckpointAccounts(
       blocks: List[Block],
-      accountUpdates: List[BlockTagged[List[AccountId]]]
+      accountUpdates: List[BlockTagged[List[AccountId]]],
+      knownAddresses: Option[List[Tables.KnownAddressesRow]]
   )(implicit ec: ExecutionContext, tnsContracts: TNSContract): DBIO[Option[Int]] = {
     logger.info("Writing blocks and account checkpoints to the DB...")
     //sequence both operations in a single transaction
@@ -407,7 +417,9 @@ object TezosDatabaseOperations extends ConseilLogSupport {
             ContractId(address) -> interfaces
         }.toList
       )
-      (writeBlocks(blocks, tokens) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
+      (writeBlocks(blocks, tokens, knownAddresses) andThen writeAccountsCheckpoint(
+        accountUpdates.map(_.asTuple)
+      )).transactionally
     }
   }
 

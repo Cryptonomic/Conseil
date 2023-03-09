@@ -12,7 +12,7 @@ import tech.cryptonomic.conseil.indexer.tezos.{
   TezosDatabaseOperations => TezosDb
 }
 import tech.cryptonomic.conseil.common.io.Logging.ConseilLogSupport
-import tech.cryptonomic.conseil.common.tezos.TezosTypes
+import tech.cryptonomic.conseil.common.tezos.{Tables, TezosTypes}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Block, InternalOperationResults, Voting}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 import tech.cryptonomic.conseil.indexer.config.Features
@@ -38,7 +38,8 @@ class BlocksProcessor(
     tnsOperations: TezosNamesOperations,
     accountsProcessor: AccountsProcessor,
     bakersProcessor: BakersProcessor,
-    featureFlags: Features
+    featureFlags: Features,
+    knownAddresses: Option[List[Tables.KnownAddressesRow]]
 )(implicit tns: TNSContract)
     extends ConseilLogSupport {
 
@@ -56,13 +57,25 @@ class BlocksProcessor(
 
     //ignore the account ids for storage, and prepare the checkpoint account data
     //we do this on a single sweep over the list, pairing the results and then unzipping the outcome
-    val (blocks, accountUpdates) =
-      results.map { case (block, accountIds) =>
-        block -> accountIds.taggedWithBlockData(block.data)
-      }.unzip
+    val (blocks, accountUpdates) = {
+      knownAddresses match {
+        case Some(value) =>
+          results.map { case (block, accountIds) =>
+            val ids = accountIds.toSet.intersect(value.map(x => TezosTypes.PublicKeyHash(x.address)).toSet).toList
+            block -> ids.taggedWithBlockData(block.data)
+          }.unzip
+        case None =>
+          results.map { case (block, accountIds) =>
+            block -> accountIds.taggedWithBlockData(block.data)
+          }.unzip
+      }
+
+    }
 
     for {
-      _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
+      _ <- db.run(
+        TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates, knownAddresses)
+      ) andThen logBlockOutcome
       _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
       bakersCheckpoints <- accountsProcessor.processAccountsForBlocks(
         accountUpdates
